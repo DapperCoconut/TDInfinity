@@ -128,24 +128,24 @@
           <span id="mp-me"></span>
         </div>
         <div class="mp-cols">
-          <div class="card">
-            <h3>Party</h3>
-            <div id="party-body"></div>
-          </div>
           <div class="card grow">
-            <h3>Rooms</h3>
+            <h3>Host a room</h3>
+            <p class="hint">Your browser hosts the game. Share the room code with up to 3 friends so they can join. Keep this tab open while you play: if the host leaves, the room closes.</p>
             <div class="row">
               <input id="room-name" placeholder="Room name (optional)" maxlength="24" />
-              <label class="check"><input type="checkbox" id="room-public" checked /> Public</label>
               <button id="room-create" class="btn green">Create Room</button>
             </div>
+          </div>
+          <div class="card grow">
+            <h3>Join a friend</h3>
+            <p class="hint">Type the 5-character code from your friend's room.</p>
             <div class="row">
-              <input id="room-code" placeholder="Room code" maxlength="5" />
+              <input id="room-code" placeholder="Room code" maxlength="5" autocomplete="off" />
               <button id="room-join" class="btn blue">Join by Code</button>
             </div>
-            <div id="room-list"></div>
           </div>
         </div>
+        <div id="mp-status" class="hint mp-status"></div>
       </div>
     </div>
 

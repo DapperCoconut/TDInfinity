@@ -1392,3 +1392,15 @@ input:focus {
   margin: 4px 0 6px;
   font-weight: bold;
 }
+
+/* Multiplayer menu: connecting status, and the room code friends type in */
+.mp-status {
+  min-height: 1.4em;
+  margin-top: 10px;
+  text-align: center;
+}
+.room-code {
+  font-size: 1.3em;
+  letter-spacing: 0.12em;
+  color: #fff59d;
+}
