@@ -1,6 +1,6 @@
 // Authoritative game simulation. Pure logic: no three.js, no DOM.
 // Runs in the browser for solo play and on the server (one per room) for multiplayer.
-import { ENEMIES, GAME, PLAYER_COLORS, TARGET_MODES, TOWERS, VERSUS, canHit, difficulty, detection, nextTrack, cloneCost, rootType, towerCost, trackBoost, unitDetection, waveGroups } from '../config.js';
+import { DIFFICULTIES, ENEMIES, GAME, PLAYER_COLORS, TARGET_MODES, TOWERS, VERSUS, canHit, difficulty, detection, nextTrack, cloneCost, rootType, towerCost, trackBoost, unitDetection, waveGroups } from '../config.js';
 import { angleDiff, lerpAngle } from '../utils.js';
 import { canPlace, heightAt } from './map.js';
 import { PATH_WIDTH, path } from './path.js';
@@ -208,12 +208,13 @@ export class Sim {
   constructor(players, opts = {}) {
     this.vs = opts.vs ?? null;
     // Difficulty: which scripted waves this game plays (Versus always plays the zombie waves).
-    this.mode = this.vs ? 'zombies' : opts.mode in { easy: 1, zombies: 1 } ? opts.mode : 'easy';
+    this.mode = this.vs ? 'zombies' : DIFFICULTIES[opts.mode] ? opts.mode : 'easy';
     this.waves = difficulty(this.mode).waves;
+    this.cashMult = this.vs ? 1 : difficulty(this.mode).cash; // harder modes pay more in-game cash
     this.lane = opts.lane ?? 0;
     this.players = new Map();
     players.forEach((p, i) =>
-      this.players.set(p.id, { id: p.id, name: p.name, color: p.color ?? PLAYER_COLORS[i % PLAYER_COLORS.length], cash: GAME.startCash, loadout: p.loadout ?? null }),
+      this.players.set(p.id, { id: p.id, name: p.name, color: p.color ?? PLAYER_COLORS[i % PLAYER_COLORS.length], cash: Math.round(GAME.startCash * this.cashMult), loadout: p.loadout ?? null }),
     );
     this.startingPlayers = Math.max(1, players.length);
     this.towers = new Map();
@@ -235,6 +236,7 @@ export class Sim {
     this.skipVotes = new Set();
     this.holos = []; // hacked zombies that died this tick, to come back as holograms
     this.fraudAcc = 0; // Wire Fraud cash not paid out yet (it pays whole dollars)
+    this.axes = []; // Molten Warlord axes in flight
     this.reborn = []; // enemies to spawn at the end of the tick (cage monsters, boss phase 2, summons)
     this.events = []; // drained by whoever runs the sim
     this.tmp = {};
@@ -303,6 +305,14 @@ export class Sim {
         for (let i = 0; i < sm.n; i++) this.reborn.push({ type: sm.type, dist: Math.max(0, e.dist - 1.5 - i), hpScale: 1 });
         this.events.push({ k: 'summon', e: e.id });
       }
+      // Corpses crumble away after a while.
+      if (e.remains && (e.life -= dt) <= 0) {
+        this.enemies.delete(e.id);
+        this.events.push({ k: 'decay', e: e.id });
+        continue;
+      }
+      const def = ENEMIES[e.type];
+      if ((def.slam || def.axe) && !e.stop) this.bossAttacks(e, def, dt);
       if (e.dist >= path.length) {
         this.enemies.delete(e.id);
         const dmg = ENEMIES[e.type].damage;
@@ -327,9 +337,10 @@ export class Sim {
     this.updateTraps(dt);
     this.updateSentries(dt);
     this.updateBurns(dt);
+    this.updateAxes(dt);
     this.spawnReborn();
 
-    if (!this.vs && w.state === 'wave' && !this.queue.length && this.enemies.size === 0) {
+    if (!this.vs && w.state === 'wave' && !this.queue.length && this.allClear()) {
       this.payWave();
       if (w.index >= this.waves.length - 1) return this.end(true);
       w.index++;
@@ -338,19 +349,78 @@ export class Sim {
     }
   }
 
+  /** No enemies left except corpses (they don't have to be broken to finish a wave). */
+  allClear() {
+    for (const e of this.enemies.values()) if (!e.remains) return false;
+    return true;
+  }
+
+  /** Molten Warlord: slams stun nearby towers, and thrown axes stun towers far away. */
+  bossAttacks(e, def, dt) {
+    const sl = def.slam;
+    if (sl && (e.slamT -= dt) <= 0) {
+      if (this.towerNear(e.x, e.z, sl.range)) {
+        e.slamT = sl.every;
+        const n = this.hexTowers(e.x, e.z, sl.range, 'stun', sl.stun);
+        this.events.push({ k: 'slam', e: e.id, x: r2(e.x), z: r2(e.z), r: sl.range, n });
+      } else e.slamT = 0.5;
+    }
+    const ax = def.axe;
+    if (ax && (e.axeT -= dt) <= 0) {
+      // Prefer towers out of slam reach, so the axe goes after the ones hiding far away.
+      const near = (sl?.range ?? 0) ** 2;
+      const all = [];
+      const far = [];
+      for (const t of this.towers.values()) {
+        const d2 = (t.x - e.x) ** 2 + (t.z - e.z) ** 2;
+        if (d2 > ax.range * ax.range) continue;
+        all.push(t);
+        if (d2 > near) far.push(t);
+      }
+      const list = far.length ? far : all;
+      if (!list.length) {
+        e.axeT = 1;
+        return;
+      }
+      const t = list[Math.floor(Math.random() * list.length)];
+      e.axeT = ax.every;
+      this.axes.push({ x: t.x, z: t.z, left: ax.flight, r: ax.radius, stun: ax.stun });
+      this.events.push({ k: 'axe', e: e.id, fx: r2(e.x), fz: r2(e.z), x: r2(t.x), z: r2(t.z), d: ax.flight });
+    }
+  }
+
+  towerNear(x, z, r) {
+    for (const t of this.towers.values()) if ((t.x - x) ** 2 + (t.z - z) ** 2 <= r * r) return true;
+    return false;
+  }
+
+  /** Thrown axes land and stun the towers around them. */
+  updateAxes(dt) {
+    if (!this.axes.length) return;
+    this.axes = this.axes.filter((a) => {
+      if ((a.left -= dt) > 0) return true;
+      const n = this.hexTowers(a.x, a.z, a.r, 'stun', a.stun);
+      this.events.push({ k: 'axeHit', x: r2(a.x), z: r2(a.z), r: a.r, n });
+      return false;
+    });
+  }
+
   /** Wave bonus to every player, plus tower income, for clearing (or skipping) the current wave. */
   payWave(skip = false) {
     const w = this.wave;
-    const bonus = GAME.waveBonus(w.index + 1);
+    const bonus = Math.round(GAME.waveBonus(w.index + 1) * this.cashMult);
     for (const p of this.players.values()) p.cash += bonus;
     this.events.push({ k: 'waveClear', i: w.index, bonus, ...(skip ? { skip: 1 } : {}) });
     this.payIncome();
   }
 
-  /** Can players vote to skip ahead to the next wave right now (a few seconds into a wave)? */
+  /**
+   * Can players vote to skip ahead to the next wave right now? Once every zombie in the wave has
+   * spawned, even if some are still walking the path.
+   */
   get canSkipWave() {
     const w = this.wave;
-    return !this.vs && w.state === 'wave' && w.t >= GAME.skipAfter && w.index < this.waves.length - 1;
+    return !this.vs && w.state === 'wave' && !this.queue.length && w.index < this.waves.length - 1;
   }
 
   /**
@@ -420,6 +490,11 @@ export class Sim {
       flying: !!def.flying, // ground units and traps can't touch it
       lead: !!def.lead, // only towers with lead detection hurt it
       boss: !!def.boss,
+      armor: def.armor ?? 0, // takes this fraction less damage
+      remains: !!def.remains, // a corpse: never moves, crumbles after `life` seconds
+      life: def.decay ?? 0,
+      slamT: def.slam ? 3 : 0, // Molten Warlord: seconds until the next slam / axe throw
+      axeT: def.axe ? def.axe.every * 0.5 : 0,
       stop: 0, // seconds left frozen or stunned
       stopKind: 0, // 'ice' | 'stun' | 0
       burn: 0, // seconds left on fire
@@ -2196,6 +2271,7 @@ export class Sim {
 
   /** Damages an enemy; `t` (may be null if the tower was sold) gets the credit. */
   damage(t, e, dmg) {
+    if (e.armor) dmg *= 1 - e.armor; // Molten Squires, Knights...
     if (e.vuln) dmg *= 1 + e.vuln; // softened up by a DJ Booth's Red Drop the Beat
     if (t) {
       const mult = buffOf(this.buffs, t.id).dmg;
@@ -2220,8 +2296,8 @@ export class Sim {
     if (e.hackEv) this.holos.push(e);
     for (const p of this.players.values()) p.cash += reward;
     this.events.push({ k: 'kill', e: e.id, r: reward });
-    // Cages release a random monster; the Slime King comes back for round two.
-    const next = def.phase2 ?? (def.cage ? def.cage[Math.floor(Math.random() * def.cage.length)] : null);
+    // Cages release a random monster; the Slime King comes back for round two; Moltens leave corpses.
+    const next = def.phase2 ?? def.corpse ?? (def.cage ? def.cage[Math.floor(Math.random() * def.cage.length)] : null);
     if (next) this.reborn.push({ type: next, dist: e.dist, lateral: e.lateral, hpScale: def.phase2 ? 1 : def.cageHp ?? 1, from: e.type });
   }
 

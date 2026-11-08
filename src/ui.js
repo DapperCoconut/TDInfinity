@@ -223,7 +223,7 @@ export class UI {
     else if (w.state === 'victory') status = 'Victory!';
     else if (w.state === 'defeat') status = 'The base has fallen!';
     this.el.waveStatus.textContent = status;
-    // Between waves: start now. A few seconds into a wave: skip ahead to the next one.
+    // Between waves: start now. Once a wave has fully spawned: skip ahead to the next one.
     const showSkip = !spectating && (w.state === 'intermission' || (w.state === 'wave' && w.canSkip));
     this.el.skip.classList.toggle('hidden', !showSkip);
     if (showSkip) {
@@ -333,7 +333,7 @@ export class UI {
   showEnd(win, waveNum, mp, credits, shards = 0, total = WAVES.length, mode = 'zombies') {
     this.el.end.classList.remove('hidden');
     $('end-title').innerHTML = win ? 'VICTORY<span>!</span>' : 'DEFEAT';
-    const foes = mode === 'zombies' ? 'zombies' : 'monsters';
+    const foes = mode === 'easy' ? 'monsters' : 'zombies';
     $('end-sub').textContent = win ? `You survived all ${total} waves!` : `The ${foes} broke through on wave ${waveNum}.`;
     $('end-credits').innerHTML = rewardText(credits, shards);
     $('end-primary').textContent = mp ? 'Back to Room' : 'Play Again';

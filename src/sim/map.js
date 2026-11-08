@@ -40,7 +40,7 @@ export function heightAt(x, z) {
 
 function generate() {
   const rand = mulberry32(1337);
-  const obstacles = [{ x: CASTLE.x, z: CASTLE.z, r: 9 }]; // circles blocking towers & players
+  const obstacles = [{ x: CASTLE.x, z: CASTLE.z, r: 9 }]; // circles blocking towers & players (no h = too tall to stand on)
   const trees = [];
   const rocks = [];
   const border = [];
@@ -66,7 +66,7 @@ function generate() {
     if (blocked(x, z, 3)) continue;
     const s = 1 + rand() * 1.5;
     rocks.push({ x, z, s, rx: rand() * 0.3, ry: rand() * Math.PI, rz: rand() * 0.3 });
-    obstacles.push({ x, z, r: 1.3 * s });
+    obstacles.push({ x, z, r: 1.3 * s, h: 1.3 * s }); // h: top height, so players can jump on it
   }
   // Tree line beyond the playable area (decor only, not obstacles).
   for (let i = 0; i < 90; i++) {

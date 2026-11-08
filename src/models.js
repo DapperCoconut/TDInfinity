@@ -4299,10 +4299,114 @@ export function makeZombie(def) {
     part(h.head, boxGeo(0.25, 0.6, 0.25), spikeM, -0.45, 1.45, 0);
     part(h.head, boxGeo(0.25, 0.6, 0.25), spikeM, 0.45, 1.45, 0);
   }
+  if (def.lava) moltenParts(h, def);
   h.rightArm.rotation.x = -Math.PI / 2;
   h.leftArm.rotation.x = -Math.PI / 2;
   if (def.hidden) setOpacity(h, 0.35);
   return h;
+}
+
+/** Medium mode zombie extras: lava cracks, horns, hazmat suits, armor, robes, mechs and axes. */
+function moltenParts(h, def) {
+  const { M } = h;
+  const lava = glow(h, def.lava);
+  // Glowing cracks over the body and burning eyes.
+  for (const [x, y, w, hh] of [[-0.5, 0.4, 0.12, 0.9], [0.3, -0.3, 0.7, 0.12], [0.55, 0.5, 0.12, 0.6], [-0.2, -0.6, 0.12, 0.5]]) {
+    part(h.torso, boxGeo(w, hh, 0.06), lava, x, y, 0.53);
+    part(h.torso, boxGeo(w, hh, 0.06), lava, -x, y, -0.53);
+  }
+  for (const limb of [h.rightArm, h.leftArm, h.rightLeg, h.leftLeg]) {
+    part(limb, boxGeo(0.1, 0.8, 1.04), lava, 0.48, -1.1, 0);
+    part(limb, boxGeo(1.04, 0.1, 0.6), lava, 0, -1.5, 0.1);
+  }
+  if (!def.knight && !def.mech) {
+    for (const side of [-1, 1]) part(h.head, boxGeo(0.26, 0.18, 0.06), lava, side * 0.28, 0.7, 0.62);
+    part(h.head, boxGeo(0.1, 0.5, 0.06), lava, 0.4, 0.9, 0.62);
+  }
+  if (def.horns) {
+    const hm = M(def.horns);
+    for (const side of [-1, 1]) {
+      const a = part(h.head, boxGeo(0.25, 0.5, 0.25), hm, side * 0.5, 1.35, 0);
+      a.rotation.z = -side * 0.4;
+      const b = part(h.head, boxGeo(0.18, 0.4, 0.18), hm, side * 0.72, 1.7, 0);
+      b.rotation.z = -side * 0.8;
+    }
+  }
+  if (def.plate) {
+    const plate = M(def.plate);
+    const dark = M(0x263238);
+    part(h.torso, boxGeo(2.25, 1.7, 1.25), plate, 0, 0.1, 0); // breastplate
+    for (const arm of [h.rightArm, h.leftArm]) part(arm, boxGeo(1.3, 0.7, 1.3), plate, 0, -0.15, 0); // pauldrons
+    if (def.knight || def.axes) {
+      // Full helm with a glowing visor slit, greaves and a shield.
+      part(h.head, boxGeo(1.4, 1.4, 1.4), plate, 0, 0.6, 0);
+      part(h.head, boxGeo(1.0, 0.16, 0.06), lava, 0, 0.72, 0.72);
+      part(h.head, boxGeo(0.2, 0.5, 1.2), dark, 0, 1.5, 0); // crest
+      for (const leg of [h.rightLeg, h.leftLeg]) part(leg, boxGeo(1.15, 1.0, 1.15), plate, 0, -1.4, 0);
+    } else part(h.head, boxGeo(1.35, 0.6, 1.35), plate, 0, 1.2, 0); // squire's open helmet
+    if (def.knight) {
+      part(h.leftArm, boxGeo(0.25, 1.8, 2.4), plate, 0.65, -1.5, 0.1); // shield
+      part(h.leftArm, boxGeo(0.08, 0.9, 0.9), lava, 0.8, -1.5, 0.1);
+      // Sword
+      part(h.rightArm, boxGeo(0.3, 0.3, 1), dark, 0, -2.1, 0.3);
+      part(h.rightArm, boxGeo(0.25, 0.25, 3.4), lava, 0, -2.1, 2.4);
+    }
+  }
+  if (def.robe) {
+    // Necromancer: a long robe and hood, and a staff topped with a glowing orb.
+    const robe = M(def.robe);
+    part(h.body, boxGeo(2.3, 2.1, 1.4), robe, 0, 1.0, 0);
+    part(h.head, boxGeo(1.4, 1.35, 1.25), M(0x1a0f3a), 0, 0.68, -0.12);
+    part(h.rightArm, boxGeo(0.25, 0.25, 6), M(0x3e2723), 0, -2.1, 0.6);
+    part(h.rightArm, boxGeo(0.7, 0.7, 0.7), lava, 0, -2.1, 3.8);
+    part(h.rightArm, boxGeo(0.12, 0.12, 0.8), lava, 0.4, -2.1, 3.2);
+  }
+  if (def.mech) {
+    // Bulwark: a boxy lava-powered mech suit with arm cannons.
+    const metal = M(def.shirt);
+    const dark = M(def.pants);
+    part(h.torso, boxGeo(2.9, 2.4, 1.8), metal, 0, 0.1, 0);
+    part(h.torso, boxGeo(1, 1, 0.1), lava, 0, 0.2, 0.92); // reactor core
+    for (const x of [-1.1, 1.1]) part(h.torso, boxGeo(0.4, 0.8, 0.4), dark, x, 1.5, -0.5); // exhaust stacks
+    part(h.head, boxGeo(1.6, 1.1, 1.6), metal, 0, 0.55, 0);
+    part(h.head, boxGeo(1.2, 0.25, 0.06), lava, 0, 0.65, 0.82);
+    for (const leg of [h.rightLeg, h.leftLeg]) part(leg, boxGeo(1.4, 2.1, 1.4), dark, 0, -1.0, 0);
+    for (const arm of [h.rightArm, h.leftArm]) {
+      part(arm, boxGeo(1.35, 2.2, 1.35), metal, 0, -1.0, 0);
+      part(arm, boxGeo(0.6, 1.4, 0.6), dark, 0, -2.6, 0); // cannon barrel
+      part(arm, boxGeo(0.4, 0.06, 0.4), lava, 0, -3.32, 0);
+    }
+  }
+  if (def.hazmat) hazmatSuit(h, def);
+  if (def.axes) {
+    // Molten Warlord: a giant battleaxe in each hand (handles point up along the arms' local z).
+    const wood = M(0x3e2723);
+    const steel = M(0x37474f);
+    for (const [arm, side] of [[h.rightArm, -1], [h.leftArm, 1]]) {
+      part(arm, boxGeo(0.35, 0.35, 5.5), wood, 0, -2.1, 1.2);
+      part(arm, boxGeo(0.25, 1.8, 2.2), steel, side * 0.05, -3.0, 3.4); // axe head, blade forward
+      part(arm, boxGeo(0.3, 0.16, 2.3), lava, side * 0.05, -3.95, 3.4); // red-hot edge
+      part(arm, boxGeo(0.4, 0.4, 0.4), steel, 0, -2.1, 4.1);
+    }
+  }
+}
+
+function hazmatSuit(h, def) {
+  const { M } = h;
+  const suit = M(def.shirt);
+  const rubber = M(0x212121);
+  const glass = M(0x80deea);
+  glass.userData.glow = 0x0b3b40; // keeps its tint after hit flashes
+  glass.emissive.setHex(0x0b3b40);
+  part(h.head, boxGeo(1.4, 1.4, 1.36), suit, 0, 0.62, 0); // hood
+  part(h.head, boxGeo(1.0, 0.55, 0.06), glass, 0, 0.82, 0.7); // visor
+  part(h.head, boxGeo(0.7, 0.4, 0.25), rubber, 0, 0.3, 0.75); // respirator
+  part(h.head, cylGeo(0.22, 0.22, 0.3, 8), rubber, 0, 0.2, 0.95).rotation.x = Math.PI / 2;
+  part(h.torso, boxGeo(0.9, 1.0, 0.5), M(0x9e9e9e), 0, 0.2, -0.75); // air tank
+  part(h.torso, boxGeo(0.5, 0.5, 0.06), M(0x212121), 0.45, 0.45, 0.53); // ☢ badge
+  part(h.torso, boxGeo(0.3, 0.3, 0.07), M(0xfdd835), 0.45, 0.45, 0.54);
+  for (const arm of [h.rightArm, h.leftArm]) part(arm, boxGeo(1.05, 0.5, 1.05), rubber, 0, -1.8, 0); // gloves
+  for (const leg of [h.rightLeg, h.leftLeg]) part(leg, boxGeo(1.05, 0.6, 1.1), rubber, 0, -1.75, 0.03); // boots
 }
 
 // ------------------------------------------------------------------ Easy mode creatures
@@ -4652,7 +4756,39 @@ function makeCageModel() {
   return h;
 }
 
+/** What a Molten (or a Bulwark) leaves behind: a smoldering heap that has to be broken. */
+function makeCorpseModel(def) {
+  const h = creature();
+  const { M } = h;
+  const lava = glow(h, def.lava ?? 0xff6d00);
+  const heap = new THREE.Group();
+  h.body.add(heap);
+  if (def.metal) {
+    // Bulwark wreck: twisted armor plates around a still-glowing reactor.
+    const metal = M(0x546e7a);
+    const dark = M(0x37474f);
+    part(heap, boxGeo(2.6, 1.0, 2), metal, 0, 0.5, 0).rotation.y = 0.3;
+    part(heap, boxGeo(1.2, 0.8, 1.2), dark, 1.3, 0.4, 1.0).rotation.z = 0.5;
+    part(heap, boxGeo(0.6, 0.6, 1.8), dark, -1.4, 0.3, -0.6).rotation.y = 0.8;
+    part(heap, boxGeo(0.9, 0.9, 0.9), lava, 0, 1.1, 0);
+  } else {
+    const rock = M(0x3e2723);
+    part(heap, boxGeo(2, 0.8, 1.2), rock, 0, 0.4, 0); // body, lying down
+    part(heap, boxGeo(1, 0.8, 1), rock, 1.5, 0.4, 0.1); // head
+    part(heap, boxGeo(0.8, 0.5, 1.6), rock, -0.3, 0.25, 1.2).rotation.y = 0.4; // arm
+    part(heap, boxGeo(1.4, 0.5, 0.7), rock, -1.6, 0.25, -0.3); // leg
+    for (const [x, z, w, d] of [[0, 0, 1.6, 0.12], [0.3, 0.2, 0.12, 0.9], [1.5, 0.1, 0.5, 0.12]]) part(heap, boxGeo(w, 0.08, d), lava, x, 0.82, z);
+  }
+  const fire = flames(h, heap, 1, def.metal ? 1.6 : 1.2, 4);
+  h.anim = (phase, t) => {
+    fire(t);
+    lava.emissiveIntensity = 0.6 + Math.sin(t * 3) * 0.25;
+  };
+  return h;
+}
+
 const CREATURES = {
+  corpse: makeCorpseModel,
   slime: makeSlimeModel,
   goblin: makeGoblinModel,
   spider: makeSpiderModel,

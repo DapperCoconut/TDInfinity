@@ -5,13 +5,12 @@ export const GAME = {
   baseHp: 150,
   firstIntermission: 20, // seconds to place towers before wave 1
   intermission: 8, // seconds between waves
-  skipAfter: 5, // seconds into a wave before players can vote to skip ahead to the next one
-  waveBonus: (wave) => 100 + 25 * wave, // wave is 1-based
+  waveBonus: (wave) => 150 + 40 * wave + 3 * wave * wave, // wave is 1-based; ramps up quadratically
   hpScalePerWave: 0.06, // enemy HP multiplier grows by this much each wave
   sellRatio: 0.5,
   loadoutSize: 6, // towers a player can bring into a game
   // Credits earned at the end of a game (spent in the Loadout & Shop on new towers).
-  credits: (wavesCleared, win) => wavesCleared * 20 + (win ? 300 : 0),
+  credits: (wavesCleared, win) => wavesCleared * 40 + (win ? 600 : 0),
   mpHpScale: 0.5, // in multiplayer, enemy HP is multiplied by 1 + this * (players - 1)
   unitContact: 0.4, // zombies touching a Soldier squad hurt it by (their base damage * this) per second
   danceBossScale: 0.5, // bosses dance only this fraction of Apocalypse Rave's duration
@@ -29,7 +28,7 @@ export const VERSUS = {
   // Endless waves get tougher fast after the scripted ones run out, so matches end.
   hpMult: (index) => (1 + index * 0.07) * 1.07 ** Math.max(0, index - 11),
   // Credits: per wave survived, plus a bonus by finishing place (1st, 2nd, 3rd, 4th).
-  credits: (waves, place) => waves * 20 + ([0, 400, 150, 60, 0][place] ?? 0),
+  credits: (waves, place) => waves * 40 + ([0, 800, 300, 120, 0][place] ?? 0),
   shards: (place) => (place === 1 ? 1 : 0), // Dimension Shards for winning the battle
   // Zombies you can buy and send to an opponent's map. n per purchase, `gap` seconds apart.
   // minWave: the first wave (1-based) this send unlocks on.
@@ -1146,10 +1145,10 @@ export const TOWERS = {
       { name: 'Suicide Mission', desc: 'Jeeps explode when destroyed, hurting zombies around them.', cost: 420, hidden: false,
         unit: { name: 'Jeep', model: 'jeep', hp: 70, speed: 5, ram: true, explode: { damage: 20, radius: 7 } } },
       { name: 'Mounted Gunner', desc: 'Instantly sends a Jeep with a machine gunner that shoots zombies in range.', cost: 1200, hidden: false, spawnNow: true,
-        unit: { name: 'Gunner Jeep', model: 'gunjeep', hp: 90, speed: 5, ram: true, explode: { damage: 20, radius: 7 }, gun: { damage: 2, cooldown: 0.133, range: 18 } } },
+        unit: { name: 'Gunner Jeep', model: 'gunjeep', hp: 90, speed: 5, ram: true, explode: { damage: 20, radius: 7 }, gun: { damage: 2, cooldown: 0.133, range: 22.5 } } },
       { name: 'Tank', desc: 'Replaces the Jeeps with a tough Tank that fires an exploding cannon.', cost: 7250, hidden: false, spawnNow: true,
         unit: { name: 'Tank', model: 'tank', hp: 800, speed: 3.5, ram: true, explode: { damage: 20, radius: 7 },
-          gun: { damage: 2, cooldown: 0.133, range: 19 }, cannon: { damage: 30, splash: 15, every: 1.75, radius: 4 } } },
+          gun: { damage: 2, cooldown: 0.133, range: 24 }, cannon: { damage: 30, splash: 15, every: 1.75, radius: 4 } } },
     ],
   },
   // Military Base (alternate Patrol form). `spawnEvery` can also be set per level.
@@ -1175,12 +1174,12 @@ export const TOWERS = {
       { name: 'Armor Plating', desc: 'Sends a tougher Humvee 2 with more health.', cost: 400, hidden: false, spawnEvery: 35,
         unit: { name: 'Humvee 2', model: 'humvee2', hp: 100, speed: 5, ram: true } },
       { name: 'Mounted Gunner', desc: 'Instantly sends a Humvee 3 with a mounted gun that shoots zombies and can see hidden ones.', cost: 2000, hidden: true, spawnEvery: 35, spawnNow: true,
-        unit: { name: 'Humvee 3', model: 'humvee3', hp: 100, speed: 5, ram: true, hidden: true, gun: { damage: 4, cooldown: 0.225, range: 16 } } },
+        unit: { name: 'Humvee 3', model: 'humvee3', hp: 100, speed: 5, ram: true, hidden: true, gun: { damage: 4, cooldown: 0.225, range: 20 } } },
       { name: 'Tank', desc: 'Instantly sends a tough Tank with a gun and a splash cannon, and unlocks Airstrike: a plane drops six bombs on a spot you pick.', cost: 7500, hidden: true, spawnEvery: 35, spawnNow: true,
-        unit: { name: 'Tank', model: 'tank', hp: 500, speed: 3.5, ram: true, hidden: true, gun: { damage: 8, cooldown: 0.2, range: 18 }, cannon: { damage: 40, every: 2.5, radius: 4 } },
+        unit: { name: 'Tank', model: 'tank', hp: 500, speed: 3.5, ram: true, hidden: true, gun: { damage: 8, cooldown: 0.2, range: 22.5 }, cannon: { damage: 40, every: 2.5, radius: 4 } },
         abilities: [{ key: 'airstrike', name: 'Airstrike', desc: '6 bombs, 60 damage each, where you click', cooldown: 45, damage: 60, radius: 5, bombs: 6, aim: true }] },
       { name: 'Railgun Tank', desc: 'Instantly sends a very tough Railgun Tank with stronger guns and a bigger cannon blast. Airstrike bombs hit harder over a wider area.', cost: 25000, hidden: true, spawnEvery: 35, spawnNow: true,
-        unit: { name: 'Railgun Tank', model: 'railtank', hp: 1600, speed: 3.5, ram: true, hidden: true, gun: { damage: 22, cooldown: 0.15, range: 20 }, cannon: { damage: 75, every: 4.5, radius: 6 } },
+        unit: { name: 'Railgun Tank', model: 'railtank', hp: 1600, speed: 3.5, ram: true, hidden: true, gun: { damage: 22, cooldown: 0.15, range: 25 }, cannon: { damage: 75, every: 4.5, radius: 6 } },
         abilities: [{ key: 'airstrike', name: 'Airstrike', desc: '6 bombs, 200 damage each, where you click', cooldown: 45, damage: 200, radius: 7, bombs: 6, aim: true }] },
     ],
   },
@@ -1216,15 +1215,15 @@ export const TOWERS = {
     blurb: 'The most expensive tower to place. Every 46 seconds it sends a tank-like M1 from the end of the path that shoots zombies and runs them over. Its vehicles never get hidden detection.',
     levels: [
       { name: 'Zed', desc: 'Sends an M1 that shoots and runs over zombies.', hidden: false,
-        unit: { name: 'M1', model: 'm1', hp: 420, speed: 4, ram: true, gun: { damage: 4, cooldown: 0.5, range: 16 } } },
+        unit: { name: 'M1', model: 'm1', hp: 420, speed: 4, ram: true, gun: { damage: 4, cooldown: 0.5, range: 20 } } },
       { name: 'Spiked Tracks', desc: "The M1's health almost doubles (420 to 820).", cost: 3700, hidden: false,
-        unit: { name: 'M1', model: 'm1', hp: 820, speed: 4, ram: true, gun: { damage: 4, cooldown: 0.5, range: 16 } } },
+        unit: { name: 'M1', model: 'm1', hp: 820, speed: 4, ram: true, gun: { damage: 4, cooldown: 0.5, range: 20 } } },
       { name: 'Arm Cannon', desc: 'The M1 gets an arm cannon that fires a 20-damage splash shot every 3.3 seconds.', cost: 4400, hidden: false,
-        unit: { name: 'M1', model: 'm1', hp: 880, speed: 4, ram: true, gun: { damage: 4, cooldown: 0.5, range: 16 }, cannon: { damage: 20, every: 3.33, radius: 4 } } },
+        unit: { name: 'M1', model: 'm1', hp: 880, speed: 4, ram: true, gun: { damage: 4, cooldown: 0.5, range: 20 }, cannon: { damage: 20, every: 3.33, radius: 4 } } },
       { name: 'Mech', desc: 'Instantly sends an M2 (2,200 HP) that replaces the M1, with a faster gun and cannon.', cost: 14200, hidden: false, spawnNow: true,
-        unit: { name: 'M2', model: 'm2', hp: 2200, speed: 4, ram: true, gun: { damage: 4, cooldown: 0.25, range: 18 }, cannon: { damage: 15, every: 2.1, radius: 4.5 } } },
+        unit: { name: 'M2', model: 'm2', hp: 2200, speed: 4, ram: true, gun: { damage: 4, cooldown: 0.25, range: 22.5 }, cannon: { damage: 15, every: 2.1, radius: 4.5 } } },
       { name: 'Extermination', desc: 'Instantly sends an M11 (6,000 HP) with double gun damage and a much stronger, faster cannon.', cost: 60000, hidden: false, spawnNow: true,
-        unit: { name: 'M11', model: 'm11', hp: 6000, speed: 4, ram: true, gun: { damage: 8, cooldown: 0.2, range: 20 }, cannon: { damage: 40, every: 1.05, radius: 5 } } },
+        unit: { name: 'M11', model: 'm11', hp: 6000, speed: 4, ram: true, gun: { damage: 8, cooldown: 0.2, range: 25 }, cannon: { damage: 40, every: 1.05, radius: 5 } } },
     ],
   },
 
@@ -1460,14 +1459,14 @@ export const TOWERS = {
         abilities: [
           { key: 'cta', name: 'Call to Arms', desc: '+50% firerate for 8s', cooldown: 30, duration: 8, boost: 0.5 },
           { key: 'militia', name: 'Organized Militia', desc: 'Sends a 600 HP Stryker', cost: 600, cooldown: 20,
-            unit: { name: 'Stryker', model: 'stryker', hp: 600, speed: 4.5, ram: true, gun: { damage: 2, cooldown: 0.25, range: 16 } } },
+            unit: { name: 'Stryker', model: 'stryker', hp: 600, speed: 4.5, ram: true, gun: { damage: 2, cooldown: 0.25, range: 20 } } },
         ] },
       { name: 'Airstrike', desc: 'Ability: a jet bombs a spot you pick for 450 splash damage ($1,200 each use).', cost: 12000, aura: 14, rangeBoost: 0.25, rateBoost: 0.25, hidden: false,
         damage: 12, cooldown: 1, range: 14,
         abilities: [
           { key: 'cta', name: 'Call to Arms', desc: '+50% firerate for 8s', cooldown: 30, duration: 8, boost: 0.5 },
           { key: 'militia', name: 'Organized Militia', desc: 'Sends a 600 HP Stryker', cost: 600, cooldown: 20,
-            unit: { name: 'Stryker', model: 'stryker', hp: 600, speed: 4.5, ram: true, gun: { damage: 2, cooldown: 0.25, range: 16 } } },
+            unit: { name: 'Stryker', model: 'stryker', hp: 600, speed: 4.5, ram: true, gun: { damage: 2, cooldown: 0.25, range: 20 } } },
           { key: 'airstrike', name: 'Airstrike', desc: '450 damage where you click', cost: 1200, cooldown: 30, damage: 450, radius: 8, aim: true },
         ] },
     ],
@@ -1502,10 +1501,10 @@ export const TOWERS = {
           { key: 'cta', name: 'Call to Arms', desc: '+20% firerate for 10s', cooldown: 30, duration: 10, boost: 0.2 },
           { key: 'caravan', name: 'Support Caravan', desc: 'Sends 2 Gunner APCs and a Missile APC', cooldown: 60,
             units: [
-              { name: 'Gunner APC', model: 'apc', hp: 500, speed: 4, ram: true, lead: true, gun: { damage: 5, cooldown: 0.2, range: 14 } },
-              { name: 'Gunner APC', model: 'apc', hp: 500, speed: 4, ram: true, lead: true, gun: { damage: 5, cooldown: 0.2, range: 14 } },
+              { name: 'Gunner APC', model: 'apc', hp: 500, speed: 4, ram: true, lead: true, gun: { damage: 5, cooldown: 0.2, range: 17.5 } },
+              { name: 'Gunner APC', model: 'apc', hp: 500, speed: 4, ram: true, lead: true, gun: { damage: 5, cooldown: 0.2, range: 17.5 } },
               { name: 'Missile APC', model: 'missileapc', hp: 800, speed: 4, ram: true, lead: true, flying: true,
-                gun: { damage: 3, cooldown: 0.3, range: 16 }, cannon: { damage: 120, radius: 5, every: 2.5 } },
+                gun: { damage: 3, cooldown: 0.3, range: 20 }, cannon: { damage: 120, radius: 5, every: 2.5 } },
             ] },
         ] },
     ],
@@ -1816,6 +1815,40 @@ export const ENEMIES = {
     phase2: 'slimeKingBlaze' },
   slimeKingBlaze: { name: 'Blazing Slime King', model: 'slime', h: 2.2, hp: 450, speed: 3.5, reward: 400, damage: 100, scale: 4, skin: 0xff6d00, color: 0xff6d00, crown: true,
     fire: true, fireImmune: true, boss: true },
+
+  // ---------------------------------------------------------------- Medium mode zombies
+  // armor: takes this fraction less damage from everything (0.4 = 40% less).
+  // corpse: when killed, leaves this enemy behind where it fell.
+  // remains: a corpse. It never moves, doesn't hurt the base, and the wave can end without
+  //   killing it. It crumbles away by itself after `decay` seconds.
+  // slam: { range, stun, every }: smashes the ground, stunning every tower within `range`.
+  // axe: { range, radius, stun, every, flight }: throws an axe at a tower up to `range` away,
+  //   stunning towers within `radius` of where it lands.
+  // embers: the whole world fills with orange embers while it's alive.
+  zombie: { name: 'Zombie', hp: 8, speed: 5.5, reward: 6, damage: 5, scale: 1, skin: 0x7fb069, shirt: 0x4a6fa5, pants: 0x3b3b5c },
+  speedy: { name: 'Speedy', hp: 5, speed: 10, reward: 6, damage: 4, scale: 0.85, skin: 0x9ccc65, shirt: 0xfdd835, pants: 0x5a3a22 },
+  heavy: { name: 'Heavy', hp: 40, speed: 3.2, reward: 16, damage: 12, scale: 1.35, skin: 0x55813f, shirt: 0x5d4037, pants: 0x333333, helmet: true },
+  zombieBoss: { name: 'Zombie Boss', hp: 200, speed: 1.6, reward: 150, damage: 60, scale: 2.4, skin: 0x4e7d32, shirt: 0x880e4f, pants: 0x2a0f3a, boss: true },
+  molten: { name: 'Molten', hp: 30, speed: 5.5, reward: 14, damage: 10, scale: 1.05, skin: 0x4e342e, shirt: 0x3e2723, pants: 0x212121, lava: 0xff6d00,
+    fireImmune: true, corpse: 'moltenCorpse' },
+  moltenCorpse: { name: 'Molten Corpse', model: 'corpse', h: 1.4, hp: 15, speed: 0, reward: 2, damage: 0, scale: 1, skin: 0xff6d00, lava: 0xff6d00,
+    remains: true, decay: 25, fireImmune: true },
+  demon: { name: 'Demon', hp: 35, speed: 9, reward: 18, damage: 12, scale: 1, skin: 0xc62828, shirt: 0x212121, pants: 0x1a1a1a, horns: 0x212121 },
+  hazmat: { name: 'Hazmat', hp: 28, speed: 6, reward: 16, damage: 10, scale: 1.05, skin: 0x7fb069, shirt: 0xfdd835, pants: 0xf9a825, hazmat: true,
+    statusImmune: true },
+  moltenSquire: { name: 'Molten Squire', hp: 70, speed: 3.5, reward: 25, damage: 15, scale: 1.15, skin: 0x4e342e, shirt: 0x3e2723, pants: 0x212121, lava: 0xff6d00,
+    armor: 0.2, plate: 0x8d6e63, fireImmune: true },
+  moltenKnight: { name: 'Molten Knight', hp: 350, speed: 2.2, reward: 150, damage: 50, scale: 1.9, skin: 0x4e342e, shirt: 0x3e2723, pants: 0x212121, lava: 0xff3d00,
+    armor: 0.4, plate: 0x455a64, knight: true, fireImmune: true, boss: true },
+  necromancer: { name: 'Molten Necromancer', hp: 120, speed: 2.5, reward: 60, damage: 30, scale: 1.3, skin: 0x4e342e, shirt: 0x311b92, pants: 0x1a0f3a, lava: 0xb388ff,
+    robe: 0x311b92, fireImmune: true, summon: { type: 'molten', n: 3, every: 40 } },
+  bulwark: { name: 'Bulwark', hp: 500, speed: 2, reward: 120, damage: 60, scale: 2, skin: 0x37474f, shirt: 0x546e7a, pants: 0x37474f, lava: 0xff6d00,
+    mech: true, fireImmune: true, corpse: 'bulwarkWreck' },
+  bulwarkWreck: { name: 'Bulwark Wreck', model: 'corpse', h: 1.4, hp: 250, speed: 0, reward: 30, damage: 0, scale: 2.2, skin: 0x546e7a, lava: 0xff6d00, metal: true,
+    remains: true, decay: 40, fireImmune: true },
+  warlord: { name: 'Molten Warlord', hp: 5000, speed: 1.4, reward: 1000, damage: 1000, scale: 3.6, skin: 0x3e2723, shirt: 0x212121, pants: 0x1a1a1a, lava: 0xff3d00,
+    horns: 0x111111, axes: true, plate: 0x37474f, armor: 0.2, fireImmune: true, boss: true, embers: true,
+    slam: { range: 14, stun: 3, every: 7 }, axe: { range: 60, radius: 6, stun: 4, every: 13, flight: 1.2 } },
 };
 
 // Each group: [enemyType, count, secondsBetweenSpawns, startDelaySeconds]
@@ -1859,13 +1892,49 @@ export const EASY_WAVES = [
     note: 'Final wave! The Slime King has arrived. Beware his second form!' },
 ];
 
+// Medium mode: 25 waves of zombies and molten monsters, ending with the Molten Warlord.
+export const MEDIUM_WAVES = [
+  { groups: [['zombie', 8, 1.4, 0]], note: 'Zombies! Slow, but they never stop coming.' },
+  { groups: [['zombie', 10, 1.1, 0], ['speedy', 4, 1.0, 4]], note: 'Speedy zombies are fast but weak.' },
+  { groups: [['zombie', 12, 0.9, 0], ['speedy', 8, 0.7, 3]] },
+  { groups: [['zombie', 10, 1.0, 0], ['heavy', 3, 3, 5]], note: 'Heavies are slow, with lots of health.' },
+  { groups: [['speedy', 10, 0.6, 0], ['heavy', 4, 2.5, 3], ['zombie', 8, 0.9, 2]] },
+  { groups: [['zombie', 10, 0.9, 0], ['molten', 4, 2.5, 4]], note: 'Molten zombies! Fire can\'t hurt them, and their corpses have to be broken too.' },
+  { groups: [['speedy', 8, 0.6, 0], ['demon', 4, 1.8, 4]], note: 'Demons: fast AND tough!' },
+  { groups: [['zombie', 12, 0.7, 0], ['heavy', 6, 1.8, 2], ['molten', 6, 1.5, 5]] },
+  { groups: [['zombie', 12, 0.8, 0], ['hazmat', 5, 1.8, 3]], note: 'Hazmat zombies are immune to every effect: no stuns, slows, freezing or burning!' },
+  { groups: [['zombie', 12, 0.8, 0], ['heavy', 4, 2, 3], ['zombieBoss', 1, 0, 8]], note: 'A Zombie Boss is coming! Very slow, very tough.' },
+  { groups: [['molten', 6, 1.4, 0], ['moltenSquire', 3, 3, 4]], note: 'Molten Squires wear armor that blocks some of every hit.' },
+  { groups: [['speedy', 12, 0.5, 0], ['demon', 8, 1.2, 2], ['hazmat', 6, 1.5, 5]] },
+  { groups: [['molten', 10, 1.0, 0], ['heavy', 8, 1.5, 2], ['moltenSquire', 4, 2.5, 6]] },
+  { groups: [['zombie', 16, 0.6, 0], ['molten', 4, 1.5, 3], ['necromancer', 1, 0, 6]], note: 'A Molten Necromancer! It raises more Moltens every 40 seconds.' },
+  { groups: [['molten', 6, 1.2, 0], ['moltenSquire', 4, 2, 2], ['moltenKnight', 1, 0, 8]], note: 'Miniboss: the Molten Knight! Heavy armor and lots of health.' },
+  { groups: [['heavy', 8, 1.4, 0], ['demon', 6, 1.2, 3], ['bulwark', 1, 0, 6]], note: 'A Bulwark mech! Its wreck is tough too.' },
+  { groups: [['hazmat', 10, 0.9, 0], ['demon', 10, 0.8, 3], ['molten', 8, 1.0, 5]] },
+  { groups: [['speedy', 16, 0.4, 0], ['moltenSquire', 6, 1.6, 2], ['necromancer', 2, 10, 4]], note: 'Two Necromancers!' },
+  { groups: [['heavy', 10, 1.2, 0], ['molten', 10, 0.9, 2], ['zombieBoss', 2, 8, 5]] },
+  { groups: [['hazmat', 8, 1.0, 0], ['moltenSquire', 6, 1.5, 2], ['moltenKnight', 2, 10, 6]], note: 'Two Molten Knights!' },
+  { groups: [['demon', 12, 0.8, 0], ['molten', 10, 0.9, 2], ['bulwark', 2, 10, 5]] },
+  { groups: [['hazmat', 10, 0.8, 0], ['moltenSquire', 6, 1.4, 2], ['necromancer', 2, 8, 4], ['moltenKnight', 1, 0, 12]] },
+  { groups: [['demon', 14, 0.7, 0], ['zombieBoss', 2, 8, 3], ['bulwark', 2, 10, 6]] },
+  { groups: [['molten', 12, 0.7, 0], ['hazmat', 12, 0.8, 2], ['necromancer', 2, 8, 4], ['bulwark', 2, 10, 6], ['moltenKnight', 3, 6, 8]],
+    note: 'The ground is shaking… something huge is coming next wave.' },
+  { groups: [['zombie', 20, 0.5, 0], ['molten', 10, 1.0, 2], ['moltenSquire', 6, 1.5, 4], ['demon', 10, 0.8, 6], ['warlord', 1, 0, 10]],
+    note: 'Final wave! The Molten Warlord rises! His slams and thrown axes stun your towers!' },
+];
+
 /**
  * Difficulty modes for Solo and Co-op. Versus always uses the zombie waves.
  * `waves`: the scripted waves; winning means clearing the last one.
  */
+// Harder modes pay more: `cash` multiplies starting cash and wave bonuses, `credits` the credits
+// earned at the end, and `shards` is the Dimension Shards for winning.
 export const DIFFICULTIES = {
-  easy: { name: 'Easy', icon: '🟢', desc: '20 waves of slimes, goblins, spiders and more. Beat the Slime King to win!', waves: EASY_WAVES },
-  zombies: { name: 'Zombies (Test)', icon: '🧟', desc: 'The original 12 zombie waves. Handy for testing towers.', waves: WAVES },
+  easy: { name: 'Easy', icon: '🟢', desc: '20 waves of slimes, goblins, spiders and more. Beat the Slime King to win!', waves: EASY_WAVES,
+    cash: 1, credits: 1, shards: 1 },
+  medium: { name: 'Medium', icon: '🟠', desc: '25 waves of zombies and molten monsters. Defeat the Molten Warlord to win! 2x credits, 2 shards for winning and more cash in-game.',
+    waves: MEDIUM_WAVES, cash: 1.3, credits: 2, shards: 2 },
+  zombies: { name: 'Zombies (Test)', icon: '🧟', desc: 'The original 12 zombie waves. Handy for testing towers.', waves: WAVES, cash: 1, credits: 1, shards: 1 },
 };
 export const DEFAULT_DIFFICULTY = 'easy';
 export const difficulty = (key) => DIFFICULTIES[key] ?? DIFFICULTIES[DEFAULT_DIFFICULTY];

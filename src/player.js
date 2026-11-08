@@ -7,6 +7,7 @@ const SPEED = 16;
 const JUMP = 16;
 const GRAVITY = 48;
 const RADIUS = 0.9;
+const STEP = 0.3; // how far below an object's top our feet can be and still land on it
 
 export class Player {
   constructor(scene, pos, color = 0x1e88e5) {
@@ -55,14 +56,11 @@ export class Player {
     }
     this.vy -= GRAVITY * dt;
     this.pos.y += this.vy * dt;
-    if (this.pos.y <= 0) {
-      this.pos.y = 0;
-      this.vy = 0;
-      this.grounded = true;
-    }
 
-    // Push out of trees, rocks, towers, castle.
+    // Push out of trees, rocks, towers, castle - unless we're up on top of it.
+    // Colliders with a height `h` are short enough to stand on; ones without are walls.
     for (const o of colliders) {
+      if (o.h !== undefined && this.pos.y >= o.h - STEP) continue;
       const dx = this.pos.x - o.x;
       const dz = this.pos.z - o.z;
       const d = Math.hypot(dx, dz);
@@ -71,6 +69,20 @@ export class Player {
         this.pos.x = o.x + (dx / d) * min;
         this.pos.z = o.z + (dz / d) * min;
       }
+    }
+
+    // Land on the ground or on top of whatever we're standing over; walk off an edge and fall.
+    let ground = 0;
+    for (const o of colliders) {
+      if (o.h === undefined || o.h > this.pos.y + STEP || o.h <= ground) continue;
+      if (Math.hypot(this.pos.x - o.x, this.pos.z - o.z) < o.r) ground = o.h;
+    }
+    if (this.pos.y <= ground) {
+      this.pos.y = ground;
+      this.vy = 0;
+      this.grounded = true;
+    } else {
+      this.grounded = false;
     }
     if (this.area) {
       // Slide along the edge: keep whichever axis of the move is still allowed.

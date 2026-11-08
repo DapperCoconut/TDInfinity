@@ -162,7 +162,7 @@ export class NetSession {
     const ev = this.pending;
     this.pending = [];
     for (const e of ev) {
-      if (e.k === 'kill' || e.k === 'leak') st.enemies.delete(e.e);
+      if (e.k === 'kill' || e.k === 'leak' || e.k === 'decay') st.enemies.delete(e.e);
       if (e.k === 'udie') st.units.delete(e.u);
     }
     return ev;

@@ -143,8 +143,11 @@ export class Lobby {
   clientHooks() {
     return {
       onLeave: () => {
+        const credits = this.client.leaveCredits;
+        this.client.leaveCredits = 0;
         if (this.client.session?.mp) this.net.send({ type: 'room.leave' });
         else this.backToTitle();
+        if (credits) this.toast(`+${credits} credits for the waves you cleared`, 3000);
       },
       onEndPrimary: () => {
         if (this.client.session?.mp) {

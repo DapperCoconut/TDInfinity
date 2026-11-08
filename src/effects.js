@@ -33,6 +33,83 @@ export class Effects {
   constructor(scene) {
     this.scene = scene;
     this.items = [];
+    this.emberK = 0; // 0..1: how strongly the Molten Warlord's embers fill the world
+    this.emberOn = false;
+  }
+
+  /** The Molten Warlord's embers: orange sparks drifting up everywhere, and an orange sky. */
+  setEmbers(on) {
+    this.emberOn = on;
+    if (!on || this.emberPts) return;
+    const N = 900;
+    const pos = new Float32Array(N * 3);
+    this.emberVel = new Float32Array(N * 2);
+    for (let i = 0; i < N; i++) {
+      pos[i * 3] = -130 + Math.random() * 260;
+      pos[i * 3 + 1] = Math.random() * 40;
+      pos[i * 3 + 2] = -90 + Math.random() * 180;
+      this.emberVel[i * 2] = 1.5 + Math.random() * 3; // rise speed
+      this.emberVel[i * 2 + 1] = Math.random() * Math.PI * 2; // sway phase
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    this.emberMat = new THREE.PointsMaterial({ color: 0xff8a1e, size: 0.55, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
+    this.emberPts = new THREE.Points(geo, this.emberMat);
+    this.emberPts.frustumCulled = false;
+    this.scene.add(this.emberPts);
+    this.skyBase = this.scene.background?.clone?.() ?? null;
+    this.fogBase = this.scene.fog?.color.clone() ?? null;
+  }
+
+  updateEmbers(dt) {
+    if (!this.emberPts) return;
+    this.emberK = Math.max(0, Math.min(1, this.emberK + (this.emberOn ? dt / 2 : -dt / 3)));
+    const k = this.emberK;
+    this.emberMat.opacity = 0.9 * k;
+    const sky = new THREE.Color(0x8a3a12);
+    if (this.skyBase) this.scene.background.copy(this.skyBase).lerp(sky, k * 0.75);
+    if (this.fogBase) this.scene.fog.color.copy(this.fogBase).lerp(sky, k * 0.75);
+    if (k <= 0) {
+      this.scene.remove(this.emberPts);
+      this.emberPts.geometry.dispose();
+      this.emberMat.dispose();
+      this.emberPts = null;
+      return;
+    }
+    const a = this.emberPts.geometry.attributes.position;
+    const p = a.array;
+    const v = this.emberVel;
+    const t = performance.now() / 1000;
+    for (let i = 0; i < v.length / 2; i++) {
+      p[i * 3 + 1] += v[i * 2] * dt;
+      p[i * 3] += Math.sin(t + v[i * 2 + 1]) * dt * 1.2;
+      if (p[i * 3 + 1] > 40) p[i * 3 + 1] = 0;
+    }
+    a.needsUpdate = true;
+  }
+
+  /** The Molten Warlord's battleaxe, spinning end over end from `from` to `to`. */
+  axe(from, to, time) {
+    const g = new THREE.Group();
+    const handleMat = new THREE.MeshLambertMaterial({ color: 0x3e2723 });
+    const bladeMat = new THREE.MeshLambertMaterial({ color: 0x455a64, emissive: 0xff3d00, emissiveIntensity: 0.6 });
+    const handle = new THREE.Mesh(unitBox, handleMat);
+    handle.scale.set(0.5, 7, 0.5);
+    const blade = new THREE.Mesh(unitBox, bladeMat);
+    blade.scale.set(3.2, 2.6, 0.35);
+    blade.position.set(1.4, 2.6, 0);
+    g.add(handle, blade);
+    const start = from.clone();
+    const yaw = Math.atan2(to.x - from.x, to.z - from.z);
+    this.add(g, time, null, (it, k) => {
+      const f = 1 - k;
+      g.position.lerpVectors(start, to, f);
+      g.position.y += Math.sin(f * Math.PI) * 10;
+      g.rotation.set(f * Math.PI * 6, yaw, 0, 'YXZ');
+    });
+    // `add` disposes one material; free the other when the axe lands.
+    const it = this.items[this.items.length - 1];
+    it.extra = [handleMat, bladeMat];
   }
 
   add(obj, life, mat, update) {
@@ -453,12 +530,14 @@ export class Effects {
   }
 
   update(dt) {
+    this.updateEmbers(dt);
     for (let i = this.items.length - 1; i >= 0; i--) {
       const it = this.items[i];
       it.life -= dt;
       if (it.life <= 0) {
         this.scene.remove(it.obj);
         it.mat?.dispose();
+        if (it.extra) for (const m of it.extra) m.dispose();
         this.items.splice(i, 1);
         continue;
       }

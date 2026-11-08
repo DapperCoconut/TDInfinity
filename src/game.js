@@ -37,7 +37,7 @@ function innerRings(type, level) {
 }
 const ABILITY_KEYS = { KeyF: 0, KeyG: 1, KeyH: 2 };
 const EMPTY = new Map();
-const CLIFF_COLLIDERS = CLIFFS.map((c) => ({ x: c.x, z: c.z, r: c.r }));
+const CLIFF_COLLIDERS = CLIFFS.map((c) => ({ x: c.x, z: c.z, r: c.r, h: c.h }));
 const LANE_COLLIDERS = MAP.obstacles.concat(CLIFF_COLLIDERS);
 const ORDINAL = ['', '1st', '2nd', '3rd', '4th'];
 
@@ -126,7 +126,10 @@ export class GameClient {
       onAbilityBar: (i) => this.useAbilityGroup(i),
       onSend: (type) => this.session?.send({ a: 'send', type }),
       onTarget: (dir) => this.cycleTarget(dir),
-      onLeave: () => hooks.onLeave(),
+      onLeave: () => {
+        this.payLeaveCredits();
+        hooks.onLeave();
+      },
       onEndPrimary: () => hooks.onEndPrimary(),
       onEndSecondary: () => hooks.onEndSecondary(),
       onChat: (text) => hooks.onChat(text),
@@ -170,6 +173,7 @@ export class GameClient {
     this.ended = false;
     this.spectating = false;
     this.elimWave = 0;
+    this.elimPlace = 0;
     this.loadout = profile.battleLoadout();
     this.ui.buildHotbar(this.icons, this.loadout, (type) => this.costOf(type));
     session.onError = (msg) => this.fail(msg);
@@ -204,7 +208,7 @@ export class GameClient {
     this.staticColliders = [];
     for (let i = 0; i < lanes; i++) {
       const oz = laneOz(i);
-      for (const o of LANE_COLLIDERS) this.staticColliders.push({ x: o.x, z: o.z + oz, r: o.r });
+      for (const o of LANE_COLLIDERS) this.staticColliders.push({ ...o, z: o.z + oz });
     }
     for (const p of this.state.players.values()) {
       const tag = makeNameTag(p.id === this.session.myId ? `${p.name} (you)` : p.name, p.color);
@@ -237,6 +241,22 @@ export class GameClient {
     const i = others.findIndex((p) => p.id === this.me?.target);
     const next = others[(((i < 0 ? 0 : i + dir) % others.length) + others.length) % others.length];
     this.session.send({ a: 'vtarget', id: next.id });
+  }
+
+  /**
+   * Leaving mid-game still pays credits for the waves cleared so far, like losing on this wave.
+   * (No win bonus, no shards.) Nothing extra if the game already ended and paid out.
+   */
+  payLeaveCredits() {
+    const st = this.session?.state;
+    if (!st || this.ended) return;
+    this.ended = true; // only once
+    const credits = this.versus
+      ? VERSUS.credits(this.spectating ? this.elimWave : st.wave.index, this.spectating ? this.elimPlace : 0)
+      : Math.round(GAME.credits(st.wave.index, false) * difficulty(st.mode).credits);
+    if (!credits) return;
+    profile.addCredits(credits);
+    this.leaveCredits = credits;
   }
 
   stop() {
@@ -629,6 +649,40 @@ export class GameClient {
           }
           break;
         }
+        case 'decay': {
+          // A corpse crumbles away on its own (no reward).
+          const v = this.enemyViews.get(ev.e);
+          if (v) {
+            v.die(0, this.effects, audio, true);
+            this.enemyViews.delete(ev.e);
+            this.dying.push(v);
+          }
+          break;
+        }
+        case 'slam': {
+          // Molten Warlord smashes the ground: a lava shockwave that stuns nearby towers.
+          const at = new THREE.Vector3(ev.x, 0.3, ev.z + laneOz(ev.L ?? 0));
+          this.enemyViews.get(ev.e)?.attack();
+          this.effects.pulse(at, ev.r, 0.6, 0xff6d00);
+          this.effects.puff(at.clone().setY(1), 0xff3d00, 20, 0.6, 12);
+          audio.boom(5);
+          if (ev.n) this.ui.toast(`💥 The Warlord's slam stunned ${ev.n} tower${ev.n > 1 ? 's' : ''}!`, 1400);
+          break;
+        }
+        case 'axe': {
+          const oz = laneOz(ev.L ?? 0);
+          this.enemyViews.get(ev.e)?.attack();
+          this.effects.axe(new THREE.Vector3(ev.fx, 9, ev.fz + oz), new THREE.Vector3(ev.x, 1.5, ev.z + oz), ev.d);
+          audio.rocket(1);
+          break;
+        }
+        case 'axeHit': {
+          const at = new THREE.Vector3(ev.x, 0.3, ev.z + laneOz(ev.L ?? 0));
+          this.effects.pulse(at, ev.r, 0.5, 0xff9100);
+          this.effects.puff(at.clone().setY(1), 0xff6d00, 14, 0.5, 10);
+          audio.boom(3);
+          break;
+        }
         case 'leak': {
           const v = this.enemyViews.get(ev.e);
           if (v) {
@@ -760,6 +814,7 @@ export class GameClient {
           if (ev.id === myId) {
             this.spectating = true;
             this.elimWave = ev.wave - 1;
+            this.elimPlace = ev.place;
             this.cancelPlace();
             this.deselect();
             audio.defeat();
@@ -786,8 +841,9 @@ export class GameClient {
           this.cancelPlace();
           this.deselect();
           ev.win ? audio.victory() : audio.defeat();
-          const credits = GAME.credits(ev.win ? st.wave.total : st.wave.index, ev.win);
-          const shards = GAME.shards(ev.win);
+          const diff = difficulty(st.mode);
+          const credits = Math.round(GAME.credits(ev.win ? st.wave.total : st.wave.index, ev.win) * diff.credits);
+          const shards = GAME.shards(ev.win) * diff.shards;
           profile.addCredits(credits);
           profile.addShards(shards);
           this.ui.showEnd(ev.win, st.wave.index + 1, this.session.mp, credits, shards, st.wave.total, st.mode);
@@ -816,14 +872,21 @@ export class GameClient {
       this.towerViews.delete(id);
     }
 
+    let embers = false; // the Molten Warlord fills the sky with embers
     for (const e of st.enemies.values()) {
       let v = this.enemyViews.get(e.id);
       if (!v) {
         v = new EnemyView(this.scene, e);
         this.enemyViews.set(e.id, v);
+        if (v.def.embers) {
+          audio.waveStart();
+          this.ui.toast(`🔥 ${v.def.name} has arrived! The world burns…`, 3500);
+        }
       }
+      if (v.def.embers) embers = true;
       v.sync(e, gdt, this.camera);
     }
+    this.effects.setEmbers(embers);
     for (const t of st.towers.values()) this.towerViews.get(t.id)?.updateBeam(t, this.enemyViews);
     for (const u of st.units.values()) {
       let v = this.unitViews.get(u.id);

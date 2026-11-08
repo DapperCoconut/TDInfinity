@@ -568,6 +568,11 @@ export class EnemyView {
     this.flash = 0.1;
   }
 
+  /** Molten Warlord: raise both axes overhead and bring them down (slam / throw). */
+  attack() {
+    this.swing = 0.7;
+  }
+
   /** Mirror sim state `e` (type, hp, maxHp, dist, lateral). */
   sync(e, dt, camera) {
     const m = this.model;
@@ -596,6 +601,13 @@ export class EnemyView {
     m.rightLeg.rotation.x = -sw;
     m.leftArm.rotation.x = -Math.PI / 2 + sw * 0.15;
     m.rightArm.rotation.x = -Math.PI / 2 - sw * 0.15;
+    if (this.swing > 0) {
+      // Arms go up over the head, then chop down.
+      this.swing = Math.max(0, this.swing - dt);
+      const f = 1 - this.swing / 0.7;
+      const a = f < 0.6 ? -Math.PI * 0.95 * (f / 0.6) : -Math.PI * 0.95 + (Math.PI * 0.6 * (f - 0.6)) / 0.4;
+      m.leftArm.rotation.x = m.rightArm.rotation.x = a;
+    }
     m.body.position.y = Math.abs(Math.cos(this.phase)) * 0.12;
     m.body.rotation.z = Math.sin(this.phase * 0.5) * 0.06;
     if (e.st & ST_DANCE) {
@@ -666,7 +678,7 @@ export class EnemyView {
     }
   }
 
-  die(reward, effects, audio) {
+  die(reward, effects, audio, quiet = false) {
     this.dying = DEATH_TIME;
     this.status = 0;
     if (this.stars) this.stars.visible = false;
@@ -675,7 +687,7 @@ export class EnemyView {
     const p = this.aimPoint(new THREE.Vector3());
     effects.puff(p.clone(), this.def.skin, this.def.boss ? 18 : 7, 0.45 * this.def.scale);
     if (reward) effects.text(p.add(new THREE.Vector3(0, 1.5, 0)), `+$${reward}`, '#ffd54f', this.def.boss ? 5 : 2.6);
-    audio.kill();
+    if (!quiet) audio.kill();
   }
 
   /** Fall over backwards, then shrink away. */
