@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TD Infinity</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+
+    <!-- ================= In-game HUD ================= -->
+    <div id="hud" class="hidden">
+      <div id="top">
+        <div id="wave-box">
+          <div id="wave-label">Wave 0 / 0</div>
+          <div id="wave-status">Get ready!</div>
+        </div>
+        <div id="base-bar" class="bar"><div id="base-fill"></div><span id="base-text"></span></div>
+        <div id="boss-box" class="hidden">
+          <div id="boss-name">Brute</div>
+          <div class="bar"><div id="boss-fill"></div></div>
+        </div>
+      </div>
+
+      <div id="scoreboard"></div>
+
+      <div id="top-right" class="interactive">
+        <button id="skip-btn" class="btn green hidden">Start Wave ▶</button>
+        <button id="speed-btn" class="btn" title="Game speed">1x</button>
+        <button id="mute-btn" class="btn" title="Sound">Sound: On</button>
+        <button id="leave-btn" class="btn red" title="Leave game">Leave</button>
+      </div>
+
+      <div id="bottom">
+        <div id="cash">$0</div>
+        <div id="hotbar" class="interactive"></div>
+      </div>
+
+      <div id="chat">
+        <div id="chat-log"></div>
+        <input id="chat-input" class="interactive hidden" maxlength="200" placeholder="Type a message, Enter to send" />
+      </div>
+
+      <div id="send-panel" class="interactive">
+        <div class="send-head">Send zombies to</div>
+        <div class="send-target">
+          <button class="btn small" data-tgt="-1" title="Previous opponent">◀</button>
+          <span id="send-target-name">—</span>
+          <button class="btn small" data-tgt="1" title="Next opponent">▶</button>
+        </div>
+        <div id="send-list"></div>
+        <div class="hint">They walk onto your target's map. Anarchists attack this target too.</div>
+      </div>
+
+      <div id="ability-bar" class="interactive hidden"></div>
+      <div id="panel" class="interactive hidden"></div>
+      <div id="toast"></div>
+      <div id="help">
+        <b>WASD</b> move · <b>Space</b> jump · <b>Right-drag</b> / <b>←→</b> rotate camera · <b>Scroll</b> zoom<br />
+        <b>1-6</b> place a tower from your loadout (hold <b>Shift</b> to place several) · <b>Click</b> tower to select · <b>E</b> upgrade · <b>T</b> targeting · <b>X</b> sell · <b>F G H</b> selected tower's abilities · <b>Z C V R Y U I O P</b> ability bar · <b>Esc</b> cancel
+        <span class="mp-only"> · <b>Enter</b> chat</span>
+      </div>
+
+      <div id="end" class="overlay hidden">
+        <h1 id="end-title"></h1>
+        <p id="end-sub"></p>
+        <p id="end-credits" class="end-credits"></p>
+        <div class="row">
+          <button id="end-primary" class="btn big green">Play Again</button>
+          <button id="end-secondary" class="btn big">Main Menu</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= Title ================= -->
+    <div id="menu" class="overlay hidden">
+      <h1>TD <span>INFINITY</span></h1>
+      <p>Hold the path. Protect the castle. Don't let the zombies through!</p>
+      <input id="name-input" class="name-input" maxlength="16" placeholder="Your name" autocomplete="off" />
+      <div id="difficulty-row" class="mode-row difficulty-row"></div>
+      <p id="difficulty-hint" class="hint difficulty-hint"></p>
+      <div class="row">
+        <button id="solo-btn" class="btn big green">SOLO</button>
+        <button id="mp-btn" class="btn big blue">MULTIPLAYER</button>
+      </div>
+      <div class="menu-bar">
+        <button id="loadout-btn" class="btn purple">🎒 Loadout &amp; Shop</button>
+        <span class="credits">🪙 <b id="menu-credits">0</b></span>
+        <span class="shards"><i class="shard-icon"></i> <b id="menu-shards">0</b></span>
+      </div>
+    </div>
+
+    <!-- ================= Loadout (tower details, upgrades, forms) ================= -->
+    <div id="loadout-screen" class="overlay hidden">
+      <div class="lo-wrap">
+        <div class="mp-header">
+          <button id="lo-back" class="btn">◀ Back</button>
+          <h2>Loadout &amp; Shop</h2>
+          <span class="credits lo-money">🪙 <b id="lo-credits">0</b> credits</span>
+          <span class="shards" title="Dimension Shards: rare purple shards for alternate tower forms. Win games to earn them."><i class="shard-icon"></i> <b id="lo-shards">0</b> Dimension Shards</span>
+        </div>
+        <div class="lo-cols">
+          <div class="lo-left">
+            <h3>Equipped</h3>
+            <div id="lo-slots" class="inv-slots"></div>
+            <h3>All towers</h3>
+            <p class="hint lo-earn">Locked towers can be bought with credits. Earn credits by playing: every wave you clear pays, and winning pays a big bonus.</p>
+            <div id="lo-grid" class="lo-grid"></div>
+          </div>
+          <div class="lo-right card">
+            <div class="lo-preview">
+              <canvas id="lo-canvas"></canvas>
+              <div id="lo-levels" class="lo-levels"></div>
+            </div>
+            <div id="lo-info"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= Multiplayer hub ================= -->
+    <div id="mp-menu" class="overlay hidden">
+      <div class="mp-wrap">
+        <div class="mp-header">
+          <button id="mp-back" class="btn">◀ Back</button>
+          <h2>Multiplayer</h2>
+          <span id="mp-me"></span>
+        </div>
+        <div class="mp-cols">
+          <div class="card">
+            <h3>Party</h3>
+            <div id="party-body"></div>
+          </div>
+          <div class="card grow">
+            <h3>Rooms</h3>
+            <div class="row">
+              <input id="room-name" placeholder="Room name (optional)" maxlength="24" />
+              <label class="check"><input type="checkbox" id="room-public" checked /> Public</label>
+              <button id="room-create" class="btn green">Create Room</button>
+            </div>
+            <div class="row">
+              <input id="room-code" placeholder="Room code" maxlength="5" />
+              <button id="room-join" class="btn blue">Join by Code</button>
+            </div>
+            <div id="room-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= Room lobby ================= -->
+    <div id="room-screen" class="overlay hidden">
+      <div class="card room-card">
+        <div class="room-head">
+          <div>
+            <h2 id="room-title"></h2>
+            <div id="room-sub" class="hint"></div>
+          </div>
+          <button id="room-leave" class="btn red">Leave Room</button>
+        </div>
+        <div class="room-cols">
+          <div class="room-left">
+            <div id="room-mode" class="mode-row"></div>
+            <div id="room-difficulty" class="mode-row"></div>
+            <div id="room-players" class="members"></div>
+            <div class="row">
+              <button id="room-ready" class="btn green">Ready!</button>
+              <button id="room-start" class="btn green">Start Game ▶</button>
+            </div>
+            <p id="room-mode-hint" class="hint"></p>
+          </div>
+          <div class="room-chat">
+            <div id="room-chat-log"></div>
+            <input id="room-chat-input" placeholder="Say something… (Enter)" maxlength="200" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="menu-toast"></div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
