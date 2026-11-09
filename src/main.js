@@ -13,7 +13,8 @@ lobby.show('title');
 // Handy for debugging in the browser console.
 window.td = { client, net, lobby };
 
-// Konami code (↑ ↑ ↓ ↓ ← → ← → B A): infinite cash in a game, infinite credits and shards in the menus.
+// Konami code (↑ ↑ ↓ ↓ ← → ← → B A): infinite cash in a game; in the menus, infinite credits and
+// shards, and every event tower unlocked.
 const KONAMI = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'KeyB', 'KeyA'];
 let konami = 0;
 window.addEventListener('keydown', (e) => {
@@ -30,7 +31,7 @@ window.addEventListener('keydown', (e) => {
   // In the menus: infinite credits for the shop and infinite Dimension Shards for alternate forms.
   profile.credits = Infinity;
   profile.shards = Infinity;
-  profile.save();
+  profile.unlockEvents(); // also saves
   audio.upgrade();
-  lobby.toast('∞ credits and ∞ Dimension Shards unlocked!');
+  lobby.toast('∞ credits, ∞ Dimension Shards and every event tower unlocked!');
 });

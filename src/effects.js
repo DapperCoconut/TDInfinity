@@ -1,8 +1,10 @@
 import * as THREE from 'three';
 import { bladePos } from './sim/sim.js';
+import { MODEL_SCALE as K } from './scale.js';
 
 const unitBox = new THREE.BoxGeometry(1, 1, 1);
 const ringGeo = new THREE.RingGeometry(0.8, 1, 32);
+const puddleGeo = new THREE.CircleGeometry(1, 24);
 const textCache = new Map();
 const heliMat = new THREE.MeshLambertMaterial({ color: 0x263238 });
 const rotorMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
@@ -10,31 +12,264 @@ const rotorMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
 function textTexture(str, color) {
   const key = str + color;
   if (textCache.has(key)) return textCache.get(key);
+  // The canvas is as wide as the text (at least the old 256), so long names aren't cut off.
+  const font = '900 64px "Arial Black", Arial, sans-serif';
   const c = document.createElement('canvas');
-  c.width = 256;
+  const m = c.getContext('2d');
+  m.font = font;
+  c.width = Math.max(256, Math.ceil(m.measureText(str).width) + 24);
   c.height = 96;
-  const g = c.getContext('2d');
-  g.font = '900 64px "Arial Black", Arial, sans-serif';
+  const g = c.getContext('2d'); // resizing the canvas resets its drawing state
+  g.font = font;
   g.textAlign = 'center';
   g.textBaseline = 'middle';
   g.lineWidth = 10;
   g.strokeStyle = '#1b1b1b';
-  g.strokeText(str, 128, 50);
+  g.strokeText(str, c.width / 2, 50);
   g.fillStyle = color;
-  g.fillText(str, 128, 50);
+  g.fillText(str, c.width / 2, 50);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
+  t.userData.aspect = c.width / c.height;
   textCache.set(key, t);
   return t;
 }
 
 /** Short-lived visual effects: tracers, muzzle flashes, debris, floating text. */
 export class Effects {
-  constructor(scene) {
+  /** scene: where effects go (the scaled map group); sky: the THREE.Scene whose sky and fog tint. */
+  constructor(scene, sky = scene) {
     this.scene = scene;
+    this.sky = sky;
     this.items = [];
     this.emberK = 0; // 0..1: how strongly the Molten Warlord's embers fill the world
     this.emberOn = false;
+    this.armadaK = 0; // 0..1: how much the Overlord's starships cover the sky
+    this.armadaOn = false;
+  }
+
+  /** The Overlord's armada: starships drift across the sky and the world grows dark. */
+  setArmada(on) {
+    this.armadaOn = on;
+    if (!on || this.armada) return;
+    const g = new THREE.Group();
+    const hullMat = new THREE.MeshLambertMaterial({ color: 0x37474f, transparent: true, opacity: 0 });
+    const trimMat = new THREE.MeshLambertMaterial({ color: 0xcfd8dc, transparent: true, opacity: 0 });
+    const glowMat = new THREE.MeshBasicMaterial({ color: 0xff4081, transparent: true, opacity: 0 });
+    const box = (parent, mat, w, h, d, x, y, z) => {
+      const m = new THREE.Mesh(unitBox, mat);
+      m.scale.set(w, h, d);
+      m.position.set(x, y, z);
+      parent.add(m);
+    };
+    this.ships = [];
+    for (let i = 0; i < 9; i++) {
+      const ship = new THREE.Group();
+      const big = i % 3 === 0;
+      const s = big ? 2.2 : 1 + Math.random() * 0.5;
+      box(ship, hullMat, 4, 1.4, 16, 0, 0, 0); // hull
+      box(ship, hullMat, 14, 0.5, 5, 0, 0, -2); // wings
+      box(ship, trimMat, 3, 1.2, 4, 0, 1, 2); // bridge
+      box(ship, trimMat, 1, 0.6, 10, 0, 0.9, -3);
+      for (const x of [-5, 0, 5]) box(ship, glowMat, 1.6, 0.8, 0.6, x, 0, -8.3); // engines
+      for (const x of [-6.5, 6.5]) box(ship, glowMat, 0.6, 0.3, 4, x, 0.2, -2);
+      ship.scale.setScalar(s);
+      ship.position.set(-160 + Math.random() * 320, 45 + Math.random() * 25, -100 + Math.random() * 200);
+      ship.rotation.y = Math.PI / 2 + (Math.random() - 0.5) * 0.3;
+      ship.userData.speed = (big ? 2 : 3.5) + Math.random() * 2;
+      g.add(ship);
+      this.ships.push(ship);
+    }
+    this.armada = g;
+    this.armadaMats = [hullMat, trimMat, glowMat];
+    this.scene.add(g);
+    this.armadaSky = this.sky.background?.clone?.() ?? null;
+    this.armadaFog = this.sky.fog?.color.clone() ?? null;
+    this.armadaLights = [];
+    this.sky.traverse((o) => {
+      if (o.isLight) this.armadaLights.push([o, o.intensity]);
+    });
+  }
+
+  updateArmada(dt) {
+    if (!this.armada) return;
+    this.armadaK = Math.max(0, Math.min(1, this.armadaK + (this.armadaOn ? dt / 3 : -dt / 3)));
+    const k = this.armadaK;
+    const night = new THREE.Color(0x0b0f24);
+    if (this.armadaSky) this.sky.background.copy(this.armadaSky).lerp(night, k * 0.85);
+    if (this.armadaFog) this.sky.fog.color.copy(this.armadaFog).lerp(night, k * 0.85);
+    for (const [light, base] of this.armadaLights) light.intensity = base * (1 - 0.55 * k);
+    for (const m of this.armadaMats) m.opacity = k;
+    if (k <= 0) {
+      this.scene.remove(this.armada);
+      for (const m of this.armadaMats) m.dispose();
+      for (const [light, base] of this.armadaLights) light.intensity = base;
+      this.armada = null;
+      return;
+    }
+    for (const ship of this.ships) {
+      ship.position.x += ship.userData.speed * dt;
+      if (ship.position.x > 170) ship.position.x = -170;
+    }
+  }
+
+  /** The Beholder: violet sky and slowly falling gold and violet clock dust while it's alive. */
+  setChrono(on) {
+    this.chronoOn = on;
+    if (on) this.makeChrono();
+  }
+
+  /** The time dimension: an even darker violet sky (and the clock dust) for as long as it lasts. */
+  setChronoWorld(on) {
+    this.chronoWorld = on;
+    if (on) this.makeChrono();
+  }
+
+  makeChrono() {
+    if (this.chronoPts) return;
+    const N = 700;
+    const pos = new Float32Array(N * 3);
+    const col = new Float32Array(N * 3);
+    const gold = new THREE.Color(0xffd740);
+    const violet = new THREE.Color(0xb388ff);
+    for (let i = 0; i < N; i++) {
+      pos[i * 3] = -130 + Math.random() * 260;
+      pos[i * 3 + 1] = Math.random() * 40;
+      pos[i * 3 + 2] = -90 + Math.random() * 180;
+      (i % 3 ? violet : gold).toArray(col, i * 3);
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    this.chronoMat = new THREE.PointsMaterial({ size: 0.5, vertexColors: true, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
+    this.chronoPts = new THREE.Points(geo, this.chronoMat);
+    this.chronoPts.frustumCulled = false;
+    this.scene.add(this.chronoPts);
+    this.chronoK = 0;
+    this.chronoSky = this.sky.background?.clone?.() ?? null;
+    this.chronoFog = this.sky.fog?.color.clone() ?? null;
+  }
+
+  updateChrono(dt) {
+    if (!this.chronoPts) return;
+    const on = this.chronoOn || this.chronoWorld;
+    this.chronoK = Math.max(0, Math.min(1, this.chronoK + (on ? dt / 2 : -dt / 2)));
+    const k = this.chronoK;
+    this.chronoMat.opacity = 0.85 * k;
+    const tint = new THREE.Color(this.chronoWorld ? 0x140a2b : 0x4a2a7a);
+    const mix = this.chronoWorld ? 0.95 : 0.7;
+    if (this.chronoSky) this.sky.background.copy(this.chronoSky).lerp(tint, k * mix);
+    if (this.chronoFog) this.sky.fog.color.copy(this.chronoFog).lerp(tint, k * mix);
+    if (k <= 0) {
+      this.scene.remove(this.chronoPts);
+      this.chronoPts.geometry.dispose();
+      this.chronoMat.dispose();
+      this.chronoPts = null;
+      return;
+    }
+    // Clock dust falls slowly and drifts in little circles.
+    const a = this.chronoPts.geometry.attributes.position;
+    const p = a.array;
+    const t = performance.now() / 1000;
+    for (let i = 0; i < p.length / 3; i++) {
+      p[i * 3 + 1] -= dt * (0.6 + (i % 5) * 0.2);
+      p[i * 3] += Math.cos(t * 0.7 + i) * dt * 0.8;
+      p[i * 3 + 2] += Math.sin(t * 0.7 + i) * dt * 0.8;
+      if (p[i * 3 + 1] < 0) p[i * 3 + 1] = 40;
+    }
+    a.needsUpdate = true;
+  }
+
+  /**
+   * VOID: the world turns dark purple while he's alive (level 1), even darker for his spirit form
+   * (level 2). Void motes rise from the ground everywhere and the lights dim.
+   */
+  setVoid(level) {
+    this.voidLevel = level;
+    if (level && !this.voidPts) {
+      const N = 900;
+      const pos = new Float32Array(N * 3);
+      const col = new Float32Array(N * 3);
+      const pink = new THREE.Color(0xff1744);
+      const violet = new THREE.Color(0xd500f9);
+      const deep = new THREE.Color(0x651fff);
+      for (let i = 0; i < N; i++) {
+        pos[i * 3] = -130 + Math.random() * 260;
+        pos[i * 3 + 1] = Math.random() * 35;
+        pos[i * 3 + 2] = -90 + Math.random() * 180;
+        (i % 3 === 0 ? pink : i % 3 === 1 ? violet : deep).toArray(col, i * 3);
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      this.voidMat = new THREE.PointsMaterial({ size: 0.55, vertexColors: true, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
+      this.voidPts = new THREE.Points(geo, this.voidMat);
+      this.voidPts.frustumCulled = false;
+      this.scene.add(this.voidPts);
+      this.voidK = 0;
+      this.voidSky = this.sky.background?.clone?.() ?? null;
+      this.voidFog = this.sky.fog?.color.clone() ?? null;
+      this.voidLights = [];
+      this.sky.traverse((o) => {
+        if (o.isLight) this.voidLights.push([o, o.intensity]);
+      });
+    }
+  }
+
+  updateVoid(dt) {
+    if (!this.voidPts) return;
+    // voidK eases toward the level (0, 1 or 2) over a couple of seconds.
+    const goal = this.voidLevel || 0;
+    this.voidK += Math.sign(goal - this.voidK) * Math.min(Math.abs(goal - this.voidK), dt / 2.5);
+    const k = this.voidK;
+    this.voidMat.opacity = Math.min(1, k) * 0.9;
+    const tint = new THREE.Color(k > 1 ? 0x07020c : 0x1e0730);
+    const mix = Math.min(1, k) * 0.92 + Math.max(0, k - 1) * 0.08;
+    if (this.voidSky) this.sky.background.copy(this.voidSky).lerp(tint, mix);
+    if (this.voidFog) this.sky.fog.color.copy(this.voidFog).lerp(tint, mix);
+    for (const [light, base] of this.voidLights) light.intensity = base * (1 - 0.45 * Math.min(1, k) - 0.25 * Math.max(0, k - 1));
+    if (k <= 0) {
+      this.scene.remove(this.voidPts);
+      this.voidPts.geometry.dispose();
+      this.voidMat.dispose();
+      this.voidPts = null;
+      for (const [light, base] of this.voidLights) light.intensity = base;
+      if (this.voidSky) this.sky.background.copy(this.voidSky);
+      if (this.voidFog) this.sky.fog.color.copy(this.voidFog);
+      return;
+    }
+    // Void motes rise from the ground and wobble.
+    const a = this.voidPts.geometry.attributes.position;
+    const p = a.array;
+    const t = performance.now() / 1000;
+    for (let i = 0; i < p.length / 3; i++) {
+      p[i * 3 + 1] += dt * (0.8 + (i % 7) * 0.25) * (k > 1 ? 1.6 : 1);
+      p[i * 3] += Math.sin(t * 1.3 + i) * dt * 0.6;
+      if (p[i * 3 + 1] > 35) p[i * 3 + 1] = 0;
+    }
+    a.needsUpdate = true;
+  }
+
+  /** VOID's sky laser: a huge beam that sweeps along every point of the track. */
+  skyLaser(points, time = 1.6) {
+    const mat = new THREE.MeshBasicMaterial({ color: 0xff1744, transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending });
+    const core = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, depthWrite: false });
+    const g = new THREE.Group();
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 120, 12, 1, true), mat);
+    const inner = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 120, 8, 1, true), core);
+    beam.position.y = inner.position.y = 60;
+    g.add(beam, inner);
+    let last = 0;
+    this.add(g, time + 0.3, mat, (it, f) => {
+      const u = Math.min(1, (1 - f) * ((time + 0.3) / time));
+      const i = Math.min(points.length - 1, Math.floor(u * (points.length - 1)));
+      g.position.copy(points[i]);
+      mat.opacity = 0.85 * Math.min(1, f * 4);
+      core.opacity = 0.9 * Math.min(1, f * 4);
+      if (i !== last && i % 3 === 0) this.pulse(points[i].clone().setY(0.3), 4, 0.4, 0xff1744);
+      last = i;
+    });
+    this.items[this.items.length - 1].extra = [core, beam.geometry, inner.geometry];
   }
 
   /** The Molten Warlord's embers: orange sparks drifting up everywhere, and an orange sky. */
@@ -57,8 +292,8 @@ export class Effects {
     this.emberPts = new THREE.Points(geo, this.emberMat);
     this.emberPts.frustumCulled = false;
     this.scene.add(this.emberPts);
-    this.skyBase = this.scene.background?.clone?.() ?? null;
-    this.fogBase = this.scene.fog?.color.clone() ?? null;
+    this.skyBase = this.sky.background?.clone?.() ?? null;
+    this.fogBase = this.sky.fog?.color.clone() ?? null;
   }
 
   updateEmbers(dt) {
@@ -67,8 +302,8 @@ export class Effects {
     const k = this.emberK;
     this.emberMat.opacity = 0.9 * k;
     const sky = new THREE.Color(0x8a3a12);
-    if (this.skyBase) this.scene.background.copy(this.skyBase).lerp(sky, k * 0.75);
-    if (this.fogBase) this.scene.fog.color.copy(this.fogBase).lerp(sky, k * 0.75);
+    if (this.skyBase) this.sky.background.copy(this.skyBase).lerp(sky, k * 0.75);
+    if (this.fogBase) this.sky.fog.color.copy(this.fogBase).lerp(sky, k * 0.75);
     if (k <= 0) {
       this.scene.remove(this.emberPts);
       this.emberPts.geometry.dispose();
@@ -99,6 +334,7 @@ export class Effects {
     blade.scale.set(3.2, 2.6, 0.35);
     blade.position.set(1.4, 2.6, 0);
     g.add(handle, blade);
+    g.scale.setScalar(K);
     const start = from.clone();
     const yaw = Math.atan2(to.x - from.x, to.z - from.z);
     this.add(g, time, null, (it, k) => {
@@ -118,20 +354,23 @@ export class Effects {
   }
 
   tracer(from, to, color = 0xffe066, width = 0.14) {
+    width *= K;
     const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.95 });
     const m = new THREE.Mesh(unitBox, mat);
     m.scale.set(width, width, from.distanceTo(to));
     m.position.copy(from).lerp(to, 0.5);
     m.lookAt(to);
     // Thick (rail) shots linger and shrink; thin bullets just blink.
-    const life = width > 0.2 ? 0.35 : 0.08;
+    const thick = width > 0.2 * K;
+    const life = thick ? 0.35 : 0.08;
     this.add(m, life, mat, (it, k) => {
       mat.opacity = 0.95 * k;
-      if (width > 0.2) m.scale.set(width * k, width * k, m.scale.z);
+      if (thick) m.scale.set(width * k, width * k, m.scale.z);
     });
   }
 
   flash(pos, color = 0xfff3b0, size = 0.7) {
+    size *= K;
     const mat = new THREE.MeshBasicMaterial({ color, transparent: true });
     const m = new THREE.Mesh(unitBox, mat);
     m.position.copy(pos);
@@ -144,7 +383,7 @@ export class Effects {
   bomb(from, to, time) {
     const mat = new THREE.MeshLambertMaterial({ color: 0x263238 });
     const m = new THREE.Mesh(unitBox, mat);
-    m.scale.set(0.5, 0.5, 1.0);
+    m.scale.set(0.5 * K, 0.5 * K, 1.0 * K);
     const start = from.clone();
     this.add(m, time, mat, (it, k) => {
       const f = 1 - k;
@@ -155,6 +394,7 @@ export class Effects {
 
   /** A homing missile from `from` to wherever `target()` is, arriving after `time`. */
   missile(from, target, time, color = 0xff6d00, size = 1) {
+    size *= K;
     const mat = new THREE.MeshBasicMaterial({ color });
     const m = new THREE.Mesh(unitBox, mat);
     m.scale.set(0.35 * size, 0.35 * size, 1.3 * size);
@@ -171,8 +411,37 @@ export class Effects {
     });
   }
 
+  /**
+   * A projectile (slime glob, harpoon, rebar, thrown grenade) flying in a shallow arc from `from`
+   * to wherever `target()` is, arriving after `time`. `long`: a spear shape pointing where it flies;
+   * `blob`: a round glob that wobbles.
+   */
+  toss(from, target, time, { color = 0x9e9e9e, size = 0.5, arc = 1, glowing = false, long = false, blob = false } = {}) {
+    size *= K;
+    const mat = glowing ? new THREE.MeshBasicMaterial({ color }) : new THREE.MeshLambertMaterial({ color });
+    const m = new THREE.Mesh(unitBox, mat);
+    if (long) m.scale.set(0.16 * size, 0.16 * size, 1.5 * size);
+    else m.scale.setScalar(size);
+    const start = from.clone();
+    const end = new THREE.Vector3();
+    const prev = new THREE.Vector3();
+    const total = Math.max(time, 1e-3);
+    this.add(m, time, mat, (it, k) => {
+      const f = 1 - k;
+      target(end);
+      prev.copy(m.position);
+      m.position.lerpVectors(start, end, f);
+      m.position.y += Math.sin(f * Math.PI) * arc * Math.min(1, total * 2); // quick shots fly flatter
+      if (blob) {
+        const w = 1 + Math.sin(f * total * 40) * 0.18;
+        m.scale.set(size * w, size / w, size * w);
+      } else if (m.position.distanceToSquared(prev) > 1e-6) m.lookAt(prev.lerp(m.position, 2));
+    });
+  }
+
   /** A thrown grenade or mortar shell flying in an arc from `from` to `to` over `time` seconds. */
   lob(from, to, time, { color = 0x33691e, size = 0.5, arc = 4, glowing = false } = {}) {
+    size *= K;
     const mat = glowing ? new THREE.MeshBasicMaterial({ color }) : new THREE.MeshLambertMaterial({ color });
     const m = new THREE.Mesh(unitBox, mat);
     m.scale.set(size, size, size * 1.4);
@@ -236,6 +505,7 @@ export class Effects {
    * b: { loop, ox, oz, tx, tz, side }, `y` the flight height.
    */
   blade(b, time, y, { color = 0x8d6e63, size = 1, knife = false } = {}) {
+    size *= K;
     const mat = new THREE.MeshLambertMaterial({ color });
     const g = new THREE.Group();
     if (knife) {
@@ -285,6 +555,21 @@ export class Effects {
       mat.opacity = 0.75 * k;
     });
     this.puff(pos.clone().setY(1), 0x64dd17, Math.min(12, 4 + Math.round(radius * 1.5)), 0.4, 5 + radius);
+  }
+
+  /** Paintball burst: a flat splat in a random bright color plus colorful drops. */
+  paintSplat(pos, radius) {
+    const colors = [0xff1744, 0x2979ff, 0xffea00, 0x00e676, 0xd500f9, 0xff9100];
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8, depthWrite: false });
+    const blob = new THREE.Mesh(unitBox, mat);
+    blob.position.copy(pos).setY(0.4);
+    blob.rotation.y = Math.random() * Math.PI;
+    this.add(blob, 0.4, mat, (it, k) => {
+      blob.scale.set(radius * (1.6 - k * 0.6), 0.15, radius * (1.6 - k * 0.6));
+      mat.opacity = 0.8 * k;
+    });
+    this.puff(pos.clone().setY(1), color, Math.min(10, 3 + Math.round(radius)), 0.35, 4 + radius);
   }
 
   /** Fireball + shock ring + debris. */
@@ -378,6 +663,18 @@ export class Effects {
     });
   }
 
+  /** Lava Golem magma: a glowing puddle on the ground that cools and fades over `life` seconds. */
+  puddle(pos, radius, life, color = 0xff6d00) {
+    const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85, depthWrite: false });
+    const m = new THREE.Mesh(puddleGeo, mat);
+    m.rotation.x = -Math.PI / 2;
+    m.position.copy(pos).setY(0.15);
+    m.scale.setScalar(radius);
+    this.add(m, life, mat, (it, k) => {
+      mat.opacity = 0.85 * Math.min(1, k * 4) * (0.8 + Math.sin((it.max - it.life) * 6) * 0.2);
+    });
+  }
+
   /**
    * Sweeper: two lasers on opposite sides of `pos` spin around it (one turn every `spin` s,
    * starting at angle `a`) for `time` seconds. Each reaches to the edge of `bounds`.
@@ -440,6 +737,7 @@ export class Effects {
     rotor.scale.set(9, 0.12, 0.5);
     rotor.position.y = 1.1;
     g.add(body, tail, rotor);
+    g.scale.setScalar(K);
     const from = new THREE.Vector3(at.x - 60, 14, at.z - 20);
     const to = new THREE.Vector3(at.x + 60, 14, at.z + 20);
     this.add(g, 3, null, (it, k, dt) => {
@@ -449,10 +747,73 @@ export class Effects {
     });
   }
 
+  /**
+   * Airdrop Farm: a cargo plane roars over (x, z) and drops a cash crate that floats down on a
+   * parachute onto the helipad. `onLand` runs when the crate touches down.
+   */
+  airdrop(at, onLand) {
+    const mats = [0x78909c, 0x8d6e63, 0xfafafa, 0x43a047].map((color) => new THREE.MeshLambertMaterial({ color }));
+    const [hullM, crateM, chuteM, cashM] = mats;
+    const plane = new THREE.Group();
+    const box = (m, sx, sy, sz, x = 0, y = 0, z = 0) => {
+      const b = new THREE.Mesh(unitBox, m);
+      b.scale.set(sx, sy, sz);
+      b.position.set(x, y, z);
+      return b;
+    };
+    plane.add(
+      box(hullM, 2.6, 2.4, 9), // fuselage
+      box(hullM, 14, 0.3, 2.2, 0, 0.9, 0.5), // wings
+      box(hullM, 5, 0.25, 1.4, 0, 0.6, -4.2), // tailplane
+      box(hullM, 0.3, 2.2, 1.6, 0, 2, -4.2), // fin
+    );
+    for (const x of [-3.2, -5.6, 3.2, 5.6]) plane.add(box(rotorMat, 0.6, 0.6, 1.4, x, 0.5, 1.4)); // engines
+    plane.scale.setScalar(K);
+    const from = new THREE.Vector3(at.x - 70, 22, at.z - 25);
+    const to = new THREE.Vector3(at.x + 70, 22, at.z + 25);
+    const fly = 3.2;
+    this.add(plane, fly, null, (it, k) => {
+      plane.position.lerpVectors(from, to, 1 - k);
+      plane.lookAt(to);
+    });
+    // The crate falls out as the plane passes overhead, then drifts down on its parachute.
+    const crate = new THREE.Group();
+    crate.add(box(crateM, 1.6, 1.2, 1.6), box(cashM, 1.65, 0.25, 0.4, 0, 0.1, 0));
+    const chute = box(chuteM, 3.6, 0.3, 3.6, 0, 4.2, 0);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      const cord = box(rotorMat, 0.06, 3.6, 0.06, sx * 0.9, 2.3, sz * 0.9);
+      cord.rotation.set(sz * 0.25, 0, -sx * 0.25);
+      crate.add(cord);
+    }
+    crate.add(chute);
+    crate.scale.setScalar(K);
+    crate.visible = false;
+    const fall = 2.6;
+    const top = 21;
+    const ground = 1.6;
+    let landed = false;
+    this.add(crate, fly / 2 + fall + 0.6, null, (it, k) => {
+      const tt = it.max * (1 - k) - fly / 2; // seconds since the crate dropped
+      crate.visible = tt >= 0;
+      if (tt < 0) return;
+      const f = Math.min(1, tt / fall);
+      crate.position.set(at.x, top + (ground - top) * (1 - (1 - f) ** 2), at.z);
+      crate.rotation.y = f * 2;
+      if (f >= 1 && !landed) {
+        landed = true;
+        chute.visible = false;
+        this.puff(new THREE.Vector3(at.x, 1, at.z), 0xd7ccc8, 8, 0.4, 6);
+        onLand?.();
+      }
+    });
+    const it = this.items[this.items.length - 1];
+    it.extra = mats;
+  }
+
   /** Smoke bomb: a grey cloud of radius r that hangs around for `time` seconds. */
-  smoke(at, r, time) {
-    for (let i = 0; i < 14; i++) {
-      const mat = new THREE.MeshLambertMaterial({ color: i % 2 ? 0xbdbdbd : 0x9e9e9e, transparent: true, opacity: 0, depthWrite: false });
+  smoke(at, r, time, colors = [0xbdbdbd, 0x9e9e9e], count = 14) {
+    for (let i = 0; i < count; i++) {
+      const mat = new THREE.MeshLambertMaterial({ color: colors[i % colors.length], transparent: true, opacity: 0, depthWrite: false });
       const m = new THREE.Mesh(unitBox, mat);
       const a = Math.random() * Math.PI * 2;
       const d = Math.sqrt(Math.random()) * r;
@@ -491,6 +852,7 @@ export class Effects {
 
   /** Blocky debris burst. */
   puff(pos, color, count = 8, size = 0.5, power = 8) {
+    size *= K;
     const mat = new THREE.MeshLambertMaterial({ color });
     const lives = Array.from({ length: count }, () => 0.5 + Math.random() * 0.4);
     const owner = lives.indexOf(Math.max(...lives));
@@ -518,10 +880,12 @@ export class Effects {
   }
 
   text(pos, str, color = '#ffd54f', size = 3) {
-    const mat = new THREE.SpriteMaterial({ map: textTexture(str, color), transparent: true, depthTest: false });
+    size *= K;
+    const map = textTexture(str, color);
+    const mat = new THREE.SpriteMaterial({ map, transparent: true, depthTest: false });
     const sp = new THREE.Sprite(mat);
     sp.position.copy(pos);
-    sp.scale.set(size * 2.67, size, 1);
+    sp.scale.set(size * map.userData.aspect, size, 1); // same letter size, wider sprite for long text
     sp.renderOrder = 20;
     this.add(sp, 1.0, mat, (it, k, dt) => {
       sp.position.y += 4 * dt;
@@ -531,6 +895,9 @@ export class Effects {
 
   update(dt) {
     this.updateEmbers(dt);
+    this.updateArmada(dt);
+    this.updateChrono(dt);
+    this.updateVoid(dt);
     for (let i = this.items.length - 1; i >= 0; i--) {
       const it = this.items[i];
       it.life -= dt;

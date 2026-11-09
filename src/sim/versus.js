@@ -6,7 +6,7 @@
 // It has the same interface as Sim (step, events, over, action, removePlayer, snapshot), so the
 // server runs it exactly like a co-op game. Each lane's Sim works in map-local coordinates;
 // this class shifts z by the lane offset on the way out (snapshots, events) and back on the way in.
-import { ENEMIES, GAME, PLAYER_COLORS, VERSUS, waveGroups } from '../config.js';
+import { ENEMIES, GAME, SPEEDS, PLAYER_COLORS, VERSUS, waveGroups } from '../config.js';
 import { Sim } from './sim.js';
 import { laneOz } from './map.js';
 
@@ -203,7 +203,7 @@ export class VersusSim {
     if (!l || this.over || !m) return null;
     switch (m.a) {
       case 'speed':
-        this.speed = this.speed >= 3 ? 1 : this.speed + 1;
+        if (SPEEDS.includes(m.v)) this.speed = m.v;
         return null;
       case 'skip': {
         if (!l.alive) return null;
@@ -244,8 +244,10 @@ export class VersusSim {
     const u = [];
     const e = [];
     const tr = [];
+    const ob = []; // Gold Commander Orbital Airstrike beams
     for (const l of this.lanes) {
       const s = l.sim.snapshot();
+      for (const row of s.ob ?? []) ob.push([row[0], row[1], r2(row[2] + l.oz), row[3], row[4]]);
       for (const row of s.t) {
         row[5] = r2(row[5] + l.oz); // tower z
         t.push(row);
@@ -274,6 +276,7 @@ export class VersusSim {
       u,
       e,
       tr,
+      ...(ob.length ? { ob } : {}),
     };
   }
 }

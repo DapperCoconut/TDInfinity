@@ -61,6 +61,10 @@ body {
   filter: grayscale(0.8) brightness(0.7);
   cursor: not-allowed;
 }
+select.btn option {
+  background: #455a64;
+  color: #fff;
+}
 .btn.green {
   background: #43a047;
 }
@@ -228,8 +232,13 @@ body {
 #panel {
   position: absolute;
   right: 14px;
-  top: 50%;
+  /* Centered in the space between the top-right buttons and the ability bar (--ab-space, set
+     by ui.js); scrolls if it's taller than that. */
+  top: calc(50% + 30px - var(--ab-space, 0px) / 2);
   transform: translateY(-50%);
+  max-height: calc(100vh - 90px - var(--ab-space, 0px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
   width: 290px;
   padding: 14px;
   border-radius: 14px;
@@ -896,6 +905,36 @@ input:focus {
   flex-direction: column;
   gap: 6px;
 }
+/* Trapper traps / Mercenary Base units: on/off toggles */
+.p-picks {
+  margin-top: 10px;
+}
+.p-picks-title {
+  font-size: 12px;
+  color: #ffd54f;
+}
+.p-picks .p-row {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.p-picks .p-row .btn {
+  flex: 1 1 45%;
+  width: auto;
+  font-size: 12px;
+}
+.btn.pick.on {
+  background: #00897b;
+}
+.btn.pick.off {
+  background: #546e7a;
+  opacity: 0.75;
+}
+/* Jester bomb slots / Biologist plant queues */
+.p-picks .p-slot {
+  flex: 1 1 100%;
+  font-size: 11px;
+  color: #b0bec5;
+}
 
 /* ---------- Versus ---------- */
 #hud:not(.vs) #send-panel {
@@ -1102,6 +1141,13 @@ input:focus {
 }
 .lo-earn {
   margin: -4px 0 8px;
+}
+.lo-badge.price.event {
+  color: #ff8a80;
+}
+.lo-alt.lo-event {
+  color: #ff8a80;
+  border-color: #ff8a80;
 }
 .lo-badge.form {
   bottom: 22px;
@@ -1403,4 +1449,226 @@ input:focus {
   font-size: 1.3em;
   letter-spacing: 0.12em;
   color: #fff59d;
+}
+
+/* ---------- Golden perks ---------- */
+.btn.gold {
+  background: linear-gradient(180deg, #ffe082, #f9a825 55%, #c17900);
+  color: #3e2700;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.btn.small.gold:not(.on) {
+  background: #6d5310;
+  color: #ffe082;
+  text-shadow: none;
+}
+.lo-alt.lo-gold {
+  color: #ffd54f;
+}
+.lo-badge.gold {
+  bottom: 22px;
+  left: 6px;
+  color: #ffd54f;
+  font-size: 14px;
+  text-shadow: 0 0 4px rgba(255, 193, 7, 0.8);
+}
+
+/* ---------- Loadout: tower XP and the Variants menu ---------- */
+.lo-xp {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 2px;
+  font-size: 13px;
+  color: #b3e5fc;
+}
+.lo-xp small {
+  color: #90a4ae;
+  white-space: nowrap;
+}
+.lo-xp-bar {
+  flex: 1;
+  max-width: 180px;
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+  display: inline-block;
+}
+.lo-xp-bar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #26c6da, #18ffff);
+}
+.lo-var-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 4px;
+  padding: 6px 12px 6px 6px;
+  text-align: left;
+}
+.lo-var-btn img {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+}
+.lo-var-btn span {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+.lo-var-btn small {
+  font-size: 11px;
+  opacity: 0.75;
+}
+.lo-var-btn i {
+  font-style: normal;
+  margin-left: 6px;
+  opacity: 0.8;
+}
+.lo-alt.lo-evo,
+.lo-evo-req {
+  color: #18ffff;
+}
+.lo-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+}
+.lo-modal.hidden {
+  display: none;
+}
+.lo-var-card {
+  width: min(460px, 92vw);
+  max-height: 84vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.lo-var-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 20px;
+}
+.lo-var-money {
+  margin-left: auto;
+  font-size: 13px;
+  color: #ffd54f;
+}
+.lo-var-group h4 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #90a4ae;
+}
+.lo-var-group h4 small {
+  text-transform: none;
+  letter-spacing: 0;
+  color: #607d8b;
+}
+.lo-var {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+.lo-var:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.lo-var.sel {
+  border-color: rgba(255, 255, 255, 0.5);
+}
+.lo-var img {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+}
+.lo-var.locked img {
+  filter: grayscale(0.7) brightness(0.8);
+}
+.lo-var-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.lo-var-name small {
+  font-size: 12px;
+  color: #90a4ae;
+}
+.lo-var-prog {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.lo-var-act {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+.lo-var-on {
+  color: #69f0ae;
+  font-weight: bold;
+  font-size: 14px;
+}
+.btn.evo {
+  background: linear-gradient(180deg, #4dd0e1, #00838f);
+}
+
+/* ---------------------------------------------------------------- Void mode cinematics */
+#cine-banner {
+  position: fixed; left: 0; right: 0; top: 30%; z-index: 60; text-align: center; pointer-events: none;
+  opacity: 0; transform: scale(1.15); transition: opacity 0.8s, transform 1.2s;
+  text-shadow: 0 0 24px #d500f9, 0 0 6px #000;
+}
+#cine-banner.show { opacity: 1; transform: scale(1); }
+#cine-banner .cine-title { font-size: 84px; font-weight: 900; letter-spacing: 0.35em; color: #f3e5f5; }
+#cine-banner .cine-sub { font-size: 22px; font-style: italic; color: #ea80fc; margin-top: 8px; letter-spacing: 0.08em; }
+#cine-banner.red .cine-title { color: #ff8a80; text-shadow: 0 0 30px #ff1744, 0 0 6px #000; }
+#cine-banner.light .cine-title { color: #fff; text-shadow: 0 0 30px #fff59d, 0 0 6px #000; }
+#cine-banner.light .cine-sub { color: #fff9c4; }
+.cine-flash { position: fixed; inset: 0; z-index: 59; pointer-events: none; animation: cine-flash linear forwards; }
+@keyframes cine-flash { from { opacity: 0.55; } to { opacity: 0; } }
+#boss-bar {
+  position: fixed; top: 64px; left: 50%; transform: translateX(-50%); width: min(620px, 70vw); z-index: 40;
+  pointer-events: none; text-align: center; opacity: 0; transition: opacity 0.6s;
+}
+#boss-bar.show { opacity: 1; }
+#boss-bar .bb-name { font-weight: 900; letter-spacing: 0.3em; color: #f3e5f5; text-shadow: 0 0 10px #d500f9, 0 0 3px #000; font-size: 20px; }
+#boss-bar .bb-track { height: 14px; margin-top: 4px; background: rgba(10, 0, 18, 0.85); border: 2px solid #6a1b9a; border-radius: 8px; overflow: hidden; box-shadow: 0 0 14px #aa00ff; }
+#boss-bar .bb-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #4a0072, #d500f9, #ff1744); transition: width 0.25s; }
+/* Void armor: the boss's shield, a thin bright bar over the health. */
+#boss-bar .bb-track { position: relative; }
+#boss-bar .bb-shield { position: absolute; left: 0; top: 0; height: 40%; width: 0; background: #ea80fc; box-shadow: 0 0 8px #ea80fc; transition: width 0.25s; }
+#boss-bar.phase2 .bb-track { border-color: #b388ff; box-shadow: 0 0 22px #7c4dff; }
+#boss-bar.phase2 .bb-fill { background: linear-gradient(90deg, #311b92, #7c4dff, #e1bee7); }
+#boss-bar .bb-sub { font-size: 12px; color: #e1bee7; margin-top: 3px; text-shadow: 0 0 3px #000; }
+.end-unlock { margin-top: 10px; font-size: 18px; color: #ea80fc; text-shadow: 0 0 8px #aa00ff; }
+
+/* Crosspath towers: Top and Bottom pip rows (tower panel). */
+.pip-tag {
+  font-size: 11px;
+  opacity: 0.75;
+  margin-right: 2px;
+}
+.pip-gap {
+  width: 10px;
 }

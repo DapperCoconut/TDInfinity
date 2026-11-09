@@ -27,7 +27,7 @@
 
       <div id="top-right" class="interactive">
         <button id="skip-btn" class="btn green hidden">Start Wave ▶</button>
-        <button id="speed-btn" class="btn" title="Game speed">1x</button>
+        <select id="speed-btn" class="btn" title="Game speed"></select>
         <button id="mute-btn" class="btn" title="Sound">Sound: On</button>
         <button id="leave-btn" class="btn red" title="Leave game">Leave</button>
       </div>
@@ -58,7 +58,7 @@
       <div id="toast"></div>
       <div id="help">
         <b>WASD</b> move · <b>Space</b> jump · <b>Right-drag</b> / <b>←→</b> rotate camera · <b>Scroll</b> zoom<br />
-        <b>1-6</b> place a tower from your loadout (hold <b>Shift</b> to place several) · <b>Click</b> tower to select · <b>E</b> upgrade · <b>T</b> targeting · <b>X</b> sell · <b>F G H</b> selected tower's abilities · <b>Z C V R Y U I O P</b> ability bar · <b>Esc</b> cancel
+        <b>1-6</b> place a tower from your loadout (hold <b>Shift</b> to place several, <b>R</b> to rotate it) · <b>Click</b> tower to select · <b>E</b> upgrade · <b>T</b> targeting · <b>X</b> sell · <b>F G H</b> selected tower's abilities · <b>Z C V R Y U I O P</b> ability bar · <b>Esc</b> cancel
         <span class="mp-only"> · <b>Enter</b> chat</span>
       </div>
 
@@ -107,6 +107,9 @@
             <h3>All towers</h3>
             <p class="hint lo-earn">Locked towers can be bought with credits. Earn credits by playing: every wave you clear pays, and winning pays a big bonus.</p>
             <div id="lo-grid" class="lo-grid"></div>
+            <h3>Event towers</h3>
+            <p class="hint lo-earn">Rewards from past events. They can't be bought in the shop.</p>
+            <div id="lo-events" class="lo-grid"></div>
           </div>
           <div class="lo-right card">
             <div class="lo-preview">
@@ -117,6 +120,8 @@
           </div>
         </div>
       </div>
+      <!-- Variants menu: pick, buy and unlock versions of the selected tower -->
+      <div id="lo-variants" class="lo-modal hidden"></div>
     </div>
 
     <!-- ================= Multiplayer hub ================= -->

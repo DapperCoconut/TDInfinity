@@ -26,16 +26,46 @@ export const CLIFFS = [
   { x: 76, z: 22, r: 7, h: 4.5 },
   { x: 8, z: -54, r: 7, h: 5 },
 ];
-const CLIFF_INSET = 2.6; // a tower's center must be this far inside the cliff edge
+// Water pools right next to the track. Water towers (Patrol Boat) can only go in these;
+// nothing else can, and no trees or rocks grow in them.
+export const POOLS = [
+  { x: -20.5, z: -18, r: 7 }, // west of the long middle straight
+  { x: 40, z: 24.5, r: 7 }, // just south of the top-right bend
+];
+const POOL_INSET = 1.5; // a boat's center must be this far inside the shoreline
+
+/** The water pool at (x, z), if any (map-local coordinates). */
+export function poolAt(x, z) {
+  if (path.time) return null;
+  return POOLS.find((p) => Math.hypot(x - p.x, z - p.z) < p.r) ?? null;
+}
+
+/** Why a tower with this placement can't go somewhere (for error toasts). */
+export function placeFail(def, article = '') {
+  const name = article ? `${article} ${def.name}` : def.name;
+  if (def.placement === 'cliff') return `${name} can only go on top of a cliff!`;
+  if (def.placement === 'water') return `${name} can only go in water!`;
+  return "Can't place there!";
+}
+
+// Towers are drawn TOWER_SIZE x their model size (see src/scale.js), so their footprint grows too.
+const TOWER_SIZE = 1; // keep equal to MODEL_SCALE
+const CLIFF_INSET = 2.1 * TOWER_SIZE; // a tower's center must be this far inside the cliff edge
 
 /** The cliff at (x, z), if any (map-local coordinates). */
 export function cliffAt(x, z) {
+  if (path.time) return null; // the time dimension is flat
   return CLIFFS.find((c) => Math.hypot(x - c.x, z - c.z) < c.r) ?? null;
 }
 
 /** Ground height at world (x, z): cliff tops are raised. Works on every Versus lane. */
 export function heightAt(x, z) {
   return cliffAt(x, foldZ(z))?.h ?? 0;
+}
+
+/** A level's stats where a tower stands: on a cliff top its `cliff` fields replace the rest (Penetrator). */
+export function levelAt(s, x, z) {
+  return s.cliff && heightAt(x, z) > 0 ? { ...s, ...s.cliff } : s;
 }
 
 function generate() {
@@ -50,6 +80,7 @@ function generate() {
     Math.hypot(x - PLAYER_SPAWN.x, z - PLAYER_SPAWN.z) < 12 ||
     obstacles.some((o) => Math.hypot(x - o.x, z - o.z) < o.r + pad) ||
     CLIFFS.some((c) => Math.hypot(x - c.x, z - c.z) < c.r + pad) ||
+    POOLS.some((p) => Math.hypot(x - p.x, z - p.z) < p.r + pad) ||
     (x < -88 && Math.abs(z - path.start.z) < 14);
 
   for (let i = 0; i < 800 && trees.length < 55; i++) {
@@ -88,16 +119,23 @@ export const MAP = generate();
 
 /**
  * Can a tower go at (x, z)? `towers` is any iterable of objects with x and z.
- * placement: 'ground' (default), 'cliff' (cliff tops only) or 'any'.
+ * placement: 'ground' (default), 'cliff' (cliff tops only), 'water' (pools only) or 'any'
+ * (ground or cliff, not water).
  */
 export function canPlace(x, z, towers, placement = 'ground') {
   if (!Number.isFinite(x) || !Number.isFinite(z)) return false;
-  for (const t of towers) if (Math.hypot(t.x - x, t.z - z) < 4) return false;
+  for (const t of towers) if (Math.hypot(t.x - x, t.z - z) < 4 * TOWER_SIZE) return false;
+  const pool = poolAt(x, z);
+  if (placement === 'water') return !!pool && Math.hypot(x - pool.x, z - pool.z) <= pool.r - POOL_INSET;
+  if (pool) return false;
   const cliff = cliffAt(x, z);
   if (cliff) return placement !== 'ground' && Math.hypot(x - cliff.x, z - cliff.z) <= cliff.r - CLIFF_INSET;
   if (placement === 'cliff') return false;
   if (x < BOUNDS.minX + 2 || x > BOUNDS.maxX - 2 || z < BOUNDS.minZ + 2 || z > BOUNDS.maxZ - 2) return false;
-  if (path.distanceTo(x, z) < PATH_WIDTH / 2 + 1.6) return false;
-  if (CLIFFS.some((c) => Math.hypot(c.x - x, c.z - z) < c.r + 1.6)) return false;
-  return !MAP.obstacles.some((o) => Math.hypot(o.x - x, o.z - z) < o.r + 1.6);
+  const pad = 1.6 * TOWER_SIZE;
+  if (path.distanceTo(x, z) < PATH_WIDTH / 2 + pad) return false;
+  // The time dimension has no trees, rocks or cliffs: only the castle is in the way.
+  if (path.time) return Math.hypot(CASTLE.x - x, CASTLE.z - z) >= 9 + pad;
+  if (CLIFFS.some((c) => Math.hypot(c.x - x, c.z - z) < c.r + pad)) return false;
+  return !MAP.obstacles.some((o) => Math.hypot(o.x - x, o.z - z) < o.r + pad);
 }

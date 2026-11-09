@@ -3,7 +3,7 @@ import { DEFAULT_DIFFICULTY, DIFFICULTIES, GAME, MP, PLAYER_COLORS, TOWERS, VERS
 import { LoadoutScreen } from './loadout.js';
 import { audio } from './audio.js';
 import { profile } from './profile.js';
-import { abilityText, boostText, cannonText, damageText, detectText, dpsText, extrasText, gunText, rosterText, unitDps, unitName } from './stats.js';
+import { abilityText, boostText, cannonText, damageText, detectText, dpsText, extrasText, gunText, rosterText, spawnerUnits, unitDps, unitName } from './stats.js';
 import { LocalSession, NetSession } from './session.js';
 
 const $ = (id) => document.getElementById(id);
@@ -55,7 +55,7 @@ export class Lobby {
     profile.onChange(() => {
       this.renderInventory();
       this.loadoutScreen.render();
-      this.net.send({ type: 'loadout', towers: profile.battleLoadout() });
+      this.net.send({ type: 'loadout', towers: profile.battleLoadout(), evo: profile.evoLevels() });
     });
 
     // Rooms
@@ -171,7 +171,7 @@ export class Lobby {
   startSolo() {
     this.inGame = true;
     this.show(null);
-    this.client.start(new LocalSession(this.name, PLAYER_COLORS[0], this.difficulty));
+    this.client.start(new LocalSession(this.name, PLAYER_COLORS[0], this.difficulty, profile.evoLevels()));
   }
 
   /** Title screen difficulty buttons. */
@@ -184,7 +184,7 @@ export class Lobby {
 
   async openMultiplayer() {
     await this.net.connect(this.name);
-    this.net.send({ type: 'loadout', towers: profile.battleLoadout() });
+    this.net.send({ type: 'loadout', towers: profile.battleLoadout(), evo: profile.evoLevels() });
     $('mp-me').textContent = `Playing as ${this.net.name}`;
     this.show(this.room ? 'room' : 'mp');
   }
@@ -252,7 +252,11 @@ export class Lobby {
       return `<td class="${text === 'None' ? 'no' : 'yes'}">${text}</td>`;
     };
     const th = (names) => names.map((n) => `<th>${n}</th>`).join('');
-    if (def.kind === 'income') return { head: th(['Income per wave']), cells: (l) => `<td class="yes">$${l.income.toLocaleString()}</td>` };
+    // Oil Derrick: cash every few seconds, plus (Bottom path) every wave.
+    if (def.kind === 'income' && def.levels.some((l) => l.oil)) {
+      return { head: th(['Oil', 'Income per wave']), cells: (l) => `<td class="yes">${l.oil ? `$${l.oil.pay.toLocaleString()} every ${l.oil.every}s` : '–'}</td><td class="yes">${l.income ? `$${l.income.toLocaleString()}` : '–'}</td>` };
+    }
+    if (def.kind === 'income') return { head: th(['Income per wave']), cells: (l) => `<td class="yes">$${(l.income ?? 0).toLocaleString()}</td>` };
     if (def.kind === 'support') {
       return {
         head: th(['Boost range', 'Boosts', 'Shoots', 'Abilities']),
@@ -272,10 +276,14 @@ export class Lobby {
       return {
         head: th(['Unit', 'Gun', 'Cannon', 'Extras', 'DPS', 'Detection']),
         cells: (l) => {
-          const u = l.unit;
-          const extra = [u.ram && 'Rams', u.explode && `Explodes (${u.explode.damage})`, l.spawnNow && 'Sends at once', l.spawnEvery && l.spawnEvery !== def.spawnEvery && `Every ${l.spawnEvery}s`, ...(l.abilities || []).map((a) => abilityText(a))].filter(Boolean).join(', ');
-          return `<td>${unitName(u)}</td><td>${u.gun ? `${gunText(u.gun)}, range ${u.gun.range}` : '–'}</td><td>${cannonText(u.cannon) || '–'}</td>
-            <td>${extra || '–'}</td><td>${unitDps(u, l.spawnEvery ?? def.spawnEvery)}</td>${detect(l)}`;
+          // Armored Factory levels can send a second vehicle: one line per vehicle in each column.
+          const us = spawnerUnits(l, def);
+          const col = (f) => `<td>${us.map(f).join('<br>')}</td>`;
+          const extra = (u, i) =>
+            [u.ram && 'Rams', u.explode && `Explodes (${u.explode.damage})`, u.air && 'Flies', u.defense && `${Math.round(u.defense * 100)}% defense`, u.life && `Every ${us[i].every}s, lasts ${u.life}s`, l.queues && i === 0 && `${l.queues} queue${l.queues > 1 ? 's' : ''}`, i === 0 && l.spawnNow && 'Sends at once', (i > 0 || (l.spawnEvery && l.spawnEvery !== def.spawnEvery)) && `Every ${us[i].every}s`, ...(i === 0 ? l.abilities || [] : []).map((a) => abilityText(a))].filter(Boolean).join(', ') || '–';
+          const dps = us.reduce((sum, { unit, every }) => sum + unitDps(unit, every), 0);
+          return `${col(({ unit }) => unitName(unit))}${col(({ unit: u }) => (u.gun ? `${gunText(u.gun)}, range ${u.gun.range}` : '–'))}${col(({ unit }) => cannonText(unit.cannon) || '–')}
+            ${col(({ unit }, i) => extra(unit, i))}<td>${Math.round(dps * 10) / 10}</td>${detect(l)}`;
         },
       };
     }

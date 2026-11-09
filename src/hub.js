@@ -111,7 +111,7 @@ export function createHub(timers = {}) {
   function startGame(r) {
     r.state = 'game';
     r.ready.clear();
-    const players = r.members.map((id, i) => ({ id, name: clients.get(id)?.name ?? '?', color: PLAYER_COLORS[i % PLAYER_COLORS.length], loadout: clients.get(id)?.loadout }));
+    const players = r.members.map((id, i) => ({ id, name: clients.get(id)?.name ?? '?', color: PLAYER_COLORS[i % PLAYER_COLORS.length], loadout: clients.get(id)?.loadout, evo: clients.get(id)?.evo ?? {} }));
     // Versus: everyone gets their own map and fights to outlast the others.
     r.sim = r.mode === 'versus' ? new VersusSim(players) : new Sim(players, { mode: r.difficulty });
     r.tick = 0;
@@ -160,6 +160,10 @@ export function createHub(timers = {}) {
       if (!Array.isArray(m.towers)) return;
       const towers = [...new Set(m.towers.filter((t) => typeof t === 'string' && Object.hasOwn(TOWERS, t)))].slice(0, GAME.loadoutSize);
       c.loadout = towers.length ? towers : null;
+      // Evolution levels of the evolved towers they own (gates those towers' upgrades).
+      const evo = {};
+      if (m.evo && typeof m.evo === 'object') for (const [t, lv] of Object.entries(m.evo)) if ((TOWERS[t]?.evolved || /^perk:\w+$/.test(t)) && Number.isFinite(lv)) evo[t] = Math.max(0, Math.floor(lv));
+      c.evo = evo;
     },
 
     'rooms.list'(c) {

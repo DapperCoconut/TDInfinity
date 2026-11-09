@@ -2,17 +2,61 @@ import * as THREE from 'three';
 import { makeHumanoid } from './models.js';
 import { BOUNDS } from './sim/path.js';
 import { clamp, lerpAngle } from './utils.js';
+import { PLAYER_SCALE } from './scale.js';
 
-const SPEED = 16;
-const JUMP = 16;
-const GRAVITY = 48;
-const RADIUS = 0.9;
-const STEP = 0.3; // how far below an object's top our feet can be and still land on it
+// The player is drawn at its original size inside the 3x-smaller map, so its movement (in sim
+// units) is scaled up by the same amount to look and feel the same.
+const P = PLAYER_SCALE;
+const SPEED = 16 * P;
+const JUMP = 18.5 * P; // just enough to hop onto the castle walls
+const GRAVITY = 48 * P;
+const RADIUS = 0.9 * P;
+const STEP = 0.3 * P; // how far below an object's top our feet can be and still land on it
+const LAND_PAD = RADIUS * 0.5; // our feet can hang this far over an edge and still stand on it
+
+// Colliders are solid shapes you can stand on top of: a circle { x, z, r, h } or an axis-aligned
+// box { x, z, hx, hz, h } (half sizes), both h tall from the ground.
+function over(o, x, z, pad) {
+  if (o.hx !== undefined) return Math.abs(x - o.x) < o.hx + pad && Math.abs(z - o.z) < o.hz + pad;
+  return Math.hypot(x - o.x, z - o.z) < o.r + pad;
+}
+
+/** Pushes pos (x, z) out of collider o's footprint, keeping `rad` away from it. */
+function pushOut(o, pos, rad) {
+  if (o.hx === undefined) {
+    const dx = pos.x - o.x;
+    const dz = pos.z - o.z;
+    const d = Math.hypot(dx, dz);
+    const min = o.r + rad;
+    if (d < min && d > 1e-4) {
+      pos.x = o.x + (dx / d) * min;
+      pos.z = o.z + (dz / d) * min;
+    }
+    return;
+  }
+  const cx = clamp(pos.x, o.x - o.hx, o.x + o.hx);
+  const cz = clamp(pos.z, o.z - o.hz, o.z + o.hz);
+  const dx = pos.x - cx;
+  const dz = pos.z - cz;
+  const d = Math.hypot(dx, dz);
+  if (d >= rad) return;
+  if (d > 1e-4) {
+    pos.x = cx + (dx / d) * rad;
+    pos.z = cz + (dz / d) * rad;
+    return;
+  }
+  // Center inside the box: out through the nearest face.
+  const ex = o.hx - Math.abs(pos.x - o.x);
+  const ez = o.hz - Math.abs(pos.z - o.z);
+  if (ex < ez) pos.x = o.x + Math.sign(pos.x - o.x || 1) * (o.hx + rad);
+  else pos.z = o.z + Math.sign(pos.z - o.z || 1) * (o.hz + rad);
+}
 
 export class Player {
   constructor(scene, pos, color = 0x1e88e5) {
     this.scene = scene;
     this.h = makeHumanoid({ skin: 0xf5cd30, shirt: color, pants: 0x43a047, face: 'smile' });
+    this.h.root.scale.setScalar(PLAYER_SCALE);
     scene.add(this.h.root);
     this.pos = new THREE.Vector3(pos.x, pos.y, pos.z);
     this.moving = false;
@@ -58,24 +102,13 @@ export class Player {
     this.pos.y += this.vy * dt;
 
     // Push out of trees, rocks, towers, castle - unless we're up on top of it.
-    // Colliders with a height `h` are short enough to stand on; ones without are walls.
-    for (const o of colliders) {
-      if (o.h !== undefined && this.pos.y >= o.h - STEP) continue;
-      const dx = this.pos.x - o.x;
-      const dz = this.pos.z - o.z;
-      const d = Math.hypot(dx, dz);
-      const min = o.r + RADIUS;
-      if (d < min && d > 1e-4) {
-        this.pos.x = o.x + (dx / d) * min;
-        this.pos.z = o.z + (dz / d) * min;
-      }
-    }
+    for (const o of colliders) if (this.pos.y < o.h - STEP) pushOut(o, this.pos, RADIUS);
 
     // Land on the ground or on top of whatever we're standing over; walk off an edge and fall.
     let ground = 0;
     for (const o of colliders) {
-      if (o.h === undefined || o.h > this.pos.y + STEP || o.h <= ground) continue;
-      if (Math.hypot(this.pos.x - o.x, this.pos.z - o.z) < o.r) ground = o.h;
+      if (o.h > this.pos.y + STEP || o.h <= ground) continue;
+      if (over(o, this.pos.x, this.pos.z, LAND_PAD)) ground = o.h;
     }
     if (this.pos.y <= ground) {
       this.pos.y = ground;

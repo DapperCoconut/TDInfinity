@@ -1,4 +1,5 @@
 // Tiny synthesized sound effects (no audio files needed).
+import { TOWERS } from './config.js';
 
 let ctx = null;
 let master = null;
@@ -58,6 +59,7 @@ export const audio = {
   },
   shot(level, type) {
     if (!ctx) return;
+    type = TOWERS[type]?.goldOf ?? type; // golden towers sound like their normal version
     const now = ctx.currentTime;
     if (now - lastShot < 0.03) return; // avoid stacking dozens of shots in one frame
     lastShot = now;
@@ -108,7 +110,21 @@ export const audio = {
       tone(level >= 4 ? 120 : 200, 0.12, { type: 'triangle', vol: 0.08, slide: 60 });
       return;
     }
-    if (type === 'electro') {
+    if (type === 'tesla') {
+      // Heavy crackling arc
+      noise(0.2, { vol: 0.18, freq: 3200 });
+      tone(420 + level * 60, 0.16, { type: 'sawtooth', vol: 0.06, slide: 120 });
+      return;
+    }
+    if (type === 'toxicnatorSaboteur') {
+      // Muffled pellet shotgun with a wet hiss
+      if (now - lastRapid < 0.06) return;
+      lastRapid = now;
+      noise(0.12, { vol: 0.2, freq: 1400, type: 'lowpass' });
+      noise(0.1, { vol: 0.05, freq: 5000, type: 'highpass' });
+      return;
+    }
+    if (type === 'electro' || type === 'electroTrooper') {
       // Crackling zap
       noise(0.12, { vol: 0.14, freq: 4000 });
       tone(900 + level * 120, 0.1, { type: 'square', vol: 0.05, slide: 200 });
@@ -120,6 +136,22 @@ export const audio = {
       noise(0.08, { vol: 0.05, freq: 4500, type: 'highpass' });
       return;
     }
+    if (type === 'shotgunnerCombat' || type === 'shotgunnerCombatBottom') {
+      // Buckshot boom; heavier for the DB-12 / SWAT. One per blast, not per zombie hit.
+      if (now - lastRapid < 0.06) return;
+      lastRapid = now;
+      noise(0.16, { vol: 0.28, freq: type === 'shotgunnerCombatBottom' && level >= 4 ? 600 : 1000, type: 'lowpass' });
+      if (type === 'shotgunnerCombatBottom') tone(110, 0.12, { type: 'triangle', vol: 0.1, slide: 50 });
+      return;
+    }
+    if (type === 'frostRanger' || type === 'frostRangerBottom') {
+      // Icy rifle crack with a glassy ping
+      if (now - lastRapid < 0.06) return;
+      lastRapid = now;
+      noise(0.06, { vol: 0.12, freq: 3200, type: 'highpass' });
+      tone(1500 + level * 100, 0.06, { type: 'sine', vol: 0.04, slide: 2200 });
+      return;
+    }
     if (type === 'shotgunnerPump') {
       noise(0.2, { vol: 0.3, freq: 900 });
       return;
@@ -128,6 +160,15 @@ export const audio = {
       // Big-bore rifle boom (an explosive cannon blast at max level)
       if (level >= 4) tone(70, 0.4, { type: 'sawtooth', vol: 0.14, slide: 35 });
       noise(0.3, { vol: 0.38, freq: level >= 4 ? 400 : 600 });
+      return;
+    }
+    if (type === 'mercLaser' || type === 'mercLaserBottom') {
+      // Laser zap (rapid SMG / minigun zaps are rate-limited)
+      if (level >= 3) {
+        if (now - lastRapid < 0.07) return;
+        lastRapid = now;
+      }
+      tone(level >= 3 ? 1500 : 1200, 0.07, { type: 'square', vol: 0.05, slide: 450 });
       return;
     }
     if (type === 'turret') {
@@ -141,7 +182,7 @@ export const audio = {
       noise(0.2, { vol: 0.3, freq: 650 });
       return;
     }
-    if (type === 'commando' || type === 'commandoMinigunner' || type === 'aviator' || type === 'rifleman' || type === 'riflemanMilitant' || type === 'aviatorAce') {
+    if (type === 'commando' || type === 'commandoMinigunner' || type === 'aviator' || type === 'mercMilitant' || type === 'aviatorAce' || type === 'merc') {
       if (now - lastRapid < 0.07) return; // rapid-fire guns would otherwise drown everything out
       lastRapid = now;
     }
@@ -150,7 +191,7 @@ export const audio = {
       if (level >= 4) tone(1300, 0.05, { type: 'square', vol: 0.04, slide: 600 });
       else noise(0.04, { vol: 0.14, freq: 2200 });
     } else if (type === 'aviator' || type === 'aviatorAce') noise(0.04, { vol: 0.08, freq: 3000 });
-    else if (type === 'rifleman' || type === 'riflemanMilitant') noise(0.05, { vol: level >= 4 ? 0.16 : 0.11, freq: level >= 4 ? 1500 : 2600 });
+    else if (type === 'mercMilitant' || type === 'merc') noise(0.05, { vol: level >= 4 ? 0.16 : 0.11, freq: level >= 4 ? 1500 : 2600 });
     else if (type === 'marksman') {
       // Heavy rifle crack (pulse zap when maxed)
       if (level >= 4) tone(900, 0.18, { type: 'sawtooth', vol: 0.1, slide: 120 });
@@ -161,12 +202,24 @@ export const audio = {
   },
   /** Grenade toss or mortar thump. */
   lob(type) {
-    if (type === 'mortar' || type === 'mortarClassic') {
+    if (type === 'mortar' || type === 'mortarClassic' || type === 'cryoMortar' || type === 'mortarArtillery' || type === 'mortarArtilleryBottom') {
       tone(70, 0.25, { type: 'sine', vol: 0.2, slide: 45 });
       noise(0.2, { vol: 0.2, freq: 400, type: 'lowpass' });
+    } else if (type === 'paintballer') {
+      tone(260, 0.06, { type: 'square', vol: 0.05, slide: 140 }); // air-gun thwip
+      noise(0.05, { vol: 0.08, freq: 2200 });
+    } else if (type === 'paint') {
+      noise(0.08, { vol: 0.1, freq: 900, type: 'lowpass' }); // wet splat
+    } else if (type === 'gas') {
+      noise(0.45, { vol: 0.07, freq: 2500 }); // gas hiss
+    } else if (type === 'grenadierAssaultBottom') {
+      noise(0.12, { vol: 0.06, freq: 1200 });
+      tone(900, 0.08, { type: 'square', vol: 0.03, slide: 1800 }); // shock grenade crackle
     } else noise(0.12, { vol: 0.06, freq: 1200 });
   },
-  rocket(level) {
+  rocket(level, type) {
+    if (type === 'rocketeerTrooperBottom' && level >= 5) return noise(0.2, { vol: 0.09, freq: 1100 }); // MRL: quick light whooshes
+    if (type === 'rocketeerTrooper' && level >= 5) tone(160, 0.4, { type: 'triangle', vol: 0.08, slide: 60 }); // Javelin: heavy launch thump
     noise(0.35, { vol: 0.16, freq: 700 });
     if (level >= 4) tone(500, 0.3, { type: 'sawtooth', vol: 0.05, slide: 1200 });
   },

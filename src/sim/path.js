@@ -1,7 +1,8 @@
 // Shared (client + server) path geometry. Plain math only — no three.js, no DOM.
 import { clamp } from '../utils.js';
 
-export const PATH_WIDTH = 7;
+// Just wide enough for one zombie (~4 units wide) to walk single file.
+export const PATH_WIDTH = 4.4;
 export const BOUNDS = { minX: -104, maxX: 104, minZ: -66, maxZ: 66 };
 export const PLAYER_SPAWN = { x: 8, y: 0, z: 0 };
 
@@ -11,8 +12,18 @@ const PATH_POINTS = [
   [25, -35], [25, 35], [55, 35], [55, -10], [90, -10],
 ];
 
+// Insane mode's Beholder pulls everyone into the time dimension: one long straight path that
+// ends where the normal one does (so the castle stays put).
+const TIME_POINTS = [[-100, -10], [90, -10]];
+
 export class Path {
   constructor(pts) {
+    this.time = false; // true while the map is the Beholder's time dimension
+    this.set(pts);
+  }
+
+  /** Re-lays the path through `pts` ([[x, z], ...]). */
+  set(pts) {
     this.points = pts.map(([x, z]) => ({ x, z }));
     this.segs = [];
     let total = 0;
@@ -78,3 +89,14 @@ export class Path {
 }
 
 export const path = new Path(PATH_POINTS);
+
+/**
+ * Switches the shared path between the normal map and the time dimension. Everything that reads
+ * `path` (sim, views, placement) follows it. Safe to call again with the same value.
+ */
+export function setTimeWorld(on) {
+  on = !!on;
+  if (path.time === on) return;
+  path.time = on;
+  path.set(on ? TIME_POINTS : PATH_POINTS);
+}
