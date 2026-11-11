@@ -181,7 +181,7 @@ const TABLE = {
   sniperQuinn: 'bladed asbuilt - wander bolt',
   enforcer: 'bladed overhead frontM stoic swing',
   enforcerWarden: 'wide cocked lowered proud chop',
-  enforcerSlammer: 'sumo overhead sideM hunch chop',
+  enforcerSlammer: 'sumo overhead frontM hunch chop',
   enforcerSlammerBottom: 'lunge shoulderM frontM rock chop',
   enforcerChef: 'toe cocked frontM nod chop',
   grenadier: 'march overhead lowered toss lob',

@@ -1,7 +1,7 @@
 // Tower models, file 12 of 12. Each makeX(level) builds one tower's look.
 // In here:
-// Void Traitor, Psycho Slayer, Bubble Blower, Firecracker,
-// Penetrator. (MLRS: machines3.js; Darter: people1.js; Quarterer: people2.js.)
+// Void Traitor, Psycho Slayer, Bubble Blower, Firecracker.
+// (MLRS: machines3.js; Darter: people1.js; Quarterer: people2.js; Penetrator: people5.js.)
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
 
 import * as THREE from 'three';
@@ -235,46 +235,3 @@ export function makeFirecracker(level) {
   return h;
 }
 
-/**
- * Penetrator (alternate Sniper form): a crossbowman with a heavy bolt thrower. Lv 1 a quiver of
- * flaming bolts, Lv 2 a hood and bracers, Lv 3 a longer bow with steel limbs, Lv 4 a dark
- * siege crossbow with purple-glowing string.
- */
-export function makePenetrator(level) {
-  const siege = level >= 4;
-  const shirt = siege ? 0x1c1726 : 0x33691e;
-  const h = makeHumanoid({ skin: 0xd2a679, shirt, pants: siege ? 0x14101c : 0x3e2723, arms: shirt, face: 'soldier' });
-  const { M } = h;
-  const shard = glow(h, 0xb388ff);
-  const wood = M(siege ? 0x263238 : level >= 3 ? 0x5d4037 : 0x795548);
-  part(h.torso, boxGeo(0.35, 0.35, 0.06), shard, 0.55, 0.45, 0.52);
-  if (level >= 1) {
-    // Quiver of flaming bolts on the back
-    part(h.torso, boxGeo(0.6, 1.6, 0.5), M(0x4e342e), 0.5, 0.2, -0.85).rotation.z = 0.3;
-    for (const x of [0.35, 0.6]) part(h.torso, boxGeo(0.1, 0.35, 0.1), glow(h, 0xff7043), x + 0.25, 1.1, -0.85);
-  }
-  if (level >= 2) {
-    const hood = M(siege ? 0x14101c : 0x1b5e20);
-    part(h.head, boxGeo(1.4, 1.35, 1.4), hood, 0, 0.65, -0.08);
-    part(h.head, boxGeo(0.6, 0.4, 0.4), hood, 0, 1.3, -0.65);
-    for (const arm of [h.rightArm, h.leftArm]) part(arm, boxGeo(1.05, 0.6, 1.05), M(0x6d4c41), 0, -1.5, 0); // bracers
-  } else {
-    part(h.head, boxGeo(1.38, 0.45, 1.38), M(0x558b2f), 0, 1.3, 0); // cap
-    part(h.head, boxGeo(0.3, 0.3, 0.06), shard, 0, 1.32, 0.7);
-  }
-  // The crossbow: a stock along the arm with limbs across its front end.
-  const len = level >= 2 ? 3.2 : 2.8;
-  const gun = holdLongGun(h, len, wood);
-  const span = level >= 3 ? 3.4 : 2.8;
-  const limb = M(level >= 3 ? 0x90a4ae : 0x6d4c41);
-  for (const side of [-1, 1]) {
-    const l = part(gun, boxGeo(span / 2, 0.2, 0.25), limb, (side * span) / 4, -len + 0.5, 0);
-    l.rotation.z = side * 0.18;
-  }
-  part(gun, boxGeo(span * 0.95, 0.05, 0.05), siege ? glow(h, 0xb388ff) : M(0xeeeeee), 0, -len + 0.85, 0); // string
-  part(gun, boxGeo(0.12, 1.4, 0.12), M(0xbdbdbd), 0, -len + 0.3, 0.25); // loaded bolt
-  part(gun, boxGeo(0.3, 0.6, 0.4), wood, 0, 0.2, -0.05); // butt
-  if (siege) part(gun, boxGeo(0.26, 1.2, 0.32), M(0x1a1a1a), 0, -1.2, 0.38); // scope
-  h.tracer = siege ? 0xb388ff : 0xd7ccc8;
-  return h;
-}

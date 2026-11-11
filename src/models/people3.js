@@ -26,7 +26,7 @@ function bandana(k, col) {
 }
 
 /** A knit beanie with a folded cuff and rib lines (head space). */
-function beanie(k, col, tall = 0.62) {
+export function beanie(k, col, tall = 0.62) {
   dome(k, 0.72, tall, col, 0, 0.9, 0);
   k.cyl(0.735, 0.24, tone(col, 0.82), 0, 1.0, 0, { seg: 22 });
   for (let i = 0; i < 12; i++) {
@@ -36,7 +36,7 @@ function beanie(k, col, tall = 0.62) {
 }
 
 /** A balaclava over the whole head with a slit for the eyes (head space). */
-function balaclava(k, col) {
+export function balaclava(k, col) {
   k.cyl(0.66, 0.9, col, 0, 0.48, 0, { seg: 22 });
   dome(k, 0.66, 0.42, col, 0, 0.93, 0);
   k.cyl(0.69, 0.16, tone(col, 0.8), 0, 0.1, 0, { seg: 22 }); // neck roll

@@ -1,14 +1,15 @@
 // Tower models, file 7 of 12. Each makeX(level) builds one tower's look.
 // In here:
-// Necromancer, Engineer, Sentry, Grave, Hacker, Hologram, Slammer.
-// (XWM Turret moved to machines7.js, John to people2.js, Accelerator and Laser Railgunner to people4.js.)
+// Necromancer, Engineer, Sentry, Grave, Hacker, Hologram.
+// (XWM Turret moved to machines7.js, John to people2.js, Accelerator and Laser Railgunner to people4.js,
+// Slammer to people5.js.)
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
 
 import * as THREE from 'three';
 import { makeMechTurret } from '../newmodels/e.js';
 import { makeEngDevice } from '../newmodels/i.js';
 import { boxGeo, makeHumanoid, part, setOpacity } from './kit.js';
-import { glow, glowThing, gunMuzzle, helmet, holdLongGun, makeThing, setMuzzle, turret } from './bits.js';
+import { glow, glowThing, gunMuzzle, helmet, holdLongGun, makeThing, turret } from './bits.js';
 import { makeEnemy } from './enemy.js';
 
 // ------------------------------------------------------------------ Necromancer, Engineer, Accelerator
@@ -266,49 +267,4 @@ export function makeHologram(def) {
   return h;
 }
 
-/**
- * Slammer (alternate Enforcer form): a strong woman with a big sledgehammer. Top path: a bigger,
- * heavier hammer (fiery at Lv 6). Bottom path: a glowing blue Shock Hammer from Lv 4 with a
- * battery pack. A purple Dimension Shard emblem marks it as an alternate form.
- */
-export function makeSlammer(level, bottom = false) {
-  const top = !bottom;
-  const shock = bottom && level >= 3;
-  const shirt = shock ? 0x0d47a1 : 0xad1457;
-  const h = makeHumanoid({ skin: 0xf1c27d, shirt, pants: 0x37474f, arms: 0xf1c27d, face: 'smile' });
-  const { M } = h;
-  const shard = glow(h, 0xb388ff);
-  // Ponytail and a headband
-  part(h.head, boxGeo(1.3, 0.4, 1.3), M(0x6d4c41), 0, 1.3, -0.02);
-  part(h.head, boxGeo(0.5, 1.0, 0.5), M(0x6d4c41), 0, 0.9, -0.85);
-  part(h.head, boxGeo(1.3, 0.2, 1.3), M(shock ? 0x40c4ff : 0xffffff), 0, 1.05, 0);
-  part(h.torso, boxGeo(0.35, 0.35, 0.06), shard, -0.55, 0.45, 0.52);
-  if (level >= 1) for (const arm of [h.rightArm, h.leftArm]) part(arm, boxGeo(1.05, 0.5, 1.05), M(0x212121), 0, -1.75, 0); // gloves
-  if (level >= 2) part(h.torso, boxGeo(2.1, 0.35, 1.1), M(0x3e2723), 0, -0.85, 0); // lifting belt
-  if (level >= 3) part(h.torso, boxGeo(2.15, 1.5, 1.15), M(shock ? 0x1565c0 : 0x880e4f), 0, 0.15, 0); // armor
-  if (shock) {
-    part(h.torso, boxGeo(1.3, 1.4, 0.6), M(0x263238), 0, 0, -0.8); // battery pack
-    part(h.torso, boxGeo(0.3, 1.0, 0.1), glow(h, 0x40c4ff), 0, 0, -1.12);
-  }
-  // Sledgehammer
-  const big = top ? [1, 1, 1.15, 1.3, 1.45, 1.65][level] : 1 + level * 0.05;
-  const ham = new THREE.Group();
-  ham.position.set(0, -1.9, 0);
-  ham.scale.setScalar(big);
-  h.rightArm.add(ham);
-  part(ham, boxGeo(0.28, 2.6, 0.28), M(0x5d4037), 0, -1.1, 0);
-  const headMat = top && level >= 5 ? glow(h, 0xff6d00) : shock ? M(0x1e88e5) : M(0x616161);
-  part(ham, boxGeo(0.9, 0.9, 1.6), headMat, 0, -2.4, 0);
-  if (shock) for (const z of [-0.6, 0.6]) part(ham, boxGeo(1.0, 0.2, 0.2), glow(h, 0x80d8ff), 0, -2.4, z);
-  if (top && level >= 3) part(ham, boxGeo(1.0, 1.0, 0.2), M(0x212121), 0, -2.4, 0); // steel band
-  setMuzzle(h, ham, 0, -2.6, 0);
-  h.rightArm.rotation.set(-2.6, 0, 0.15);
-  h.leftArm.rotation.set(-2.4, 0, -0.3);
-  h.pose = { right: -2.6, left: -2.4, leftRecoil: 0 };
-  h.swing = 2.2;
-  h.melee = true;
-  h.tracer = shock ? 0x40c4ff : top && level >= 5 ? 0xff6d00 : 0xffffff;
-  return h;
-}
-export const makeSlammerBottom = (level) => makeSlammer(level, true);
 
