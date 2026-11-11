@@ -3,6 +3,7 @@ import { Lobby } from './lobby.js';
 import { Net } from './net.js';
 import { audio } from './audio.js';
 import { profile } from './profile.js';
+import { DIFFICULTIES } from './config.js';
 
 const net = new Net();
 const lobby = new Lobby(net);
@@ -10,8 +11,12 @@ const client = new GameClient(document.getElementById('game'), lobby.clientHooks
 lobby.client = client;
 lobby.show('title');
 
+// Music plays everywhere, menus included, but a browser only lets a page make sound after a click
+// or a key press: the first one anywhere starts it.
+for (const ev of ['pointerdown', 'keydown']) window.addEventListener(ev, () => audio.unlock(), { capture: true });
+
 // Handy for debugging in the browser console.
-window.td = { client, net, lobby };
+window.td = { client, net, lobby, audio };
 
 // Konami code (↑ ↑ ↓ ↓ ← → ← → B A): infinite cash in a game; in the menus, infinite credits and
 // shards, and every event tower unlocked.
@@ -31,7 +36,10 @@ window.addEventListener('keydown', (e) => {
   // In the menus: infinite credits for the shop and infinite Dimension Shards for alternate forms.
   profile.credits = Infinity;
   profile.shards = Infinity;
+  profile.gems = Infinity;
+  for (const k of Object.keys(DIFFICULTIES)) if (!profile.beaten.includes(k) && k !== 'hardcore') profile.beaten.push(k); // opens Hardcore
   profile.unlockEvents(); // also saves
   audio.upgrade();
-  lobby.toast('∞ credits, ∞ Dimension Shards and every event tower unlocked!');
+  lobby.renderDifficulty?.();
+  lobby.toast('∞ credits, ∞ Dimension Shards, ∞ Gems, Hardcore and every event tower unlocked!');
 });

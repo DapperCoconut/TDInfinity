@@ -1,6 +1,6 @@
 // Wave 9: the "hero" towers. 30 alternate forms of existing towers (bought with Dimension Shards),
-// three new base towers (Balloon Pal, Buzzer, Nuki Launcher, bought with credits) and one event
-// tower (Hayes).
+// three new base towers (Balloon Pal, Buzzer, Nuki Launcher, bought with credits) and Hayes (a
+// Scarecrow form).
 //
 // Numbers: in-game costs, damage, firerates and spawn timers are the spec's. Every distance (range,
 // splash radius, aura, jump, unit gun range) and unit speed is doubled, because the spec's game is
@@ -222,7 +222,7 @@ export const HERO_TOWERS = {
     blurb: 'A mushroom witch who throws poison flasks that hurt zombies over time. Sees hidden zombies from the start and can\'t be stunned. From Lv 2 every flask also heals your summons in range; from Lv 4 it poisons every zombie in range at once and frees stunned towers near it.',
     tip: 'Great spread out along the path early on. Keep one at Lv 4 if you want its un-stunning: Lv 5 throws a little slower.',
     levels: [
-      { name: 'Maitake', desc: 'Throws a flask that poisons one zombie (10/s for 8s).', damage: 0, cooldown: 2, range: 7, hidden: true, poison: { damage: 2, tick: 0.2, time: 8, slow: 0 } },
+      { name: 'Maitake', desc: 'Throws a flask that poisons one zombie (2.5/s for 8s).', damage: 0, cooldown: 2, range: 7, hidden: true, poison: { damage: 2, tick: 0.2, time: 8, slow: 0 } },
       { name: 'Potion Belt', desc: 'Stronger, longer poison, and each flask heals summons in range by 10 HP.', cost: 1500, damage: 0, cooldown: 2, range: 9, hidden: true,
         poison: { damage: 5, tick: 0.2, time: 11, slow: 0 }, flask: { heal: 10 } },
       { name: 'Cauldron', desc: 'The poison splashes onto nearby zombies, more range, heals summons 15 HP.', cost: 2200, damage: 0, cooldown: 2, range: 11, radius: 4, hidden: true,
@@ -339,9 +339,9 @@ export const HERO_TOWERS = {
     levels: [
       { name: 'Mako', desc: 'Chomps one zombie and splashes the ones around it.', damage: 6, cooldown: 2.5, range: 6.4, area: 3, hidden: false },
       { name: 'Pot Helmet', desc: 'More damage, a bigger splash, and it sees hidden zombies.', cost: 1000, damage: 20, cooldown: 4, range: 7, area: 4, hidden: true },
-      { name: 'Shark Knight', desc: 'Charges up while idle: 40 damage normally, up to 100 when fully charged (15s).', cost: 2500, damage: 40, cooldown: 3.8, range: 8, area: 5, hidden: true, charge: { max: 100, time: 15 } },
-      { name: 'Armored Knight', desc: '150-350 damage, faster swings, a bigger splash and more reach.', cost: 3500, damage: 150, cooldown: 3.4, range: 9, area: 6, hidden: true, charge: { max: 350, time: 14 } },
-      { name: 'Great Shark', desc: '250-500 damage, faster swings and charging, a huge splash and more reach.', cost: 6000, damage: 250, cooldown: 3, range: 11, area: 8, hidden: true, charge: { max: 500, time: 12 } },
+      { name: 'Shark Knight', desc: 'Charges up while idle: 24 damage normally, up to 100 when fully charged (15s).', cost: 2500, damage: 40, cooldown: 3.8, range: 8, area: 5, hidden: true, charge: { max: 100, time: 15 } },
+      { name: 'Armored Knight', desc: '90-350 damage, faster swings, a bigger splash and more reach.', cost: 3500, damage: 150, cooldown: 3.4, range: 9, area: 6, hidden: true, charge: { max: 350, time: 14 } },
+      { name: 'Great Shark', desc: '150-500 damage, faster swings and charging, a huge splash and more reach.', cost: 6000, damage: 250, cooldown: 3, range: 11, area: 8, hidden: true, charge: { max: 500, time: 12 } },
     ],
   },
 
@@ -429,11 +429,11 @@ export const HERO_TOWERS = {
     blurb: 'A kid living in a trash can who never hits directly: it throws damage-over-time effects on zombies that don\'t have them yet. Burn at Lv 1-3, Radioactive at Lv 4, Biohazard at Lv 5. Its effects ignore armor. Several of the same level don\'t stack, but different effects do.',
     tip: 'Mix levels: a Lv 3, a Lv 4 and a Lv 5 put all three effects on the same zombie.',
     levels: [
-      { name: 'Dumpster Child', desc: 'Burns a zombie (5/s for 2s).', damage: 0, cooldown: 3, range: 8, hidden: false, taint: { kind: 'burn', damage: 1, tick: 0.2, time: 2 } },
-      { name: 'Hot Lid', desc: 'A stronger, longer burn (10/s for 3s), faster, more range, and it sees hidden zombies.', cost: 1100, damage: 0, cooldown: 2.5, range: 9, hidden: true, taint: { kind: 'burn', damage: 2, tick: 0.2, time: 3 } },
-      { name: 'Trash Fire', desc: 'A much stronger burn: 30/s for 7s.', cost: 2500, damage: 0, cooldown: 2.2, range: 9.4, hidden: true, taint: { kind: 'burn', damage: 6, tick: 0.2, time: 7 } },
-      { name: 'Radioactive', desc: 'Switches to Radioactive: 55/s for 16s.', cost: 3800, damage: 0, cooldown: 2, range: 10, hidden: true, taint: { kind: 'radioactive', damage: 11, tick: 0.2, time: 16 } },
-      { name: 'Biohazard', desc: 'Switches to Biohazard: 75/s for 20s.', cost: 6000, damage: 0, cooldown: 1.9, range: 10, hidden: true, taint: { kind: 'biohazard', damage: 15, tick: 0.2, time: 20 } },
+      { name: 'Dumpster Child', desc: 'Burns a zombie (2.5/s for 2s).', damage: 0, cooldown: 3, range: 8, hidden: false, taint: { kind: 'burn', damage: 1, tick: 0.2, time: 2 } },
+      { name: 'Hot Lid', desc: 'A stronger, longer burn (5/s for 3s), faster, more range, and it sees hidden zombies.', cost: 1100, damage: 0, cooldown: 2.5, range: 9, hidden: true, taint: { kind: 'burn', damage: 2, tick: 0.2, time: 3 } },
+      { name: 'Trash Fire', desc: 'A much stronger burn: 15/s for 7s.', cost: 2500, damage: 0, cooldown: 2.2, range: 9.4, hidden: true, taint: { kind: 'burn', damage: 6, tick: 0.2, time: 7 } },
+      { name: 'Radioactive', desc: 'Switches to Radioactive: 27.5/s for 16s.', cost: 3800, damage: 0, cooldown: 2, range: 10, hidden: true, taint: { kind: 'radioactive', damage: 11, tick: 0.2, time: 16 } },
+      { name: 'Biohazard', desc: 'Switches to Biohazard: 37.5/s for 20s.', cost: 6000, damage: 0, cooldown: 1.9, range: 10, hidden: true, taint: { kind: 'biohazard', damage: 15, tick: 0.2, time: 20 } },
     ],
   },
 
@@ -703,12 +703,12 @@ export const HERO_TOWERS = {
     blurb: 'An academy that sends out one group of students at a time. They walk the path and stop to fight, sharing one health bar, and each one hits harder the closer its zombie is. Upgrades add new classmates: PK (ranged), Reese (revives the group), Sticky (quick shots) and Nelly (a fast fighter).',
     tip: 'Great early on one-path maps to catch zombies that slip past, and against slow, tanky zombies.',
     levels: [
-      { name: 'Oddport', desc: 'One student, 30 HP, 1-3 damage.', hidden: false, unit: oddport(1, 30, 1, 3, 6) },
-      { name: 'PK', desc: 'Adds PK, who throws ranged shots. 70 HP, 3-8 damage.', cost: 1500, hidden: false, unit: oddport(2, 70, 3, 8, 10) },
-      { name: 'Reese', desc: 'Adds Reese, who heals the group to full once when it would fall. 110 HP, 5-22 damage.', cost: 2700, hidden: false, unit: oddport(3, 110, 5, 22, 12, 1) },
-      { name: 'Sticky', desc: 'Adds Sticky, who fires fast weak shots, and Reese can revive twice. 200 HP, 10-45 damage, sees hidden zombies.', cost: 4200, hidden: true,
+      { name: 'Oddport', desc: 'One student, 11 HP, 0.3-0.9 damage.', hidden: false, unit: oddport(1, 30, 1, 3, 6) },
+      { name: 'PK', desc: 'Adds PK, who throws ranged shots. 24 HP, 0.9-2.4 damage.', cost: 1500, hidden: false, unit: oddport(2, 70, 3, 8, 10) },
+      { name: 'Reese', desc: 'Adds Reese, who heals the group to full once when it would fall. 39 HP, 1.5-6.6 damage.', cost: 2700, hidden: false, unit: oddport(3, 110, 5, 22, 12, 1) },
+      { name: 'Sticky', desc: 'Adds Sticky, who fires fast weak shots, and Reese can revive twice. 72 HP, 3-14 damage, sees hidden zombies.', cost: 4200, hidden: true,
         unit: { ...oddport(4, 200, 10, 45, 20, 2), hidden: true } },
-      { name: 'Nelly', desc: 'Adds Nelly, a fast melee fighter. 350 HP, 13-62 damage.', cost: 6800, hidden: true, unit: { ...oddport(5, 350, 13, 62, 24, 2), hidden: true } },
+      { name: 'Nelly', desc: 'Adds Nelly, a fast melee fighter. 125 HP, 3.9-19 damage.', cost: 6800, hidden: true, unit: { ...oddport(5, 350, 13, 62, 24, 2), hidden: true } },
     ],
   },
 
@@ -753,11 +753,11 @@ export const HERO_TOWERS = {
     blurb: 'A hooded kid who sends copies of himself in cardboard karts to crash into zombies. Cheap, with tough karts that are great on long maps. At Lv 5 a kart that runs out of health grabs a star: 7 seconds of invincible smashing.',
     tip: 'Good for stopping dangerous zombies before they reach your base, but not your main boss killer.',
     levels: [
-      { name: 'Kart Kid', desc: 'Sends a 30 HP kart every 27s.', hidden: false, unit: KART(30, 5) },
-      { name: 'Tougher Karts', desc: '120 HP karts that drive faster.', cost: 1400, hidden: false, spawnEvery: 26, unit: KART(120, 5.6) },
-      { name: 'Painted Karts', desc: '350 HP karts.', cost: 2500, hidden: false, spawnEvery: 26, unit: KART(350, 5.6) },
-      { name: 'Turbo Karts', desc: '500 HP karts, faster and a bit more often.', cost: 4000, hidden: false, spawnEvery: 25, unit: KART(500, 6) },
-      { name: 'Star Power', desc: '600 HP karts. When a kart runs out of health it gets a star: invincible for 7s, smashing zombies for 900 (20% less with each hit).', cost: 6500, hidden: false, spawnEvery: 25,
+      { name: 'Kart Kid', desc: 'Sends a 14 HP kart every 27s.', hidden: false, unit: KART(30, 5) },
+      { name: 'Tougher Karts', desc: '54 HP karts that drive faster.', cost: 1400, hidden: false, spawnEvery: 26, unit: KART(120, 5.6) },
+      { name: 'Painted Karts', desc: '160 HP karts.', cost: 2500, hidden: false, spawnEvery: 26, unit: KART(350, 5.6) },
+      { name: 'Turbo Karts', desc: '225 HP karts, faster and a bit more often.', cost: 4000, hidden: false, spawnEvery: 25, unit: KART(500, 6) },
+      { name: 'Star Power', desc: '270 HP karts. When a kart runs out of health it gets a star: invincible for 7s, smashing zombies for 405 (20% less with each hit).', cost: 6500, hidden: false, spawnEvery: 25,
         unit: KART(600, 7, { time: 7, damage: 900, fade: 0.8 }) },
     ],
   },
@@ -778,12 +778,12 @@ export const HERO_TOWERS = {
     blurb: 'A goblin who throws traps on the path that stun and hurt the zombie that steps on them, bosses too. Each trap only catches one zombie and takes a while to come back. From Lv 3 its Crucifix freezes the strongest zombie in range for 10s.',
     tip: 'Pair it with heavy melee hitters like Yasuke or Chef, and place it on a straight stretch near a corner.',
     levels: [
-      { name: 'El Goblino', desc: 'Throws a wood trap every 19s: 10 damage and a 2s stun.', cooldown: 19, range: 7.4, maxTraps: 3, hidden: true, order: ['bear'], bear: { damage: 10, stun: 2 } },
-      { name: 'Seek Trap', desc: '45-damage traps.', cost: 1800, cooldown: 19, range: 7.6, maxTraps: 3, hidden: true, order: ['bear'], bear: { damage: 45, stun: 2 } },
-      { name: 'Bob Trap', desc: '90-damage traps, a bit faster, and unlocks Crucifix: freeze the strongest zombie in range for 10s.', cost: 3000, cooldown: 18, range: 7.8, maxTraps: 3, hidden: true, order: ['bear'], bear: { damage: 90, stun: 2 },
+      { name: 'El Goblino', desc: 'Throws a wood trap every 19s: 30 damage and a 2s stun.', cooldown: 19, range: 7.4, maxTraps: 3, hidden: true, order: ['bear'], bear: { damage: 10, stun: 2 } },
+      { name: 'Seek Trap', desc: '135-damage traps.', cost: 1800, cooldown: 19, range: 7.6, maxTraps: 3, hidden: true, order: ['bear'], bear: { damage: 45, stun: 2 } },
+      { name: 'Bob Trap', desc: '270-damage traps, a bit faster, and unlocks Crucifix: freeze the strongest zombie in range for 10s.', cost: 3000, cooldown: 18, range: 7.8, maxTraps: 3, hidden: true, order: ['bear'], bear: { damage: 90, stun: 2 },
         abilities: [CRUCIFIX_AB] },
-      { name: 'Snare Trap', desc: '190-damage traps and a bit more range.', cost: 5200, cooldown: 18, range: 8, maxTraps: 3, hidden: true, order: ['bear'], bear: { damage: 190, stun: 2.5 }, abilities: [CRUCIFIX_AB] },
-      { name: 'Meat Trap', desc: '290-damage traps, the fastest throws and the longest range.', cost: 6700, cooldown: 17, range: 8.4, maxTraps: 3, hidden: true, order: ['bear'], bear: { damage: 290, stun: 3 }, abilities: [CRUCIFIX_AB] },
+      { name: 'Snare Trap', desc: '570-damage traps and a bit more range.', cost: 5200, cooldown: 18, range: 8, maxTraps: 3, hidden: true, order: ['bear'], bear: { damage: 190, stun: 2.5 }, abilities: [CRUCIFIX_AB] },
+      { name: 'Meat Trap', desc: '870-damage traps, the fastest throws and the longest range.', cost: 6700, cooldown: 17, range: 8.4, maxTraps: 3, hidden: true, order: ['bear'], bear: { damage: 290, stun: 3 }, abilities: [CRUCIFIX_AB] },
     ],
   },
 
@@ -863,7 +863,7 @@ export const HERO_TOWERS = {
     blurb: 'A tanuki with a cannon that fires Nukis onto the path from the longest range in the game. Each one lands with a splash and then stays there to fight, with no limit on how many pile up. Weak alone and slow to get going, and the most expensive tower to max.',
     tip: 'Build cheaper towers first and this one mid to late game. Don\'t skip waves, so Nukis have time to pile up.',
     levels: [
-      { name: 'Nuki Launcher', desc: 'Fires a Nuki every 18s: 7 splash damage, then it stays to fight.', damage: 7, cooldown: 18, range: 40, radius: 10, hidden: false, nuki: NUKI(80, 3, 1, false) },
+      { name: 'Nuki Launcher', desc: 'Fires a Nuki every 18s: 2.8 splash damage, then it stays to fight.', damage: 7, cooldown: 18, range: 40, radius: 10, hidden: false, nuki: NUKI(80, 3, 1, false) },
       { name: 'Drum Cannon', desc: 'More damage and range; it and its Nukis see hidden zombies.', cost: 3500, damage: 23, cooldown: 18, range: 50, radius: 10.4, hidden: true, nuki: NUKI(150, 8, 1, true) },
       { name: 'Elite Nukis', desc: 'Much more damage; Nukis attack in fast bursts of 4.', cost: 6000, damage: 50, cooldown: 18, range: 50, radius: 11, hidden: true, nuki: NUKI(250, 10, 4, true, true) },
       { name: 'Double Cannon', desc: 'More damage, huge range, stronger Nuki bursts, fires a bit faster.', cost: 8500, damage: 110, cooldown: 17, range: 60, radius: 11.2, hidden: true, nuki: NUKI(400, 18, 4, true, true) },
@@ -871,13 +871,17 @@ export const HERO_TOWERS = {
     ],
   },
 
-  // ---------------------------------------------------------------- event tower
+  // ---------------------------------------------------------------- Scarecrow form
 
-  // Hayes: a scarecrow that summons crows; they fly anywhere on the map and peck 12 times, then
-  // die. Guessed: peck rate from the spec's DPS table (1 / 0.7 / 0.7 / 0.6 / 0.5 s).
+  // Hayes (Scarecrow): a scarecrow that summons crows; they fly anywhere on the map and peck 12
+  // times, then die. Guessed: peck rate from the spec's DPS table (1 / 0.7 / 0.7 / 0.6 / 0.5 s).
+  // Was an event tower; now an alternate form of the Scarecrow (owners keep it, see profile.js).
   hayes: {
     name: 'Hayes',
-    event: 'Halloween event reward',
+    altOf: 'scarecrow',
+    form: 'Hayes',
+    shards: 3,
+    price: 0,
     cost: 650,
     limit: 2,
     kind: 'spawner',
@@ -986,9 +990,9 @@ export const HERO_TOWERS = {
     levels: [
       { name: 'Golden Mako', desc: 'Chomps one zombie and splashes the ones around it.', damage: 8, cooldown: 2.5, range: 6.4, area: 3, hidden: false },
       { name: 'Gold Pot Helmet', desc: 'More damage, a bigger splash, hidden detection, and it charges up while idle: up to 60 damage (8s).', cost: 1000, damage: 26, cooldown: 4, range: 7, area: 4, hidden: true, charge: { max: 60, time: 8 } },
-      { name: 'Golden Knight', desc: '52-160 damage, charging fully in 9s.', cost: 2500, damage: 52, cooldown: 3.8, range: 8, area: 5, hidden: true, charge: { max: 160, time: 9 } },
-      { name: 'Gilded Armor', desc: '195-550 damage, faster swings, a bigger splash, more reach, full charge in 8.5s.', cost: 3500, damage: 195, cooldown: 3.4, range: 9, area: 6, hidden: true, charge: { max: 550, time: 8.5 } },
-      { name: 'Golden Great Shark', desc: '325-800 damage, a huge splash, more reach, full charge in 7s.', cost: 6000, damage: 325, cooldown: 3, range: 11, area: 8, hidden: true, charge: { max: 800, time: 7 } },
+      { name: 'Golden Knight', desc: '27-160 damage, charging fully in 9s.', cost: 2500, damage: 52, cooldown: 3.8, range: 8, area: 5, hidden: true, charge: { max: 160, time: 9 } },
+      { name: 'Gilded Armor', desc: '100-550 damage, faster swings, a bigger splash, more reach, full charge in 8.5s.', cost: 3500, damage: 195, cooldown: 3.4, range: 9, area: 6, hidden: true, charge: { max: 550, time: 8.5 } },
+      { name: 'Golden Great Shark', desc: '170-800 damage, a huge splash, more reach, full charge in 7s.', cost: 6000, damage: 325, cooldown: 3, range: 11, area: 8, hidden: true, charge: { max: 800, time: 7 } },
     ],
   },
 };

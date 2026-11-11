@@ -4,6 +4,8 @@ import { CROSS_TOWERS } from './crosstowers.js';
 import { HERO_TOWERS } from './herotowers.js';
 import { TENTH_TOWERS } from './tenthtowers.js';
 import { GOLD_TOWERS } from './goldtowers.js';
+import { HARDCORE_WAVES, addHardcoreEnemies } from './hardcore.js';
+import { HALLOWEEN_TIMERS, HALLOWEEN_WAVES, addHalloweenEnemies } from './halloween.js';
 
 /** Game speed multipliers the host can pick from. */
 export const SPEEDS = [1, 2, 3, 5, 10];
@@ -13,7 +15,11 @@ export const GAME = {
   baseHp: 150,
   firstIntermission: 20, // seconds to place towers before wave 1
   intermission: 8, // seconds between waves
-  earnMult: 2, // multiplies cash from kills (enemy `reward`) and end-of-wave bonuses
+  earnMult: 2, // multiplies cash from kills (enemy `reward`, Versus only) and end-of-wave bonuses
+  // Cash for damage, like Tower Battles and TDS: every point of health damage your side deals pays
+  // each player this much (DIFFICULTIES[mode].dmgCash sets a mode's own rate), so a wave pays for
+  // the defense it takes. Tune it with tools/balance/table.mjs. Versus pays for kills instead.
+  dmgCash: 0.5,
   waveBonus: (wave) => GAME.earnMult * (100 + 40 * wave + 3 * wave * wave), // wave is 1-based; ramps up quadratically
   hpScalePerWave: 0.06, // enemy HP multiplier grows by this much each wave
   sellRatio: 0.5,
@@ -25,7 +31,7 @@ export const GAME = {
   towerHp: 100,
   towerHpPerLevel: 30,
   towerHpShort: 0.5,
-  towerHpShortRange: [8, 30],
+  towerHpShortRange: [10.6, 40], // was [8, 30] before the 33% range pass (see RANGE_BOOST)
   // Stealth (a level's `stealth`, or a Ghost Grenade): enemies can't target the tower (the Molten
   // Warlord won't throw axes at it or slam for it), and splash from their attacks can't hurt or
   // stun it. A level's stealth slowly drains: it lasts `stealthTime` s (the level's, or this),
@@ -47,6 +53,8 @@ export const GAME = {
   danceBossScale: 0.5, // bosses dance only this fraction of Apocalypse Rave's duration
   // Dimension Shards: a rare purple currency for alternate tower forms. Only winning pays them.
   shards: (win) => (win ? 1 : 0),
+  // Gems: Hardcore's currency (only Hardcore pays them). Necromancer and Hacker are bought with them.
+  gems: (wavesCleared, win) => wavesCleared * 100 + (win ? 5000 : 0),
 };
 
 // Versus (PVP): every player defends their own map; the maps are joined by bridges.
@@ -82,12 +90,13 @@ export const towerCost = (def, versus) => (!versus && def.survivalCost != null ?
 export const MP = {
   maxRoomPlayers: 4,
   maxPartySize: 4,
+  hardcorePlayers: 6, // Hardcore co-op rooms hold up to this many (DIFFICULTIES[mode].maxPlayers)
   tickRate: 20, // server simulation steps per second
   snapshotEvery: 2, // send a full state snapshot every N ticks
 };
 
 // Shirt colors given to players in join order.
-export const PLAYER_COLORS = [0x1e88e5, 0xe53935, 0xfdd835, 0x8e24aa];
+export const PLAYER_COLORS = [0x1e88e5, 0xe53935, 0xfdd835, 0x8e24aa, 0xfb8c00, 0x00acc1];
 
 export const TARGET_MODES = ['First', 'Last', 'Strongest', 'Closest'];
 
@@ -95,6 +104,7 @@ export const TARGET_MODES = ['First', 'Last', 'Strongest', 'Closest'];
 // Level index 0 is the tower as placed; indices 1-4 are upgrades (shown as Lv 2-5).
 // price: credits to unlock in the Loadout & Shop (0 = owned from the start).
 // shards: on a base tower, it's bought with Dimension Shards instead of credits.
+// gems: on a base tower, it's bought with Gems (from Hardcore) instead of credits.
 // placement: 'ground' (default), 'cliff' (cliff tops only) or 'any'.
 // burst: shots fired per cycle, burstGap seconds apart. cooldown is the full cycle time,
 //        so DPS = damage * burst / cooldown.
@@ -325,7 +335,7 @@ const SENTRY = {
 // a tower at once as its placement limit.
 const cloneAbility = (clone, life) => ({ key: 'clone', name: 'Hologram Tower', desc: `Clone a tower on the map and place the hologram anywhere. Costs ${Math.round(clone * 100)}% of that tower's total cost and lasts ${life}s`, cooldown: 5, aim: true, clone, life });
 const HACKER_SHARED = [
-  { name: 'Hacker', desc: 'Hacks zombies with a smartphone. Hacked zombies are slowed, pay more cash when they die, and come back as holograms that fight for you.', damage: 0, cooldown: 0.3, range: 11, synapses: 1, ev: 0.45, slow: 0.075, fraud: 0.125, units: 1000, hidden: false },
+  { name: 'Hacker', desc: 'Hacks zombies with a smartphone. Hacked zombies are slowed, pay more cash for damage, and come back as holograms that fight for you.', damage: 0, cooldown: 0.3, range: 11, synapses: 1, ev: 0.45, slow: 0.075, fraud: 0.125, units: 1000, hidden: false },
   { name: 'Signal Booster', desc: 'More range and a stronger slow.', cost: 125, damage: 0, cooldown: 0.3, range: 12.5, synapses: 1, ev: 0.45, slow: 0.1, fraud: 0.125, units: 1000, hidden: false },
   { name: '1337 Skills', desc: 'Hacks 2 zombies at once, sees hidden zombies, tougher holograms and more Wire Fraud.', cost: 1337, damage: 0, cooldown: 0.3, range: 14, synapses: 2, ev: 0.55, slow: 0.1, fraud: 0.15, units: 1000, hidden: true },
   { name: 'Hologram Projector', desc: 'A wrist gadget: its synapses now deal damage, tougher holograms, and unlocks Hologram Tower to clone any tower.', cost: 6500, damage: 10, cooldown: 0.3, range: 15, synapses: 2, ev: 0.625, slow: 0.1, fraud: 0.15, units: 1000, hidden: true,
@@ -392,7 +402,7 @@ const iceTurret = (damage, cooldown, range, maxSlow) => ({ name: 'Ice Turret', m
 // Not used by the game yet (kept for later): splashTransfer (the spec tags it but doesn't say what it does).
 // The spec doesn't give its radius: 8 is a guess.
 const FIRE_RING_AB = { key: 'heatwave', name: 'Fire Ring', cooldown: 20, damage: 500, burn: 100, burnTime: 8, radius: 8, knock: 0, splashTransfer: true,
-  desc: 'A ring of fire around it: 500 damage to every zombie within 8, then 100 burn per second for 8s' };
+  desc: 'A ring of fire around it: 375 damage to every zombie within 8, then 75 burn per second for 8s' };
 // Goo Gunner Spawn Puddle: a goo puddle on the closest bit of path for `time` s. Every `every` s
 // (starting right away) it sends out the `units` ({ unit, n }), which walk down the path and ram
 // zombies. The spec gives no ram damage: like other ramming units they deal their health.
@@ -465,7 +475,7 @@ const BUBBLE_BUDDY = { name: 'Bubble Companion', model: 'bubblebuddy', soldiers:
 const ICE_SHARD = { name: 'Ice Shard', model: 'iceshard', hp: 1250, life: 120, speed: 0, still: true, flying: false, bump: 25,
   explode: { damage: 500, radius: 4, freeze: 3, ice: { freezeBoss: 1 }, ignoreIceResist: true } };
 const ICE_SHARD_AB = { key: 'iceShard', name: 'Ice Shard', aim: true, cooldown: 30, reach: 25, radius: 4, unit: ICE_SHARD,
-  desc: 'Put a block of ice (1,250 HP, lasts 120s) on the path where you click. When zombies break it, it explodes: 500 damage and freezes everything within 4, even bosses' };
+  desc: 'Put a block of ice (1,250 HP, lasts 120s) on the path where you click. When zombies break it, it explodes: 165 damage and freezes everything within 4, even bosses' };
 // Ice Breaker Snow Storm: for `duration` s, every zombie within `radius` gets `freeze` freeze
 // amount a second (0.06 chill per point, see Cryo Blaster). Radius and duration are guesses.
 const SNOW_STORM_AB = { key: 'snowStorm', name: 'Snow Storm', cooldown: 25, duration: 6, radius: 10, freeze: 100,
@@ -575,11 +585,11 @@ const VOID_TANK = { name: 'Void Tank', model: 'voidtank', hp: 85000, speed: 3, r
 const VOID_EMPRESS = { name: 'Void Empress', model: 'voidempress', soldiers: 1, hp: 50000, speed: 3, flying: false, hidden: true, lead: true, defense: 0.8,
   gun: { damage: 6000, cooldown: 6, range: 9 }, cannon: { damage: 250, every: 10, radius: 12, range: 12 } };
 const VOID_RIFT_AB = { key: 'concussive', name: 'Void Rift', aim: true, reach: 60, radius: 4, delay: 1, count: 12, damage: 1500, stun: 0, cooldown: 85,
-  desc: 'Opens a black hole over a spot within 60 studs that rains 12 rocks: 1,500 damage each in a small blast' };
+  desc: 'Opens a black hole over a spot within 60 studs that rains 12 rocks: 750 damage each in a small blast' };
 const SUMMON_TROOPS_AB = { key: 'caravan', name: 'Summon Troops', cooldown: 180, gap: 1.2,
   units: [...Array(25).fill(NEURON), VOID_TANK, VOID_TANK, VOID_EMPRESS],
   desc: 'Sends 25 Neurons, 2 Void Tanks and a Void Empress down the path' };
-const VOID_SLAM_AB = { key: 'voidSlam', name: 'Void Slam', damage: 12500, cooldown: 20, desc: 'Slams its sword on its current target for 12,500 damage' };
+const VOID_SLAM_AB = { key: 'voidSlam', name: 'Void Slam', damage: 12500, cooldown: 20, desc: 'Slams its sword on its current target for 6,250 damage' };
 
 // ---------------------------------------------------------------- wave 7 towers (shared pieces)
 // cyc: a burst tower's full cycle time: `burst` shots `gap` s apart, then `cd` s before the next burst.
@@ -587,7 +597,7 @@ const cyc = (burst, gap, cd) => Math.round(((burst - 1) * gap + cd) * 1000) / 10
 
 const VINTAGE_FUZE_AB = { key: 'heatwave', name: 'Vintage Fuze', desc: 'A bomb blows up overhead: 150 damage to every zombie within 7 and sets them on fire (20/s for 4s). It also hurts the Rockety (50 damage)', cooldown: 30, damage: 150, burn: 20, burnTime: 4, radius: 7, knock: 0, selfDamage: 50 };
 const HG_TANK = { name: 'Airdropped Tank', model: 'hgtank', hp: 350, speed: 3, flying: false, lead: true, gun: { damage: 80, cooldown: 3, range: 23 } };
-const TANK_DROP_AB = { key: 'summon', name: 'Tank Airdrop', desc: 'A tank (350 HP, 80 damage every 3s) drops onto the path where you click', cooldown: 45, aim: true, radius: 4, drop: [{ unit: HG_TANK, n: 1 }] };
+const TANK_DROP_AB = { key: 'summon', name: 'Tank Airdrop', desc: 'A tank (350 HP, 145 damage every 3s) drops onto the path where you click', cooldown: 45, aim: true, radius: 4, drop: [{ unit: HG_TANK, n: 1 }] };
 
 // Ducky Nest ducks. The Trojan Duck lets out 4 Ducky Gladiators when it goes down (onDeath); the
 // Ducky Engineer builds a sentry at 75%, 50% and 25% of the way down the path (builds).
@@ -604,7 +614,7 @@ const DUCK = {
 const GHOST_MADNESS_AB = { key: 'ghostHands', name: 'Ghost Madness', desc: 'Spends its ghost charges: each ghost hand fires a revolver shot that bounces to 2 more zombies', cooldown: 30, bounces: 2, jump: 8, mult: 1 };
 const OIL_BARREL_AB = { key: 'concussive', name: 'Oil Barrel', desc: 'Drop a barrel on the path where you click. 3s later it gets bombed 3 times (500 damage each)', cooldown: 45, aim: true, reach: 80, radius: 5, delay: 3, count: 3, damage: 500, stun: 0 };
 const SEE_ME_AB = { key: 'seeMe', name: 'Now-You-See-Me', desc: 'A signal that gives it hidden detection for 25s', cooldown: 60, duration: 25 };
-const NUKE_AB = { key: 'nuke', name: 'Nuke', desc: '12,500 damage to every zombie within 25 of its runway, no matter how many', cooldown: 150, damage: 12500, radius: 25 };
+const NUKE_AB = { key: 'nuke', name: 'Nuke', desc: '22,500 damage to every zombie within 25 of its runway, no matter how many', cooldown: 150, damage: 12500, radius: 25 };
 const DRONE_MODE_AB = { key: 'droneMode', name: 'Drone Mode', desc: 'Switch the drone to the next mode it has unlocked: Offense (bombs), Defense (heals towers, stun immunity), Support (+damage to towers nearby)', cooldown: 1 };
 
 // Buccaneer pirate barrel crew (dropped on the middle of the path).
@@ -625,7 +635,7 @@ const sonar = (damage, every) => ({ name: 'Sonar Bombs', damage, count: 1, every
 const marauderHarpoon = (damage) => ({ key: 'harpoon', name: 'Harpoon', desc: `${damage.toLocaleString()} damage to the strongest zombie in range, a 3s stun (bosses too), and it takes 25% more damage for 5s. If that would kill it, it's reeled in instead`, cooldown: 45, damage, stun: 3, vuln: 0.25, vulnTime: 5, reel: 15 });
 const bleed = (total, time) => ({ damage: Math.round((total / (time / 0.5)) * 100) / 100, tick: 0.5, time, slow: 0 });
 const WIPEOUT_AB = { key: 'wipeout', name: 'Orbital Wipeout', desc: '60,000 damage split evenly among every zombie on the map, hidden ones too', cooldown: 120, damage: 60000 };
-const JERICHO_AB = { key: 'wipeout', name: 'Jericho Missile', desc: 'A cluster missile that splits midair: 10,000 damage split among every zombie on the map', cooldown: 90, damage: 10000 };
+const JERICHO_AB = { key: 'wipeout', name: 'Jericho Missile', desc: 'A cluster missile that splits midair: 18,000 damage split among every zombie on the map', cooldown: 90, damage: 10000 };
 
 // Void Port carts and trains (train: wagons that follow the locomotive).
 const VP = {
@@ -639,7 +649,7 @@ const VP = {
 VP.loco = (train) => ({ name: 'Locomotive', model: 'vloco', hp: 750, speed: 4, hidden: true, lead: true, flying: true, train });
 VP.voidLoco = (train) => ({ name: 'Void Loc', model: 'vvoidloco', hp: 1750, speed: 4, hidden: true, lead: true, flying: true, train });
 
-const SKY_SLAM_AB = { key: 'heatwave', name: 'Sky Slam', desc: 'Leaps up and crashes down: 1,000 damage to every zombie within 20', cooldown: 35, damage: 1000, burn: 0, burnTime: 0, radius: 20, knock: 0 };
+const SKY_SLAM_AB = { key: 'heatwave', name: 'Sky Slam', desc: 'Leaps up and crashes down: 330 damage to every zombie within 20', cooldown: 35, damage: 1000, burn: 0, burnTime: 0, radius: 20, knock: 0 };
 const RIFT_AB = { key: 'teleport', name: 'Rift', desc: 'Teleport to a spot within 100 studs and be stun immune for 20s', cooldown: 40, aim: true, radius: 0, reach: 100, damage: 0, knock: 0, immune: 20 };
 const railgun = (max, damage, range, falloff = 0.1) => ({ max, damage, range, falloff });
 const DROP_POINT_AB = { key: 'deploy', name: 'Set Drop Point', desc: 'Click the path: its units start from there', cooldown: 5, aim: true, radius: 4 };
@@ -1555,13 +1565,13 @@ export const TOWERS = {
     levels: [
       { name: 'Penetrator', desc: 'A slow, heavy shot that pierces a line of zombies (ricochets on a cliff).', damage: 5, cooldown: 4, range: 9, hidden: false,
         pen: { pierce: 6, falloff: 0.2 }, cliff: { range: 13.5, pen: { ricochet: 3, falloff: 0.4, jump: 8 } } },
-      { name: 'Flaming Arrows', desc: 'More damage, fires faster, sees hidden zombies, and every 3rd shot is a flaming arrow (24 burn damage).', cost: 450, damage: 9, cooldown: 3.5, range: 9, hidden: true,
+      { name: 'Flaming Arrows', desc: 'More damage, fires faster, sees hidden zombies, and every 3rd shot is a flaming arrow (36 burn damage).', cost: 450, damage: 9, cooldown: 3.5, range: 9, hidden: true,
         pen: { pierce: 6, falloff: 0.2 }, cliff: { range: 13.5, pen: { ricochet: 3, falloff: 0.4, jump: 8 } }, flameShot: { every: 3, dps: 6, time: 4 } },
-      { name: 'Heavy Bolts', desc: 'Much more damage and range, fires faster, pierces 1 more zombie, loses less damage per zombie and ricochets once more. Hotter flaming arrows (48 burn).', cost: 1400, damage: 22, cooldown: 3.25, range: 10.5, hidden: true,
+      { name: 'Heavy Bolts', desc: 'Much more damage and range, fires faster, pierces 1 more zombie, loses less damage per zombie and ricochets once more. Hotter flaming arrows (72 burn).', cost: 1400, damage: 22, cooldown: 3.25, range: 10.5, hidden: true,
         pen: { pierce: 7, falloff: 0.15 }, cliff: { range: 15.75, pen: { ricochet: 4, falloff: 0.3, jump: 8 } }, flameShot: { every: 3, dps: 12, time: 4 } },
-      { name: 'Longbow', desc: 'More damage and range and fires a bit faster. Hotter flaming arrows (91 burn).', cost: 3550, damage: 35, cooldown: 3.15, range: 12, hidden: true,
+      { name: 'Longbow', desc: 'More damage and range and fires a bit faster. Hotter flaming arrows (136 burn).', cost: 3550, damage: 35, cooldown: 3.15, range: 12, hidden: true,
         pen: { pierce: 7, falloff: 0.15 }, cliff: { range: 18, pen: { ricochet: 4, falloff: 0.3, jump: 8 } }, flameShot: { every: 3, dps: 22.75, time: 4 } },
-      { name: 'Siege Penetrator', desc: 'A big damage and range boost, fires faster, pierces 3 more zombies, loses less damage per zombie and ricochets once more. Hottest flaming arrows (140 burn).', cost: 6850, damage: 50, cooldown: 2.85, range: 14, hidden: true,
+      { name: 'Siege Penetrator', desc: 'A big damage and range boost, fires faster, pierces 3 more zombies, loses less damage per zombie and ricochets once more. Hottest flaming arrows (212 burn).', cost: 6850, damage: 50, cooldown: 2.85, range: 14, hidden: true,
         pen: { pierce: 10, falloff: 0.1 }, cliff: { range: 21, pen: { ricochet: 5, falloff: 0.25, jump: 8 } }, flameShot: { every: 3, dps: 35, time: 4 } },
     ],
   },
@@ -1887,15 +1897,15 @@ export const TOWERS = {
         chill: 0.18, chillTime: 2.5, maxSlow: 0.2, chillDps: 0, chillFreeze: 1.25 },
       { name: 'Ice Grenade', path: 'Bottom', desc: 'More damage, faster shooting, a bit more range, and the Cryo Grenade ability.', cost: 2500, damage: 6, ignoreIceResist: true, burst: 3, burstGap: 0.12, cooldown: 1.25, range: 15, hidden: false,
         chill: 0.18, chillTime: 2.5, maxSlow: 0.2, chillDps: 0, chillFreeze: 1.5,
-        abilities: [{ key: 'cryoNade', name: 'Cryo Grenade', desc: 'Freezes every zombie near its target for 2s and deals 5 damage', cooldown: 20, radius: 4, duration: 2, damage: 5 }] },
+        abilities: [{ key: 'cryoNade', name: 'Cryo Grenade', desc: 'Freezes every zombie near its target for 2s and deals 9 damage', cooldown: 20, radius: 4, duration: 2, damage: 5 }] },
       { name: 'Ice Assault Loadout', path: 'Bottom', desc: 'More damage and range, 3 more bullets per burst, a stronger Cryo Grenade, and a Cryo M203 that launches freezing grenades on its own.', cost: 6500, damage: 9, ignoreIceResist: true, burst: 6, burstGap: 0.1, cooldown: 1.25, range: 17, hidden: false,
         chill: 0.18, chillTime: 3, maxSlow: 0.25, chillDps: 0, chillFreeze: 1.75,
         m203: { every: 6, damage: 10, radius: 3, freeze: 1.5 },
-        abilities: [{ key: 'cryoNade', name: 'Cryo Grenade', desc: 'Freezes every zombie near its target for 2.5s and deals 15 damage', cooldown: 20, radius: 5, duration: 2.5, damage: 15 }] },
+        abilities: [{ key: 'cryoNade', name: 'Cryo Grenade', desc: 'Freezes every zombie near its target for 2.5s and deals 27 damage', cooldown: 20, radius: 5, duration: 2.5, damage: 15 }] },
       { name: 'Deep Freeze Loadout', path: 'Bottom', desc: 'A big damage boost, it can freeze bosses, zombies it freezes take 10% extra damage, and stronger grenades.', cost: 14000, damage: 16, ignoreIceResist: true, burst: 6, burstGap: 0.1, cooldown: 1.25, range: 17, hidden: false,
         chill: 0.18, chillTime: 3, maxSlow: 0.25, chillDps: 0, chillFreeze: 2, freezeBoss: 0.5, frozenVuln: 0.1,
         m203: { every: 5, damage: 25, radius: 3.5, freeze: 2 },
-        abilities: [{ key: 'cryoNade', name: 'Cryo Grenade', desc: 'Freezes every zombie near its target for 3s (bosses too) and deals 40 damage', cooldown: 20, radius: 6, duration: 3, damage: 40 }] },
+        abilities: [{ key: 'cryoNade', name: 'Cryo Grenade', desc: 'Freezes every zombie near its target for 3s (bosses too) and deals 72 damage', cooldown: 20, radius: 6, duration: 3, damage: 40 }] },
     ],
   },
   rocketeer: {
@@ -2228,11 +2238,11 @@ export const TOWERS = {
     limit: 8,
     blurb: 'Holds a plasma globe that zaps several zombies at once with fast, steady damage. Sees hidden zombies at every level.',
     levels: [
-      { name: 'Plasma Trooper', desc: 'Zaps up to 3 zombies at once. Sees hidden zombies.', damage: 2, targets: 3, cooldown: 0.866, range: 6, hidden: true },
-      { name: 'Safety Goggles', desc: 'More range.', cost: 400, damage: 2, targets: 3, cooldown: 0.866, range: 9, hidden: true },
-      { name: 'Short Wavelength', desc: 'More than doubles its damage.', cost: 970, damage: 5, targets: 3, cooldown: 0.866, range: 9, hidden: true },
-      { name: 'Plasma Tower', desc: 'Double damage, faster zaps, a bit more range, and hits 5 zombies.', cost: 4400, damage: 10, targets: 5, cooldown: 0.75, range: 10, hidden: true },
-      { name: 'Lightbulb of Doom', desc: 'Double damage again, much more range, and hits 8 zombies.', cost: 20000, damage: 22, targets: 8, cooldown: 0.75, range: 14, hidden: true },
+      { name: 'Plasma Trooper', desc: 'Zaps up to 3 zombies at once. Sees hidden zombies.', damage: 3, targets: 3, cooldown: 0.866, range: 6, hidden: true },
+      { name: 'Safety Goggles', desc: 'More range.', cost: 400, damage: 3, targets: 3, cooldown: 0.866, range: 9, hidden: true },
+      { name: 'Short Wavelength', desc: 'More than doubles its damage.', cost: 970, damage: 8, targets: 3, cooldown: 0.866, range: 9, hidden: true },
+      { name: 'Plasma Tower', desc: 'More than double damage, faster zaps, a bit more range, and hits 5 zombies.', cost: 4400, damage: 20, targets: 5, cooldown: 0.75, range: 10, hidden: true },
+      { name: 'Lightbulb of Doom', desc: 'More than double damage again, much more range, and hits 8 zombies.', cost: 20000, damage: 45, targets: 8, cooldown: 0.75, range: 14, hidden: true },
     ],
   },
   // pulse: Pulse Trooper. It never aims: every shot is a ring that grows from the tower out to
@@ -2259,9 +2269,9 @@ export const TOWERS = {
       { name: 'Pulse Amplifier', desc: 'More damage and a little more range.', cost: 3600, damage: 25, cooldown: 1.2, range: 8.5, hidden: false },
       { name: 'Charged Filament', desc: 'Pulses more than twice as fast.', cost: 4900, damage: 25, cooldown: 0.55, range: 8.5, hidden: false },
       { name: 'Sweeper', desc: 'More damage and range, and unlocks Sweeper: two lasers spin around it for 6 seconds, reaching across the whole map and hitting every zombie they pass, even hidden ones.', cost: 8500, damage: 35, cooldown: 0.55, range: 9, hidden: false,
-        abilities: [{ key: 'sweeper', name: 'Sweeper', desc: 'Two map-wide lasers spin around it for 6s: 175 damage each time one passes a zombie', cooldown: 40, damage: 175, duration: 6, spin: 4 }] },
+        abilities: [{ key: 'sweeper', name: 'Sweeper', desc: 'Two map-wide lasers spin around it for 6s: 72 damage each time one passes a zombie', cooldown: 40, damage: 120, duration: 6, spin: 4 }] },
       { name: 'Arc Reactor', desc: 'More damage and range, and the Sweeper lasers hit much harder and spin faster.', cost: 17000, damage: 50, cooldown: 0.55, range: 10, hidden: false,
-        abilities: [{ key: 'sweeper', name: 'Sweeper', desc: 'Two map-wide lasers spin faster around it for 6s: 350 damage each time one passes a zombie', cooldown: 40, damage: 350, duration: 6, spin: 2.5 }] },
+        abilities: [{ key: 'sweeper', name: 'Sweeper', desc: 'Two map-wide lasers spin faster around it for 6s: 140 damage each time one passes a zombie', cooldown: 40, damage: 230, duration: 6, spin: 2.5 }] },
     ],
   },
 
@@ -2333,13 +2343,13 @@ export const TOWERS = {
     blurb: "Shoots chain lightning that jumps from zombie to zombie, stunning every one it hits. From Lv 3 every hit fills a meter, and when it's full it calls down Smite: a thunderbolt that explodes on its target. Great crowd control that gives your other towers more time to shoot. Never sees hidden zombies, and bosses and stun-immune zombies are only slowed.",
     tip: "Smite ignores armor and doesn't lose damage with distance, so it hurts big groups. The lightning jumps a long way, so it can reach far zombies as long as one is in its range.",
     levels: [
-      { name: 'Tesla', desc: 'Chain lightning that hits 2 zombies and briefly stuns them.', damage: 55, chains: 2, jump: 8, stun: 0.3, cooldown: 2, range: 17, hidden: false },
-      { name: 'Kite in the Wind', desc: 'More damage, longer stuns, and the lightning hits 1 more zombie.', cost: 4314, damage: 70, chains: 3, jump: 8, stun: 0.45, cooldown: 2, range: 17, hidden: false },
-      { name: 'Self-Sustaining Battery', desc: 'More range, fires faster, the lightning jumps farther, and Smite: after 9 hits it calls down a thunderbolt that explodes on its target.', cost: 10007, damage: 70, chains: 3, jump: 12, stun: 0.45, cooldown: 1.6, range: 18.5, hidden: false,
+      { name: 'Tesla', desc: 'Chain lightning that hits 2 zombies and briefly stuns them.', damage: 80, chains: 2, jump: 8, stun: 0.3, cooldown: 2, range: 17, hidden: false },
+      { name: 'Kite in the Wind', desc: 'More damage, longer stuns, and the lightning hits 1 more zombie.', cost: 4314, damage: 110, chains: 3, jump: 8, stun: 0.45, cooldown: 2, range: 17, hidden: false },
+      { name: 'Self-Sustaining Battery', desc: 'More range, fires faster, the lightning jumps farther, and Smite: after 9 hits it calls down a thunderbolt that explodes on its target.', cost: 10007, damage: 120, chains: 3, jump: 12, stun: 0.45, cooldown: 1.6, range: 18.5, hidden: false,
         smite: { hits: 9, damage: 200, radius: 5 } },
-      { name: 'Auric Quantum Cooling Cell', desc: 'More range and damage, longer stuns, and a much stronger Smite with a bigger blast, but it takes 12 hits to fill.', cost: 24000, damage: 90, chains: 3, jump: 12, stun: 0.6, cooldown: 1.6, range: 20, hidden: false,
+      { name: 'Auric Quantum Cooling Cell', desc: 'More range and damage, longer stuns, and a much stronger Smite with a bigger blast, but it takes 12 hits to fill.', cost: 24000, damage: 160, chains: 3, jump: 12, stun: 0.6, cooldown: 1.6, range: 20, hidden: false,
         smite: { hits: 12, damage: 475, radius: 5.5 } },
-      { name: "Kimat's Bite", desc: 'A big damage boost, fires faster, longer stuns, the lightning jumps even farther, and a stronger Smite with a huge blast that takes 15 hits to fill.', cost: 55000, damage: 125, chains: 3, jump: 16, stun: 0.85, cooldown: 1.4, range: 20, hidden: false,
+      { name: "Kimat's Bite", desc: 'A big damage boost, fires faster, longer stuns, the lightning jumps even farther, and a stronger Smite with a huge blast that takes 15 hits to fill.', cost: 55000, damage: 250, chains: 3, jump: 16, stun: 0.85, cooldown: 1.4, range: 20, hidden: false,
         smite: { hits: 15, damage: 650, radius: 7.5 } },
     ],
   },
@@ -2531,7 +2541,7 @@ export const TOWERS = {
     levels: [
       { name: 'Brawler', desc: 'Punches the closest zombie with mechanical fists.', damage: 5, cooldown: 1, range: 6, stunImmune: true, hidden: false },
       { name: 'Hand to Hand Training', desc: 'Punches much faster with a little more reach.', cost: 200, damage: 5, cooldown: 0.6, range: 6.5, stunImmune: true, hidden: false },
-      { name: 'Enhanced Gauntlets', desc: 'Much more damage, and a 3-hit combo: the third punch does 21 damage and knocks the zombie back.', cost: 1200, damage: 14, cooldown: 0.6, range: 6.5, stunImmune: true, hidden: false,
+      { name: 'Enhanced Gauntlets', desc: 'Much more damage, and a 3-hit combo: the third punch does 11 damage and knocks the zombie back.', cost: 1200, damage: 14, cooldown: 0.6, range: 6.5, stunImmune: true, hidden: false,
         combo: { hits: 3, damage: 21, knock: 17.5, cooldown: 0.6 } },
       { name: 'Pack a Punch', desc: 'More damage, faster punches, a much harder finisher with more knockback, and hidden detection.', cost: 2500, damage: 24, cooldown: 0.5, range: 6.5, stunImmune: true, hidden: true,
         combo: { hits: 3, damage: 48, knock: 24, cooldown: 0.5 } },
@@ -3233,7 +3243,7 @@ export const TOWERS = {
     lead: true,
     flying: false,
     price: 0,
-    shards: 4,
+    gems: 4000,
     cost: 4200,
     limit: 3,
     blurb: 'Shoots piercing magic bolts. Every zombie it hits fills its soul meter, and when the meter is full it raises a gravestone. Use Raise the Dead to smash them all and summon skeleton warriors. Sees hidden zombies from Lv 3 and flying ones at Lv 5.',
@@ -3290,19 +3300,19 @@ export const TOWERS = {
   },
   // Hacker: shoots synapses at up to `synapses` zombies at once (single-target damage each).
   //         Every zombie it hits is hacked for good: slowed by `slow` (not bosses), pays `fraud`
-  //         more cash to everyone when it dies, and when it dies (to anything) it comes back as a
+  //         more cash for damage (Versus: when it dies), and when it dies (to anything) it comes back as a
   //         hologram unit with (max health)^`ev` health that rams zombies (not from bosses).
   //         `units`: holograms it can have out at once. Upgrade paths at Lv 6 (see Pursuit).
   hacker: {
     name: 'Hacker',
     price: 0,
-    shards: 10,
+    gems: 10000,
     cost: 900,
     limit: 2,
     branch: 'hackerBottom',
     branchAt: 5,
     path: 'Top',
-    blurb: "Hacks zombies with synapses from its gadgets. Hacked zombies are slowed, pay everyone more cash when they die (Wire Fraud), and come back as holograms that ram other zombies (not bosses). Its synapses only deal damage from Lv 4, when it also gets Hologram Tower to clone any tower for a while. At Lv 6 pick a path: Top for fast, hard-hitting synapses, Bottom for a laptop with 4 synapses and long-lasting clones. Sees hidden zombies from Lv 3, never lead ones.",
+    blurb: "Hacks zombies with synapses from its gadgets. Hacked zombies are slowed, pay everyone more cash for damage (Wire Fraud), and come back as holograms that ram other zombies (not bosses). Its synapses only deal damage from Lv 4, when it also gets Hologram Tower to clone any tower for a while. At Lv 6 pick a path: Top for fast, hard-hitting synapses, Bottom for a laptop with 4 synapses and long-lasting clones. Sees hidden zombies from Lv 3, never lead ones.",
     tip: "Put it near the start of the path so it hacks zombies early and they spend longer slowed. Clone your strongest tower with Hologram Tower when a tough wave comes.",
     levels: HACKER_SHARED.concat([
       { name: 'Overclocked Uplink', path: 'Top', desc: 'Top path: synapses fire 3x faster and hit harder, with more range and the toughest holograms.', cost: 60001, damage: 25, cooldown: 0.1, range: 18.5, synapses: 3, ev: 0.75, slow: 0.1, fraud: 0.2, units: 1000, hidden: true,
@@ -4451,11 +4461,11 @@ export const TOWERS = {
     blurb: "The prize for Winter 2019. Fires bursts of ice shots that freeze zombies in place for a moment, even fast ones and bosses (for less time). It won't shoot zombies that are already frozen or burning, so keep it away from fire towers.",
     tip: 'Several Sleeters can freeze almost a whole crowd. Keep it away from Flamethrowers and Hallowboomers.',
     levels: [
-      { name: 'Sleeter', desc: '3-shot bursts of ice: every shot freezes the zombie it hits.', damage: 1, burst: 3, burstGap: 0.15, cooldown: 2.08, range: 10, freeze: 0.8, hidden: false },
-      { name: 'Permafrost', desc: 'After a zombie thaws out, it stays 5% slower for good.', cost: 450, damage: 1, burst: 3, burstGap: 0.15, cooldown: 2.08, range: 10, freeze: 0.8, frostbite: 0.05, hidden: false },
-      { name: 'Radio', desc: 'Hidden detection and a little more range.', cost: 650, damage: 1, burst: 3, burstGap: 0.15, cooldown: 2.08, range: 11, freeze: 0.8, frostbite: 0.05, hidden: true },
-      { name: 'Arctic Gorilla', desc: 'Double damage, 5-shot bursts and freezes last twice as long.', cost: 3200, damage: 2, burst: 5, burstGap: 0.15, cooldown: 2.08, range: 11, freeze: 1.7, frostbite: 0.05, hidden: true },
-      { name: 'Subzero Hero', desc: 'Double damage, faster bursts, 3s freezes, more range, and thawed zombies stay 20% slower for good.', cost: 7500, damage: 4, burst: 5, burstGap: 0.15, cooldown: 1.85, range: 12, freeze: 3, frostbite: 0.2, hidden: true },
+      { name: 'Sleeter', desc: '3-shot bursts of ice: every shot freezes the zombie it hits.', damage: 2, burst: 3, burstGap: 0.15, cooldown: 2.08, range: 10, freeze: 0.8, hidden: false },
+      { name: 'Permafrost', desc: 'After a zombie thaws out, it stays 5% slower for good.', cost: 450, damage: 2, burst: 3, burstGap: 0.15, cooldown: 2.08, range: 10, freeze: 0.8, frostbite: 0.05, hidden: false },
+      { name: 'Radio', desc: 'Hidden detection, a little more range and damage.', cost: 650, damage: 3, burst: 3, burstGap: 0.15, cooldown: 2.08, range: 11, freeze: 0.8, frostbite: 0.05, hidden: true },
+      { name: 'Arctic Gorilla', desc: 'Double damage, 5-shot bursts and freezes last twice as long.', cost: 3200, damage: 6, burst: 5, burstGap: 0.15, cooldown: 2.08, range: 11, freeze: 1.7, frostbite: 0.05, hidden: true },
+      { name: 'Subzero Hero', desc: 'Double damage, faster bursts, 3s freezes, more range, and thawed zombies stay 20% slower for good.', cost: 7500, damage: 12, burst: 5, burstGap: 0.15, cooldown: 1.85, range: 12, freeze: 3, frostbite: 0.2, hidden: true },
     ],
   },
   snowballer: {
@@ -4474,8 +4484,8 @@ export const TOWERS = {
       { name: 'Snowballer', desc: 'Throws snowballs at one zombie. They can miss fast zombies.', damage: 1, cooldown: 3, range: 7.8, radius: 1.3, splash: 0, hidden: false },
       { name: 'Warm Gloves', desc: 'Throws faster with more range.', cost: 80, damage: 1, cooldown: 2, range: 9.5, radius: 1.3, splash: 0, hidden: false },
       { name: 'Thick Snow', desc: 'Double snowball damage.', cost: 280, damage: 2, cooldown: 2, range: 9.5, radius: 1.3, splash: 0, hidden: false },
-      { name: 'Icy Snowballs', desc: 'Snowballs do 6 damage and freeze the zombie they hit for 1 second.', cost: 620, damage: 6, cooldown: 2, range: 9.5, radius: 1.3, splash: 0, freeze: 1, freezeMain: true, hidden: false },
-      { name: 'Death Ball', desc: 'Snowballs do 12 damage, splash 5 damage onto zombies nearby, and freeze for 2.5s.', cost: 3000, damage: 12, cooldown: 2, range: 9.5, radius: 4, splash: 5, freeze: 2.5, freezeMain: true, hidden: false },
+      { name: 'Icy Snowballs', desc: 'Snowballs do 18 damage and freeze the zombie they hit for 1 second.', cost: 620, damage: 6, cooldown: 2, range: 9.5, radius: 1.3, splash: 0, freeze: 1, freezeMain: true, hidden: false },
+      { name: 'Death Ball', desc: 'Snowballs do 36 damage, splash 15 damage onto zombies nearby, and freeze for 2.5s.', cost: 3000, damage: 12, cooldown: 2, range: 9.5, radius: 4, splash: 5, freeze: 2.5, freezeMain: true, hidden: false },
     ],
   },
   huntsman: {
@@ -4512,11 +4522,11 @@ export const TOWERS = {
     blurb: "Shoots slow arrows in a straight line that pierce through up to three zombies, and later sets them on fire. The arrows don't lead their target, so they often miss zombies that aren't walking along the arrow's path.",
     tip: 'Place it where zombies walk straight toward or away from it so the arrows land.',
     levels: [
-      { name: 'Archer', desc: 'Slow arrows that fly in a straight line and pierce up to 3 zombies.', damage: 2, cooldown: 3, range: 16, arrow: { speed: 22, pierce: 3 }, hidden: false },
-      { name: 'Quick Hand', desc: 'Shoots every 2s instead of 3s.', cost: 260, damage: 2, cooldown: 2, range: 16, arrow: { speed: 22, pierce: 3 }, hidden: false },
-      { name: 'Extra Sight', desc: 'Heat-vision goggles: hidden detection and more range.', cost: 780, damage: 2, cooldown: 2, range: 19, arrow: { speed: 22, pierce: 3 }, hidden: true },
-      { name: 'Flaming Arrows', desc: 'Arrows set zombies on fire, and damage goes from 2 to 3.', cost: 1950, damage: 3, cooldown: 2, range: 19, arrow: { speed: 22, pierce: 3 }, ignite: { dps: 1, time: 3 }, hidden: true },
-      { name: 'Taste for Blood', desc: 'A crossbow: 5 damage per flaming bolt and each bolt pierces up to 5 zombies, but it fires every 4s and has less range.', cost: 6400, damage: 5, cooldown: 4, range: 17, arrow: { speed: 30, pierce: 5 }, ignite: { dps: 2, time: 4 }, hidden: true },
+      { name: 'Archer', desc: 'Slow arrows that fly in a straight line and pierce up to 3 zombies.', damage: 6, cooldown: 3, range: 16, arrow: { speed: 22, pierce: 3 }, hidden: false },
+      { name: 'Quick Hand', desc: 'Shoots every 2s instead of 3s.', cost: 260, damage: 6, cooldown: 2, range: 16, arrow: { speed: 22, pierce: 3 }, hidden: false },
+      { name: 'Extra Sight', desc: 'Heat-vision goggles: hidden detection, more range and damage.', cost: 780, damage: 8, cooldown: 2, range: 19, arrow: { speed: 22, pierce: 3 }, hidden: true },
+      { name: 'Flaming Arrows', desc: 'Arrows set zombies on fire, and damage goes from 13 to 19.', cost: 1950, damage: 12, cooldown: 2, range: 19, arrow: { speed: 22, pierce: 3 }, ignite: { dps: 4, time: 3 }, hidden: true },
+      { name: 'Taste for Blood', desc: 'A crossbow: 48 damage per flaming bolt and each bolt pierces up to 5 zombies, but it fires every 2.5s and has less range.', cost: 6400, damage: 30, cooldown: 2.5, range: 17, arrow: { speed: 30, pierce: 5 }, ignite: { dps: 10, time: 4 }, hidden: true },
     ],
   },
   // toss: { damage, every, range, speed, injure? }: on top of its melee swings, it throws a knife
@@ -4596,14 +4606,14 @@ export const TOWERS = {
     tip: 'Place it at bends or where paths cross so it covers more of the path. It has no placement limit, so stack several around a corner.',
     levels: [
       { name: 'Gladiator', desc: 'Swings a sword at up to 2 zombies, sees hidden zombies and parries stuns.', damage: 5, cooldown: 0.95, range: 5.5, targets: 2, hidden: true },
-      { name: 'Arena Conditioning', desc: 'Damage 5 → 7 and faster swings.', cost: 375, damage: 7, cooldown: 0.8, range: 5.5, targets: 2, hidden: true },
-      { name: "Warrior's Call", desc: 'Damage 7 → 17. Unlocks War Cry: swings 65% faster for 15s.', cost: 1250, damage: 17, cooldown: 0.8, range: 5.5, targets: 2, hidden: true,
+      { name: 'Arena Conditioning', desc: 'Damage 2.8 → 3.9 and faster swings.', cost: 375, damage: 7, cooldown: 0.8, range: 5.5, targets: 2, hidden: true },
+      { name: "Warrior's Call", desc: 'Damage 3.9 → 9.4. Unlocks War Cry: swings 65% faster for 15s.', cost: 1250, damage: 17, cooldown: 0.8, range: 5.5, targets: 2, hidden: true,
         abilities: [WARCRY_AB] },
-      { name: "Champion's Flame", desc: 'Damage 17 → 27, more range, faster swings, hits 5 zombies and lead detection. Fire Aspect: every 4s its next swing sets zombies on fire.', cost: 2125, damage: 27, cooldown: 0.7, range: 6, targets: 5, lead: true, hidden: true,
+      { name: "Champion's Flame", desc: 'Damage 9.4 → 15, more range, faster swings, hits 5 zombies and lead detection. Fire Aspect: every 4s its next swing sets zombies on fire.', cost: 2125, damage: 27, cooldown: 0.7, range: 6, targets: 5, lead: true, hidden: true,
         fireAspect: { every: 4, dps: 6.7, time: 1.2 }, abilities: [WARCRY_AB] },
-      { name: 'Centurion', desc: 'Damage 27 → 57 and hits 7 zombies. Fire Aspect burns hotter and recharges every 3s.', cost: 6200, damage: 57, cooldown: 0.7, range: 6, targets: 7, lead: true, hidden: true,
+      { name: 'Centurion', desc: 'Damage 15 → 31 and hits 7 zombies. Fire Aspect burns hotter and recharges every 3s.', cost: 6200, damage: 57, cooldown: 0.7, range: 6, targets: 7, lead: true, hidden: true,
         fireAspect: { every: 3, dps: 13.3, time: 1.2 }, abilities: [WARCRY_AB] },
-      { name: 'King of the Arena', desc: 'Damage 57 → 77, faster swings, more range and hits 10 zombies. Fire Aspect burns much hotter for 1.5s and recharges every 2s.', cost: 14900, damage: 77, cooldown: 0.55, range: 6.5, targets: 10, lead: true, hidden: true,
+      { name: 'King of the Arena', desc: 'Damage 31 → 42, faster swings, more range and hits 10 zombies. Fire Aspect burns much hotter for 1.5s and recharges every 2s.', cost: 14900, damage: 77, cooldown: 0.55, range: 6.5, targets: 10, lead: true, hidden: true,
         fireAspect: { every: 2, dps: 46.7, time: 1.5 }, abilities: [WARCRY_AB] },
     ],
   },
@@ -4699,13 +4709,13 @@ export const TOWERS = {
     blurb: 'An alternate Flamethrower that sprays a line of fire through many zombies at once and sets them burning. From Lv 4 burning zombies take extra damage from all your towers, and at Lv 5 it gets the Fire Ring blast. Very cost-efficient early. No hidden detection, and fire-immune zombies and most bosses shrug it off.',
     tip: 'Put it on tight corners so the line of fire covers more path, and use Random targeting to spread the burn debuff.',
     levels: [
-      { name: 'Flame Trooper', desc: 'Sprays a line of fire that hits up to 10 zombies and burns them for 1 per second for 5s.', damage: 2, hits: 10, burn: 1, burnTime: 5, cooldown: 0.2, range: 5, cone: 0.2, hp: 175, hidden: false },
-      { name: 'Hotter Temps', desc: 'Damage 2 → 4.5, burns 2 per second and 2 more range.', cost: 1150, damage: 4.5, hits: 10, burn: 2, burnTime: 5, cooldown: 0.2, range: 7, cone: 0.2, hp: 250, hidden: false },
-      { name: 'Bigger Flamethrower', desc: 'Damage 4.5 → 10.5 and 4 more range.', cost: 2250, damage: 10.5, hits: 10, burn: 2, burnTime: 5, cooldown: 0.2, range: 11, cone: 0.2, hp: 400, hidden: false },
-      { name: 'Napalm', desc: 'Damage 10.5 → 17.5, burns 6 per second and they last 1s longer.', cost: 5250, damage: 17.5, hits: 10, burn: 6, burnTime: 6, cooldown: 0.2, range: 11, cone: 0.2, hp: 650, hidden: false },
-      { name: 'M3 Flamethrower', desc: 'Burning zombies take 5% more damage from everything for 7s, and it can\'t be stunned. Damage 17.5 → 23.5, burns 8 per second for 10s and 3 more range.', cost: 10500,
+      { name: 'Flame Trooper', desc: 'Sprays a line of fire that hits up to 10 zombies and burns them for 0.8 per second for 5s.', damage: 2, hits: 10, burn: 1, burnTime: 5, cooldown: 0.2, range: 5, cone: 0.2, hp: 175, hidden: false },
+      { name: 'Hotter Temps', desc: 'Damage 1.5 → 3.4, burns 1.5 per second and 2 more range.', cost: 1150, damage: 4.5, hits: 10, burn: 2, burnTime: 5, cooldown: 0.2, range: 7, cone: 0.2, hp: 250, hidden: false },
+      { name: 'Bigger Flamethrower', desc: 'Damage 3.4 → 7.9 and 4 more range.', cost: 2250, damage: 10.5, hits: 10, burn: 2, burnTime: 5, cooldown: 0.2, range: 11, cone: 0.2, hp: 400, hidden: false },
+      { name: 'Napalm', desc: 'Damage 7.9 → 13, burns 4.5 per second and they last 1s longer.', cost: 5250, damage: 17.5, hits: 10, burn: 6, burnTime: 6, cooldown: 0.2, range: 11, cone: 0.2, hp: 650, hidden: false },
+      { name: 'M3 Flamethrower', desc: 'Burning zombies take 5% more damage from everything for 7s, and it can\'t be stunned. Damage 13 → 18, burns 6 per second for 10s and 3 more range.', cost: 10500,
         damage: 23.5, hits: 10, burn: 8, burnTime: 10, cooldown: 0.2, range: 14, cone: 0.2, hp: 1100, stunImmune: true, burnVuln: { amount: 0.05, time: 7 }, hidden: false },
-      { name: 'Exo-Flame Suit', desc: 'A huge boost: damage 23.5 → 65.5, burns 15 per second, burning zombies take 10% more damage, and the Fire Ring ability.', cost: 30500,
+      { name: 'Exo-Flame Suit', desc: 'A huge boost: damage 18 → 49, burns 11 per second, burning zombies take 10% more damage, and the Fire Ring ability.', cost: 30500,
         damage: 65.5, hits: 10, burn: 15, burnTime: 10, cooldown: 0.2, range: 14, cone: 0.2, hp: 2550, stunImmune: true, burnVuln: { amount: 0.1, time: 7 }, aimDelay: 1.1, hidden: false,
         abilities: [FIRE_RING_AB] },
     ],
@@ -4729,12 +4739,12 @@ export const TOWERS = {
     tip: 'Use Strongest targeting before Glue Hose and Random after it, so the slow spreads over the crowd.',
     levels: [
       { name: 'Goo Gunner', desc: 'Goo globs that slow a zombie by 15% for 3s.', damage: 2, cooldown: 1.5, range: 12, slime: { slow: 0.15, time: 3 }, hp: 500, hidden: false },
-      { name: 'Sticky Goo', desc: 'Damage 2 → 5, 2 more range and a 5% stronger slow.', cost: 400, damage: 5, cooldown: 1.5, range: 14, slime: { slow: 0.2, time: 3 }, hp: 650, hidden: false },
-      { name: 'Slow Dry', desc: 'Damage 5 → 10, shoots a bit faster, and the slow is 5% stronger and lasts 2s longer.', cost: 1000, damage: 10, cooldown: 1.35, range: 14, slime: { slow: 0.25, time: 5 }, hp: 850, hidden: false },
-      { name: 'Glue Hose', desc: 'A hose that sprays 3 zombies at once with a small splash and shoots much faster, but damage 10 → 5 and 3 less range. Can hit lead zombies.', cost: 1850,
+      { name: 'Sticky Goo', desc: 'Damage 0.8 → 1.9, 2 more range and a 5% stronger slow.', cost: 400, damage: 5, cooldown: 1.5, range: 14, slime: { slow: 0.2, time: 3 }, hp: 650, hidden: false },
+      { name: 'Slow Dry', desc: 'Damage 1.9 → 3.8, shoots a bit faster, and the slow is 5% stronger and lasts 2s longer.', cost: 1000, damage: 10, cooldown: 1.35, range: 14, slime: { slow: 0.25, time: 5 }, hp: 850, hidden: false },
+      { name: 'Glue Hose', desc: 'A hose that sprays 3 zombies at once with a small splash and shoots much faster, but damage 3.8 → 1.9 and 3 less range. Can hit lead zombies.', cost: 1850,
         damage: 5, cooldown: 0.2, range: 11, targets: 3, spray: 1, slime: { slow: 0.25, time: 5 }, hp: 1050, hidden: false },
-      { name: 'Acidic Goo', desc: 'Damage 5 → 10, a bigger splash and 5 zombies at once.', cost: 3000, damage: 10, cooldown: 0.2, range: 11, targets: 5, spray: 1.5, slime: { slow: 0.25, time: 5 }, hp: 1450, hidden: false },
-      { name: 'Goo Units', desc: 'Damage 10 → 14, 7 zombies at once, a bigger splash, a 10% stronger slow that lasts 3s longer, and the Spawn Puddle ability.', cost: 6000,
+      { name: 'Acidic Goo', desc: 'Damage 1.9 → 3.8, a bigger splash and 5 zombies at once.', cost: 3000, damage: 10, cooldown: 0.2, range: 11, targets: 5, spray: 1.5, slime: { slow: 0.25, time: 5 }, hp: 1450, hidden: false },
+      { name: 'Goo Units', desc: 'Damage 3.8 → 5.3, 7 zombies at once, a bigger splash, a 10% stronger slow that lasts 3s longer, and the Spawn Puddle ability.', cost: 6000,
         damage: 14, cooldown: 0.2, range: 11, targets: 7, spray: 2, slime: { slow: 0.35, time: 8 }, hp: 2050, hidden: false, abilities: [PUDDLE_AB] },
     ],
   },
@@ -4771,7 +4781,7 @@ export const TOWERS = {
         chill: 0.15, chillTime: 2.5, maxSlow: 0.3, chillDps: 0, chillFreeze: 1, frostbite: 0.25 },
       { name: 'Bigger Tank', path: 'Top', desc: 'Frozen zombies take 40% more damage. Freezes faster, a bigger splash and 5 zombies at once.', cost: 2750, damage: 0.5, cooldown: 0.2, range: 9.5, targets: 5, spray: 2, hp: 435, hidden: false,
         chill: 0.27, chillTime: 2.5, maxSlow: 0.3, chillDps: 0, chillFreeze: 1, frostbite: 0.25, frozenVuln: 0.4 },
-      { name: 'Snow Storm', path: 'Top', desc: 'A much stronger freeze, frozen zombies take 55% more damage, 10 zombies at once, damage 0.5 → 2.5 and a bigger splash. Ignores ice resistance.', cost: 7500,
+      { name: 'Snow Storm', path: 'Top', desc: 'A much stronger freeze, frozen zombies take 55% more damage, 10 zombies at once, damage 0.2 → 1 and a bigger splash. Ignores ice resistance.', cost: 7500,
         damage: 2.5, cooldown: 0.2, range: 9.5, targets: 10, spray: 2.5, hp: 985, hidden: false, ignoreIceResist: true,
         chill: 0.69, chillTime: 2.5, maxSlow: 0.3, chillDps: 0, chillFreeze: 1, frostbite: 0.25, frozenVuln: 0.55 },
     ],
@@ -4888,14 +4898,14 @@ export const TOWERS = {
     blurb: 'Shoots bees at a zombie. Every hit adds a stack of bee stings that keep hurting it, and the stacks add up, so it melts tough zombies and bosses over time. From Lv 4 it throws a Bee Swarm Grenade. Slow and short-ranged early on, with no hidden or flying detection.',
     tip: 'Set targeting to Strongest; First can waste stacks on zombies that are about to die.',
     levels: [
-      { name: 'Swarmer', desc: 'Shoots bees: each hit adds a sting stack (3 damage a second for 2.1s, 1 stack max).', damage: 2, cooldown: 1.2, range: 13, bees: { damage: 3, tick: 1, time: 2.1, stacks: 1 }, hidden: false },
+      { name: 'Swarmer', desc: 'Shoots bees: each hit adds a sting stack (4.2 damage a second for 2.1s, 1 stack max).', damage: 2, cooldown: 1.2, range: 13, bees: { damage: 3, tick: 1, time: 2.1, stacks: 1 }, hidden: false },
       { name: 'Extra Honey', desc: 'Up to 3 sting stacks on one zombie.', cost: 400, damage: 2, cooldown: 1.2, range: 13, bees: { damage: 3, tick: 1, time: 2.1, stacks: 3 }, hidden: false },
-      { name: 'Aggressive Bees', desc: 'Damage 2 → 4, more range, stings last 4.1s and 6 stacks.', cost: 1250, damage: 4, cooldown: 1.2, range: 15, bees: { damage: 3, tick: 1, time: 4.1, stacks: 6 }, hidden: false },
+      { name: 'Aggressive Bees', desc: 'Damage 2.8 → 5.6, more range, stings last 4.1s and 6 stacks.', cost: 1250, damage: 4, cooldown: 1.2, range: 15, bees: { damage: 3, tick: 1, time: 4.1, stacks: 6 }, hidden: false },
       { name: 'Bee Certified Weapons', desc: 'No more direct damage and slower shots, but stings tick faster and last 5.25s, more range and 12 stacks. Unlocks Bee Swarm Grenade.', cost: 2000, damage: 0, cooldown: 1.5, range: 18, bees: { damage: 3, tick: 0.75, time: 5.25, stacks: 12 }, hidden: false,
         abilities: [beeNadeAb(30, 6)] },
-      { name: 'Beehive of Madness', desc: 'Faster shots, more range, stings last 7.5s and 25 stacks. Grenade: 70 damage in a bigger blast.', cost: 5750, damage: 0, cooldown: 1.25, range: 20, bees: { damage: 3, tick: 0.75, time: 7.5, stacks: 25 }, hidden: false,
+      { name: 'Beehive of Madness', desc: 'Faster shots, more range, stings last 7.5s and 25 stacks. Grenade: 98 damage in a bigger blast.', cost: 5750, damage: 0, cooldown: 1.25, range: 20, bees: { damage: 3, tick: 0.75, time: 7.5, stacks: 25 }, hidden: false,
         abilities: [beeNadeAb(70, 7)] },
-      { name: 'Beekeeper of Death', desc: '+1 sting damage, stings last 15s and 30 stacks. Grenade: 125 damage in an even bigger blast.', cost: 10000, damage: 0, cooldown: 1.25, range: 20, bees: { damage: 4, tick: 0.75, time: 15, stacks: 30 }, hidden: false,
+      { name: 'Beekeeper of Death', desc: '+1.4 sting damage, stings last 15s and 30 stacks. Grenade: 175 damage in an even bigger blast.', cost: 10000, damage: 0, cooldown: 1.25, range: 20, bees: { damage: 4, tick: 0.75, time: 15, stacks: 30 }, hidden: false,
         abilities: [beeNadeAb(125, 8)] },
     ],
   },
@@ -4938,11 +4948,11 @@ export const TOWERS = {
     tip: 'Place it near corners next to high-damage towers so its slows give them more time.',
     levels: [
       { name: 'Sledger', desc: 'Swings an ice hammer at up to 4 zombies, chilling them (15% slow per hit, up to 30%).', damage: 10, cooldown: 1.2, range: 7, targets: 4, chill: 0.5, maxSlow: 0.3, chillTime: 4, hidden: false },
-      { name: 'Heavier Swings', desc: 'Damage 10 → 14.', cost: 400, damage: 14, cooldown: 1.2, range: 7, targets: 4, chill: 0.5, maxSlow: 0.3, chillTime: 4, hidden: false },
-      { name: 'Better Sledge', desc: 'Damage 14 → 28 and hits 5 zombies.', cost: 1650, damage: 28, cooldown: 1.2, range: 7, targets: 5, chill: 0.5, maxSlow: 0.3, chillTime: 4, hidden: false },
-      { name: 'Freezing Point', desc: 'Damage 28 → 55, 35% slow per hit, and a hit on a fully chilled zombie freezes it for 0.85s.', cost: 3200, damage: 55, cooldown: 1.2, range: 7, targets: 5, chill: 1, maxSlow: 0.35, chillTime: 4, chillFreeze: 0.85, hidden: false },
-      { name: 'Ice Breaker', desc: 'Damage 55 → 105, more range, slows last 5s, and double damage to chilled and frozen zombies.', cost: 8250, damage: 105, cooldown: 1.2, range: 7.5, targets: 5, chill: 1, maxSlow: 0.35, chillTime: 5, chillFreeze: 0.85, iceBreak: 2, hidden: false },
-      { name: 'Arctic Aftershocks', desc: 'Damage 105 → 150, hits 8 zombies, 1.2s freezes, and an Aftershock 0.4s after each swing hits again for 40%.', cost: 16000, damage: 150, cooldown: 1.2, range: 7.5, targets: 8, chill: 1, maxSlow: 0.35, chillTime: 5, chillFreeze: 1.2, iceBreak: 2,
+      { name: 'Heavier Swings', desc: 'Damage 4 → 5.6.', cost: 400, damage: 14, cooldown: 1.2, range: 7, targets: 4, chill: 0.5, maxSlow: 0.3, chillTime: 4, hidden: false },
+      { name: 'Better Sledge', desc: 'Damage 5.6 → 11 and hits 5 zombies.', cost: 1650, damage: 28, cooldown: 1.2, range: 7, targets: 5, chill: 0.5, maxSlow: 0.3, chillTime: 4, hidden: false },
+      { name: 'Freezing Point', desc: 'Damage 11 → 22, 35% slow per hit, and a hit on a fully chilled zombie freezes it for 0.85s.', cost: 3200, damage: 55, cooldown: 1.2, range: 7, targets: 5, chill: 1, maxSlow: 0.35, chillTime: 4, chillFreeze: 0.85, hidden: false },
+      { name: 'Ice Breaker', desc: 'Damage 22 → 42, more range, slows last 5s, and double damage to chilled and frozen zombies.', cost: 8250, damage: 105, cooldown: 1.2, range: 7.5, targets: 5, chill: 1, maxSlow: 0.35, chillTime: 5, chillFreeze: 0.85, iceBreak: 2, hidden: false },
+      { name: 'Arctic Aftershocks', desc: 'Damage 42 → 60, hits 8 zombies, 1.2s freezes, and an Aftershock 0.4s after each swing hits again for 40%.', cost: 16000, damage: 150, cooldown: 1.2, range: 7.5, targets: 8, chill: 1, maxSlow: 0.35, chillTime: 5, chillFreeze: 1.2, iceBreak: 2,
         aftershock: { delay: 0.4, mult: 0.4 }, hidden: false },
     ],
   },
@@ -4972,14 +4982,14 @@ export const TOWERS = {
         chill: 0.18, chillTime: 3, maxSlow: 0.3, chillDps: 0, chillFreeze: 1 },
       { name: 'Better Grip', desc: 'Hits twice per attack, more freeze and a bit more range.', cost: 450, damage: 8, burst: 2, cooldown: 1.75, range: 5, targets: 3, hp: 235, hidden: false,
         chill: 0.3, chillTime: 3, maxSlow: 0.3, chillDps: 0, chillFreeze: 1 },
-      { name: 'Speed Reductions', desc: 'Damage 8 → 18, more freeze and 1 more zombie per hit.', cost: 1350, damage: 18, burst: 2, cooldown: 1.75, range: 5, targets: 4, hp: 285, hidden: false,
+      { name: 'Speed Reductions', desc: 'Damage 2.6 → 5.9, more freeze and 1 more zombie per hit.', cost: 1350, damage: 18, burst: 2, cooldown: 1.75, range: 5, targets: 4, hp: 285, hidden: false,
         chill: 0.6, chillTime: 3, maxSlow: 0.3, chillDps: 0, chillFreeze: 1 },
-      { name: 'Crystal Head', desc: 'Damage 18 → 38, 1 more zombie and 1 more hit per attack, and every hit freezes a zombie solid.', cost: 2325, damage: 38, burst: 3, cooldown: 1.75, range: 5, targets: 5, hp: 660, hidden: false,
+      { name: 'Crystal Head', desc: 'Damage 5.9 → 13, 1 more zombie and 1 more hit per attack, and every hit freezes a zombie solid.', cost: 2325, damage: 38, burst: 3, cooldown: 1.75, range: 5, targets: 5, hp: 660, hidden: false,
         chill: 1, chillTime: 3, maxSlow: 0.3, chillDps: 0, chillFreeze: 1 },
-      { name: 'Cryo Fuel', desc: 'Damage 38 → 68.', cost: 6000, damage: 68, burst: 3, cooldown: 1.75, range: 5, targets: 5, hp: 1310, hidden: false,
+      { name: 'Cryo Fuel', desc: 'Damage 13 → 22.', cost: 6000, damage: 68, burst: 3, cooldown: 1.75, range: 5, targets: 5, hp: 1310, hidden: false,
         chill: 1, chillTime: 3, maxSlow: 0.3, chillDps: 0, chillFreeze: 1 },
-      { name: 'X-Cryosuit', desc: "Damage 68 → 288, faster swings, 1 more hit, longer freezes, a bit more range. Freezes bosses (for half the time), can't be stunned, and unlocks Ice Shard and Snow Storm.", cost: 33000,
-        damage: 288, burst: 4, cooldown: 1.25, range: 6, targets: 5, hp: 2910, hidden: false, stunImmune: true,
+      { name: 'X-Cryosuit', desc: "Damage 22 → 40, faster swings, 1 more hit, longer freezes, a bit more range. Freezes bosses (for half the time), can't be stunned, and unlocks Ice Shard and Snow Storm.", cost: 33000,
+        damage: 120, burst: 4, cooldown: 1.25, range: 6, targets: 5, hp: 2910, hidden: false, stunImmune: true,
         chill: 1, chillTime: 3, maxSlow: 0.3, chillDps: 0, chillFreeze: 1.25, freezeBoss: 0.5, abilities: [ICE_SHARD_AB, SNOW_STORM_AB] },
     ],
   },
@@ -5003,21 +5013,21 @@ export const TOWERS = {
     blurb: "A flying helicopter whose ice beam freezes up to 2 zombies at a time. Send it anywhere on the map with Set Location, or have it follow you with Follow Player. Sees hidden and flying zombies from Lv 1, fires freezing Cryo Missiles from Lv 3 and freezes bosses at Lv 5. Low damage for its price, and support towers can't boost it. If it's knocked out, it explodes and briefly freezes your towers nearby.",
     tip: "Use it to freeze dangerous zombies and bosses wherever they are, not as your main damage. Keep it away from your other towers if it might get knocked out.",
     levels: [
-      { name: 'Cryo Helicopter', desc: 'An ice beam that freezes up to 2 zombies. Move it anywhere, or have it follow you.', damage: 2, beam: 2, cooldown: 0.2, range: 11, patrol: 5, hp: 850, hidden: false,
+      { name: 'Cryo Helicopter', desc: 'An ice beam that freezes up to 2 zombies. Move it anywhere, or have it follow you.', damage: 4, beam: 2, cooldown: 0.2, range: 11, patrol: 5, hp: 850, hidden: false,
         chill: 0.09, chillTime: 3, maxSlow: 0.3, chillDps: 0, chillFreeze: 1, deathBlast: { radius: 8, stun: 1, damage: 50, towerDamage: 25 }, abilities: [CRYO_MOVE, CRYO_FOLLOW] },
-      { name: 'Bigger Beam', desc: 'Hidden and flying detection, damage 2 → 3 and a stronger freeze.', cost: 2500, damage: 3, beam: 2, cooldown: 0.2, range: 11, patrol: 5, hp: 950, hidden: true, flying: true,
+      { name: 'Bigger Beam', desc: 'Hidden and flying detection, damage 4 → 6 and a stronger freeze.', cost: 2500, damage: 6, beam: 2, cooldown: 0.2, range: 11, patrol: 5, hp: 950, hidden: true, flying: true,
         chill: 0.21, chillTime: 3, maxSlow: 0.3, chillDps: 0, chillFreeze: 1, deathBlast: { radius: 8, stun: 1, damage: 100, towerDamage: 50 }, abilities: [CRYO_MOVE, CRYO_FOLLOW] },
-      { name: 'Speed Reduction', desc: 'A much stronger freeze and damage 3 → 5.', cost: 7500, damage: 5, beam: 2, cooldown: 0.2, range: 11, patrol: 5, hp: 1050, hidden: true, flying: true,
+      { name: 'Speed Reduction', desc: 'A much stronger freeze and damage 6 → 10.', cost: 7500, damage: 10, beam: 2, cooldown: 0.2, range: 11, patrol: 5, hp: 1050, hidden: true, flying: true,
         chill: 0.69, chillTime: 3, maxSlow: 0.3, chillDps: 0, chillFreeze: 1, deathBlast: { radius: 8, stun: 1, damage: 200, towerDamage: 75 }, abilities: [CRYO_MOVE, CRYO_FOLLOW] },
-      { name: 'Ice Missiles', desc: 'Every beam hit now freezes, damage 5 → 8, much more range, and Cryo Missiles: 50 damage to up to 3 zombies in a blast every 2s, chilling them.', cost: 17250,
-        damage: 8, beam: 2, cooldown: 0.2, range: 23, patrol: 5, hp: 1650, hidden: true, flying: true,
-        chill: 1, chillTime: 3, maxSlow: 0.3, chillDps: 0, chillFreeze: 1, missiles: [cryoMissile(50, 2, 0.3)], deathBlast: { radius: 8, stun: 1, damage: 400, towerDamage: 100 }, abilities: [CRYO_MOVE, CRYO_FOLLOW] },
-      { name: 'Cryo Munitions', desc: 'The beam hits 3 zombies, damage 8 → 13, flies faster, and Cryo Missiles do 100 damage every 1.5s.', cost: 46800,
-        damage: 13, beam: 3, cooldown: 0.2, range: 23, patrol: 5, heliSpeed: 15, hp: 3650, hidden: true, flying: true,
-        chill: 1, chillTime: 3, maxSlow: 0.3, chillDps: 0, chillFreeze: 1, missiles: [cryoMissile(100, 1.5, 0.5)], deathBlast: { radius: 8, stun: 1, damage: 800, towerDamage: 150 }, abilities: [CRYO_MOVE, CRYO_FOLLOW] },
-      { name: 'Mi-Ice Hind', desc: 'Freezes bosses (for half the time), damage 13 → 20, a small splash on the beam, longer freezes, and Cryo Missiles do 175 damage every 0.9s. Ignores ice resistance.', cost: 175000,
-        damage: 20, beam: 3, spray: 0.5, cooldown: 0.2, range: 23, patrol: 5, heliSpeed: 15, hp: 6900, hidden: true, flying: true, ignoreIceResist: true,
-        chill: 1, chillTime: 3, maxSlow: 0.3, chillDps: 0, chillFreeze: 1.5, freezeBoss: 0.5, missiles: [cryoMissile(175, 0.9, 0.75)], deathBlast: { radius: 8, stun: 1, damage: 1600, towerDamage: 200 }, abilities: [CRYO_MOVE, CRYO_FOLLOW] },
+      { name: 'Ice Missiles', desc: 'Every beam hit now freezes, damage 10 → 16, much more range, and Cryo Missiles: 100 damage to up to 3 zombies in a blast every 2s, chilling them.', cost: 17250,
+        damage: 16, beam: 2, cooldown: 0.2, range: 23, patrol: 5, hp: 1650, hidden: true, flying: true,
+        chill: 1, chillTime: 3, maxSlow: 0.3, chillDps: 0, chillFreeze: 1, missiles: [cryoMissile(100, 2, 0.3)], deathBlast: { radius: 8, stun: 1, damage: 400, towerDamage: 100 }, abilities: [CRYO_MOVE, CRYO_FOLLOW] },
+      { name: 'Cryo Munitions', desc: 'The beam hits 3 zombies, damage 16 → 30, flies faster, and Cryo Missiles do 200 damage every 1.5s.', cost: 46800,
+        damage: 30, beam: 3, cooldown: 0.2, range: 23, patrol: 5, heliSpeed: 15, hp: 3650, hidden: true, flying: true,
+        chill: 1, chillTime: 3, maxSlow: 0.3, chillDps: 0, chillFreeze: 1, missiles: [cryoMissile(200, 1.5, 0.5)], deathBlast: { radius: 8, stun: 1, damage: 800, towerDamage: 150 }, abilities: [CRYO_MOVE, CRYO_FOLLOW] },
+      { name: 'Mi-Ice Hind', desc: 'Freezes bosses (for half the time), damage 30 → 50, a small splash on the beam, longer freezes, and Cryo Missiles do 400 damage every 0.9s. Ignores ice resistance.', cost: 175000,
+        damage: 50, beam: 3, spray: 0.5, cooldown: 0.2, range: 23, patrol: 5, heliSpeed: 15, hp: 6900, hidden: true, flying: true, ignoreIceResist: true,
+        chill: 1, chillTime: 3, maxSlow: 0.3, chillDps: 0, chillFreeze: 1.5, freezeBoss: 0.5, missiles: [cryoMissile(400, 0.9, 0.75)], deathBlast: { radius: 8, stun: 1, damage: 1600, towerDamage: 200 }, abilities: [CRYO_MOVE, CRYO_FOLLOW] },
     ],
   },
   // Executioner: throws a bouncing axe. axe: { targets, bounces, ramp, jump }: it hits its target,
@@ -5036,10 +5046,10 @@ export const TOWERS = {
     levels: [
       { name: 'Executioner', desc: 'A bouncing axe that hits up to 3 zombies, harder with each bounce.', damage: 7, cooldown: 1, range: 15, axe: { targets: 3, bounces: 2, ramp: 1, jump: 8 }, hidden: false },
       { name: 'Quick Chopping', desc: 'Throws faster and more range.', cost: 450, damage: 7, cooldown: 0.75, range: 17, axe: { targets: 3, bounces: 2, ramp: 1, jump: 8 }, hidden: false },
-      { name: 'Double-Headed Axe', desc: 'Damage 7 → 14, hits 1 more zombie and bounces once more.', cost: 1777, damage: 14, cooldown: 0.75, range: 17, axe: { targets: 4, bounces: 3, ramp: 1, jump: 8 }, hidden: false },
-      { name: 'Cloaked Revenant', desc: 'Hidden detection, damage 14 → 20, bounces once more and +6 damage per bounce.', cost: 3750, damage: 20, cooldown: 0.75, range: 17, axe: { targets: 4, bounces: 4, ramp: 7, jump: 8 }, hidden: true },
-      { name: "Ghoul Shreddin'", desc: 'Damage 20 → 40, hits 2 more zombies, bounces 2 more times and +1 damage per bounce.', cost: 6750, damage: 40, cooldown: 0.75, range: 17, axe: { targets: 6, bounces: 6, ramp: 8, jump: 8 }, hidden: true },
-      { name: 'The Judge & The Jury', desc: 'Throws every 0.5s, more range, damage 40 → 50, 1 more target, 3 more bounces and +2 damage per bounce.', cost: 13500, damage: 50, cooldown: 0.5, range: 19, axe: { targets: 7, bounces: 9, ramp: 10, jump: 8 }, hidden: true },
+      { name: 'Double-Headed Axe', desc: 'Damage 2.8 → 5.6, hits 1 more zombie and bounces once more.', cost: 1777, damage: 14, cooldown: 0.75, range: 17, axe: { targets: 4, bounces: 3, ramp: 1, jump: 8 }, hidden: false },
+      { name: 'Cloaked Revenant', desc: 'Hidden detection, damage 5.6 → 8, bounces once more and +2.4 damage per bounce.', cost: 3750, damage: 20, cooldown: 0.75, range: 17, axe: { targets: 4, bounces: 4, ramp: 7, jump: 8 }, hidden: true },
+      { name: "Ghoul Shreddin'", desc: 'Damage 8 → 16, hits 2 more zombies, bounces 2 more times and +0.4 damage per bounce.', cost: 6750, damage: 40, cooldown: 0.75, range: 17, axe: { targets: 6, bounces: 6, ramp: 8, jump: 8 }, hidden: true },
+      { name: 'The Judge & The Jury', desc: 'Throws every 0.5s, more range, damage 16 → 20, 1 more target, 3 more bounces and +0.8 damage per bounce.', cost: 13500, damage: 50, cooldown: 0.5, range: 19, axe: { targets: 7, bounces: 9, ramp: 10, jump: 8 }, hidden: true },
     ],
   },
   // ---------------------------------------------------------------- event towers (wave 3)
@@ -5056,14 +5066,14 @@ export const TOWERS = {
     blurb: "A cheap tower that doesn't attack. It keeps sending friendly elves down the path that crash into zombies, throw snowballs, shoot or explode. Elf crashes and explosions ignore armor, but most elves are fragile, they walk right through Ghosts, and support towers can't boost them.",
     tip: 'Bomber Elf explosions are great for clearing early crowds.',
     levels: [
-      { name: 'Elf Camp', desc: 'Sends an Elf (15 HP) every 10s that crashes into zombies.', hidden: false, unit: ELF.basic },
-      { name: "Sno'ball Training", desc: 'Also sends a Snowball Elf every 10s that stays back and throws snowballs (4 damage every 2s).', cost: 750, hidden: false,
+      { name: 'Elf Camp', desc: 'Sends an Elf (6 HP) every 10s that crashes into zombies.', hidden: false, unit: ELF.basic },
+      { name: "Sno'ball Training", desc: 'Also sends a Snowball Elf every 10s that stays back and throws snowballs (1.6 damage every 2s).', cost: 750, hidden: false,
         unit: ELF.basic, unit2: ELF.snowball, spawnEvery2: 10 },
-      { name: 'Unpaid Labor', desc: 'Snowball Elves become Cannoneer Elves (4 damage every 0.5s), and Bomber Elves explode for 45 when they go down (lead detection).', cost: 2022, hidden: false,
+      { name: 'Unpaid Labor', desc: 'Snowball Elves become Cannoneer Elves (1.6 damage every 0.5s), and Bomber Elves explode for 18 when they go down (lead detection).', cost: 2022, hidden: false,
         unit: ELF.basic, unit2: ELF.cannon, spawnEvery2: 12, unit3: ELF.bomber, spawnEvery3: 10 },
       { name: 'Cookie Cutting', desc: 'Elves become sword-swinging Guardian Elves, and Cannoneers become Gunner Elves that fire 5-shot bursts. Both see hidden zombies.', cost: 4500, hidden: false,
         unit: ELF.guardian, unit2: ELF.gunner, spawnEvery2: 25, unit3: ELF.bomber, spawnEvery3: 10 },
-      { name: 'A Violent Night', desc: 'Tougher, harder-hitting Guardians with 30% defense, Gunners in pairs that fire faster, flying Gift Bombers, and the 1,000 HP Ripped Elf.', cost: 12012, hidden: false,
+      { name: 'A Violent Night', desc: 'Tougher, harder-hitting Guardians with 30% defense, Gunners in pairs that fire faster, flying Gift Bombers, and the 400 HP Ripped Elf.', cost: 12012, hidden: false,
         unit: ELF.guardian2, unit2: ELF.gunner2, spawnEvery2: 25, unit3: ELF.gift, spawnEvery3: 50, unit4: ELF.ripped, spawnEvery4: 100 },
     ],
   },
@@ -5087,13 +5097,13 @@ export const TOWERS = {
     levels: [
       { name: 'Jester', desc: 'Throws fire bombs that set zombies on fire.', damage: 4, cooldown: 1.2, range: 10, radius: 3, slots: 1, hidden: false,
         bombs: { fire: { radius: 3, mult: 1, dps: 1, time: 3 } } },
-      { name: 'Trained Juggling', desc: 'Damage 4 → 6, burns +1, throws faster and more range.', cost: 400, damage: 6, cooldown: 1, range: 12.3, radius: 3, slots: 1, hidden: false,
+      { name: 'Trained Juggling', desc: 'Damage 1.8 → 2.7, burns +0.4, throws faster and more range.', cost: 400, damage: 6, cooldown: 1, range: 12.3, radius: 3, slots: 1, hidden: false,
         bombs: { fire: { radius: 3, mult: 1, dps: 2, time: 3 } } },
-      { name: 'Cold Humor', desc: 'Damage 6 → 10, burns +1 and more range. Unlocks the Ice Bomb: 20% damage, but a 25% slow for 3s in a big blast.', cost: 670, damage: 10, cooldown: 1, range: 13, radius: 3, slots: 1, hidden: false,
+      { name: 'Cold Humor', desc: 'Damage 2.7 → 4.5, burns +0.5 and more range. Unlocks the Ice Bomb: 20% damage, but a 25% slow for 3s in a big blast.', cost: 670, damage: 10, cooldown: 1, range: 13, radius: 3, slots: 1, hidden: false,
         bombs: { fire: { radius: 3, mult: 1, dps: 3, time: 3 }, ice: { radius: 6, mult: 0.2, chill: 1, maxSlow: 0.25, chillTime: 3 } } },
-      { name: 'Potent Bombs', desc: 'Damage 10 → 30, burns +6 and hidden detection. Bigger Ice blasts that melt 1% of armor. Unlocks the Poison Bomb: 3 damage every 0.4s for 30s.', cost: 2750, damage: 30, cooldown: 1, range: 13, radius: 3, slots: 1, hidden: true,
+      { name: 'Potent Bombs', desc: 'Damage 4.5 → 14, burns +2.7 and hidden detection. Bigger Ice blasts that melt 1% of armor. Unlocks the Poison Bomb: 1.4 damage every 0.4s for 30s.', cost: 2750, damage: 30, cooldown: 1, range: 13, radius: 3, slots: 1, hidden: true,
         bombs: { fire: { radius: 3, mult: 1, dps: 9, time: 3 }, ice: { radius: 7, mult: 0.2, chill: 1, maxSlow: 0.25, chillTime: 3, melt: 0.01 }, poison: { radius: 3, mult: 1, damage: 3, tick: 0.4, time: 30, slow: 0 } } },
-      { name: 'Harlequin of Doom', desc: 'Damage 30 → 48, burns +6, poison +2, throws faster, more range, and a second bomb slot: two bomb types at once. Unlocks the Confusion Bomb (zombies walk backwards for 2s).', cost: 8500, damage: 48, cooldown: 0.6, range: 16, radius: 3, slots: 2, hidden: true,
+      { name: 'Harlequin of Doom', desc: 'Damage 14 → 22, burns +2.7, poison +0.9, throws faster, more range, and a second bomb slot: two bomb types at once. Unlocks the Confusion Bomb (zombies walk backwards for 2s).', cost: 8500, damage: 48, cooldown: 0.6, range: 16, radius: 3, slots: 2, hidden: true,
         bombs: { fire: { radius: 3, mult: 1, dps: 15, time: 3 }, ice: { radius: 7, mult: 0.2, chill: 1, maxSlow: 0.25, chillTime: 3, melt: 0.01 }, poison: { radius: 3, mult: 1, damage: 5, tick: 0.4, time: 30, slow: 0 },
           confuse: { radius: 3, mult: 0, time: 2, cd: 6 } } },
     ],
@@ -5116,9 +5126,9 @@ export const TOWERS = {
     levels: [
       { name: 'Cryomancer', desc: 'A frost beam that slows up to 3 zombies by 7.5% per hit (up to 15%) and melts 5% of their armor. No damage.', damage: 0, cooldown: 0.2, range: 11, targets: 3, chill: 0.5, maxSlow: 0.15, chillTime: 2, melt: 0.05, ammo: 50, reload: 2, beamWidth: 1.25, hidden: false },
       { name: 'Frosty Gear', desc: 'More range, and a stronger, longer slow: 10% per hit, up to 20%, for 3s.', cost: 200, damage: 0, cooldown: 0.2, range: 13.5, targets: 3, chill: 0.5, maxSlow: 0.2, chillTime: 3, melt: 0.05, ammo: 50, reload: 2, beamWidth: 1.25, hidden: false },
-      { name: 'Freezing Tanks', desc: 'Slowed zombies take 3 damage every second, 7% armor melt and 25 more ammo.', cost: 935, damage: 0, cooldown: 0.2, range: 13.5, targets: 3, chill: 0.5, maxSlow: 0.2, chillTime: 3, chillDps: 3, melt: 0.07, ammo: 75, reload: 2, beamWidth: 1.25, hidden: false },
-      { name: 'Ice Commando', desc: 'The beam does 3 damage, slowed zombies take 5 a second, it hits 4 zombies, and slows 12.5% per hit up to 25% for 5s.', cost: 2750, damage: 3, cooldown: 0.2, range: 13.5, targets: 4, chill: 0.5, maxSlow: 0.25, chillTime: 5, chillDps: 5, melt: 0.07, ammo: 75, reload: 2, beamWidth: 1.75, hidden: false },
-      { name: "Winter's Fury", desc: 'Damage 3 → 6, slowed zombies take 10 a second, more range, hits 6 zombies, faster reloads, 20 more ammo, 10% armor melt, and a hit on a fully slowed zombie freezes it for 0.75s.', cost: 6250, damage: 6, cooldown: 0.2, range: 15, targets: 6, chill: 0.5, maxSlow: 0.25, chillTime: 5, chillDps: 10, chillFreeze: 0.75, melt: 0.1, ammo: 95, reload: 1.25, beamWidth: 2.25, hidden: false },
+      { name: 'Freezing Tanks', desc: 'Slowed zombies take 1.8 damage every second, 7% armor melt and 25 more ammo.', cost: 935, damage: 0, cooldown: 0.2, range: 13.5, targets: 3, chill: 0.5, maxSlow: 0.2, chillTime: 3, chillDps: 3, melt: 0.07, ammo: 75, reload: 2, beamWidth: 1.25, hidden: false },
+      { name: 'Ice Commando', desc: 'The beam does 1.8 damage, slowed zombies take 3 a second, it hits 4 zombies, and slows 12.5% per hit up to 25% for 5s.', cost: 2750, damage: 3, cooldown: 0.2, range: 13.5, targets: 4, chill: 0.5, maxSlow: 0.25, chillTime: 5, chillDps: 5, melt: 0.07, ammo: 75, reload: 2, beamWidth: 1.75, hidden: false },
+      { name: "Winter's Fury", desc: 'Damage 1.8 → 3.6, slowed zombies take 6 a second, more range, hits 6 zombies, faster reloads, 20 more ammo, 10% armor melt, and a hit on a fully slowed zombie freezes it for 0.75s.', cost: 6250, damage: 6, cooldown: 0.2, range: 15, targets: 6, chill: 0.5, maxSlow: 0.25, chillTime: 5, chillDps: 10, chillFreeze: 0.75, melt: 0.1, ammo: 95, reload: 1.25, beamWidth: 2.25, hidden: false },
     ],
   },
   // Hallow Punk (alternate Hallowboomer form): homing rockets (`fly`: their speed, or the level's
@@ -5257,13 +5267,13 @@ export const TOWERS = {
     blurb: "Doesn't attack. It grows plants on the path next to it, and you pick which ones in its panel: Sunflowers shoot one zombie, Ivy poisons groups (and hurts lead zombies), and Nightshade confuses zombies. Its range is tiny, plants get trampled by zombies, and support towers can't boost them.",
     tip: 'Place it right beside the path. Several Sunflowers give you hidden detection; Ivy is the plant that hurts lead zombies.',
     levels: [
-      { name: 'Biologist', desc: 'Grows Sunflowers on the path: 6 damage every 1.1s.', range: 9, queues: 1, hidden: false,
+      { name: 'Biologist', desc: 'Grows Sunflowers on the path: 2.5 damage every 1.1s.', range: 9, queues: 1, hidden: false,
         plants: [{ key: 'sun', unit: sunflower(50, 6, 1.1, 15), every: 10 }] },
-      { name: 'Bio Chemistry', desc: 'Sunflowers +4 damage and +50 HP. Unlocks Ivy: splash damage that poisons and slows, with lead detection.', cost: 600, range: 9, queues: 1, hidden: false,
+      { name: 'Bio Chemistry', desc: 'Sunflowers +1.7 damage and +50 HP. Unlocks Ivy: splash damage that poisons and slows, with lead detection.', cost: 600, range: 9, queues: 1, hidden: false,
         plants: [{ key: 'sun', unit: sunflower(100, 10, 1.1, 15), every: 10 }, { key: 'ivy', unit: ivy(100, 8, 2, 14, 3, { damage: 1, tick: 0.75, time: 4.5, slow: 0.05 }), every: 20 }] },
-      { name: 'Scientific Breakthrough', desc: 'A second plant queue. Sunflowers get +2 damage, more range and HP, and hidden detection. Ivy hits harder in a bigger splash.', cost: 1850, range: 9, queues: 2, hidden: false,
+      { name: 'Scientific Breakthrough', desc: 'A second plant queue. Sunflowers get +0.8 damage, more range and HP, and hidden detection. Ivy hits harder in a bigger splash.', cost: 1850, range: 9, queues: 2, hidden: false,
         plants: [{ key: 'sun', unit: sunflower(200, 12, 1.1, 17, true), every: 10 }, { key: 'ivy', unit: ivy(200, 12, 1.8, 15.5, 4, { damage: 2, tick: 0.75, time: 4.5, slow: 0.075 }), every: 20 }] },
-      { name: 'Flower Power', desc: 'Sunflowers +16 damage, Ivy +13 damage with stronger poison. Unlocks Nightshade: 50 damage with huge range that confuses zombies, with flying detection.', cost: 4500, range: 9, queues: 2, hidden: false,
+      { name: 'Flower Power', desc: 'Sunflowers +7 damage, Ivy +6 damage with stronger poison. Unlocks Nightshade: 21 damage with huge range that confuses zombies, with flying detection.', cost: 4500, range: 9, queues: 2, hidden: false,
         plants: [{ key: 'sun', unit: sunflower(400, 28, 1, 19.5, true), every: 10 }, { key: 'ivy', unit: ivy(400, 25, 1.8, 17, 4.5, { damage: 4, tick: 0.6, time: 4.5, slow: 0.075 }), every: 20 },
           { key: 'night', unit: nightshade(400, 50, 3, 30, { time: 1, cd: 4 }), every: 20 }] },
       { name: 'Botanical Berserker!', desc: 'A third plant queue, and every plant gets much stronger.', cost: 20000, range: 9, queues: 3, hidden: false,
@@ -5828,9 +5838,11 @@ export const TOWERS = {
   },
   // Oil Derrick: a money tower. oil: pays `pay` cash every `every` seconds (all game long, not
   // per wave). Bottom path: `income` is paid every wave as well. Medics can't heal it (noHeal).
-  // Not used by the game yet (kept for later): dmgCash (multiplies the cash your towers earn from
-  // damage; the game pays per kill, not per damage yet), winCredits (+200 credits for a win with an
-  // X-5 Derrick out), noStack (several Bottom path Derricks shouldn't stack their bonuses).
+  // dmgCash (Bottom path Lv 3+, "Cash Back"): its owner gets that share on top of all the cash
+  // they earn from damage (GAME.dmgCash; in Versus, from kills). noStack: with several of them
+  // only the best one counts. A stunned or knocked out Derrick gives none. winCredits (Bottom
+  // Lv 5): its owner gets that many extra credits for a win with one on the field (one bonus,
+  // however many they have; not multiplied by the mode's credits).
   oilDerrick: {
     name: 'Oil Derrick',
     price: 1500,
@@ -5841,7 +5853,7 @@ export const TOWERS = {
     branch: 'oilDerrickBottom',
     branchAt: 1,
     path: 'Top',
-    blurb: 'A money tower like the Farm, but it pays cash every few seconds instead of once per wave. Top path: more cash, faster. Bottom path: also pays every wave, and at X-5 earns bonus credits when you win. Medics can\'t heal it.',
+    blurb: 'A money tower like the Farm, but it pays cash every few seconds instead of once per wave. Top path: more cash, faster. Bottom path: also pays every wave, from Cash Back on you earn more cash from damage, and at X-5 it earns bonus credits when you win. Medics can\'t heal it.',
     tip: 'The Top path makes more cash overall; Lv 2-4 are the best value. Long maps make it even better, because waves last longer.',
     levels: [
       { name: 'Oil Derrick', desc: 'Pays $45 every 6s.', oil: { pay: 45, every: 6 }, hp: 800, hidden: false },
@@ -5864,15 +5876,15 @@ export const TOWERS = {
     kind: 'income',
     noHeal: true,
     noStack: true,
-    blurb: "The Oil Derrick's Bottom path: cash every wave on top of its oil, and at US Military Budget it earns 200 bonus credits when you win.",
+    blurb: "The Oil Derrick's Bottom path: cash every wave on top of its oil, more cash from damage from Cash Back on (only your best Derrick counts), and at US Military Budget it earns 200 bonus credits when you win.",
     tip: 'Upgrade to Lv 5 at the very end of a game for the bonus credits.',
     levels: [
       { name: 'Oil Derrick', desc: 'Pays $45 every 6s.', oil: { pay: 45, every: 6 }, hp: 800, hidden: false },
       { name: 'US Bonds', path: 'Bottom', desc: 'Bottom path: +$200 every wave.', cost: 1550, oil: { pay: 45, every: 6 }, income: 200, hp: 950, hidden: false },
       { name: 'Extra Funding', path: 'Bottom', desc: '$800 every wave.', cost: 5250, oil: { pay: 45, every: 6 }, income: 800, hp: 1200, hidden: false },
-      { name: 'Cash Back', path: 'Bottom', desc: '$1,800 every wave and $175 every 6s.', cost: 12000, oil: { pay: 175, every: 6 }, income: 1800, dmgCash: 0.03, hp: 2200, hidden: false },
-      { name: 'War Budget', path: 'Bottom', desc: '$4,600 every wave and $250 every 6s.', cost: 38100, oil: { pay: 250, every: 6 }, income: 4600, dmgCash: 0.08, hp: 4000, hidden: false },
-      { name: 'US Military Budget', path: 'Bottom', desc: '$9,600 every wave, $300 every 6s, and +200 credits when you win.', cost: 75000, oil: { pay: 300, every: 6 }, income: 9600, dmgCash: 0.18, winCredits: 200, hp: 10000, hidden: false },
+      { name: 'Cash Back', path: 'Bottom', desc: '$1,800 every wave, $175 every 6s, and you earn 3% more cash from damage.', cost: 12000, oil: { pay: 175, every: 6 }, income: 1800, dmgCash: 0.03, hp: 2200, hidden: false },
+      { name: 'War Budget', path: 'Bottom', desc: '$4,600 every wave, $250 every 6s, and 8% more cash from damage.', cost: 38100, oil: { pay: 250, every: 6 }, income: 4600, dmgCash: 0.08, hp: 4000, hidden: false },
+      { name: 'US Military Budget', path: 'Bottom', desc: '$9,600 every wave, $300 every 6s, 18% more cash from damage, and +200 credits when you win.', cost: 75000, oil: { pay: 300, every: 6 }, income: 9600, dmgCash: 0.18, winCredits: 200, hp: 10000, hidden: false },
     ],
   },
   // Combat Medic: shoots bullet bursts (flyers too) and repairs every tower in its `aura`
@@ -6442,13 +6454,13 @@ export const TOWERS = {
     levels: [
       { name: 'Golden Warship', desc: 'Lobs 3 heavy golden shells per reload at zombies almost anywhere on the map. Water only.', damage: 4000, cooldown: 3, range: 800, radius: 5, volley: 3, hp: 60000, hidden: false },
       { name: 'Triple Barrel', path: 'Top', desc: 'Top path: 6 shells per reload, more damage and range.', cost: 100000, damage: 4050, cooldown: 3, range: 900, radius: 5, volley: 6, hp: 62000, hidden: false },
-      { name: 'AA Guns', path: 'Top', desc: 'AA Guns: exploding 1,500-damage rounds at flying zombies 5 times a second.', cost: 180000, damage: 4050, cooldown: 3, range: 900, radius: 5, volley: 6, hp: 62450, hidden: false,
+      { name: 'AA Guns', path: 'Top', desc: 'AA Guns: exploding 600-damage rounds at flying zombies 5 times a second.', cost: 180000, damage: 4050, cooldown: 3, range: 900, radius: 5, volley: 6, hp: 62450, hidden: false,
         missiles: [aaGuns(1500)] },
-      { name: 'Missile Turret', path: 'Top', desc: 'Golden Hellfire Missiles: 4,000 damage about every second. More damage, range and lots more health.', cost: 700000, damage: 4120, cooldown: 3, range: 925, radius: 5, volley: 6, hp: 74450, hidden: false,
+      { name: 'Missile Turret', path: 'Top', desc: 'Golden Hellfire Missiles: 1,600 damage about every second. More damage, range and lots more health.', cost: 700000, damage: 4120, cooldown: 3, range: 925, radius: 5, volley: 6, hp: 74450, hidden: false,
         missiles: [aaGuns(1500), gHellfire(4000)] },
-      { name: 'Gattling Gun', path: 'Top', desc: 'A Gatling Turret that hits ground and flying zombies (7,500 damage per second), stronger AA Guns and Hellfire Missiles.', cost: 450000, damage: 4120, cooldown: 3, range: 950, radius: 5, volley: 6, hp: 75450, hidden: false,
+      { name: 'Gattling Gun', path: 'Top', desc: 'A Gatling Turret that hits ground and flying zombies (3,000 damage per second), stronger AA Guns and Hellfire Missiles.', cost: 450000, damage: 4120, cooldown: 3, range: 950, radius: 5, volley: 6, hp: 75450, hidden: false,
         missiles: [aaGuns(2000), gHellfire(4875), GATLING_TURRET] },
-      { name: 'Warship-X', path: 'Top', desc: '25 enormous shells per reload, Golden Mortars (5 x 2,500 every 2s) and a battery of gatlings, but it loses the AA Guns and missiles and reloads 15s slower.', cost: 3500000, damage: 20120, cooldown: 18, range: 1200, radius: 13, volley: 25, hp: 825450, hidden: false, splashTransfer: true,
+      { name: 'Warship-X', path: 'Top', desc: '25 enormous shells per reload, Golden Mortars (5 x 1,000 every 2s) and a battery of gatlings, but it loses the AA Guns and missiles and reloads 15s slower.', cost: 3500000, damage: 20120, cooldown: 18, range: 1200, radius: 13, volley: 25, hp: 825450, hidden: false, splashTransfer: true,
         missiles: [GATLING_BATTERY, G_MORTARS] },
     ],
   },
@@ -6468,16 +6480,16 @@ export const TOWERS = {
     noBuff: true,
     lob: 1.2,
     bigWater: true,
-    blurb: "The Golden Warship's Bottom path: more range and shells, AA Guns, then a Railgun Turret with one massive shot, and the BFG-X that hits for over 785,000.",
+    blurb: "The Golden Warship's Bottom path: more range and shells, AA Guns, then a Railgun Turret with one massive shot, and the BFG-X that hits for over 94,000.",
     tip: 'Set it to Strongest for bosses.',
     levels: [
       { name: 'Golden Warship', desc: 'Lobs 3 heavy golden shells per reload at zombies almost anywhere on the map. Water only.', damage: 4000, cooldown: 3, range: 800, radius: 5, volley: 3, hp: 60000, hidden: false },
       { name: 'Calamity Power', path: 'Bottom', desc: 'Bottom path: 6 shells per reload and much more range.', cost: 57000, damage: 4005, cooldown: 3, range: 1300, radius: 5, volley: 6, hp: 61000, hidden: false },
       { name: 'Cool Stuff', path: 'Bottom', desc: 'AA Guns, more damage, reloads faster.', cost: 90000, damage: 4075, cooldown: 2.25, range: 1300, radius: 5, volley: 6, hp: 61250, hidden: false,
         missiles: [aaGuns(1500)] },
-      { name: 'Railgun Turret', path: 'Bottom', desc: 'A railgun: one 12,075-damage shot with a smaller blast. Reloads slower, and it loses the AA Guns.', cost: 440000, damage: 12075, cooldown: 5.25, range: 1300, radius: 3, volley: 1, hp: 71250, hidden: false, arc: 270 },
+      { name: 'Railgun Turret', path: 'Bottom', desc: 'A railgun: one 1,450-damage shot with a smaller blast. Reloads slower, and it loses the AA Guns.', cost: 440000, damage: 12075, cooldown: 5.25, range: 1300, radius: 3, volley: 1, hp: 71250, hidden: false, arc: 270 },
       { name: 'Bigger Railgun', path: 'Bottom', desc: 'Much more damage.', cost: 550000, damage: 27075, cooldown: 5.25, range: 1300, radius: 3, volley: 1, hp: 71370, hidden: false, arc: 270 },
-      { name: 'BFG-X', path: 'Bottom', desc: 'A 785,075-damage shot that ignores golden resistance, a bigger blast and more range.', cost: 7600000, damage: 785075, cooldown: 5.25, range: 1700, radius: 7.5, volley: 1, hp: 521370, hidden: false, ignoreGoldResist: true, splashTransfer: true },
+      { name: 'BFG-X', path: 'Bottom', desc: 'A 94,200-damage shot that ignores golden resistance, a bigger blast and more range.', cost: 7600000, damage: 785075, cooldown: 5.25, range: 1700, radius: 7.5, volley: 1, hp: 521370, hidden: false, ignoreGoldResist: true, splashTransfer: true },
     ],
   },
   // Void Traitor (event): a melee sword that hits `targets` zombies per swing and sets them all on
@@ -6498,12 +6510,12 @@ export const TOWERS = {
     blurb: 'A melee tower that swings a sword at several zombies at once and sets them on fire. At Lv 5 it opens a black hole that rains rocks, slams its sword for huge damage, and summons void troops onto the path. Slow swings, short range, low health and a high price.',
     tip: 'Use Void Rift on crowds so your main towers can focus the boss, and Summon Troops to stop leaks. Bring a Medic or Shield Tower.',
     levels: [
-      { name: 'Void Traitor', desc: 'Swings a sword at up to 4 zombies and burns them (12/s for 3s).', damage: 75, cooldown: 1.5, range: 7, targets: 4, fireAspect: { every: 0, dps: 12, time: 3 }, hp: 1400, hidden: false, swordSplash: 1 },
+      { name: 'Void Traitor', desc: 'Swings a sword at up to 4 zombies and burns them (6/s for 3s).', damage: 75, cooldown: 1.5, range: 7, targets: 4, fireAspect: { every: 0, dps: 12, time: 3 }, hp: 1400, hidden: false, swordSplash: 1 },
       { name: 'Sharper Blade', desc: 'More damage and hotter burns.', cost: 1050, damage: 100, cooldown: 1.5, range: 7, targets: 4, fireAspect: { every: 0, dps: 25, time: 3 }, hp: 1470, hidden: false, swordSplash: 1 },
-      { name: 'Void Blade', desc: 'Hits 6 zombies, more damage, burns of 50/s.', cost: 3000, damage: 145, cooldown: 1.5, range: 7, targets: 6, fireAspect: { every: 0, dps: 50, time: 3 }, hp: 1770, hidden: false, swordSplash: 1 },
-      { name: 'All Seeing Eye', desc: 'Hidden detection, much more damage, burns of 115/s, a bit more range.', cost: 4000, damage: 345, cooldown: 1.5, range: 8, targets: 6, fireAspect: { every: 0, dps: 115, time: 3 }, hp: 2370, hidden: true, swordSplash: 1 },
-      { name: 'Void Armor', desc: 'More damage, burns of 200/s, lots more health.', cost: 13000, damage: 570, cooldown: 1.5, range: 8, targets: 6, fireAspect: { every: 0, dps: 200, time: 3 }, hp: 4370, hidden: true, swordSplash: 2 },
-      { name: 'Void Traitor', desc: 'Hits 14 zombies for huge damage with 1,500/s burns, but swings slower. Unlocks Void Rift, Summon Troops and Void Slam.', cost: 350000, damage: 5250, cooldown: 2.75, range: 8, targets: 14, fireAspect: { every: 0, dps: 1500, time: 3 }, hp: 20000, hidden: true, swordSplash: 3,
+      { name: 'Void Blade', desc: 'Hits 6 zombies, more damage, burns of 25/s.', cost: 3000, damage: 145, cooldown: 1.5, range: 7, targets: 6, fireAspect: { every: 0, dps: 50, time: 3 }, hp: 1770, hidden: false, swordSplash: 1 },
+      { name: 'All Seeing Eye', desc: 'Hidden detection, much more damage, burns of 58/s, a bit more range.', cost: 4000, damage: 345, cooldown: 1.5, range: 8, targets: 6, fireAspect: { every: 0, dps: 115, time: 3 }, hp: 2370, hidden: true, swordSplash: 1 },
+      { name: 'Void Armor', desc: 'More damage, burns of 100/s, lots more health.', cost: 13000, damage: 570, cooldown: 1.5, range: 8, targets: 6, fireAspect: { every: 0, dps: 200, time: 3 }, hp: 4370, hidden: true, swordSplash: 2 },
+      { name: 'Void Traitor', desc: 'Hits 14 zombies for huge damage with 750/s burns, but swings slower. Unlocks Void Rift, Summon Troops and Void Slam.', cost: 350000, damage: 5250, cooldown: 2.75, range: 8, targets: 14, fireAspect: { every: 0, dps: 1500, time: 3 }, hp: 20000, hidden: true, swordSplash: 3,
         abilities: [VOID_RIFT_AB, SUMMON_TROOPS_AB, VOID_SLAM_AB] },
     ],
   },
@@ -6592,11 +6604,11 @@ export const TOWERS = {
     tip: 'Use him as backup damage and save up to jump straight to max level for the tank.',
     levels: [
       { name: 'Hired Gun', desc: 'Bursts of 25 bullets.', damage: 2, burst: 25, burstGap: 0.4, cooldown: cyc(25, 0.4, 3.25), range: 9, hidden: false },
-      { name: 'Better Rifle', desc: 'Damage 2 → 3, shoots faster.', cost: 450, damage: 3, burst: 25, burstGap: 0.35, cooldown: cyc(25, 0.35, 3.2), range: 9, hidden: false },
-      { name: 'Night Vision', desc: 'Damage 3 → 4.5, faster, more range, bursts of 30 and hidden detection.', cost: 950, damage: 4.5, burst: 30, burstGap: 0.275, cooldown: cyc(30, 0.275, 3.25), range: 11.5, hidden: true },
-      { name: 'Drum Mag', desc: 'Damage 4.5 → 6.5, faster, bursts of 40.', cost: 2150, damage: 6.5, burst: 40, burstGap: 0.25, cooldown: cyc(40, 0.25, 3), range: 11.5, hidden: true },
-      { name: 'Heavy Armor', desc: 'Damage 6.5 → 9, faster, much more range.', cost: 6200, damage: 9, burst: 40, burstGap: 0.2, cooldown: cyc(40, 0.2, 2.75), range: 14, hidden: true },
-      { name: 'Radio Support', desc: 'Damage 9 → 12, more range. Unlocks Tank Airdrop.', cost: 12000, damage: 12, burst: 40, burstGap: 0.2, cooldown: cyc(40, 0.2, 2.75), range: 15, hidden: true, abilities: [TANK_DROP_AB] },
+      { name: 'Better Rifle', desc: 'Damage 3.6 → 5.4, shoots faster.', cost: 450, damage: 3, burst: 25, burstGap: 0.35, cooldown: cyc(25, 0.35, 3.2), range: 9, hidden: false },
+      { name: 'Night Vision', desc: 'Damage 5.4 → 8.1, faster, more range, bursts of 30 and hidden detection.', cost: 950, damage: 4.5, burst: 30, burstGap: 0.275, cooldown: cyc(30, 0.275, 3.25), range: 11.5, hidden: true },
+      { name: 'Drum Mag', desc: 'Damage 8.1 → 12, faster, bursts of 40.', cost: 2150, damage: 6.5, burst: 40, burstGap: 0.25, cooldown: cyc(40, 0.25, 3), range: 11.5, hidden: true },
+      { name: 'Heavy Armor', desc: 'Damage 12 → 16, faster, much more range.', cost: 6200, damage: 9, burst: 40, burstGap: 0.2, cooldown: cyc(40, 0.2, 2.75), range: 14, hidden: true },
+      { name: 'Radio Support', desc: 'Damage 16 → 22, more range. Unlocks Tank Airdrop.', cost: 12000, damage: 12, burst: 40, burstGap: 0.2, cooldown: cyc(40, 0.2, 2.75), range: 15, hidden: true, abilities: [TANK_DROP_AB] },
     ],
   },
   // Focus (alternate Phaser form): very fast shots; after `ammo` shots it overheats for `reload` s.
@@ -6614,11 +6626,11 @@ export const TOWERS = {
     tip: 'Place it so zombies walk through its inner range: then it fires without overheating.',
     levels: [
       { name: 'Focus', desc: 'Rapid shots. Overheats after 40 shots for 5s.', damage: 2.5, cooldown: 0.125, range: 10, coolRange: 5, ammo: 40, reload: 5, hidden: false },
-      { name: 'Cooling Fins', desc: 'Damage 2.5 → 3, faster, more range, 65 shots before overheating, 4s cooldown.', cost: 1850, damage: 3, cooldown: 0.1, range: 12, coolRange: 5.5, ammo: 65, reload: 4, hidden: false },
-      { name: 'Scanner', desc: 'Damage 3 → 5, faster, and hidden detection.', cost: 2900, damage: 5, cooldown: 0.08, range: 12, coolRange: 5.5, ammo: 65, reload: 4, hidden: true },
-      { name: 'Twin Barrels', desc: 'Damage 5 → 7, more range, bigger inner range, 90 shots.', cost: 7500, damage: 7, cooldown: 0.08, range: 14.5, coolRange: 7, ammo: 90, reload: 4, hidden: true },
-      { name: 'Heat Sink', desc: 'Damage 7 → 8.5, faster, 115 shots.', cost: 10500, damage: 8.5, cooldown: 0.075, range: 14.5, coolRange: 7, ammo: 115, reload: 4, hidden: true },
-      { name: 'White Hot', desc: 'Damage 8.5 → 11, much faster, more range, 150 shots, and it can\'t be stunned.', cost: 21000, damage: 11, cooldown: 0.055, range: 17, coolRange: 7, ammo: 150, reload: 4, hidden: true, stunImmune: true },
+      { name: 'Cooling Fins', desc: 'Damage 3.5 → 4.2, faster, more range, 65 shots before overheating, 4s cooldown.', cost: 1850, damage: 3, cooldown: 0.1, range: 12, coolRange: 5.5, ammo: 65, reload: 4, hidden: false },
+      { name: 'Scanner', desc: 'Damage 4.2 → 7, faster, and hidden detection.', cost: 2900, damage: 5, cooldown: 0.08, range: 12, coolRange: 5.5, ammo: 65, reload: 4, hidden: true },
+      { name: 'Twin Barrels', desc: 'Damage 7 → 9.8, more range, bigger inner range, 90 shots.', cost: 7500, damage: 7, cooldown: 0.08, range: 14.5, coolRange: 7, ammo: 90, reload: 4, hidden: true },
+      { name: 'Heat Sink', desc: 'Damage 9.8 → 12, faster, 115 shots.', cost: 10500, damage: 8.5, cooldown: 0.075, range: 14.5, coolRange: 7, ammo: 115, reload: 4, hidden: true },
+      { name: 'White Hot', desc: 'Damage 12 → 15, much faster, more range, 150 shots, and it can\'t be stunned.', cost: 21000, damage: 11, cooldown: 0.055, range: 17, coolRange: 7, ammo: 150, reload: 4, hidden: true, stunImmune: true },
     ],
   },
   // Ducky Nest (alternate Barracks form): waves of armed ducks.
@@ -6638,7 +6650,7 @@ export const TOWERS = {
       { name: 'Ducky Nest', desc: 'A Ducky Scout every 65s.', hidden: false, unit: DUCK.scout },
       { name: 'More Scouts', desc: '2 Scouts every 50s.', cost: 650, hidden: false, spawnEvery: 50, unit: { ...DUCK.scout, count: 2 } },
       { name: 'Ducky Soldiers', desc: 'Adds a Ducky Soldier every 60s: a rapid shooter.', cost: 1650, hidden: false, spawnEvery: 50, unit: { ...DUCK.scout, count: 2 }, unit2: DUCK.soldier, spawnEvery2: 60 },
-      { name: 'Railgunners', desc: '2 Soldiers, plus a Ducky Railgunner every 90s (150-damage shots).', cost: 4350, hidden: false, spawnEvery: 50, unit: { ...DUCK.scout, count: 2 },
+      { name: 'Railgunners', desc: '2 Soldiers, plus a Ducky Railgunner every 90s (450-damage shots).', cost: 4350, hidden: false, spawnEvery: 50, unit: { ...DUCK.scout, count: 2 },
         unit2: { ...DUCK.soldier, count: 2 }, spawnEvery2: 60, unit3: DUCK.rail, spawnEvery3: 90 },
       { name: 'Trojan Duck', desc: '3 Soldiers, plus a Trojan Duck every 40s that lets out 4 Ducky Gladiators when it goes down.', cost: 8350, hidden: false, spawnEvery: 50, unit: { ...DUCK.scout, count: 2 },
         unit2: { ...DUCK.soldier, count: 3 }, spawnEvery2: 60, unit3: DUCK.rail, spawnEvery3: 90, unit4: DUCK.trojan, spawnEvery4: 40 },
@@ -6766,15 +6778,15 @@ export const TOWERS = {
     orbit: 15,
     lap: 9,
     stunImmune: true,
-    blurb: 'An alternate Aviator: an attack plane that strafes the path from its runway. Can\'t be stunned. At Lv 4 it drops 3 bombs every pass, and at Lv 5 it gets a Nuke that does 12,500 damage to every zombie near its runway. Pricey early upgrades.',
+    blurb: 'An alternate Aviator: an attack plane that strafes the path from its runway. Can\'t be stunned. At Lv 4 it drops 3 bombs every pass, and at Lv 5 it gets a Nuke that does 22,500 damage to every zombie near its runway. Pricey early upgrades.',
     tip: 'Place the runway where the path passes close by, and fire the Nuke when a crowd or boss is near it.',
     levels: [
       { name: 'Raider', desc: 'Strafes zombies under it.', damage: 3, cooldown: 0.15, range: 6.5, hidden: false },
-      { name: 'Heavier Guns', desc: 'Damage 3 → 6, faster, more range.', cost: 1050, damage: 6, cooldown: 0.14, range: 7, hidden: false },
-      { name: 'Jet Engine', desc: 'Damage 6 → 8, much faster.', cost: 2100, damage: 8, cooldown: 0.1, range: 7, hidden: false },
-      { name: 'Targeting Pod', desc: 'Damage 8 → 10, more range, and hidden detection.', cost: 3900, damage: 10, cooldown: 0.1, range: 9, hidden: true },
-      { name: 'Bomber', desc: 'Damage 10 → 17, faster, more range, and 3 bombs per pass (50 damage).', cost: 11500, damage: 17, cooldown: 0.09, range: 11, hidden: true, bomb: { damage: 50, count: 3, every: 4, radius: 2.5 } },
-      { name: 'Stealth Bomber', desc: 'Damage 17 → 35, faster, 5 bombs of 500. Unlocks Nuke.', cost: 145000, damage: 35, cooldown: 0.075, range: 12, hidden: true, bomb: { damage: 500, count: 5, every: 4, radius: 2.5 }, abilities: [NUKE_AB] },
+      { name: 'Heavier Guns', desc: 'Damage 5.4 → 11, faster, more range.', cost: 1050, damage: 6, cooldown: 0.14, range: 7, hidden: false },
+      { name: 'Jet Engine', desc: 'Damage 11 → 14, much faster.', cost: 2100, damage: 8, cooldown: 0.1, range: 7, hidden: false },
+      { name: 'Targeting Pod', desc: 'Damage 14 → 18, more range, and hidden detection.', cost: 3900, damage: 10, cooldown: 0.1, range: 9, hidden: true },
+      { name: 'Bomber', desc: 'Damage 18 → 31, faster, more range, and 3 bombs per pass (90 damage).', cost: 11500, damage: 17, cooldown: 0.09, range: 11, hidden: true, bomb: { damage: 50, count: 3, every: 4, radius: 2.5 } },
+      { name: 'Stealth Bomber', desc: 'Damage 31 → 63, faster, 5 bombs of 900. Unlocks Nuke.', cost: 145000, damage: 35, cooldown: 0.075, range: 12, hidden: true, bomb: { damage: 500, count: 5, every: 4, radius: 2.5 }, abilities: [NUKE_AB] },
     ],
   },
   // Plunder (alternate Cowboy form): a shotgun spread hitting up to `targets` zombies. Only its
@@ -6959,9 +6971,9 @@ export const TOWERS = {
       { name: 'Faster Dispatch', desc: 'An Enforcer every 40s.', cost: 850, hidden: false, spawnEvery: 40, unit: EB.enf },
       { name: 'Enforcer M', desc: 'Adds an Enforcer M every 45s: a sturdier close-range unit.', cost: 2500, hidden: false, spawnEvery: 40, unit: EB.enf, unit2: EB.m, spawnEvery2: 45 },
       { name: 'Squads', desc: '3 Enforcers every 30s, 2 Enforcer Ms every 45s.', cost: 5850, hidden: false, spawnEvery: 30, unit: { ...EB.enf, count: 3 }, unit2: { ...EB.m, count: 2 }, spawnEvery2: 45 },
-      { name: 'Turret Truck', desc: 'Faster squads, and a Turret Truck every 50s (375 HP, 105 DPS, hidden detection).', cost: 14500, hidden: true, spawnEvery: 25, unit: { ...EB.enf, count: 3 },
+      { name: 'Turret Truck', desc: 'Faster squads, and a Turret Truck every 50s (450 HP, 140 DPS, hidden detection).', cost: 14500, hidden: true, spawnEvery: 25, unit: { ...EB.enf, count: 3 },
         unit2: { ...EB.m, count: 3 }, spawnEvery2: 35, unit3: EB.truck, spawnEvery3: 50 },
-      { name: 'APM-Bot', desc: '5 Enforcers every 25s, more Ms and Trucks, and the APM-Bot every 75s (2,250 HP, 290 DPS, 200-damage blasts).', cost: 80000, hidden: true, spawnEvery: 25, unit: { ...EB.enf, count: 5 },
+      { name: 'APM-Bot', desc: '5 Enforcers every 25s, more Ms and Trucks, and the APM-Bot every 75s (2,700 HP, 375 DPS, 260-damage blasts).', cost: 80000, hidden: true, spawnEvery: 25, unit: { ...EB.enf, count: 5 },
         unit2: { ...EB.m, count: 3 }, spawnEvery2: 25, unit3: EB.truck, spawnEvery3: 40, unit4: EB.apm, spawnEvery4: 75 },
     ],
   },
@@ -7000,17 +7012,17 @@ export const TOWERS = {
     placement: 'water',
     homing: true,
     lob: 1,
-    blurb: 'An alternate Warship: a submarine with two modes from Lv 3. Afloat fires bursts of coastal missiles; Submerged launches slow nukes with huge splash and is the only mode that sees hidden zombies. At Lv 5 its Jericho Missile splits midair and rains 10,000 damage across the map. A slow burn, and water only.',
+    blurb: 'An alternate Warship: a submarine with two modes from Lv 3. Afloat fires bursts of coastal missiles; Submerged launches slow nukes with huge splash and is the only mode that sees hidden zombies. At Lv 5 its Jericho Missile splits midair and rains 18,000 damage across the map. A slow burn, and water only.',
     tip: 'Most players keep it Submerged. Set it to Strongest so less damage is wasted.',
     levels: [
       { name: 'Submerge', desc: 'Bursts of 2 coastal missiles.', damage: 35, burst: 2, burstGap: 1, cooldown: cyc(2, 1, 7), range: 110, radius: 3, hidden: false },
-      { name: 'More Tubes', desc: 'Damage 35 → 50, bursts of 4.', cost: 3500, damage: 50, burst: 4, burstGap: 1, cooldown: cyc(4, 1, 7), range: 110, radius: 3, hidden: false },
-      { name: 'Missile Deck', desc: 'Damage 50 → 65, more range, bursts of 8, shorter pauses.', cost: 6550, damage: 65, burst: 8, burstGap: 1, cooldown: cyc(8, 1, 6.5), range: 130, radius: 3, hidden: false },
-      { name: 'Dive', desc: 'Afloat: damage 65 → 75, much shorter pauses. Unlocks Submerged mode: 320-damage nukes with a huge blast and hidden detection.', cost: 11000, damage: 75, burst: 8, burstGap: 1, cooldown: cyc(8, 1, 3.5), range: 130, radius: 3, hidden: false,
+      { name: 'More Tubes', desc: 'Damage 63 → 90, bursts of 4.', cost: 3500, damage: 50, burst: 4, burstGap: 1, cooldown: cyc(4, 1, 7), range: 110, radius: 3, hidden: false },
+      { name: 'Missile Deck', desc: 'Damage 90 → 115, more range, bursts of 8, shorter pauses.', cost: 6550, damage: 65, burst: 8, burstGap: 1, cooldown: cyc(8, 1, 6.5), range: 130, radius: 3, hidden: false },
+      { name: 'Dive', desc: 'Afloat: damage 115 → 135, much shorter pauses. Unlocks Submerged mode: 575-damage nukes with a huge blast and hidden detection.', cost: 11000, damage: 75, burst: 8, burstGap: 1, cooldown: cyc(8, 1, 3.5), range: 130, radius: 3, hidden: false,
         sub: { damage: 320, burst: 1, burstGap: 3, cooldown: 6, range: 150, radius: 8, lob: 2.5, hidden: true }, abilities: [DIVE_AB] },
-      { name: 'Silent Hunter', desc: 'Afloat: damage 80, faster, more range. Submerged: 475-damage nukes, 2 per burst, more range.', cost: 19500, damage: 80, burst: 8, burstGap: 0.8, cooldown: cyc(8, 0.8, 3.5), range: 140, radius: 3, hidden: false,
+      { name: 'Silent Hunter', desc: 'Afloat: damage 145, faster, more range. Submerged: 855-damage nukes, 2 per burst, more range.', cost: 19500, damage: 80, burst: 8, burstGap: 0.8, cooldown: cyc(8, 0.8, 3.5), range: 140, radius: 3, hidden: false,
         sub: { damage: 475, burst: 2, burstGap: 2.5, cooldown: cyc(2, 2.5, 6), range: 190, radius: 8, lob: 2.5, hidden: true }, abilities: [DIVE_AB] },
-      { name: 'Jericho', desc: 'Afloat: damage 120, faster, more range. Submerged: 850-damage nukes, 3 per burst. Unlocks the Jericho Missile.', cost: 42000, damage: 120, burst: 8, burstGap: 0.75, cooldown: cyc(8, 0.75, 3.5), range: 150, radius: 3, hidden: false,
+      { name: 'Jericho', desc: 'Afloat: damage 215, faster, more range. Submerged: 1,530-damage nukes, 3 per burst. Unlocks the Jericho Missile.', cost: 42000, damage: 120, burst: 8, burstGap: 0.75, cooldown: cyc(8, 0.75, 3.5), range: 150, radius: 3, hidden: false,
         sub: { damage: 850, burst: 3, burstGap: 2.5, cooldown: cyc(3, 2.5, 10), range: 200, radius: 9, lob: 2.5, hidden: true }, abilities: [DIVE_AB, JERICHO_AB] },
     ],
   },
@@ -7054,9 +7066,9 @@ export const TOWERS = {
       { name: 'Twin Launchers', desc: '2 razors per shot, more range, bleed 40.', cost: 10000, damage: 65, burst: 2, burstGap: 0.75, cooldown: cyc(2, 0.75, 3), range: 70, poison: bleed(40, 3.5), hidden: false },
       { name: 'Sonar', desc: 'Damage 65 → 90, bleed 65 over 4s. Sonar bombs (350 damage) every 17.5s that hunt and reveal hidden zombies.', cost: 23500, damage: 90, burst: 2, burstGap: 0.75, cooldown: cyc(2, 0.75, 2.75), range: 70, poison: bleed(65, 4), hidden: false,
         missiles: [sonar(350, 17.5)] },
-      { name: 'Harpoon', desc: 'Damage 90 → 160, more range, bleed 115, sonar 550 every 15s. Unlocks the Harpoon.', cost: 45500, damage: 160, burst: 2, burstGap: 0.75, cooldown: cyc(2, 0.75, 3.25), range: 85, poison: bleed(115, 4.5), hidden: false,
+      { name: 'Harpoon', desc: 'Damage 90 → 200, more range, bleed 115, sonar 550 every 15s. Unlocks the Harpoon.', cost: 45500, damage: 200, burst: 2, burstGap: 0.75, cooldown: cyc(2, 0.75, 3.25), range: 85, poison: bleed(115, 4.5), hidden: false,
         missiles: [sonar(550, 15)], abilities: [marauderHarpoon(2500)] },
-      { name: 'Blood Tide', desc: 'Damage 160 → 200, faster, bleed 210, sonar 1,150 every 12.5s, Harpoon 5,000.', cost: 85000, damage: 200, burst: 2, burstGap: 0.5, cooldown: cyc(2, 0.5, 2.5), range: 90, poison: bleed(210, 4.5), hidden: false,
+      { name: 'Blood Tide', desc: 'Damage 160 → 400, faster, bleed 210, sonar 1,150 every 12.5s, Harpoon 5,000.', cost: 85000, damage: 400, burst: 2, burstGap: 0.5, cooldown: cyc(2, 0.5, 2.5), range: 90, poison: bleed(210, 4.5), hidden: false,
         missiles: [sonar(1150, 12.5)], abilities: [marauderHarpoon(5000)] },
     ],
   },
@@ -7100,9 +7112,9 @@ export const TOWERS = {
       { name: 'Void Port', desc: 'A Gunner Cart and a Mortar Cart every 85s.', hidden: true, unit: VP.gunCart, unit2: VP.mortarCart, spawnEvery2: 85 },
       { name: 'Faster Rails', desc: 'Carts every 65s.', cost: 2625, hidden: true, spawnEvery: 65, unit: VP.gunCart, unit2: VP.mortarCart, spawnEvery2: 65 },
       { name: 'Double Carts', desc: '2 Gunner Carts and 2 Mortar Carts.', cost: 7200, hidden: true, spawnEvery: 65, unit: { ...VP.gunCart, count: 2 }, unit2: { ...VP.mortarCart, count: 2 }, spawnEvery2: 65 },
-      { name: 'Train', desc: 'A train every 75s: a Locomotive (750 HP) pulling a Gun Wagon (120 DPS) and a Mortar Wagon.', cost: 20000, hidden: true, spawnEvery: 75, unit: VP.loco([VP.gunWagon, VP.mortarWagon]) },
+      { name: 'Train', desc: 'A train every 75s: a Locomotive (975 HP) pulling a Gun Wagon (170 DPS) and a Mortar Wagon.', cost: 20000, hidden: true, spawnEvery: 75, unit: VP.loco([VP.gunWagon, VP.mortarWagon]) },
       { name: 'Long Train', desc: '2 Gun Wagons and 2 Mortar Wagons.', cost: 33250, hidden: true, spawnEvery: 75, unit: VP.loco([VP.gunWagon, VP.gunWagon, VP.mortarWagon, VP.mortarWagon]) },
-      { name: 'Void Train', desc: 'The Void train: a Void Loc (1,750 HP), 2 Void GWagons (200 DPS) and 2 Void Mortars, each 1,000 HP.', cost: 95000, hidden: true, spawnEvery: 75, unit: VP.voidLoco([VP.voidGun, VP.voidGun, VP.voidMortar, VP.voidMortar]) },
+      { name: 'Void Train', desc: 'The Void train: a Void Loc (2,280 HP), 2 Void GWagons (280 DPS) and 2 Void Mortars, each 1,300 HP.', cost: 95000, hidden: true, spawnEvery: 75, unit: VP.voidLoco([VP.voidGun, VP.voidGun, VP.voidMortar, VP.voidMortar]) },
     ],
   },
   // Void King (alternate Void Traitor form): a melee sword hitting up to `targets` zombies. Every
@@ -7119,14 +7131,14 @@ export const TOWERS = {
     limit: 4,
     melee: true,
     kindLabel: 'Multi',
-    blurb: 'An alternate Void Traitor: arguably the strongest tower there is. Huge sword swings that hit several zombies, and every few hits he summons lasers that do massive damage and stun. Can\'t be stunned from Lv 3. At max level his Sky Slam crashes down for 1,000 damage in a huge radius. Tiny range, and he never sees hidden zombies.',
+    blurb: 'An alternate Void Traitor: one of the strongest towers in the game. Huge sword swings that hit several zombies, and every few hits he summons lasers that do massive damage and stun. Can\'t be stunned from Lv 3. At max level his Sky Slam crashes down for 330 damage in a huge radius. Tiny range, and he never sees hidden zombies.',
     tip: 'Place him on the busiest stretch of path, and pair him with a tower that sees hidden zombies.',
     levels: [
       { name: 'Void King', desc: 'Sword swings at up to 3 zombies.', damage: 50, cooldown: 2, range: 4.5, targets: 3, hp: 1400, hidden: false },
-      { name: 'Void Lasers', desc: 'Damage 50 → 115, hits 4. Every 25 hits, lasers strike 3 zombies (350 damage, 1s stun).', cost: 3250, damage: 115, cooldown: 2, range: 4.5, targets: 4, lasers: { every: 25, count: 3, damage: 350, stun: 1, reach: 15 }, hp: 1600, hidden: false },
-      { name: 'Crimson Edge', desc: 'Damage 115 → 250, faster, more reach. Lasers 750.', cost: 7500, damage: 250, cooldown: 1.75, range: 5, targets: 4, lasers: { every: 25, count: 3, damage: 750, stun: 1, reach: 15 }, hp: 2000, hidden: false },
-      { name: 'Unshakable', desc: 'Damage 250 → 475, hits 5, can\'t be stunned. Lasers 1,400.', cost: 18000, damage: 475, cooldown: 1.75, range: 5, targets: 5, lasers: { every: 25, count: 3, damage: 1400, stun: 1, reach: 15 }, hp: 3000, hidden: false, stunImmune: true },
-      { name: 'King of the Void', desc: 'Damage 475 → 1,250, faster, more reach, hits 7, lasers every 15 hits (3,750). Unlocks Sky Slam.', cost: 35400, damage: 1250, cooldown: 1.5, range: 5.5, targets: 7, lasers: { every: 15, count: 4, damage: 3750, stun: 1, reach: 15 }, hp: 6000, hidden: false, stunImmune: true, abilities: [SKY_SLAM_AB] },
+      { name: 'Void Lasers', desc: 'Damage 17 → 38, hits 4. Every 25 hits, lasers strike 3 zombies (115 damage, 1s stun).', cost: 3250, damage: 115, cooldown: 2, range: 4.5, targets: 4, lasers: { every: 25, count: 3, damage: 350, stun: 1, reach: 15 }, hp: 1600, hidden: false },
+      { name: 'Crimson Edge', desc: 'Damage 38 → 83, faster, more reach. Lasers 250.', cost: 7500, damage: 250, cooldown: 1.75, range: 5, targets: 4, lasers: { every: 25, count: 3, damage: 750, stun: 1, reach: 15 }, hp: 2000, hidden: false },
+      { name: 'Unshakable', desc: 'Damage 83 → 155, hits 5, can\'t be stunned. Lasers 460.', cost: 18000, damage: 475, cooldown: 1.75, range: 5, targets: 5, lasers: { every: 25, count: 3, damage: 1400, stun: 1, reach: 15 }, hp: 3000, hidden: false, stunImmune: true },
+      { name: 'King of the Void', desc: 'Damage 155 → 415, faster, more reach, hits 7, lasers every 15 hits (1,240). Unlocks Sky Slam.', cost: 35400, damage: 1250, cooldown: 1.5, range: 5.5, targets: 7, lasers: { every: 15, count: 4, damage: 3750, stun: 1, reach: 15 }, hp: 6000, hidden: false, stunImmune: true, abilities: [SKY_SLAM_AB] },
     ],
   },
   // The Eldritch (alternate Star Cannon form): every hit builds charge; at `railgun.max` it fires a
@@ -7174,11 +7186,11 @@ export const TOWERS = {
     blurb: 'An alternate War Machine Factory that airdrops a giant mech at a drop point you choose. Mechs hit devastatingly hard up close, and later get rifles and explosives. When damaged they leak air and slowly lose health. One of the strongest summoners when it gets to fight, but it drops slowly and is very expensive.',
     tip: 'Set the drop point where zombies bunch up.',
     levels: [
-      { name: 'Valkyr', desc: 'Drops a Mark 1 mech (825 HP, 112 melee DPS) every 60s.', hidden: false, unit: MECH.m1, abilities: [DROP_POINT_AB] },
-      { name: 'Mark 2', desc: 'Drops a Mark 2 (1,225 HP, 220 melee DPS, a 140 DPS rifle) every 75s.', cost: 15000, hidden: false, spawnEvery: 75, unit: MECH.m2, abilities: [DROP_POINT_AB] },
-      { name: 'Mark 4.5', desc: 'Mark 4.5: 2,500 HP, 386 melee DPS, 267 DPS rifle.', cost: 30500, hidden: false, spawnEvery: 75, unit: MECH.m45, abilities: [DROP_POINT_AB] },
-      { name: 'Mark 10 Kaboom', desc: 'Mark 10 Kaboom every 85s: 4,000 HP, 636 melee DPS, 430 DPS rifle, and explosives.', cost: 46500, hidden: false, spawnEvery: 85, unit: MECH.m10, abilities: [DROP_POINT_AB] },
-      { name: 'Mark O-Ultimate', desc: 'Mark O-Ultimate: 5,750 HP, 1,000 melee DPS, 662 DPS rifle, stronger explosives.', cost: 78500, hidden: false, spawnEvery: 85, unit: MECH.ult, abilities: [DROP_POINT_AB] },
+      { name: 'Valkyr', desc: 'Drops a Mark 1 mech (1,490 HP, 225 melee DPS) every 60s.', hidden: false, unit: MECH.m1, abilities: [DROP_POINT_AB] },
+      { name: 'Mark 2', desc: 'Drops a Mark 2 (2,210 HP, 440 melee DPS, a 280 DPS rifle) every 75s.', cost: 15000, hidden: false, spawnEvery: 75, unit: MECH.m2, abilities: [DROP_POINT_AB] },
+      { name: 'Mark 4.5', desc: 'Mark 4.5: 4,500 HP, 770 melee DPS, 530 DPS rifle.', cost: 30500, hidden: false, spawnEvery: 75, unit: MECH.m45, abilities: [DROP_POINT_AB] },
+      { name: 'Mark 10 Kaboom', desc: 'Mark 10 Kaboom every 85s: 7,200 HP, 1,270 melee DPS, 860 DPS rifle, and explosives.', cost: 46500, hidden: false, spawnEvery: 85, unit: MECH.m10, abilities: [DROP_POINT_AB] },
+      { name: 'Mark O-Ultimate', desc: 'Mark O-Ultimate: 10,400 HP, 2,000 melee DPS, 1,300 DPS rifle, stronger explosives.', cost: 78500, hidden: false, spawnEvery: 85, unit: MECH.ult, abilities: [DROP_POINT_AB] },
     ],
   },
   // Squadron (water): an aircraft carrier. Each jet it has unlocked takes off every 42s and flies
@@ -7225,10 +7237,10 @@ export const TOWERS = {
     tip: 'Keep moving it to wherever the current threat is.',
     levels: [
       { name: 'Splash', desc: 'Water shots that slow zombies 30% for 3s.', damage: 7, cooldown: 4, range: 7, patrol: 5, slime: { slow: 0.3, time: 3, boss: 0.5 }, hp: 70, hidden: false, abilities: [SPLASH_MOVE, SPLASH_ALL] },
-      { name: 'Pressure Hose', desc: 'Damage 7 → 20, more range and health.', cost: 900, damage: 20, cooldown: 4, range: 8, patrol: 5, slime: { slow: 0.3, time: 3, boss: 0.5 }, hp: 150, hidden: false, abilities: [SPLASH_MOVE, SPLASH_ALL] },
-      { name: 'Soaker', desc: 'Damage 20 → 25, faster, 40% slow.', cost: 2800, damage: 25, cooldown: 3.5, range: 8, patrol: 5, slime: { slow: 0.4, time: 3, boss: 0.5 }, hp: 390, hidden: false, abilities: [SPLASH_MOVE, SPLASH_ALL] },
-      { name: 'Tidal Cannon', desc: 'Damage 25 → 30, more range, 45% slow.', cost: 6500, damage: 30, cooldown: 3.5, range: 10, patrol: 5, slime: { slow: 0.45, time: 3, boss: 0.5 }, hp: 780, hidden: false, abilities: [SPLASH_MOVE, SPLASH_ALL] },
-      { name: 'Tsunami', desc: 'Damage 30 → 90, faster.', cost: 9000, damage: 90, cooldown: 3, range: 10, patrol: 5, slime: { slow: 0.45, time: 3, boss: 0.5 }, hp: 1320, hidden: false, abilities: [SPLASH_MOVE, SPLASH_ALL] },
+      { name: 'Pressure Hose', desc: 'Damage 21 → 60, more range and health.', cost: 900, damage: 20, cooldown: 4, range: 8, patrol: 5, slime: { slow: 0.3, time: 3, boss: 0.5 }, hp: 150, hidden: false, abilities: [SPLASH_MOVE, SPLASH_ALL] },
+      { name: 'Soaker', desc: 'Damage 60 → 75, faster, 40% slow.', cost: 2800, damage: 25, cooldown: 3.5, range: 8, patrol: 5, slime: { slow: 0.4, time: 3, boss: 0.5 }, hp: 390, hidden: false, abilities: [SPLASH_MOVE, SPLASH_ALL] },
+      { name: 'Tidal Cannon', desc: 'Damage 75 → 90, more range, 45% slow.', cost: 6500, damage: 30, cooldown: 3.5, range: 10, patrol: 5, slime: { slow: 0.45, time: 3, boss: 0.5 }, hp: 780, hidden: false, abilities: [SPLASH_MOVE, SPLASH_ALL] },
+      { name: 'Tsunami', desc: 'Damage 90 → 270, faster.', cost: 9000, damage: 90, cooldown: 3, range: 10, patrol: 5, slime: { slow: 0.45, time: 3, boss: 0.5 }, hp: 1320, hidden: false, abilities: [SPLASH_MOVE, SPLASH_ALL] },
     ],
   },
   // Ghostbuster (event tower): a plasma beam. Each other Ghostbuster beaming the same zombie adds
@@ -7316,7 +7328,7 @@ export const TOWERS = {
       { name: 'Boogieman', desc: 'Also throws a Boogieman every 60s.', cost: 8500, hidden: false, spawnEvery: 50, unit: PUNK.fragger(2), unit2: PUNK.boogie(1), spawnEvery2: 60, abilities: [REDEPLOY_PUNK_AB] },
       { name: 'Rocketeers', desc: 'Also throws a Rocketeer every 75s, and summons reveal hidden zombies where they land.', cost: 30500, hidden: false, spawnEvery: 50, unit: { ...PUNK.fragger(2), reveal: PUNK_REVEAL },
         unit2: PUNK.boogie(1, PUNK_REVEAL), spawnEvery2: 60, unit3: PUNK.rocketeer(1, PUNK_REVEAL), spawnEvery3: 75, abilities: [REDEPLOY_PUNK_AB] },
-      { name: 'Nucleus', desc: '2 Boogiemen and 2 Rocketeers at a time, plus the Nucleus every 150s, which blows up for 8,000 damage.', cost: 125000, hidden: false, spawnEvery: 50, unit: { ...PUNK.fragger(2), reveal: PUNK_REVEAL },
+      { name: 'Nucleus', desc: '2 Boogiemen and 2 Rocketeers at a time, plus the Nucleus every 150s, which blows up for 24,000 damage.', cost: 125000, hidden: false, spawnEvery: 50, unit: { ...PUNK.fragger(2), reveal: PUNK_REVEAL },
         unit2: PUNK.boogie(2, PUNK_REVEAL), spawnEvery2: 60, unit3: PUNK.rocketeer(2, PUNK_REVEAL), spawnEvery3: 75, unit4: PUNK.nucleus(PUNK_REVEAL), spawnEvery4: 150, abilities: [REDEPLOY_PUNK_AB] },
     ],
   },
@@ -7357,6 +7369,210 @@ export const TOWERS = {
   // Commando and Orbit, plus the Gold Commander. See goldtowers.js.
   ...GOLD_TOWERS,
 };
+
+/**
+ * Range pass (2026-11-10): the whole cast reaches 33% farther than the numbers written in the
+ * tables above. Every distance a tower (or anything it sends out: units, sentries, drones,
+ * medics, abilities) reaches with is scaled here, once, so the tables keep their original values:
+ * `range`, `aura` (support towers), `buildRange` (Engineer), `beamRange` (Doctor), `patrol`
+ * (helicopters) and `orbit` (planes). Left alone: blast `radius`, `minRange` dead zones,
+ * `meleeRange` / `closeRange` / `coolRange` (inner zones), and anything under 2, which is a
+ * range *multiplier* (ability `range: 1.2`, DJ `tracks.range: 0.15`), not a distance. Zombies
+ * (ENEMIES) keep their own ranges.
+ */
+export const RANGE_BOOST = 1.33;
+const REACH_KEYS = new Set(['range', 'aura', 'buildRange', 'beamRange', 'patrol', 'orbit']);
+(function boostReach(o, seen) {
+  if (!o || typeof o !== 'object' || seen.has(o)) return; // shared objects (units, sentries) are scaled once
+  seen.add(o);
+  for (const k of Object.keys(o)) {
+    const v = o[k];
+    if (typeof v === 'number') {
+      if (REACH_KEYS.has(k) && Number.isFinite(v) && v >= 2) o[k] = Math.round(v * RANGE_BOOST * 10) / 10;
+    } else boostReach(v, seen);
+  }
+})(TOWERS, new Set());
+
+/**
+ * Balance pass (2026-11-10): towers that were far stronger or weaker than their cost says, measured
+ * by benching every tower at every level and by letting each one play Hard alone. Like the range
+ * pass above it is applied here, once, on top of the tables, so the tables keep the numbers they
+ * were written with. Keyed by tower; an entry also covers that tower's other upgrade paths unless
+ * a path has its own entry (`johnBottom`).
+ *   dmg:  every damage number of the tower and of what it sends out (shots, burns, blasts, unit
+ *         and sentry guns, damaging abilities) is multiplied by this. An array is per level.
+ *   hp:   health of what it sends out (units, sentries) is multiplied by this.
+ *   cost: placing it and every upgrade cost this much more / less.
+ *   from: only levels from this one on, and only this path (1 = the levels a path has to itself).
+ * Left alone on purpose: a Mako's stored charged hit, the damage a Spiritual Advocate needs per
+ * soul, heals, the Slinger's team boost, and what abilities cost to use.
+ * Upgrade descriptions and blurbs that quote a number were rewritten by hand to say the number
+ * the game ends up with, so change them along with an entry. Ability descriptions follow on
+ * their own: the pass swaps the numbers it changes into the ability's text.
+ */
+export const TOWER_TUNE = {
+  // --- Too strong for their cost ---
+  sentryEngineer: { dmg: [0.18, 0.1, 0.1, 0.2, 0.27] },
+  toxicnatorMaitake: { dmg: 0.25 },
+  gooGunner: { dmg: 0.38 },
+  frostBlaster: { dmg: 0.4, from: 1 }, // top path (Cryo Blaster)
+  voidKing: { dmg: 0.33 },
+  sledger: { dmg: 0.4 },
+  sledgerIce: { dmg: 0.33 },
+  executioner: { dmg: 0.4 },
+  traitor: { dmg: 0.38 },
+  voidTraitor: { dmg: 0.5 },
+  spiritAdvocate: { dmg: 0.55 },
+  biologist: { dmg: 0.42 },
+  jester: { dmg: 0.45 },
+  goldPyromancer: { dmg: 0.42 },
+  flamethrowerPyro: { dmg: 0.55 },
+  flamethrowerDumpster: { dmg: 0.5 },
+  flameTrooper: { dmg: 0.75 },
+  enforcerSlammer: { dmg: 0.5 },
+  kniferYasuke: { dmg: 0.6 },
+  gladiator: { dmg: 0.55 },
+  brawler: { dmg: 0.5 },
+  brawlerMako: { dmg: 0.6 },
+  goldMako: { dmg: 0.52 },
+  johnBottom: { dmg: 0.55, from: 1 },
+  grenadierSoda: { dmg: 0.75 },
+  slugger: { dmg: 0.4 },
+  nukiLauncher: { dmg: 0.4, hp: 0.5 },
+  cryomancer: { dmg: 0.6 },
+  turretXwmBottom: { dmg: 0.6, from: 1 },
+  barracksOddport: { dmg: 0.3, hp: 0.35 },
+  elfCamp: { dmg: 0.4, hp: 0.4 },
+  zedKart: { dmg: 0.45, hp: 0.45 },
+  plasmaPulse: { dmg: 0.6 },
+  // --- Too weak for their cost ---
+  sniper: { dmg: 1.5 },
+  tweeter: { dmg: 1.8 },
+  sniperPenetrator: { dmg: 1.5 },
+  hiredGun: { dmg: 1.8 },
+  goldHiredGun: { dmg: 1.4 },
+  scoutSlinger: { dmg: 3 },
+  mercLaser: { dmg: 1.8, from: 1 }, // top path
+  focus: { dmg: 1.4 },
+  railgunnerElectricizer: { dmg: 1.4 },
+  shotgunner: { dmg: 1.4 },
+  shotgunnerPump: { dmg: 1.9 },
+  splash: { dmg: 3 },
+  trapperGoblino: { dmg: 3 },
+  swarmer: { dmg: 1.4 },
+  grenadier: { dmg: 1.7 },
+  grenadierAssaultBottom: { dmg: 1.8, from: 1 },
+  rocketeer: { dmg: 2 },
+  archer: { dmg: 1.6 },
+  elf: { dmg: 1.8 },
+  snowballer: { dmg: 3 },
+  aviator: { dmg: 2 },
+  mineLayer: { dmg: 2.5, from: 1 }, // top path
+  frostRangerBottom: { dmg: 1.8, from: 1 },
+  necromancer: { dmg: 1.4 },
+  raider: { dmg: 1.8 },
+  submerge: { dmg: 1.8 },
+  goldSubmerge: { dmg: 1.8 },
+  goldOrbit: { dmg: 1.8 },
+  goldMobsterBottom: { dmg: 1.4, from: 1 },
+  enforcementBase: { dmg: 1.3, hp: 1.2 },
+  voidPort: { dmg: 1.4, hp: 1.3 },
+  barracks: { dmg: 2.5, hp: 2.5 },
+  valkyr: { dmg: 2, hp: 1.8 },
+  duckyNest: { dmg: 3, hp: 2.5 },
+  punkbuster: { dmg: 3, hp: 3, cost: 0.7 },
+  mercenary: { dmg: 3, hp: 2.5 },
+  zedRecon: { dmg: 3, hp: 3, cost: 0.5 },
+  // --- Cost more than any game pays ---
+  goldWarship: { cost: 0.3, dmg: 0.4 },
+  goldWarshipBottom: { cost: 0.2, dmg: 0.12, from: 1 },
+};
+const TUNE_DMG_KEYS = new Set(['damage', 'dps', 'burn', 'chillDps', 'dDmg', 'maxDamage', 'nearDmg', 'pulseDamage', 'unitDamage', 'bump', 'dmgMin']);
+const tuneNum = (v, m) => {
+  const x = v * m;
+  if (x >= 1000) return Number(x.toPrecision(3));
+  if (x >= 100) return Math.round(x / 5) * 5;
+  return x >= 10 ? Math.round(x) : Math.round(x * 10) / 10;
+};
+const tuneCost = (v, m) => {
+  const x = v * m;
+  const step = x >= 100000 ? 5000 : x >= 10000 ? 500 : x >= 1000 ? 50 : 5;
+  return Math.round(x / step) * step;
+};
+(function tuneTowers() {
+  // Which entry covers a level: a path's own entry from its `from` level on; below that (and on
+  // paths without an entry) the tower's whole-tower entry, if it has one.
+  const entryOf = (type, i) => {
+    const own = TOWER_TUNE[type];
+    if (own && i >= (own.from ?? 0)) return own;
+    const root = TOWER_TUNE[TOWERS[type].branchOf ?? type];
+    return root && root.from == null ? root : null;
+  };
+  // Anything two entries (or a tuned and an untuned tower) both use is left alone, so tuning one
+  // tower never moves another: e.g. the goons both Golden Mobster paths call in.
+  const user = new Map();
+  const shared = new Set();
+  const claim = (o, tn, seen) => {
+    if (!o || typeof o !== 'object' || seen.has(o)) return;
+    seen.add(o);
+    if (!user.has(o)) user.set(o, tn);
+    else if (user.get(o) !== tn) shared.add(o);
+    for (const v of Object.values(o)) claim(v, tn, seen);
+  };
+  for (const [type, def] of Object.entries(TOWERS)) def.levels.forEach((s, i) => claim(s, entryOf(type, i), new Set()));
+  const seen = new Set(); // things a tower uses at several levels are scaled once
+  // `in_`: the key `o` sits under. Three keys are damage only in some places: an axe's `ramp` is
+  // damage per bounce (elsewhere it's a time), `splash` is the damage to the zombies around the one
+  // hit (on a unit's gun it's a radius), and a `damages` list is all damage numbers.
+  // `said`: the ability (or other described thing inside a level) `o` belongs to. Its description is
+  // often built from its numbers when the table is made, so the numbers that change here are noted
+  // and swapped in its text afterwards. (A level's own description is written by hand, to match.)
+  const told = new Map(); // described thing -> Map(old number -> new number, or null if two disagree)
+  const scale = (o, dmg, hp, deep, in_ = '', said = null) => {
+    if (!o || typeof o !== 'object' || seen.has(o) || shared.has(o)) return;
+    seen.add(o);
+    if (deep && typeof o.desc === 'string') said = o;
+    const set = (k, n) => {
+      if (said && n !== o[k]) {
+        const m = told.get(said) ?? told.set(said, new Map()).get(said);
+        m.set(o[k], m.has(o[k]) && m.get(o[k]) !== n ? null : n);
+      }
+      o[k] = n;
+    };
+    for (const k of Object.keys(o)) {
+      const v = o[k];
+      if (typeof v !== 'number') scale(v, dmg, hp, true, Array.isArray(o) ? in_ : k, said);
+      else if (!(v > 0) || !Number.isFinite(v)) continue;
+      else if ((TUNE_DMG_KEYS.has(k) || (k === 'ramp' && in_ === 'axe') || (k === 'splash' && in_ !== 'gun') || (in_ === 'damages' && Array.isArray(o))) && dmg !== 1) set(k, tuneNum(v, dmg));
+      else if (k === 'hp' && deep && hp !== 1) set(k, tuneNum(v, hp));
+    }
+  };
+  for (const [type, def] of Object.entries(TOWERS)) {
+    const root = TOWER_TUNE[def.branchOf ?? type];
+    if (root?.cost && def.cost) def.cost = tuneCost(def.cost, root.cost);
+    def.levels.forEach((s, i) => {
+      const tn = entryOf(type, i);
+      if (!tn || seen.has(s) || shared.has(s)) return;
+      if (tn.cost && s.cost) s.cost = tuneCost(s.cost, tn.cost);
+      scale(s, Array.isArray(tn.dmg) ? tn.dmg[i] ?? 1 : tn.dmg ?? 1, tn.hp ?? 1, false);
+    });
+    // A crosspath tower's upgrade buttons hold their own copy of the level they lead to, and it is
+    // that copy's price the game charges.
+    for (const [to, next] of [[def.cross?.up, def.cross?.upNext], [def.cross?.down, def.cross?.downNext]]) {
+      const i = next ? TOWERS[to].levels.length - 1 : 0;
+      const tn = next && entryOf(to, i);
+      if (!tn) continue;
+      if (tn.cost && next.cost) next.cost = tuneCost(next.cost, tn.cost);
+      scale(next, Array.isArray(tn.dmg) ? tn.dmg[i] ?? 1 : tn.dmg ?? 1, tn.hp ?? 1, false);
+    }
+  }
+  for (const [o, nums] of told) {
+    o.desc = o.desc.replace(/\d[\d,]*(?:\.\d+)?/g, (txt) => {
+      const n = nums.get(Number(txt.replace(/,/g, '')));
+      return n == null ? txt : n >= 1000 ? n.toLocaleString('en-US') : String(n);
+    });
+  }
+})();
 
 /**
  * Crosspath towers (see crosstowers.js): what the next upgrade on `path` ('top' / 'bottom') of
@@ -7426,7 +7642,7 @@ export function detection(type, level) {
 export const unitDetection = (u) => ({ hidden: !!u.hidden, flying: u.flying ?? !!u.soldiers, lead: !!u.lead });
 
 /** Can something with detection `d` hit zombie `e`? */
-export const canHit = (d, e) => !((e.hidden && !d.hidden && !(e.revealT > 0)) || (e.flying && !d.flying) || (!e.flying && d.ground === false) || (e.lead && !d.lead));
+export const canHit = (d, e) => !(e.noTarget || (e.hidden && !d.hidden && !(e.revealT > 0)) || (e.flying && !d.flying) || (!e.flying && d.ground === false) || (e.lead && !d.lead));
 
 /** Does this tower only shoot inside a cone facing where it was placed (Gatling Gun, Sentry)? */
 export const facesCone = (def) => !!(def.fps || def.facing);
@@ -7438,7 +7654,7 @@ export const BASE_TOWERS = Object.keys(TOWERS).filter((t) => !TOWERS[t].altOf &&
 export const EVENT_TOWERS = Object.keys(TOWERS).filter((t) => TOWERS[t].event);
 
 /** Towers every player owns without buying them. */
-export const STARTER_TOWERS = BASE_TOWERS.filter((t) => !TOWERS[t].price && !TOWERS[t].shards);
+export const STARTER_TOWERS = BASE_TOWERS.filter((t) => !TOWERS[t].price && !TOWERS[t].shards && !TOWERS[t].gems);
 
 /** Evolved towers (type keys). */
 export const EVOLVED_TOWERS = Object.keys(TOWERS).filter((t) => TOWERS[t].evolved);
@@ -7736,8 +7952,8 @@ export const ENEMIES = {
     intro: '💪 Limbed: huge arms, lots of health.' },
   xQuickLimbed: { name: 'Quick Limbed', hp: 1050, mpTop: 1550 / 1050, speed: 22.5, reward: 65, damage: 30, scale: 1.3, skin: 0x42a5f5, shirt: 0x8a8a8a, pants: 0x7a7a7a, face: 'blank', xlook: 'limbed',
     intro: '💨 Quick Limbed: a Limbed that runs!' },
-  xCharger: { name: 'Charger', hp: 75, speed: 56.3, reward: 12, damage: 10, scale: 1, skin: 0xff4fa3, shirt: 0x161616, pants: 0x111111, face: 'blank', xlook: 'charger', glowC: 0xff4fa3,
-    intro: '⚡ Chargers are the second fastest thing in the game!' },
+  xCharger: { name: 'Charger', hp: 75, speed: 40, reward: 12, damage: 10, scale: 1, skin: 0xff4fa3, shirt: 0x161616, pants: 0x111111, face: 'blank', xlook: 'charger', glowC: 0xff4fa3,
+    intro: '⚡ Chargers are among the fastest things in the game!' },
   xViodrop: { name: 'Viodrop', hp: 65, speed: 15.75, reward: 8, damage: 6, scale: 0.95, skin: 0xd1b3ff, shirt: 0xd1b3ff, pants: 0xd1b3ff, face: 'blank', xlook: 'vio',
     bulletResist: -0.75, explosiveResist: 0.5, intro: '🟣 Viodrops come in swarms. Vio enemies resist explosions but bullets hurt them a lot more.' },
   xOvercharged: { name: 'Overcharged', hp: 400, speed: 22.5, reward: 30, damage: 20, scale: 1.15, skin: 0xff4fa3, shirt: 0x8a8a8a, pants: 0x7a7a7a, face: 'blank', xlook: 'overcharged', glowC: 0xff4fa3,
@@ -7758,7 +7974,7 @@ export const ENEMIES = {
     intro: '🔫 Vio Gunners fire orbs that halve your towers\' range and cut their damage (it stacks!), and speed up nearby enemies.' },
   xArmoured: { name: 'Armoured Bot', hp: 1500, speed: 6.75, reward: 90, damage: 40, scale: 1.4, skin: 0x1a237e, shirt: 0x1a237e, pants: 0x121858, face: 'visorRed', xlook: 'armoured',
     bulletResist: 0.8, explosiveResist: -0.5, intro: '🤖 Armoured Bots barely feel bullets, but explosions hurt them more.' },
-  xUndercharged: { name: 'Undercharged', hp: 100, speed: 78.8, reward: 10, damage: 25, scale: 1.05, skin: 0xaa00ff, shirt: 0x8a8a8a, pants: 0x7a7a7a, face: 'blank', xlook: 'undercharged', glowC: 0xaa00ff,
+  xUndercharged: { name: 'Undercharged', hp: 100, speed: 50, reward: 10, damage: 25, scale: 1.05, skin: 0xaa00ff, shirt: 0x8a8a8a, pants: 0x7a7a7a, face: 'blank', xlook: 'undercharged', glowC: 0xaa00ff,
     shield: true, phase2: 'xUnderchargedBare', intro: '⚡ Undercharged: the FASTEST enemy in the game, until its shield breaks!' },
   xUnderchargedBare: { name: 'Undercharged', hp: 500, speed: 22.5, reward: 30, damage: 25, scale: 1.05, skin: 0xaa00ff, shirt: 0x8a8a8a, pants: 0x7a7a7a, face: 'blank', xlook: 'undercharged', glowC: 0x6a1b9a },
   xRusher: { name: 'Rusher', hp: 4250, mpTop: 6750 / 4250, speed: 22.5, reward: 150, damage: 60, scale: 1.15, skin: 0x1e88e5, shirt: 0x424242, pants: 0x333333, face: 'blank', xlook: 'rusher',
@@ -7892,7 +8108,7 @@ export const ENEMIES = {
     intro: '🛻 Carrier Tanks: shielded, 5 Defense, can\'t be frozen or shocked, and they release Elite units when destroyed!' },
   iCarrierBare: { name: 'Carrier Tank', model: 'iCarrier', h: 3, hp: 5000, speed: 6, reward: iR(5000), damage: iD(6000), scale: 1.2, skin: 0x311b92, shard: 0xd500f9,
     defense: 5, freezeImmune: true, shockImmune: true, deathSpawn: { list: ['iEliteTeleporter', 'iEliteDrone', 'iEliteSoldier', 'iRaygunner'], n: 4 } },
-  iEliteSwordsman: { name: 'Elite Swordsman', hp: 6, speed: 10.8, reward: iR(6), damage: iD(6), scale: 1, skin: 0x111111, shirt: 0x111111, pants: 0x111111, face: 'blank', ilook: 'eliteSwordsman', glowC: 0xffffff,
+  iEliteSwordsman: { name: 'Elite Swordsman', hp: 200, speed: 10.8, reward: iR(200), damage: iD(200), scale: 1, skin: 0x111111, shirt: 0x111111, pants: 0x111111, face: 'blank', ilook: 'eliteSwordsman', glowC: 0xffffff,
     defense: 1 },
   iCosmil: { name: 'Cosmil', hp: 450, speed: 15, reward: iR(450), damage: iD(450), scale: 1.15, skin: 0x80d8ff, shirt: 0x1c1c1c, pants: 0x1c1c1c, face: 'visorRed', ilook: 'cosmil', glowC: 0xff1744,
     defense: 20, intro: '🔴 Cosmils have 20 Defense! Small hits barely scratch them. Use strong single hits.' },
@@ -7945,7 +8161,7 @@ export const ENEMIES = {
       { key: 'swordThrow', w: 1, range: 35, radius: 1.5, stun: 5, flight: 0.8 },
       { key: 'vengefulSlash', w: 1, range: 16, stun: 3 }] },
     intro: '🎩 Vengeful Champions throw their sword to stun a tower, and their Vengeful Slash stuns every tower in front of them.' },
-  iRavagerEnergy: { name: 'Ravager Energy', hp: 900, speed: 75, reward: iR(900), damage: iD(900), scale: 1.05, skin: 0x18ffff, shirt: 0x18ffff, pants: 0x18ffff, face: 'blank', ilook: 'ravagerEnergy', glowC: 0x18ffff,
+  iRavagerEnergy: { name: 'Ravager Energy', hp: 900, speed: 45, reward: iR(900), damage: iD(900), scale: 1.05, skin: 0x18ffff, shirt: 0x18ffff, pants: 0x18ffff, face: 'blank', ilook: 'ravagerEnergy', glowC: 0x18ffff,
     defense: 3, maxHit: 200, freezeImmune: true, intro: '💠 Ravager Energy: EXTREMELY fast, and no hit does more than 200 damage to it.' },
   iAvantGuard: { name: 'Avant Guard', hp: 55000, speed: 6, reward: iR(55000), damage: 1e5, scale: 2.2, skin: 0x9e9e9e, shirt: 0x757575, pants: 0x616161, face: 'blank', ilook: 'avantGuard', glowC: 0x80d8ff,
     boss: true, defense: 6, maxHit: 300, freezeImmune: true, shield: true, phase2: 'iAvantGuardBare',
@@ -8158,6 +8374,9 @@ export const ENEMIES = {
 for (const k of ['fastZombiePlus', 'heavyZombiePlus', 'revivedBoss1', 'nuclearZombie', 'multiplier2']) {
   ENEMIES[`${k}S`] = { ...ENEMIES[k], name: `Stealth ${ENEMIES[k].name}`, hidden: true, intro: undefined };
 }
+// Hardcore mode's enemies (see hardcore.js): its own copies of earlier modes' enemies, plus new ones.
+addHardcoreEnemies(ENEMIES);
+addHalloweenEnemies(ENEMIES); // the Halloween Event's own enemies (see halloween.js)
 
 /**
  * What kind of damage tower `type` at `level` deals with its own attacks: 'bullet', 'laser',
@@ -8555,41 +8774,68 @@ export const VOID_WAVES = [
  * Each step up in difficulty has 5 more waves than the one before (Hard 40, Insane 50, ...); Easy (25), Medium (32) and Expert (30) follow the user's specs.
  * `unlock`: a tower winning it gives you (Void: the Void Traitor).
  * Versus always plays the original zombie WAVES (it isn't a difficulty you can pick).
+ * `color` and `boss`: the mode's card in the menus is a square of that color with a picture of
+ * that enemy (its final boss).
  */
 // Harder modes pay more: `cash` multiplies starting cash and wave bonuses, `credits` the credits
 // earned at the end, and `shards` is the Dimension Shards for winning.
 // Upgrade perks won by beating a mode (DIFFICULTIES[mode].perk): an upgrade level with `perk: key`
 // can't be bought until you have it. The text says how to get it.
 export const PERKS = { bliss: 'Beat Insane mode' };
+// Modes you have to beat before Hardcore unlocks (DIFFICULTIES[mode].needs).
+export const HARDCORE_NEEDS = ['easy', 'medium', 'hard', 'expert', 'insane', 'void'];
 export const PERK_NAMES = { bliss: "Recon Base's Bliss of Finality upgrade" };
 
 export const DIFFICULTIES = {
-  easy: { name: 'Easy', icon: '🟢', desc: '25 waves of slimes, goblins, spiders, reapers and more. Beat the King Slime to win and unlock the Slime King Patrol variant!', unlock: 'patrolSlime', waves: EASY_WAVES,
-    cash: 1, credits: 1, shards: 1 },
+  easy: { name: 'Easy', icon: '🟢', color: '#43a047', boss: 'kingSlime', desc: '25 waves. Beat the King Slime to unlock Slime King Patrol.', unlock: 'patrolSlime', waves: EASY_WAVES,
+    cash: 1, dmgCash: 1, credits: 1, shards: 1 },
+  // cash: multiplies the end-of-wave bonus. dmgCash: cash for each point of damage (GAME.dmgCash);
+  // the tougher the mode's zombies, the lower its rate, so it's never more than you need.
   // baseHp / startCash: this mode's base health and starting cash (instead of GAME's). groupBonus:
   // extra starting cash for each player in a group (2+ players). flatHp: enemy health never grows
   // per wave (still more in multiplayer). firstIntermission: seconds before wave 1. timers[i]: once
   // wave i+1 has run that many seconds (and finished spawning), the next wave starts anyway, as if
   // skipped (null: wait until it's cleared).
-  medium: { name: 'Medium', icon: '🟠', desc: '32 waves of upgraded zombies, revived bosses and worse. Beat the Predator and the Eradicator to win and unlock John! Learn resistances, Multipliers and enemies that stun and destroy towers. 2x credits, 2 shards for winning.',
-    unlock: 'john', waves: MEDIUM_WAVES, cash: 1.3, credits: 2, shards: 2, baseHp: 300, startCash: 725, groupBonus: 125, flatHp: true, firstIntermission: 14,
+  medium: { name: 'Medium', icon: '🟠', color: '#fb8c00', boss: 'mEradicator', desc: '32 waves. Beat the Eradicator to unlock John. 2x credits.',
+    unlock: 'john', waves: MEDIUM_WAVES, cash: 1.3, dmgCash: 0.6, credits: 2, shards: 2, baseHp: 300, startCash: 725, groupBonus: 125, flatHp: true, firstIntermission: 14,
     timers: [...Array(18).fill(59), ...Array(10).fill(null), 449, 59, 59, null] },
   // mpHp[n-1]: enemy health bonus with n extra players (instead of GAME.mpHpScale).
-  hard: { name: 'Hard', icon: '🔴', desc: '40 waves of the Fallen: skeletons, Breakers, Necromancers, Rushers and worse. Defeat the Fallen King to win and unlock the Commando (laser)! (Meant for Level 30+.) 3x credits, 3 shards for winning.',
-    unlock: 'eventCommando', waves: HARD_WAVES, cash: 1.6, credits: 3, shards: 3, baseHp: 200, startCash: 500, groupBonus: 100, flatHp: true, mpHp: [0.15, 0.25, 0.4] },
+  hard: { name: 'Hard', icon: '🔴', color: '#e53935', boss: 'fKing', desc: '40 waves. Beat the Fallen King to unlock the laser Commando. 3x credits.',
+    unlock: 'eventCommando', waves: HARD_WAVES, cash: 1.6, dmgCash: 0.4, credits: 3, shards: 3, baseHp: 200, startCash: 500, groupBonus: 100, flatHp: true, mpHp: [0.15, 0.25, 0.4] },
   // mpPerEnemy: each enemy's own mpTop / mpPow sets its multiplayer health (none: no bonus).
-  expert: { name: 'Expert', icon: '💎', desc: '30 waves of cracked figures, Vio ghosts, bots and beings of time. Beat the Rebirther, the Doomelists and the Death Angel, then defeat the Beholder to win and unlock the Planeswalker! 4x credits, 4 shards for winning and even more cash in-game.',
-    unlock: 'planeswalker', waves: EXPERT_WAVES, cash: 1.9, credits: 4, shards: 4, baseHp: 200, startCash: 600, groupBonus: 100, flatHp: true, mpPerEnemy: true },
-  insane: { name: 'Insane', icon: '⏳', desc: '50 waves of soldiers, robots, the XCF and beings of light and corruption. Beat the Boltmaster, the Robotic Overseer, the Avant Guard, The Vanguard, The Archangel and The Corrupted, then defeat the Overlord to win and unlock Recon Base\'s Bliss of Finality upgrade! 5x credits, 5 shards for winning and even more cash in-game.',
-    perk: 'bliss', waves: INSANE_WAVES, cash: 2.2, credits: 5, shards: 5, baseHp: 200, startCash: 600, groupBonus: 100, flatHp: true, mpHp: [0.15, 0.25, 0.4] },
+  expert: { name: 'Expert', icon: '💎', color: '#00acc1', boss: 'xBeholder', desc: '30 waves. Beat the Beholder to unlock the Planeswalker. 4x credits.',
+    unlock: 'planeswalker', waves: EXPERT_WAVES, cash: 1.9, dmgCash: 0.6, credits: 4, shards: 4, baseHp: 200, startCash: 600, groupBonus: 100, flatHp: true, mpPerEnemy: true },
+  insane: { name: 'Insane', icon: '⏳', color: '#ec407a', boss: 'iOverlord', desc: '50 waves. Beat the Overlord to unlock Bliss of Finality. 5x credits.',
+    perk: 'bliss', waves: INSANE_WAVES, cash: 2.2, dmgCash: 0.25, credits: 5, shards: 5, baseHp: 200, startCash: 600, groupBonus: 100, flatHp: true, mpHp: [0.15, 0.25, 0.4] },
   // voidArmor: the Void mutation (see Sim.armorUp). shield: extra shield = that share of max health;
   // armor: extra armor while it's up; slow: walks that much slower; tendril: { range, every, n, mult,
   // min, max } lashes up to n towers in range for mult x sqrt(max health) (kept between min and max).
-  void: { name: 'Void', icon: '🟣', desc: '50 waves: the 40 Tower Battles waves, then 10 more full of VOID ARMOR. Beat the False Void on wave 40 and again in void armor on wave 45, then defeat the real VOID on wave 50 to win and unlock the Void Traitor! 6x credits, 6 shards for winning and the most cash in-game.',
-    waves: VOID_WAVES, cash: 2.5, credits: 6, shards: 6, unlock: 'traitor', baseHp: 200, startCash: 650, flatHp: true, mpHp: [0.15, 0.25, 0.4],
+  void: { name: 'Void', icon: '🟣', color: '#7e57c2', boss: 'vVoid', desc: '50 waves. Beat VOID to unlock the Void Traitor. 6x credits.',
+    waves: VOID_WAVES, cash: 2.5, dmgCash: 0.4, credits: 6, shards: 6, unlock: 'traitor', baseHp: 200, startCash: 650, flatHp: true, mpHp: [0.15, 0.25, 0.4],
     voidArmor: { shield: 0.5, armor: 0.3, slow: 0.25, tendril: { range: 9, every: 2.5, n: 2, mult: 0.6, min: 4, max: 200 } } },
+  // Hardcore (2026-11-09 spec, see hardcore.js): locked until every mode in `needs` is beaten. Pays
+  // Gems (GAME.gems) on top of credits. maxPlayers: co-op rooms hold up to this many. mpHp has an
+  // entry for each extra player (up to 5); enemies with their own mpTop / mpPow use those instead.
+  // mimic: each wave from `from` on has a `chance` of a rare golden `type` (Wicky).
+  hardcore: { name: 'Hardcore', icon: '💀', color: '#37474f', boss: 'txEmperor', desc: '50 brutal waves from seven games, ending with all six final bosses. Pays Gems. Up to 6 players. 7x credits.',
+    waves: HARDCORE_WAVES, cash: 3.5, dmgCash: 0.2, credits: 7, shards: 7, gems: true, needs: HARDCORE_NEEDS, maxPlayers: 6,
+    baseHp: 200, startCash: 700, groupBonus: 100, flatHp: true, mpPerEnemy: true, mpHp: [0.15, 0.25, 0.4, 0.55, 0.7],
+    mimic: { type: 'thWicky', chance: 1 / 1700, from: 10 } },
+  // Halloween Event (2026-11-10 spec, see halloween.js). `event`: not one of the mode cards, it has
+  // its own button in the top right of the menus. `map`: an event and its map are one thing, the
+  // event always plays that map and no other mode can (the map says so too: MAPS[map].event).
+  // Open to everyone. Each wave pays its own `bonus` (instead of GAME.waveBonus). mpHp all 0: enemy
+  // health doesn't grow with more players (the spec's numbers are for a full server). pot: so the
+  // cash is a full server's too, shared between whoever plays: startCash and each wave's bonus are
+  // what one of `pot` players gets (solo: 4x, two players: 2x each), and damage cash is split.
+  halloween: { name: 'Halloween Event', icon: '🎃', color: '#ef6c00', boss: 'hwJack', desc: '10 spooky waves on Lantern Hill Cemetery. Survive the Reaper, the Demon and JACK, the Pumpkin King. A full server\'s cash is shared between the players: $22,000 to start solo, $5,500 each with four. 100 base health. 3x credits.',
+    waves: HALLOWEEN_WAVES, event: true, map: 'cemetery', cash: 1, dmgCash: 1.5, pot: 4, credits: 3, shards: 3, baseHp: 100, startCash: 5500, groupBonus: 0, flatHp: true,
+    mpHp: [0, 0, 0, 0, 0], timers: HALLOWEEN_TIMERS },
 };
 export const DEFAULT_DIFFICULTY = 'easy';
+/** The modes on the mode cards, and the special events (each has its own button and its own map). */
+export const MODE_KEYS = Object.keys(DIFFICULTIES).filter((k) => !DIFFICULTIES[k].event);
+export const EVENT_KEYS = Object.keys(DIFFICULTIES).filter((k) => DIFFICULTIES[k].event);
 export const difficulty = (key) => DIFFICULTIES[key] ?? DIFFICULTIES[DEFAULT_DIFFICULTY];
 
 /**

@@ -5,22 +5,25 @@
 import * as THREE from 'three';
 import { BASE_TOWERS, EVENT_TOWERS, GAME, TOWERS, detection, formsOf, goldOf, xpKey } from './config.js';
 import { TOWER_MODELS } from './models.js';
-import { PAD_COLORS } from './views.js';
+import { PAD_COLORS, driftFx } from './views.js';
 import { profile } from './profile.js';
 import { audio } from './audio.js';
 import { damageText, detectText, dpsText, dpsValue, extrasText, isNonAttacker, limitRange, towerKind } from './stats.js';
+import { towerIcon } from './icons.js';
+import { blurbHtml, descHtml } from './text.js';
 
 // Shop order: cheapest to most expensive. Credit towers by price (free ones first), then shard
-// towers last (fewest shards first); ties keep their config order.
+// towers (fewest shards first), then Gem towers last; ties keep their config order.
 const SHOP_ORDER = [...BASE_TOWERS].sort((a, b) => {
   const A = TOWERS[a], B = TOWERS[b];
-  return (A.shards || 0) - (B.shards || 0) || (A.price || 0) - (B.price || 0);
+  return (A.gems ? 1 : 0) - (B.gems ? 1 : 0) || (A.shards || 0) - (B.shards || 0) || (A.gems || 0) - (B.gems || 0) || (A.price || 0) - (B.price || 0);
 });
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
 const num = (n) => (n === Infinity ? '∞' : n.toLocaleString());
 export const SHARD = '<i class="shard-icon"></i>';
+export const GEM = '<i class="gem-icon"></i>';
 const AUTO_EVERY = 1.6; // seconds per level while playing
 const FIRE_EVERY = 1.1; // seconds between pretend shots in the preview
 
@@ -179,6 +182,7 @@ export class LoadoutScreen {
     if (!this.open) return;
     $('lo-credits').textContent = num(profile.credits);
     $('lo-shards').textContent = num(profile.shards);
+    $('lo-gems').textContent = num(profile.gems);
     this.renderSlots();
     this.renderGrid();
     this.renderLevels();
@@ -194,7 +198,7 @@ export class LoadoutScreen {
     const badges = [
       !owned && '<span class="lo-badge lock">🔒</span>',
       !owned && TOWERS[base].event && '<span class="lo-badge price event">🎁 Event</span>',
-      !owned && !TOWERS[base].event && `<span class="lo-badge price">${TOWERS[base].shards ? `${SHARD} ${TOWERS[base].shards}` : `🪙 ${num(TOWERS[base].price)}`}</span>`,
+      !owned && !TOWERS[base].event && `<span class="lo-badge price">${TOWERS[base].gems ? `${GEM} ${num(TOWERS[base].gems)}` : TOWERS[base].shards ? `${SHARD} ${TOWERS[base].shards}` : `🪙 ${num(TOWERS[base].price)}`}</span>`,
       profile.loadout.includes(base) && '<span class="lo-badge on">✔</span>',
       formsOf(base).length && `<span class="lo-badge form" title="Has alternate forms">${SHARD}</span>`,
       TOWERS[type].goldOf && '<span class="lo-badge gold" title="Golden perk on">★</span>',
@@ -294,10 +298,10 @@ export class LoadoutScreen {
     if (!owned && base.event) {
       btns.push(`<span class="tag">🎁 Event tower: ${esc(base.event)}. Can't be bought.</span>`);
     } else if (!owned) {
-      const [have, need, icon] = base.shards ? [profile.shards, base.shards, SHARD] : [profile.credits, base.price, '🪙'];
+      const [have, need, icon] = base.gems ? [profile.gems, base.gems, GEM] : base.shards ? [profile.shards, base.shards, SHARD] : [profile.credits, base.price, '🪙'];
       const can = have >= need;
-      btns.push(`<button class="btn ${base.shards ? 'purple' : 'green'}" data-act="buy" ${can ? '' : 'disabled'}>Buy for ${icon} ${num(need)}</button>`);
-      if (!can) btns.push(`<span class="tag">Need ${icon} ${num(need - have)} more</span>`);
+      btns.push(`<button class="btn ${base.gems || base.shards ? 'purple' : 'green'}" data-act="buy" ${can ? '' : 'disabled'}>Buy for ${icon} ${num(need)}</button>`);
+      if (!can) btns.push(`<span class="tag">Need ${icon} ${num(need - have)} more${base.gems ? ' (Gems come from Hardcore)' : ''}</span>`);
     }
     else {
       // The version being previewed, if it's owned but not the one being played: offer to use it.
@@ -327,7 +331,7 @@ export class LoadoutScreen {
         if (k === i) totalHere = total;
         const tag = x.path ? ` <small>(${x.path})</small>` : '';
         const evo = x.evo ? ` <small class="lo-evo-req">Evo ${x.evo}</small>` : '';
-        return `<tr data-row="${k}" class="${k === i ? 'sel' : ''}"><td>${k + 1}</td><td>${esc(x.name)}${tag}${evo}</td><td>$${cost.toLocaleString()}</td><td>$${total.toLocaleString()}</td>${cells(x)}</tr>`;
+        return `<tr data-row="${k}" class="${k === i ? 'sel' : ''}"><td>${k + 1}</td><td><img class="lv-ico" src="${towerIcon(this.shown, k)}" alt="">${esc(x.name)}${tag}${evo}</td><td>$${cost.toLocaleString()}</td><td>$${total.toLocaleString()}</td>${cells(x)}</tr>`;
       })
       .join('');
 
@@ -344,10 +348,10 @@ export class LoadoutScreen {
       <div class="lo-level">
         <div class="lo-level-head"><span class="lo-lv">Lv ${i + 1}</span> <b>${esc(l.name)}</b>
           <span class="lo-cost">${upCost} · $${totalHere.toLocaleString()} total</span></div>
-        <div class="lo-desc">${esc(l.desc)}</div>
+        <div class="lo-desc">${descHtml(l.desc, esc, 110)}</div>
         ${this.chips(def, i)}
       </div>
-      <div class="shop-blurb">${esc(def.blurb)}</div>
+      <div class="shop-blurb">${blurbHtml(def.blurb, esc)}</div>
       ${def.tip ? `<div class="lo-tip"><b>Tip:</b> ${esc(def.tip)}</div>` : ''}
       <table class="shop-stats lo-table"><tr><th>Lv</th><th>Upgrade</th><th>Cost</th><th>Total</th>${head}</tr>${rows}</table>
       <div class="hint">Click a row (or use ← →) to see that level. Every upgrade changes how the tower looks.</div>`;
@@ -620,6 +624,7 @@ export class LoadoutScreen {
     const m = T.model;
     // Idle bob, and a pretend shot every so often so you can see how it attacks.
     m.body.position.y = (m.lift || 0) + Math.sin(t * 2) * (m.bob ?? (m.lift ? 0.15 : 0.04));
+    if (m.drift) driftFx(m, dt, t);
     T.fireT -= dt;
     if (T.fireT <= 0 && m.muzzles?.length && !m.static) {
       T.fireT = FIRE_EVERY;

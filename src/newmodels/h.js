@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { boxGeo, part, makeHumanoid, makeThing, glowThing } from '../models.js';
+import { vcMat, wheelGeo } from '../vehicles.js';
 
 // New towers and units (set H). Every helper from models.js is only called inside functions
 // (models.js imports the newmodels files, so the imports are not ready at module load time).
@@ -991,16 +992,17 @@ function kartShape(u, M, parent, s, painted) {
   B(g, 0.3, 0.92, 2.62, tape, 0, 0.8, 0); // tape / racing stripe
   for (const sd of [-1, 1]) B(g, 0.06, 0.5, 2.2, box, sd * 0.95, 1.4, 0).rotation.z = sd * 0.5; // flaps
   if (!painted) B(g, 1.6, 0.06, 0.5, box, 0, 1.35, 1.45).rotation.x = 0.6;
-  const tire = M(0x151515);
-  const hub = M(painted ? 0xffc400 : 0x9e9e9e);
+  // Round wheels from the vehicle kit, on little axles
   const wheels = [];
   const ws = painted ? 0.85 : 0.7;
-  for (const x of [-1.0, 1.0])
-    for (const z of [-0.85, 0.85]) {
-      const w = B(g, 0.35, ws, ws, tire, x, ws / 2, z);
-      B(w, 0.37, ws * 0.4, ws * 0.4, hub, 0, 0, 0);
+  for (const z of [-0.85, 0.85]) {
+    B(g, 2.0, 0.1, 0.1, M(0x3a3d40), 0, ws / 2, z);
+    for (const x of [-1.0, 1.0]) {
+      const w = part(g, wheelGeo(ws / 2, 0.36, x, { rim: painted ? 0xffc400 : 0x9e9e9e, lugs: false }), vcMat(u), x, ws / 2, z);
+      w.userData.r = (ws / 2) * s;
       wheels.push(w);
     }
+  }
   // The kid: a white body and a tall pointed hood with a stitched scar
   const white = M(0xf5f5f5);
   B(g, 0.85, 0.6, 0.65, white, 0, 1.5, -0.3);

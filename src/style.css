@@ -375,6 +375,62 @@ select.btn option {
   color: #ffd54f;
   margin-bottom: 8px;
 }
+/* Visuals 2.0: every upgrade shows a picture of what the tower turns into, and each change has its own little icon. */
+.next-head {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.next-ico {
+  flex: 0 0 auto;
+  width: 58px;
+  height: 58px;
+  border-radius: 8px;
+  background: radial-gradient(circle at 50% 35%, rgba(165, 243, 107, 0.35), rgba(0, 0, 0, 0.45));
+  border: 2px solid rgba(165, 243, 107, 0.55);
+  object-fit: cover;
+}
+.next-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.dl {
+  display: flex;
+  gap: 5px;
+  align-items: baseline;
+  line-height: 1.35;
+}
+.di {
+  flex: 0 0 16px;
+  text-align: center;
+  font-size: 11px;
+  text-shadow: none;
+}
+details.more > summary {
+  list-style: none;
+  cursor: pointer;
+}
+details.more > summary::-webkit-details-marker {
+  display: none;
+}
+details.more > summary i {
+  font-style: normal;
+  font-size: 0.85em;
+  color: #ffd54f;
+  text-decoration: underline;
+  white-space: nowrap;
+}
+details.more[open] > summary {
+  display: none;
+}
+.lv-ico {
+  width: 26px;
+  height: 26px;
+  margin: -4px 6px -4px 0;
+  vertical-align: middle;
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.35);
+}
 .next .btn,
 .p-row .btn {
   width: 100%;
@@ -1024,6 +1080,7 @@ input:focus {
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
   margin-bottom: 10px;
 }
 .mode-row .btn.on {
@@ -1061,6 +1118,29 @@ input:focus {
 }
 .inv-head .shards {
   margin-right: 4px;
+}
+
+/* ================= Gems (Hardcore) ================= */
+.gem-icon {
+  display: inline-block;
+  width: 0.8em;
+  height: 0.8em;
+  margin: 0 0.12em;
+  clip-path: polygon(50% 0, 100% 35%, 80% 100%, 20% 100%, 0 35%);
+  background: linear-gradient(160deg, #e0f7fa 0%, #4dd0e1 35%, #00838f 75%, #004d40 100%);
+  filter: drop-shadow(0 0 4px rgba(77, 208, 225, 0.9));
+  vertical-align: -0.02em;
+}
+.gems {
+  font-size: 16px;
+  color: #80deea;
+  white-space: nowrap;
+}
+.lo-wrap .gems {
+  font-size: 18px;
+}
+.gem-text {
+  color: #80deea;
 }
 
 /* ================= Loadout screen ================= */
@@ -1187,7 +1267,6 @@ input:focus {
   display: flex;
   gap: 5px;
   flex-wrap: wrap;
-  justify-content: center;
 }
 .lo-levels .btn.on,
 .lo-forms .btn.on,
@@ -1671,4 +1750,636 @@ input:focus {
 }
 .pip-gap {
   width: 10px;
+}
+
+/* ================= Main menu (Visuals 2.0 part 3) =================
+   Modes and maps are picked from square cards (.pick-card): a mode's card is its color with its
+   final boss on it, a map's card is a picture of the map framed in the color of how hard it is.
+   --c: the card's color, --card: its size, --i: its place in the row (pop-in order). */
+#menu {
+  --card: clamp(78px, min(7.6vw, 13.4vh), 124px);
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 14px 12px 18px;
+  overflow-y: auto;
+  background: radial-gradient(ellipse at 50% 40%, rgba(6, 10, 18, 0.35), rgba(4, 6, 12, 0.82));
+}
+#menu > * {
+  flex: none;
+}
+/* Centered when there's room, scrolls from the top when there isn't. */
+.menu-head {
+  margin-top: auto;
+  text-align: center;
+}
+#menu .menu-bar {
+  margin: 0 0 auto;
+}
+#menu .logo {
+  margin: 0;
+  font-size: clamp(40px, min(7vw, 9.5vh), 84px);
+  line-height: 1;
+  letter-spacing: 4px;
+  color: #fff;
+  text-shadow: 0 3px 0 #b0bec5, 0 6px 0 #607d8b, 0 9px 0 #263238, 0 14px 0 rgba(0, 0, 0, 0.45);
+  animation: logo-bob 3.2s ease-in-out infinite;
+}
+#menu .logo span {
+  color: #ffd54f;
+  text-shadow: 0 3px 0 #ffb300, 0 6px 0 #c77800, 0 9px 0 #6d3f00, 0 14px 0 rgba(0, 0, 0, 0.45);
+}
+@keyframes logo-bob {
+  50% {
+    transform: translateY(-5px);
+  }
+}
+#menu .tagline {
+  margin: 16px 0 0;
+  font: 700 clamp(13px, 1.9vh, 17px) 'Segoe UI', Arial, sans-serif;
+  letter-spacing: 0.5px;
+  opacity: 0.92;
+  text-shadow: 0 2px 0 #000;
+}
+.menu-panel {
+  max-width: min(1340px, 97vw);
+  padding: 10px 18px 6px;
+  border-radius: 18px;
+  background: rgba(16, 21, 30, 0.82);
+  border: 3px solid rgba(0, 0, 0, 0.6);
+  box-shadow: 0 8px 0 rgba(0, 0, 0, 0.35), inset 0 2px 0 rgba(255, 255, 255, 0.07);
+}
+.pick-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 2px 0 9px;
+  font-size: 15px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  text-shadow: 0 2px 0 #000;
+}
+.pick-head b {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: #ffd54f;
+  color: #1b1f27;
+  font-size: 15px;
+  letter-spacing: 0;
+  text-shadow: none;
+  box-shadow: 0 3px 0 #b8860b;
+}
+.pick-head::after {
+  content: '';
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+}
+#menu .pick-hint,
+.pick-hint {
+  margin: 9px auto 8px;
+  max-width: 980px;
+  min-height: 2.9em;
+  font: 600 13px/1.45 'Segoe UI', Arial, sans-serif;
+  text-align: center;
+  text-shadow: none;
+  opacity: 0.95;
+}
+.pick-tag {
+  display: inline-block;
+  margin-right: 4px;
+  padding: 1px 8px 2px;
+  border-radius: 6px;
+  border: 2px solid rgba(0, 0, 0, 0.4);
+  font: 800 12px/1.3 'Segoe UI', Arial, sans-serif;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+}
+.card-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  padding-top: 5px; /* room for the picked card to rise */
+}
+.pick-card {
+  --c: #607d8b;
+  position: relative;
+  flex: none;
+  width: var(--card, 104px);
+  aspect-ratio: 1;
+  padding: 0;
+  overflow: hidden;
+  font: inherit;
+  color: #fff;
+  cursor: pointer;
+  border: 4px solid color-mix(in srgb, var(--c) 48%, #000);
+  border-radius: 12px;
+  background-color: var(--c);
+  /* A shine from the top over a faint checkerboard: blocky, like the rest of the game. */
+  background-image: linear-gradient(rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0) 45%, rgba(0, 0, 0, 0.3)), repeating-conic-gradient(rgba(0, 0, 0, 0.1) 0 25%, rgba(0, 0, 0, 0) 0 50%);
+  background-size: auto, 34% 34%;
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.5);
+  filter: brightness(0.82) saturate(0.9);
+  transition: transform 0.12s, filter 0.12s, box-shadow 0.12s, border-color 0.12s;
+  animation: card-in 0.28s cubic-bezier(0.2, 1.4, 0.4, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 28ms);
+}
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.86);
+  }
+}
+.pick-card:hover {
+  filter: none;
+  transform: translateY(-3px);
+}
+.pick-card:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.5);
+}
+.pick-card.on {
+  z-index: 1;
+  filter: none;
+  border-color: #ffee58;
+  transform: translateY(-5px) scale(1.06);
+  box-shadow: 0 9px 0 rgba(0, 0, 0, 0.5), 0 0 0 2px #7a5c00, 0 0 22px 3px color-mix(in srgb, var(--c) 70%, #fff);
+}
+/* The boss: big, standing on the name plate. */
+.pc-boss {
+  position: absolute;
+  left: -6%;
+  top: -9%;
+  width: 112%;
+  height: 112%;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.3));
+  transition: transform 0.15s;
+}
+.pick-card:hover .pc-boss,
+.pick-card.on .pc-boss {
+  transform: scale(1.07);
+}
+.pick-card.locked {
+  background-color: #2c343b;
+  border-color: #14181c;
+}
+.pick-card.locked .pc-boss {
+  filter: brightness(0) opacity(0.6);
+}
+.pc-lock {
+  position: absolute;
+  inset: 0 0 2.6em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--card, 104px) * 0.32);
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.6);
+}
+.pc-art {
+  position: absolute;
+  inset: 0;
+}
+.pc-pic {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.2s;
+}
+.pick-card:hover .pc-pic,
+.pick-card.on .pc-pic {
+  transform: scale(1.08);
+}
+.pc-ph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding-bottom: 22%;
+  font-size: calc(var(--card, 104px) * 0.36);
+}
+.pc-chip {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  padding: 3px 5px;
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.62);
+  font: 800 10px/1 'Segoe UI', Arial, sans-serif;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  text-shadow: none;
+}
+.map-card .pc-chip {
+  background: var(--c);
+  border: 2px solid rgba(0, 0, 0, 0.45);
+  padding: 2px 5px;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+}
+.pc-won {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 19px;
+  height: 19px;
+  border-radius: 5px;
+  background: #2e7d32;
+  border: 2px solid rgba(0, 0, 0, 0.5);
+  font: 800 11px/15px 'Segoe UI', Arial, sans-serif;
+  text-align: center;
+  text-shadow: none;
+}
+.pc-name {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  min-height: 2.6em;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 3px 3px;
+  background: rgba(0, 0, 0, 0.66);
+  font: 800 clamp(9.5px, calc(var(--card, 104px) * 0.108), 12.5px)/1.12 'Segoe UI', Arial, sans-serif;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  text-shadow: 0 1px 0 #000;
+}
+.pc-name small {
+  margin-top: 1px;
+  font-size: 0.82em;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  color: #ffe082;
+}
+/* A map's name plate is the color of how hard the map is. */
+.map-card .pc-name {
+  background: linear-gradient(color-mix(in srgb, var(--c) 82%, #000), color-mix(in srgb, var(--c) 58%, #000));
+  border-top: 2px solid rgba(0, 0, 0, 0.45);
+}
+.menu-play {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+#menu #name-input.name-input {
+  width: 230px;
+  margin: 0;
+  padding: 13px 12px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.6);
+}
+#menu .btn.big {
+  font-size: clamp(22px, 3.4vh, 30px);
+  padding: 12px 46px;
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.45);
+}
+#solo-btn::before {
+  content: '▶';
+  margin-right: 12px;
+  font-size: 0.8em;
+}
+
+/* The same cards in a multiplayer room: small, picture only (the line above says what's picked). */
+.pick-pair {
+  --card: 62px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 22px;
+  margin-top: 4px;
+}
+.pick-block {
+  margin-bottom: 12px;
+}
+/* Side by side: the modes four to a row, the maps five. */
+#room-difficulty {
+  width: calc(4 * var(--card) + 18px);
+}
+#room-map {
+  width: calc(5 * var(--card) + 24px);
+}
+.pick-label {
+  min-height: 3.2em;
+  margin-bottom: 2px;
+  line-height: 1.6;
+  font: 700 14px 'Segoe UI', Arial, sans-serif;
+  text-shadow: 0 2px 0 #000;
+}
+.card-grid.small {
+  justify-content: flex-start;
+  gap: 6px;
+}
+.card-grid.small .pick-card {
+  border-width: 3px;
+  border-radius: 9px;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.5);
+  animation: none;
+}
+.card-grid.small .pick-card.on {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.5), 0 0 12px 2px color-mix(in srgb, var(--c) 70%, #fff);
+}
+.card-grid.small .pc-name,
+.card-grid.small .pc-chip,
+.card-grid.small .pc-won {
+  display: none;
+}
+.card-grid.small .pc-boss {
+  top: -4%;
+}
+.card-grid.small .pc-lock {
+  inset: 0;
+}
+.card-grid.small .pc-ph {
+  padding: 0;
+}
+/* Not the host: you see what's picked but can't pick. */
+.card-grid.static .pick-card {
+  cursor: default;
+}
+.card-grid.static .pick-card:not(.on) {
+  filter: grayscale(0.7) brightness(0.45);
+  transform: none;
+}
+.room-card {
+  width: min(1120px, 96vw);
+}
+.room-left {
+  flex: 1.6;
+}
+/* Small cards: the plate's color already says how hard the map is, so the picture keeps the room. */
+@media (max-height: 700px), (max-width: 1150px) {
+  #menu .map-card .pc-chip {
+    display: none;
+  }
+}
+
+/* ================= Special events (Halloween) =================
+   An event isn't a mode card: it has its own button (.event-btn) in the top right of the title
+   screen and, for the host, of a room. Picking it swaps the mode and map cards for the event's
+   banner (.event-banner): its boss, what it is, and its own map, which only the event plays.
+   --c: the event's color. */
+.event-btns {
+  display: flex;
+  gap: 10px;
+}
+#menu .event-btns {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  z-index: 2;
+}
+.event-btn {
+  --c: #ef6c00;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 66px;
+  padding: 0 16px 0 4px;
+  font: inherit;
+  color: #fff;
+  cursor: pointer;
+  border: 4px solid color-mix(in srgb, var(--c) 45%, #000);
+  border-radius: 14px;
+  background-color: color-mix(in srgb, var(--c) 86%, #000);
+  background-image: linear-gradient(rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0) 45%, rgba(0, 0, 0, 0.3)), repeating-conic-gradient(rgba(0, 0, 0, 0.1) 0 25%, rgba(0, 0, 0, 0) 0 50%);
+  background-size: auto, 22px 22px;
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.5), 0 0 16px 2px color-mix(in srgb, var(--c) 65%, transparent);
+  animation: event-glow 1.7s ease-in-out infinite;
+  transition: transform 0.12s, filter 0.12s;
+}
+@keyframes event-glow {
+  50% {
+    box-shadow: 0 6px 0 rgba(0, 0, 0, 0.5), 0 0 26px 8px color-mix(in srgb, var(--c) 80%, #fff);
+  }
+}
+.event-btn:hover {
+  filter: brightness(1.12);
+  transform: translateY(-2px);
+}
+.event-btn:active {
+  transform: translateY(2px);
+}
+.event-btn.on {
+  border-color: #ffee58;
+  animation: none;
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.5), 0 0 0 2px #7a5c00, 0 0 22px 3px color-mix(in srgb, var(--c) 70%, #fff);
+}
+.event-btn img {
+  flex: none;
+  width: 58px;
+  height: 58px;
+  margin-top: -6px;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.35));
+}
+.ev-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  line-height: 1.1;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+}
+.ev-text small {
+  font: 800 10.5px/1.1 'Segoe UI', Arial, sans-serif;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #ffee58;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.7);
+}
+.ev-text b {
+  font-size: 17px;
+  letter-spacing: 0.5px;
+}
+.ev-on,
+.event-btn.on .ev-off {
+  display: none;
+}
+.event-btn.on .ev-on {
+  display: block;
+}
+/* Beaten: a tick on the button's corner, and after the banner's title. */
+.ev-won {
+  display: inline-block;
+  width: 21px;
+  height: 21px;
+  border-radius: 6px;
+  background: #2e7d32;
+  border: 2px solid rgba(0, 0, 0, 0.5);
+  font: 800 12px/17px 'Segoe UI', Arial, sans-serif;
+  text-align: center;
+  text-shadow: none;
+  vertical-align: middle;
+}
+.event-btn .ev-won {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+}
+.event-banner {
+  --c: #ef6c00;
+  --card: 120px;
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
+  width: min(880px, 88vw);
+  margin: 4px auto 0;
+  padding: 12px;
+  border: 4px solid color-mix(in srgb, var(--c) 48%, #000);
+  border-radius: 14px;
+  background-color: color-mix(in srgb, var(--c) 72%, #000);
+  background-image: linear-gradient(rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 45%, rgba(0, 0, 0, 0.35)), repeating-conic-gradient(rgba(0, 0, 0, 0.1) 0 25%, rgba(0, 0, 0, 0) 0 50%);
+  background-size: auto, 44px 44px;
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.5);
+  animation: card-in 0.28s cubic-bezier(0.2, 1.4, 0.4, 1) backwards;
+}
+.eb-boss {
+  flex: none;
+  align-self: center;
+  width: 150px;
+  height: 150px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.3));
+}
+.eb-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: left;
+}
+.overlay .eb-text h3 {
+  margin: 0 0 8px;
+  font-size: 26px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.55);
+}
+.overlay .eb-text p {
+  margin: 0;
+  font: 600 14px/1.5 'Segoe UI', Arial, sans-serif;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+}
+.eb-map {
+  position: relative;
+  flex: none;
+  width: 200px;
+  min-height: 150px;
+  overflow: hidden;
+  border: 3px solid rgba(0, 0, 0, 0.6);
+  border-radius: 10px;
+  background: #000;
+}
+.eb-map-name {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3px 4px 4px;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.68);
+  font: 800 12px/1.15 'Segoe UI', Arial, sans-serif;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  text-shadow: 0 1px 0 #000;
+}
+.eb-map-name small {
+  font-size: 0.8em;
+  color: #ffe082;
+}
+#event-back {
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.6);
+}
+/* In a room: the host's event button sits by Leave Room, and the banner is smaller. */
+.room-head-btns {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+#room-event .event-btn {
+  height: 48px;
+  padding-right: 12px;
+  border-width: 3px;
+  border-radius: 11px;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.5), 0 0 12px 1px color-mix(in srgb, var(--c) 65%, transparent);
+}
+#room-event .event-btn img {
+  width: 42px;
+  height: 42px;
+  margin-top: -4px;
+}
+#room-event .ev-text b {
+  font-size: 14px;
+}
+#room-event-banner {
+  flex: 1 1 100%;
+}
+#room-event-banner .event-banner {
+  --card: 84px;
+  width: auto;
+  margin: 0;
+  gap: 12px;
+  padding: 9px;
+  animation: none;
+}
+#room-event-banner .eb-boss {
+  width: 104px;
+  height: 104px;
+}
+#room-event-banner .eb-text h3 {
+  font-size: 19px;
+}
+#room-event-banner .eb-text p {
+  font-size: 13px;
+}
+#room-event-banner .eb-map {
+  width: 150px;
+  min-height: 112px;
+}
+/* Narrow screens: the button goes above the logo instead of beside it, and the banner stacks. */
+@media (max-width: 900px) {
+  #menu .event-btns {
+    position: static;
+    align-self: flex-end;
+  }
+  .event-banner {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .eb-text {
+    flex-basis: 240px;
+  }
+}
+
+/* ================= Music button (menus) =================
+   Bottom-left corner of every menu screen; in a game the HUD's own Music button takes over. */
+#menu-music-btn {
+  position: fixed;
+  left: 12px;
+  bottom: 12px;
+  z-index: 60;
+}
+#hud:not(.hidden) ~ #menu-music-btn {
+  display: none;
 }

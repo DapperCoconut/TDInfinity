@@ -2,7 +2,8 @@
 // Runs in the browser for solo play and on the server (one per room) for multiplayer.
 import { PERKS, WAVES, SPEEDS, BOSS_KNOCK, arrowModes, damageKind, unitGunKind, DIFFICULTIES, ENEMIES, KNOCK_STUDS, GAME, PLAYER_COLORS, TARGET_MODES, TOWERS, VERSUS, canHit, difficulty, detection, facesCone, spawnExtras, towerLimit, nextTrack, cloneCost, familyOf, rootType, towerCost, towerMaxHp, trackBoost, timedAbility, unitDetection, waveGroups, pickOptions, choiceOptions, choicesOf, crossNext, crossStackMult, abilityCost } from '../config.js';
 import { angleDiff, lerpAngle } from '../utils.js';
-import { canPlace, heightAt, laneOf, laneOz, levelAt, placeFail } from './map.js';
+import { canPlace, heightAt, laneOf, laneOz, levelAt, mapKey, placeFail, setMap } from './map.js';
+import { pickableMap } from './maps.js';
 import { BOUNDS, PATH_WIDTH, path, setTimeWorld } from './path.js';
 
 const MAX_STEP = 0.05;
@@ -13,6 +14,8 @@ const VOID_FX = new Set(Object.keys(ENEMIES).filter((k) => ['punch', 'mark', 'hu
 const VB_FX = new Set(Object.keys(ENEMIES).filter((k) => ENEMIES[k].vb));
 // Insane mode (2026-11-09 spec): enemies with abilities Sim.insanePace runs.
 const ORION_FX = new Set(Object.keys(ENEMIES).filter((k) => ['healPulse', 'build', 'taunt', 'backup', 'throwAt'].some((f) => ENEMIES[k][f])));
+// Hardcore mode (2026-11-09 spec): enemies with abilities Sim.hcAttacks runs.
+const HC_FX = new Set(Object.keys(ENEMIES).filter((k) => ['pod', 'jam', 'dispense', 'beacon', 'tank', 'relax', 'pair', 'rageAt', 'vb'].some((f) => ENEMIES[k][f])));
 const INSANE_FX = new Set(Object.keys(ENEMIES).filter((k) => ['trail', 'smoke', 'arc', 'emp', 'stab', 'tempo', 'armorSwap', 'lurch', 'timeWave', 'timeBomb', 'sword', 'shift'].some((f) => ENEMIES[k][f])));
 const rand = (a, b) => a + Math.random() * (b - a);
 const r2 = (n) => Math.round(n * 100) / 100;
@@ -157,7 +160,7 @@ export function computeBuffs(towers) {
     let dmgLoss = 0; // Discount Dog: towers it discounts deal a little less damage
     let rateLoss = 0; // Balloon Pal: towers it boosts attack a little slower
     let splash = 0; // Balloon Pal: bigger splash
-    let killCash = 1; // Gold Commander Gold Digging: kills pay more
+    let killCash = 1; // Gold Commander Gold Digging: damage pays more (Versus: kills)
     let goldRate = 0; // Gold Commander: golden towers attack faster
     let ctaD = 0; // Gold Commander Call to Battle: more damage
     let biz = 0, bizCap = 0, bizTier = 0; // Businessman Discount Seeker: stacking upgrade discounts
@@ -393,9 +396,21 @@ export class Sim {
     this.vs = opts.vs ?? null;
     // Difficulty: which scripted waves this game plays (Versus always plays the zombie waves).
     this.mode = this.vs ? 'zombies' : DIFFICULTIES[opts.mode] ? opts.mode : 'easy';
+    // Versus lanes: the VersusSim already picked the map. Event modes always play their own map.
+    if (!this.vs) setMap(difficulty(this.mode).map ?? pickableMap(opts.map), true); // an event plays its own map, and only an event does
+    this.map = mapKey;
     this.waves = this.vs ? WAVES : difficulty(this.mode).waves;
     this.cashMult = this.vs ? 1 : difficulty(this.mode).cash; // harder modes pay more in-game cash
     const dm = this.vs ? {} : difficulty(this.mode);
+    // Cash for damage (see GAME.dmgCash): every point of health damage pays every player this
+    // much. 0 (Versus): enemies pay their `reward` when they die instead.
+    this.dmgCash = this.vs ? 0 : dm.dmgCash ?? GAME.dmgCash;
+    this.cashAcc = 0; // damage cash not paid out yet (it pays whole dollars)
+    // Halloween (`pot`): the mode's cash numbers are a full server's, shared between whoever is
+    // playing: with a pot of 4, a solo player gets 4x the starting cash and wave bonus and all of
+    // the damage cash, and four players get the listed numbers and a quarter of the damage cash each.
+    this.potShare = dm.pot ? dm.pot / Math.max(1, players.length) : 1;
+    this.dmgShare = dm.pot ? 1 / Math.max(1, players.length) : 0; // 0: not a pot mode (see payDamage)
     this.flatHp = !!dm.flatHp; // Medium: enemy health doesn't grow per wave
     this.timers = dm.timers ?? null; // Medium: waves that start the next one after a while anyway
     this.maxBaseHp = dm.baseHp ?? GAME.baseHp;
@@ -405,7 +420,7 @@ export class Sim {
     this.bossSeen = new Set(); // Hard: `bossFirst` enemies already spawned this game
     this.goos = []; // Hard: Necrotic Skeleton goo puddles that heal enemies: { x, z, r, left, heal, every, t }
     // Medium sets its own starting cash, plus a group bonus when playing with others.
-    const startCash = dm.startCash != null ? dm.startCash + (players.length > 1 ? dm.groupBonus ?? 0 : 0) : Math.round(GAME.startCash * this.cashMult);
+    const startCash = Math.round((dm.startCash != null ? dm.startCash + (players.length > 1 ? dm.groupBonus ?? 0 : 0) : Math.round(GAME.startCash * this.cashMult)) * this.potShare);
     this.lane = opts.lane ?? 0;
     this.players = new Map();
     players.forEach((p, i) =>
@@ -427,6 +442,7 @@ export class Sim {
     this.sweeps = []; // Sweeper lasers spinning around their tower
     this.spies = []; // Aviator hidden-detection rings, refreshed every tick
     this.buffs = new Map(); // Commander / DJ boosts, refreshed every tick
+    this.cashBacks = new Map(); // player id -> Oil Derrick Cash Back share, refreshed every tick
     this.units = new Map(); // Jeeps, Tanks, Soldier squads... driving from the castle toward the entrance
     this.traps = new Map(); // Trapper spikes, landmines and bear traps lying on the path
     this.skipVotes = new Set();
@@ -549,7 +565,7 @@ export class Sim {
       if (e.thornT && !(e.thornT = Math.max(0, e.thornT - dt))) e.thornSlow = 0; // Harvester thorns
       if (e.paraT && !(e.paraT = Math.max(0, e.paraT - dt))) e.paraSlow = 0; // Paralyzer laser
       // Slows from fire, slime, chill, frostbite and Drop the Beat all stack (multiplicatively).
-      let slow = (1 - (e.burn ? e.burnSlow : 0)) * (1 - e.slime) * (1 - e.chill * e.chillMax) * (1 - e.beatSlow) * (1 - e.hackSlow) * (1 - e.coldSlow) * (1 - (e.poison ? e.poison.slow : 0)) * (1 - (e.thornSlow || 0)) * (1 - (e.shockT > 0 ? e.shock : 0)) * (1 - (e.paraSlow || 0));
+      let slow = (1 - (e.burn ? Math.max(e.burnSlow, ENEMIES[e.type].fireSlow ?? 0) : 0)) * (1 - e.slime) * (1 - e.chill * e.chillMax) * (1 - e.beatSlow) * (1 - e.hackSlow) * (1 - e.coldSlow) * (1 - (e.poison ? e.poison.slow : 0)) * (1 - (e.thornSlow || 0)) * (1 - (e.shockT > 0 ? e.shock : 0)) * (1 - (e.paraSlow || 0));
       // Harpoons stack on top, but never take it past `harpoonCap` (unless it already was).
       if (e.harpoonSlow) slow = Math.max(slow * (1 - e.harpoonSlow), Math.min(slow, 1 - e.harpoonCap));
       if (e.pushT) e.pushT = Math.max(0, e.pushT - dt); // Bubble Blower push cooldown
@@ -614,6 +630,7 @@ export class Sim {
         e.sprinting = Math.max(0, e.sprinting - dt);
         e.speed *= def.sprint.speed;
       }
+      if (HC_FX.has(e.type) && this.hcAttacks(e, def, dt) === 'gone') continue; // Hardcore (a Drop Pod may burst open)
       e.st = (e.stopKind === 'ice' ? ST_FROZEN : e.stopKind === 'stun' ? ST_STUNNED : e.stopKind === 'dance' ? ST_DANCE : e.stopKind === 'float' ? ST_FLOAT : 0) | (e.burn || e.taints?.has('burn') ? ST_BURNING : 0)
         | (e.slime ? ST_SLIMED : 0) | (e.chill ? ST_CHILLED : 0) | (e.hackEv || e.fraud ? ST_HACKED : 0) | (e.gas?.size || e.poison || e.taints?.has('radioactive') ? ST_GASSED : 0) | (e.confT > 0 ? ST_CONFUSED : 0)
         | (e.shockT > 0 ? ST_SHOCKED : 0) | (e.taints?.has('biohazard') ? ST_BIOHAZARD : 0)
@@ -635,7 +652,7 @@ export class Sim {
             if (alive >= sm.max) return;
           }
           const cnt = Array.isArray(sm.n) ? sm.n[0] + Math.floor(Math.random() * (sm.n[1] - sm.n[0] + 1)) : sm.n; // MK11-Device: 2-3
-          for (let j = 0; j < cnt; j++) this.reborn.push({ type: sm.type, dist: Math.max(0, sm.here ? e.dist : e.dist - 1.5 - j), lateral: sm.here ? e.lateral : 0, hpScale: 1, owner: e.id, noCash: !!sm.noCash });
+          for (let j = 0; j < cnt; j++) this.reborn.push({ route: e.route, type: sm.type, dist: Math.max(0, sm.here ? e.dist : e.dist - 1.5 - j), lateral: sm.here ? e.lateral : 0, hpScale: 1, owner: e.id, noCash: !!sm.noCash });
           this.events.push({ k: 'summon', e: e.id, type: sm.type });
         });
       }
@@ -670,6 +687,12 @@ export class Sim {
         if (this.baseHp <= 0) return this.end(false);
         e.dist = 0;
       }
+      if (e.dist >= path.length && def.recede && (e.recedes || 0) < def.recede.n) {
+        // Emperor Taunting Recession: warps back to the start instead of entering the base.
+        e.recedes = (e.recedes || 0) + 1;
+        e.dist = 0;
+        this.events.push({ k: 'hcRecede', e: e.id, n: e.recedes, left: def.recede.n - e.recedes });
+      }
       if (e.dist >= path.length) {
         this.enemies.delete(e.id);
         const dmg = ENEMIES[e.type].damage;
@@ -678,7 +701,7 @@ export class Sim {
         if (this.baseHp <= 0) return this.end(false);
         continue;
       }
-      path.at(e.dist, e);
+      path.at(e.dist, e, e.route);
       e.x += -e.dz * e.lateral;
       e.z += e.dx * e.lateral;
     }
@@ -687,7 +710,15 @@ export class Sim {
     this.buffs = computeBuffs(this.towers.values());
     // Golden Byte: zombies in its range that are stunned or slowed take more damage (see damage()).
     this.slowVulns = [];
+    // Oil Derrick Cash Back: each player's bonus on cash from damage (see cashBack). Derricks that
+    // are stunned or knocked out don't count, and `noStack` ones don't add up: the best one counts.
+    this.cashBacks.clear();
     for (const o of this.towers.values()) {
+      const back = TOWERS[o.type].levels[o.level].dmgCash;
+      if (back && o.hp > 0 && !(o.stunT > 0) && !o.holo && !o.corrupt && !o.curseBy) {
+        const had = this.cashBacks.get(o.owner) ?? 0;
+        this.cashBacks.set(o.owner, TOWERS[o.type].noStack ? Math.max(had, back) : had + back);
+      }
       const v = TOWERS[o.type].levels[o.level].slowVuln;
       if (v && o.hp > 0 && !(o.stunT > 0)) this.slowVulns.push({ x: o.x, z: o.z, r: TOWERS[o.type].levels[o.level].range * buffOf(this.buffs, o.id).range, v });
     }
@@ -731,7 +762,8 @@ export class Sim {
       if (w.index >= this.waves.length - 1) return this.end(true);
       w.index++;
       w.state = 'intermission';
-      w.countdown = GAME.intermission;
+      w.countdown = GAME.intermission + (this.breakBonus || 0); // back from the Beholder's Field: time to rebuild
+      this.breakBonus = 0;
     }
   }
 
@@ -818,8 +850,14 @@ export class Sim {
    * flight, Knight dashes and slashes, Pestilence mushrooms, and shots at towers.
    */
   hardAttacks(e, def, dt) {
-    if (def.enrage && !e.enraged && e.hp <= e.maxHp * def.enrage.at) {
+    if (def.enrage?.after) e.ageT = (e.ageT || 0) + dt;
+    if (def.enrage && !e.enraged && (def.enrage.after ? e.ageT >= def.enrage.after : e.hp <= e.maxHp * def.enrage.at)) {
       e.enraged = true;
+      if (def.enrage.osh) {
+        // Hardcore Lurch 3: smashes its core and gains a shield.
+        e.osh = (e.osh || 0) + e.maxHp * def.enrage.osh;
+        e.oshMax = Math.max(e.oshMax || 0, e.osh);
+      }
       this.events.push({ k: 'enrage', e: e.id });
     }
     if (e.stop) return; // frozen or stunned enemies don't attack
@@ -894,7 +932,7 @@ export class Sim {
         const t = list[Math.floor(Math.random() * list.length)];
         const fl = (s.flight || 0) + k * 0.08;
         this.events.push({ k: 'eShot', e: e.id, kind: s.kind, fx: r2(e.x), fz: r2(e.z), x: r2(t.x), z: r2(t.z), d: fl, air: e.airT > 0 ? 1 : 0 });
-        const hit = { x: t.x, z: t.z, left: fl, r: s.radius, stun: s.stun || 0, dmg: s.dmg, kind: s.kind, puddle: s.puddle, slow: s.slow, shrink: s.shrink, weak: s.weak };
+        const hit = { x: t.x, z: t.z, left: fl, r: s.radius, stun: s.stun || 0, dmg: s.dmg, kind: s.kind, puddle: s.puddle, slow: s.slow, shrink: s.shrink, weak: s.weak, lock: s.lock };
         if (s.drain && e.hp < e.maxHp) e.hp = Math.min(e.maxHp, e.hp + e.maxHp * s.drain); // Time Parasite heals off its beam
         if (fl) this.axes.push(hit);
         else this.landShot(hit);
@@ -956,7 +994,7 @@ export class Sim {
       } else if (a.toss) {
         const tg = a.toss;
         const dist = Math.min(e.dist + (tg.ahead || 0), path.length - 2);
-        const p = path.at(dist, {});
+        const p = path.at(dist, {}, e.route);
         this.events.push({ k: 'eShot', e: e.id, kind: 'grenade', fx: r2(e.x), fz: r2(e.z), x: r2(p.x), z: r2(p.z), d: tg.flight });
         this.axes.push({ x: p.x, z: p.z, left: tg.flight, r: 3, stun: 0, dmg: 0, kind: 'grenade', spawn: { list: tg.list, dist } });
       } else if (a.shot) {
@@ -976,7 +1014,7 @@ export class Sim {
           const fl = (s.flight || 0) + k * 0.1;
           this.events.push({ k: 'eShot', e: e.id, kind: s.kind, fx: r2(e.x), fz: r2(e.z), x: r2(o.x), z: r2(o.z), d: fl });
           // Aimed at one tower: only that tower is hit.
-          const hit = { x: o.x, z: o.z, left: fl, r: 0.5, stun: 0, dmg: 0, kind: s.kind, tower: o.id, tdmg: dmg };
+          const hit = { x: o.x, z: o.z, left: fl, r: 0.5, stun: s.stun || 0, dmg: 0, kind: s.kind, tower: o.id, tdmg: dmg, weak: s.weak, slow: s.slow, lock: s.lock }; // (Hardcore: stun / weaken / slow it too)
           if (fl) this.axes.push(hit);
           else this.landShot(hit);
         });
@@ -1014,7 +1052,7 @@ export class Sim {
       e.hordeDone = true;
       for (let i = 0; i < fk.horde.n; i++) {
         const type = fk.horde.list[Math.floor(Math.random() * fk.horde.list.length)];
-        this.reborn.push({ type, dist: Math.max(0, e.dist - 3 - i * 0.6), lateral: (Math.random() - 0.5) * 2, hpScale: 1, owner: e.id });
+        this.reborn.push({ route: e.route, type, dist: Math.max(0, e.dist - 3 - i * 0.6), lateral: (Math.random() - 0.5) * 2, hpScale: 1, owner: e.id });
       }
       this.events.push({ k: 'kingHorde', e: e.id, n: fk.horde.n });
     }
@@ -1080,7 +1118,7 @@ export class Sim {
     const g = nb.goo;
     for (let i = 0; i < g.n; i++) {
       const d = Math.min(path.length - 1, Math.max(0, e.dist + (i - (g.n - 1) / 2) * 3));
-      const p = path.at(d, {});
+      const p = path.at(d, {}, e.route);
       this.goos.push({ x: p.x, z: p.z, r: g.r, left: g.life, heal: g.heal, every: g.every, t: g.every });
       this.events.push({ k: 'goo', x: r2(p.x), z: r2(p.z), r: g.r, life: g.life });
     }
@@ -1335,7 +1373,7 @@ export class Sim {
         e.hurtDone = due; // a huge hit still only lets out one batch
         for (let i = 0; i < hs.n; i++) {
           const type = hs.list[Math.floor(Math.random() * hs.list.length)];
-          this.reborn.push({ type, dist: Math.max(0, e.dist - 1.5 - i * 1.5), lateral: (Math.random() - 0.5) * 2, hpScale: 1, from: e.type });
+          this.reborn.push({ route: e.route, type, dist: Math.max(0, e.dist - 1.5 - i * 1.5), lateral: (Math.random() - 0.5) * 2, hpScale: 1, from: e.type });
         }
         this.events.push({ k: 'summon', e: e.id, type: 'voidHurt' });
       }
@@ -1365,8 +1403,8 @@ export class Sim {
     if (ob && (e.orbT -= dt) <= 0) {
       // A slow magic missile flies down the path toward the base. Touch it to pop it!
       e.orbT = ob.every;
-      const o = { id: this.nextId++, dist: e.dist + 2, x: e.x, z: e.z, speed: ob.speed, dmg: ob.dmg };
-      path.at(o.dist, o);
+      const o = { id: this.nextId++, dist: e.dist + 2, route: e.route, x: e.x, z: e.z, speed: ob.speed, dmg: ob.dmg };
+      path.at(o.dist, o, o.route);
       this.orbs.push(o);
       this.events.push({ k: 'vOrb', e: e.id, id: o.id, x: r2(o.x), z: r2(o.z) });
     }
@@ -1432,7 +1470,7 @@ export class Sim {
     this.orbs = this.orbs.filter((o) => {
       o.dist += o.speed * dt;
       if (o.dist < path.length) {
-        path.at(o.dist, o);
+        path.at(o.dist, o, o.route);
         return true;
       }
       this.baseHp = Math.max(0, this.baseHp - o.dmg);
@@ -1460,9 +1498,9 @@ export class Sim {
     const rise = ENEMIES[boss.type].rise;
     this.enemies.delete(boss.id);
     this.events.push({ k: 'decay', e: boss.id });
-    this.reborn.push({ type: rise.into, dist: boss.dist, lateral: 0, hpScale: 1, from: boss.type });
+    this.reborn.push({ route: boss.route, type: rise.into, dist: boss.dist, lateral: 0, hpScale: 1, from: boss.type });
     for (let i = 0; i < rise.n; i++) {
-      this.reborn.push({ type: rise.guards, dist: Math.max(0, boss.dist - 4 - i * 3), lateral: (i - (rise.n - 1) / 2) * 2.5, hpScale: 1 });
+      this.reborn.push({ route: boss.route, type: rise.guards, dist: Math.max(0, boss.dist - 4 - i * 3), lateral: (i - (rise.n - 1) / 2) * 2.5, hpScale: 1 });
     }
     this.events.push({ k: 'vRise', x: r2(boss.x), z: r2(boss.z) });
   }
@@ -1572,7 +1610,7 @@ export class Sim {
         const cnt = m.n[0] + Math.floor(Math.random() * (m.n[1] - m.n[0] + 1));
         for (let i = 0; i < cnt; i++) {
           const type = m.list[Math.floor(Math.random() * m.list.length)];
-          this.reborn.push({ type, dist: Math.max(0, e.dist - 2 - i * 1.5), lateral: (i - (cnt - 1) / 2) * 1.5, hpScale: 1, owner: e.id, noCash: true });
+          this.reborn.push({ route: e.route, type, dist: Math.max(0, e.dist - 2 - i * 1.5), lateral: (i - (cnt - 1) / 2) * 1.5, hpScale: 1, owner: e.id, noCash: true });
         }
         ev({ n: cnt });
         return true;
@@ -1656,12 +1694,393 @@ export class Sim {
         return true;
       }
     }
+    return this.hcMove(e, k, m); // Hardcore bosses
+  }
+
+  // ---------------------------------------------------------------- Hardcore mode (2026-11-09 spec)
+
+  /**
+   * Hardcore abilities that run every tick (see hardcore.js): Drop Pods opening, Jammers, Dispensers,
+   * Void Cultist beacons, the Crystalian's tank shell, the Grand Eye relaxing its defense, Soul
+   * Stealer hiding, and the Void Reaver / Void Caster pair. Runs before the enemy moves this tick.
+   * Returns 'gone' if the enemy left the map (a pod burst open).
+   */
+  hcAttacks(e, def, dt) {
+    e.ageT = (e.ageT || 0) + dt;
+    const pd = def.pod;
+    if (pd && (e.podT -= dt) <= 0) {
+      // A Drop Pod bursts open: out come its enemies, and the pod blows up.
+      this.enemies.delete(e.id);
+      let j = 0;
+      for (const [type, n] of pd.list) for (let i = 0; i < n; i++, j++) this.reborn.push({ route: e.route, type, dist: Math.max(0, e.dist - j * 0.7), lateral: ((j % 3) - 1) * 1.2, hpScale: 1, from: e.type });
+      this.events.push({ k: 'decay', e: e.id });
+      this.events.push({ k: 'eBlast', x: r2(e.x), z: r2(e.z), r: 4, c: 0xd500f9 });
+      return 'gone';
+    }
+    if (def.jam) this.weakenTowers(e.x, e.z, def.jam.radius, 0, 0.4); // Jammer: no abilities near it
+    const dp = def.dispense;
+    if (dp && !e.stop && (e.dispT = (e.dispT ?? dp.every) - dt) <= 0) {
+      // Dispenser: the enemies around it get extra shield (never more than their max health).
+      e.dispT = dp.every;
+      for (const o of this.enemies.values()) {
+        if (o === e || o.remains || (o.x - e.x) ** 2 + (o.z - e.z) ** 2 > dp.radius * dp.radius) continue;
+        o.osh = Math.min(o.maxHp, (o.osh || 0) + dp.shield + o.maxHp * dp.pct);
+        o.oshMax = Math.max(o.oshMax || 0, o.osh);
+      }
+      this.events.push({ k: 'dHeal', x: r2(e.x), z: r2(e.z), r: dp.radius });
+    }
+    const bc = def.beacon;
+    if (bc && !e.stop && (e.beaconT = (e.beaconT ?? bc.every * 0.5) - dt) <= 0) {
+      // Void Cultist: a Healing Beacon on the ground heals the enemies standing in it.
+      e.beaconT = bc.every;
+      this.zones.push({ kind: 'heal', x: e.x, z: e.z, r: bc.radius, left: bc.life, speed: 0, heal: bc.heal, by: e.id });
+      this.events.push({ k: 'trail', x: r2(e.x), z: r2(e.z), r: bc.radius, life: bc.life, c: bc.color });
+    }
+    if (def.tank) {
+      // Crystalian: every hit does 1 damage, except while it's attacking (crystalLaser opens it up).
+      if (e.openT > 0) e.openT = Math.max(0, e.openT - dt);
+      e.pure = !(e.openT > 0);
+    }
+    if (def.relax && e.ageT >= def.relax.after && !e.relaxed) {
+      e.relaxed = true;
+      e.defense = def.relax.defense; // Grand Eye: 40 defense when it spawns, then 15
+    }
+    if (e.hideT > 0 && (e.hideT -= dt) <= 0) {
+      e.cloak = false; // Soul Stealer: visible again
+      e.hidden = !!def.hidden;
+    }
+    if (e.harvestT > 0) {
+      e.harvestT -= dt; // Emperor's Harvest: heals while the beams are in
+      e.hp = Math.min(e.maxHp, e.hp + e.harvestHeal * dt);
+    }
+    if (e.ruptT > 0 && (e.ruptT -= dt) <= 0) {
+      // Void Rupture: the giant circular slash, unless enough damage stopped the charge.
+      const m = def.vb.rupture;
+      const taken = e.ruptHp - (e.hp + (e.osh || 0));
+      if (taken >= m.cancel) this.events.push({ k: 'hcMove', e: e.id, key: 'ruptureCancel', x: r2(e.x), z: r2(e.z) });
+      else {
+        const n = this.hexTowers(e.x, e.z, 1e5, 'stun', m.bigStun, true);
+        this.hurtUnits(m.unitDmg);
+        this.events.push({ k: 'hcMove', e: e.id, key: 'ruptureSlash', x: r2(e.x), z: r2(e.z), n, stun: m.bigStun });
+      }
+    }
+    if (def.pair || def.rageAt) this.hcPair(e, def, dt);
+  }
+
+  /**
+   * The Void Reaver and Void Caster. The Reaver below `wrathAt` health: Void's Wrath (a short stop,
+   * faster, Void Rupture unlocked, and the Caster appears). The Caster can't be targeted or hurt
+   * while the Reaver stands. When the Reaver falls she revives him (`reviveTime` s, at `reviveHp`),
+   * and she can be hit meanwhile. When she dies, he comes back at `deathwishHp` in Deathwish: very
+   * fast, no abilities. He only dies for good once she's gone.
+   */
+  hcPair(e, def, dt) {
+    if (def.rageAt && !e.raging && e.hp <= e.maxHp * def.rageAt) {
+      e.raging = true; // Void Caster Rage: hood up, horns out, slower
+      e.baseSpeed *= def.rageSpeed;
+      this.events.push({ k: 'hcRage', e: e.id });
+    }
+    if (def.rageAt) {
+      // The Caster: protected while her Reaver stands.
+      const rv = this.enemies.get(e.owner);
+      e.noTarget = !!(rv && !(rv.downT > 0) && !rv.deathwish);
+      return;
+    }
+    const pr = def.pair;
+    if (!e.wrath && e.hp <= e.maxHp * pr.wrathAt) this.reaverWrath(e, pr);
+    if (e.downT > 0) {
+      e.speed = 0;
+      if ((e.downT -= dt) <= 0) {
+        // Revived by the Caster.
+        e.downT = 0;
+        e.noTarget = false;
+        e.hp = Math.min(e.maxHp, pr.reviveHp);
+        this.events.push({ k: 'hcRevive', e: e.id });
+      }
+    }
+    if (e.deathwish && !e.stop) e.speed = pr.deathwishSpeed; // Deathwish: runs for the base
+  }
+
+  /** Void Reaver Void's Wrath: stops for a moment, rips off its mask, gets faster and calls the Void Caster. */
+  reaverWrath(e, pr) {
+    e.wrath = true;
+    e.shutT = Math.max(e.shutT || 0, 2);
+    e.baseSpeed *= pr.wrathSpeed;
+    if (!this.casterOf(e)) this.reborn.push({ route: e.route, type: pr.caster, dist: Math.max(0, e.dist - 4), lateral: 3, hpScale: 1, owner: e.id, from: e.type });
+    this.events.push({ k: 'hcWrath', e: e.id });
+  }
+
+  /** The Void Caster protecting Void Reaver `e` (alive, or about to spawn), or null. */
+  casterOf(e) {
+    const type = ENEMIES[e.type].pair.caster;
+    for (const o of this.enemies.values()) if (o.owner === e.id && o.type === type) return o;
+    return this.reborn.find((r) => r.owner === e.id && r.type === type) ?? null;
+  }
+
+  /**
+   * Called when a Hardcore pair boss runs out of health. Returns true if it doesn't die (the
+   * Reaver is downed for the Caster to revive, or comes back in Deathwish when she falls).
+   */
+  pairDeath(e, def) {
+    if (def.pair && !e.deathwish) {
+      if (!e.wrath) this.reaverWrath(e, def.pair); // killed in one go: she still comes
+      e.hp = 1;
+      if (e.downT > 0) return true;
+      e.downT = def.pair.reviveTime;
+      e.noTarget = true;
+      for (const t of this.towers.values()) if (t.curseBy === e.id) t.curseBy = 0; // Void Judgement ends at 0 health
+      this.events.push({ k: 'hcDown', e: e.id, t: def.pair.reviveTime });
+      return true;
+    }
+    if (def.rageAt) {
+      // The Caster falls: her Reaver instantly comes back in Deathwish.
+      const rv = this.enemies.get(e.owner);
+      if (rv && ENEMIES[rv.type].pair) {
+        const pr = ENEMIES[rv.type].pair;
+        rv.downT = 0;
+        rv.noTarget = false;
+        rv.deathwish = true;
+        rv.hp = Math.min(rv.maxHp, pr.deathwishHp);
+        this.events.push({ k: 'hcDeathwish', e: rv.id });
+      }
+    }
     return false;
   }
 
-  /** Insane mode trails and smoke fade away. */
+  /** Demise's pink mist: towers within `r` of (x, z) drop one level (no refund). Returns how many. */
+  downgradeTowers(x, z, r) {
+    let n = 0;
+    for (const t of this.towers.values()) {
+      if (t.level <= 0 || t.holo || (t.x - x) ** 2 + (t.z - z) ** 2 > r * r || this.stealthy(t)) continue;
+      if (buffOf(this.buffs, t.id).invuln || t.invulnT > 0) continue;
+      const def = TOWERS[t.type];
+      if (def.cross || !def.levels[t.level - 1]) continue; // crosspath towers keep their levels
+      t.spent = Math.max(0, t.spent - (def.levels[t.level].cost ?? 0));
+      t.level--;
+      this.setTowerLevelHp(t);
+      this.events.push({ k: 'hcDowngrade', id: t.id, x: r2(t.x), z: r2(t.z) });
+      n++;
+    }
+    return n;
+  }
+
+  /** Puts `n` enemies of `type` next to enemy `e` (summons: no cash). */
+  summonNear(e, type, n, spread = 1.5, extra = {}) {
+    for (let i = 0; i < n; i++) this.reborn.push({ route: e.route, type, dist: Math.max(0, e.dist - 1.5 - i * spread), lateral: (i % 3 - 1) * 2, hpScale: 1, owner: e.id, noCash: true, ...extra });
+  }
+
+  /** Every working tower in a straight line ahead of `e` (see towersInLine) gets `fn(t)`. Returns how many. */
+  lineHit(e, length, width, fn) {
+    const list = this.towersInLine(e, length, width).filter((t) => !(buffOf(this.buffs, t.id).invuln || t.invulnT > 0));
+    for (const t of list) fn(t);
+    return list.length;
+  }
+
+  /** Towers deal `amt` less damage for `secs` s (the strongest weakness counts). */
+  weakTower(t, amt, secs) {
+    t.weakAmt = t.weakT > 0 ? Math.max(t.weakAmt, amt) : amt;
+    t.weakT = Math.max(t.weakT || 0, secs);
+  }
+
+  /** Hardcore boss moves on their own timers (def.vb, see voidBoss). Returns false if it had nothing to do. */
+  hcMove(e, k, m) {
+    const ev = (extra) => this.events.push({ k: 'hcMove', e: e.id, key: k, x: r2(e.x), z: r2(e.z), ...extra });
+    if (e.downT > 0 || e.deathwish || e.shutT > 0) return false; // downed, Deathwish or Void's Wrath: no abilities
+    switch (k) {
+      // ------------------------------------------------ Soul Stealer
+      case 'curseTower': {
+        const cursed = [...this.towers.values()].filter((t) => t.curseBy === e.id).length;
+        if (cursed >= m.max) return false;
+        const list = this.enemyTargets(e, m.range).filter((t) => !t.curseBy && !t.holo);
+        if (!list.length) return false;
+        const t = list[Math.floor(Math.random() * list.length)];
+        t.curseBy = e.id;
+        this.summonNear(e, m.soul, 1);
+        ev({ tx: r2(t.x), tz: r2(t.z) });
+        return true;
+      }
+      case 'soulSummon': {
+        this.summonNear(e, m.souls, m.n);
+        this.summonNear(e, m.eye, 1, 1, { lateral: 4 });
+        e.hidden = e.cloak = true;
+        e.hideT = m.hide;
+        ev({ n: m.n });
+        return true;
+      }
+      // ------------------------------------------------ Void Reaver
+      case 'cursedBlade': {
+        // A straight shockwave: towers it crosses deal less damage and lose range for a while.
+        const n = this.lineHit(e, m.length, m.width, (t) => {
+          this.weakTower(t, m.weak, m.time);
+          t.smoke = Math.max(t.smoke, m.time);
+        });
+        this.summonNear(e, m.soul, m.souls, 1);
+        ev({ len: m.length, dx: r2(e.dx), dz: r2(e.dz), n });
+        return true;
+      }
+      case 'judgement': {
+        // Six towers are cursed: they can't attack until the Reaver hits 0 health.
+        const list = this.openTowers().filter((t) => !t.curseBy && !t.holo);
+        if (!list.length) return false;
+        const h = [];
+        for (let i = 0; i < m.n && list.length; i++) {
+          const t = list.splice(Math.floor(Math.random() * list.length), 1)[0];
+          t.curseBy = e.id;
+          h.push([r2(t.x), r2(t.z)]);
+        }
+        ev({ h });
+        return true;
+      }
+      case 'unnervingGaze': {
+        // Stabs the ground: three portals, a Void Eye from each.
+        for (let i = 0; i < m.n; i++) this.reborn.push({ route: e.route, type: m.eye, dist: Math.max(0, e.dist - 2 - i * 3), lateral: (i - 1) * 4, hpScale: 1, owner: e.id, noCash: true });
+        ev({ n: m.n });
+        return true;
+      }
+      case 'rupture': {
+        // Void Rupture (after Void's Wrath): three slashes stun towers near it, then it charges a
+        // giant circular slash. Dealing `cancel` damage while it charges stops it.
+        if (m.wrath && !e.wrath) return false;
+        const n = this.hexTowers(e.x, e.z, m.range, 'stun', m.stun, true);
+        e.ruptT = m.charge;
+        e.ruptHp = e.hp + (e.osh || 0);
+        e.shutT = Math.max(e.shutT || 0, m.charge);
+        ev({ r: m.range, n, charge: m.charge, cancel: m.cancel });
+        return true;
+      }
+      // ------------------------------------------------ Void Caster
+      case 'casterShield': {
+        const rv = this.enemies.get(e.owner);
+        if (!rv || rv.downT > 0) return false;
+        rv.osh = Math.max(rv.osh || 0, m.shield);
+        rv.oshMax = Math.max(rv.oshMax || 0, rv.osh);
+        rv.hp = Math.min(rv.maxHp, rv.hp + rv.maxHp * m.heal);
+        ev({ tx: r2(rv.x), tz: r2(rv.z) });
+        return true;
+      }
+      case 'casterPortal': {
+        // A portal next to her spits out `n` enemies over `time` s.
+        for (let i = 0; i < m.n; i++) {
+          const type = m.list[Math.floor(Math.random() * m.list.length)];
+          this.queue.push({ t: this.wave.t + 0.5 + (i * m.time) / m.n, type, dist: Math.max(0, e.dist - 2), noCash: true });
+        }
+        this.queue.sort((a, b) => a.t - b.t);
+        this.wave.left = this.queue.length;
+        ev({ n: m.n, time: m.time });
+        return true;
+      }
+      // ------------------------------------------------ Emperor
+      case 'finalEradication': {
+        // Poleaxe slam: every unit is destroyed and every tower stunned.
+        const n = this.hexTowers(e.x, e.z, 1e5, 'stun', m.stun, true);
+        const u = this.units.size;
+        for (const x of [...this.units.values()]) this.destroyUnit(x, this.towers.get(x.tower) ?? null);
+        ev({ n, u });
+        return true;
+      }
+      case 'chronoStasis': {
+        // Time slows to a crawl (towers nearly stop), an orb hits the base, and he leaps ahead untouchable.
+        this.slowTowers(e.x, e.z, 1e5, m.slow, m.time, false);
+        e.invulnT = Math.max(e.invulnT || 0, m.time);
+        e.dist = Math.min(path.length - 3, e.dist + m.leap);
+        this.baseHp = Math.max(1, this.baseHp - m.baseDmg); // (it can't end the game on its own)
+        ev({ time: m.time, d: m.baseDmg });
+        return true;
+      }
+      case 'encore': {
+        let j = 0;
+        for (const [type, n] of m.list) for (let i = 0; i < n; i++, j++) this.reborn.push({ route: e.route, type, dist: Math.max(0, e.dist - 3 - j * 1.2), lateral: ((j % 3) - 1) * 3, hpScale: 1, owner: e.id, noCash: true, from: e.type });
+        ev({ n: j });
+        return true;
+      }
+      case 'divineProtection': {
+        e.osh = Math.min(m.max, (e.osh || 0) + m.shield);
+        e.oshMax = Math.max(e.oshMax || 0, e.osh);
+        for (const x of [...this.units.values()]) if ((x.x - e.x) ** 2 + (x.z - e.z) ** 2 <= m.units * m.units) this.destroyUnit(x, this.towers.get(x.tower) ?? null);
+        const n = this.slowTowers(e.x, e.z, m.range, m.slow, m.time);
+        ev({ r: m.range, n });
+        return true;
+      }
+      case 'meteoricSwarm': {
+        const list = this.openTowers();
+        if (!list.length) return false;
+        const h = [];
+        for (let i = 0; i < m.n; i++) {
+          const t = list[Math.floor(Math.random() * list.length)];
+          const x = t.x + (Math.random() - 0.5) * 3;
+          const z = t.z + (Math.random() - 0.5) * 3;
+          const d = 1.2 + Math.random() * 1.5;
+          this.axes.push({ x, z, left: d, r: m.radius, stun: m.stun, dmg: m.dmg, kind: 'missile' });
+          h.push([r2(x), r2(z), r2(d)]);
+        }
+        ev({ h, r: m.radius });
+        return true;
+      }
+      case 'corruptingBlast': {
+        // Takes over towers for a while (they can't fight) and destroys a few units.
+        const list = this.openTowers().filter((t) => !t.holo && TOWERS[t.type].kind !== 'income');
+        if (!list.length) return false;
+        const h = [];
+        for (let i = 0; i < m.n && list.length; i++) {
+          const t = list.splice(Math.floor(Math.random() * list.length), 1)[0];
+          if (buffOf(this.buffs, t.id).invuln || t.invulnT > 0) continue;
+          t.bleedT = Math.max(t.bleedT || 0, m.time);
+          h.push([r2(t.x), r2(t.z)]);
+        }
+        const units = [...this.units.values()];
+        for (let i = 0; i < m.units && units.length; i++) {
+          const u = units.splice(Math.floor(Math.random() * units.length), 1)[0];
+          this.destroyUnit(u, this.towers.get(u.tower) ?? null);
+        }
+        ev({ h, time: m.time });
+        return true;
+      }
+      case 'harvest': {
+        // Beams into up to `n` towers: damage and less range, while he heals.
+        const list = this.openTowers();
+        if (!list.length) return false;
+        list.sort((a, b) => b.spent - a.spent || a.id - b.id);
+        const hit = list.slice(0, m.n);
+        for (const t of hit) {
+          this.hurtTower(t, m.dmg, true);
+          t.smoke = Math.max(t.smoke, m.smoke);
+        }
+        e.harvestT = m.time;
+        e.harvestHeal = m.heal;
+        ev({ h: hit.map((t) => [r2(t.x), r2(t.z)]) });
+        return true;
+      }
+      case 'execution': {
+        // A slap that instantly knocks out a pricey tower close by, shields or not.
+        const list = this.enemyTargets(e, m.range).filter((t) => t.spent >= m.min && !t.holo);
+        if (!list.length) return false;
+        list.sort((a, b) => b.spent - a.spent);
+        const t = list[0];
+        if (buffOf(this.buffs, t.id).invuln || t.invulnT > 0) return false;
+        if (t.shieldHp) t.shieldHp = 0;
+        this.knockOut(t);
+        ev({ tx: r2(t.x), tz: r2(t.z) });
+        return true;
+      }
+      case 'overdrive': {
+        e.dist = Math.min(path.length - 3, e.dist + m.dist); // Nova's Overdrive: glides ahead
+        ev({});
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** Insane mode trails and smoke fade away. Hardcore healing beacons heal the enemies in them. */
   updateZones(dt) {
     if (!this.zones.length) return;
+    for (const z of this.zones) {
+      if (z.kind !== 'heal') continue;
+      for (const o of this.enemies.values()) {
+        if (o.remains || o.hp >= o.maxHp || (o.x - z.x) ** 2 + (o.z - z.z) ** 2 > z.r * z.r) continue;
+        o.hp = Math.min(o.maxHp, o.hp + z.heal * dt);
+      }
+    }
     this.zones = this.zones.filter((z) => (z.left -= dt) > 0);
   }
 
@@ -1721,6 +2140,26 @@ export class Sim {
     if (sh.heal) e.shutT = 8; // (Expert enemies don't use the Insane speed rules that read waitT)
     else e.waitT = 8;
     this.events.push({ k: 'timeShift', e: e.id, wait: 8, into: sh.into ?? 'beholderTime' });
+  }
+
+  /**
+   * Hardcore: the Beholder was beaten in its Field. Everyone goes back to the real map: towers built
+   * in the Field are refunded in full (they wouldn't fit the real map), and the next break is longer.
+   */
+  endTimeShift() {
+    if (!this.timeWorld) return;
+    for (const t of [...this.towers.values()]) {
+      const value = t.holo ? 0 : Math.floor(t.spent);
+      const p = this.players.get(t.owner);
+      if (p) p.cash += value;
+      this.removeTower(t, 'sell', { value });
+    }
+    this.units.clear();
+    this.traps.clear();
+    this.timeWorld = false;
+    setTimeWorld(false);
+    this.breakBonus = 20;
+    this.events.push({ k: 'timeShiftEnd' });
   }
 
   /** Rebirther Blood Sacrifice: selling a tower hurts it (by `sellDmg` x what was spent on the tower). */
@@ -1804,6 +2243,11 @@ export class Sim {
       e.sprintT = sp.every;
       e.sprinting = sp.time;
       this.events.push({ k: 'dash', e: e.id });
+      if (sp.stun) {
+        // Hardcore Skeleton Rogues: the sword swing that starts the dash stuns the towers around it.
+        const n = this.hexTowers(e.x, e.z, sp.stun.range, 'stun', sp.stun.time, true);
+        if (n) this.events.push({ k: 'slam', e: e.id, x: r2(e.x), z: r2(e.z), r: sp.stun.range, n, name: def.name, c: 0x64b5f6 });
+      }
     }
     const sac = def.sacrifice;
     if (sac && !e.sacrificing && e.hp <= e.maxHp * sac.at) {
@@ -1869,7 +2313,7 @@ export class Sim {
         // Engineer: builds an MK11-Device right ahead of itself, then waits by it.
         e.carry.built = true;
         e.building = true;
-        this.reborn.push({ type: bd.type, dist: e.dist + 2, lateral: e.lateral, hpScale: 1, owner: e.id, buildOf: e.carry, from: e.type });
+        this.reborn.push({ route: e.route, type: bd.type, dist: e.dist + 2, lateral: e.lateral, hpScale: 1, owner: e.id, buildOf: e.carry, from: e.type });
         this.events.push({ k: 'iBuild', e: e.id, x: r2(e.x), z: r2(e.z) });
       }
       if (e.carry.built && e.building !== false) {
@@ -1889,7 +2333,7 @@ export class Sim {
     if (bk && !e.backedUp && e.hp <= e.maxHp * bk.at) {
       // Overlord Backup: two Amplifiers appear beside him and keep healing him.
       e.backedUp = true;
-      for (let i = 0; i < bk.n; i++) this.reborn.push({ type: bk.type, dist: Math.max(0, e.dist - 2), lateral: (i % 2 ? 1 : -1) * 4, hpScale: 1, owner: e.id, from: e.type });
+      for (let i = 0; i < bk.n; i++) this.reborn.push({ route: e.route, type: bk.type, dist: Math.max(0, e.dist - 2), lateral: (i % 2 ? 1 : -1) * 4, hpScale: 1, owner: e.id, from: e.type });
       this.events.push({ k: 'iBackup', e: e.id, n: bk.n });
     }
     const ds = def.despair;
@@ -1939,7 +2383,7 @@ export class Sim {
     switch (m.key) {
       case 'violetCall': {
         // Rebirther: Scarlets step out next to it (they still give cash).
-        for (let i = 0; i < m.n; i++) this.reborn.push({ type: m.summon, dist: Math.max(0, e.dist - 1.5 - i * 1.5), lateral: (i - (m.n - 1) / 2) * 2, hpScale: 1, owner: e.id });
+        for (let i = 0; i < m.n; i++) this.reborn.push({ route: e.route, type: m.summon, dist: Math.max(0, e.dist - 1.5 - i * 1.5), lateral: (i - (m.n - 1) / 2) * 2, hpScale: 1, owner: e.id });
         ev({ n: m.n });
         return true;
       }
@@ -2060,7 +2504,7 @@ export class Sim {
         // Bolt Summon, Eyeficated Summon, Overlord Summoning: a few units step out beside it.
         for (let i = 0; i < m.n; i++) {
           const type = m.list[Math.floor(Math.random() * m.list.length)];
-          this.reborn.push({ type, dist: Math.max(0, e.dist - 1.5 - i * 1.5), lateral: (i - (m.n - 1) / 2) * 2, hpScale: 1, owner: e.id, from: e.type });
+          this.reborn.push({ route: e.route, type, dist: Math.max(0, e.dist - 1.5 - i * 1.5), lateral: (i - (m.n - 1) / 2) * 2, hpScale: 1, owner: e.id, from: e.type });
         }
         ev({ n: m.n, name: m.name });
         return true;
@@ -2135,6 +2579,84 @@ export class Sim {
         if (!list.length) return false;
         const ids = new Set(list.map((t) => t.id));
         const n = this.hexTowers(e.x, e.z, m.length + m.width, 'stun', m.stun, true, (t) => ids.has(t.id));
+        if (m.unitDmg) this.hurtUnitsNear(e.x, e.z, m.length, m.unitDmg); // Hardcore Void Titan
+        ev({ len: m.length, dx: r2(e.dx), dz: r2(e.dz), n });
+        return true;
+      }
+      // ---------------------------------------------------------------- Hardcore moves
+      case 'gaze': {
+        // Seer / Overseer: stuns towers anywhere on the map.
+        const list = this.openTowers();
+        if (!list.length) return false;
+        const h = [];
+        let n = 0;
+        for (let i = 0; i < m.n && list.length; i++) {
+          const t = list.splice(Math.floor(Math.random() * list.length), 1)[0];
+          n += this.stunAt(t, 0, m.stun);
+          h.push([r2(t.x), r2(t.z)]);
+        }
+        ev({ h, n });
+        return true;
+      }
+      case 'dSword':
+      case 'dSpikes': {
+        // Demise: a sword swing (close) or spikes all around (wide) stun the towers near it.
+        if (!this.enemyTargets(e, m.range).length) return false;
+        const n = this.hexTowers(e.x, e.z, m.range, 'stun', m.stun, true);
+        ev({ r: m.range, n });
+        return true;
+      }
+      case 'dMist': {
+        // Demise: a pink mist downgrades the towers near it by one level.
+        if (!this.enemyTargets(e, m.range).length) return false;
+        const n = this.downgradeTowers(e.x, e.z, m.range);
+        ev({ r: m.range, n });
+        return true;
+      }
+      case 'crystalLaser': {
+        // Crystalian: floats up and fires a laser all around. It can be hurt while it does.
+        e.openT = m.open;
+        const list = this.enemyTargets(e, m.range);
+        for (const t of list) if (!(buffOf(this.buffs, t.id).invuln || t.invulnT > 0)) this.weakTower(t, m.weak, m.time);
+        this.hurtUnitsNear(e.x, e.z, m.range, m.unitDmg);
+        ev({ r: m.range, n: list.length, open: m.open });
+        return true;
+      }
+      case 'hammerBounce': {
+        // Vindicator: a thrown hammer bounces between up to `n` towers and scares them (no attacks).
+        const list = this.enemyTargets(e, m.range);
+        if (!list.length) return false;
+        let t = list[Math.floor(Math.random() * list.length)];
+        const hit = [t];
+        while (hit.length < m.n) {
+          let best = null;
+          let bd = 400;
+          for (const o of this.towers.values()) {
+            if (o.hp <= 0 || hit.includes(o) || this.stealthy(o)) continue;
+            const d2 = (o.x - t.x) ** 2 + (o.z - t.z) ** 2;
+            if (d2 < bd) {
+              bd = d2;
+              best = o;
+            }
+          }
+          if (!best) break;
+          hit.push(best);
+          t = best;
+        }
+        for (const o of hit) if (!(buffOf(this.buffs, o.id).invuln || o.invulnT > 0)) o.bleedT = Math.max(o.bleedT || 0, m.lock);
+        this.hurtUnitsNear(e.x, e.z, m.range, m.unitDmg);
+        ev({ h: hit.map((o) => [r2(o.x), r2(o.z)]) });
+        return true;
+      }
+      case 'spear': {
+        // Void Guardian: a spear thrust freezes the towers in a line, and resets its shield.
+        const list = this.towersInLine(e, m.length, m.width);
+        if (!list.length) return false;
+        const ids = new Set(list.map((t) => t.id));
+        const n = this.hexTowers(e.x, e.z, m.length + m.width, 'stun', m.stun, true, (t) => ids.has(t.id));
+        this.hurtUnitsNear(e.x, e.z, m.length, m.unitDmg);
+        e.osh = Math.max(e.osh || 0, m.shield);
+        e.oshMax = Math.max(e.oshMax || 0, e.osh);
         ev({ len: m.length, dx: r2(e.dx), dz: r2(e.dz), n });
         return true;
       }
@@ -2184,6 +2706,14 @@ export class Sim {
     if (a.dmg) this.hurtTowers(a.x, a.z, a.r, a.dmg, true);
     if (a.puddle) this.puddles.push({ x: a.x, z: a.z, r: a.r, dps: a.puddle.dps, left: a.puddle.life, slow: a.puddle.slow ?? 0, weak: a.puddle.weak ?? 0, silence: !!a.puddle.silence });
     if (a.slow) this.slowTowers(a.x, a.z, Math.max(a.r, 0.5), a.slow.amt, a.slow.time, true); // Time Parasite
+    if (a.lock) {
+      // Hardcore Expired Jack: a flaming pumpkin sets the towers it lands on burning (they can't fight).
+      for (const t of this.towers.values()) {
+        if ((t.x - a.x) ** 2 + (t.z - a.z) ** 2 > Math.max(a.r, 0.5) ** 2 || this.stealthy(t)) continue;
+        if (buffOf(this.buffs, t.id).invuln || t.invulnT > 0) continue;
+        t.bleedT = Math.max(t.bleedT || 0, a.lock);
+      }
+    }
     if (a.shrink || a.weak) {
       // Vio Gunner orbs: half range for a while, and a damage cut that stacks with every orb.
       for (const t of this.towers.values()) {
@@ -2410,7 +2940,7 @@ export class Sim {
   /** Wave bonus to every player, plus tower income, for clearing (or skipping) the current wave. */
   payWave(skip = false) {
     const w = this.wave;
-    const bonus = Math.round(GAME.waveBonus(w.index + 1) * this.cashMult);
+    const bonus = Math.round((this.waves[w.index]?.bonus ?? GAME.waveBonus(w.index + 1)) * this.cashMult * (this.potShare ?? 1)); // (Halloween waves set their own)
     for (const p of this.players.values()) p.cash += bonus;
     this.events.push({ k: 'waveClear', i: w.index, bonus, ...(skip ? { skip: 1 } : {}) });
     this.payIncome(skip);
@@ -2454,6 +2984,9 @@ export class Sim {
       const mods = x && typeof x === 'object' ? x : undefined;
       for (let i = 0; i < count; i++) this.queue.push({ t: w.t + delay + i * interval, type, hp, mods });
     }
+    // Hardcore: a rare golden mimic (Wicky) may sneak into the wave.
+    const mim = !this.vs && difficulty(this.mode).mimic;
+    if (mim && index + 1 >= mim.from && Math.random() < mim.chance) this.queue.push({ t: w.t + 5 + Math.random() * 10, type: mim.type });
     this.queue.sort((a, b) => a.t - b.t);
     w.state = 'wave';
     w.left = this.queue.length;
@@ -2483,7 +3016,7 @@ export class Sim {
       mods = { ...mods, boss: true };
     }
     if (mods?.boss) this.bossSeen.add(q.type);
-    return this.spawn(q.type, { hp: q.hp, mods, wave: true });
+    return this.spawn(q.type, { hp: q.hp, mods, wave: true, ...(q.dist != null ? { dist: q.dist, noCash: !!q.noCash } : {}) }); // (Void Caster portals: from her)
   }
 
   /** Enemy health multiplier for the extra players in this game (Hard has its own table). */
@@ -2494,7 +3027,7 @@ export class Sim {
       // Expert: mpTop is its health with 6 players (it grows evenly per player); mpPow compounds.
       if (def?.mpPow) return (1 + def.mpPow) ** extra;
       if (def?.mpTop) return 1 + (def.mpTop - 1) * (Math.min(extra, 5) / 5);
-      return 1;
+      if (!this.mpHp) return 1; // (Hardcore: the others use its mpHp table)
     }
     if (this.mpHp) return 1 + this.mpHp[Math.min(extra, this.mpHp.length) - 1];
     return 1 + GAME.mpHpScale * extra;
@@ -2505,6 +3038,13 @@ export class Sim {
    * `at.hp` sets its exact health instead of the per-wave growth (still scaled up in multiplayer).
    * Returns it.
    */
+  /** The lane the next fresh enemy takes (they take turns on maps with several). */
+  nextRoute() {
+    if (!path.multi) return 0;
+    this.routeN = ((this.routeN ?? -1) + 1) % path.routes.length;
+    return this.routeN;
+  }
+
   spawn(type, at = null) {
     const def = ENEMIES[type];
     const mp = this.mpHpMult(def);
@@ -2514,12 +3054,15 @@ export class Sim {
       : Math.max(1, Math.round(def.hp * hpMult * (at?.hpScale ?? 1)));
     // Engineer teleporters: fresh enemies come out of the one furthest down the path.
     let dist = at?.dist ?? 0;
+    // Maps with several lanes: wave spawns take turns; summons follow whoever summoned them.
+    let route = at?.route ?? this.enemies.get(at?.owner)?.route ?? this.nextRoute();
     if (at?.dist == null && def.placeAt) dist = path.length * rand(...def.placeAt); // Viorb: hovers somewhere along the path
     else if (at?.dist == null) {
       let gate = null;
       for (const o of this.enemies.values()) if (ENEMIES[o.type].portal && (!gate || o.dist > gate.dist)) gate = o;
       if (gate) {
         dist = gate.dist;
+        route = gate.route;
         this.events.push({ k: 'warp', x: r2(gate.x), z: r2(gate.z) });
       }
     }
@@ -2534,6 +3077,8 @@ export class Sim {
       speed: 0,
       baseSpeed: def.speed * (0.94 + Math.random() * 0.12) * (at?.speedMult ?? 1), // Multiplier copies are faster
       noCash: !!at?.noCash, // Grenadier spawns, Multiplier copies: no kill cash
+      paid: 0, // damage cash it has paid so far, before bonuses (it never pays for more than its max health)
+      earned: 0, // ... and what each player got from it, bonuses included (shown when it dies)
       copy: !!at?.copy, // a Multiplier copy (never copied again)
       iceResist: def.iceResist ?? 0, // frost, chill and freezing work this much less on it
       stunImmune: !!def.stunImmune, // can't be stunned or frozen (Predator)
@@ -2547,6 +3092,7 @@ export class Sim {
       raged: false, // Medium Eradicator: Electronic Rage has started
       shutT: 0,
       flameT: 0, // Pyrotechnics: seconds of flamethrower left
+      route, // which of the map's lanes it walks (see path.routes)
       lateral: at?.lateral ?? 0, // single file: the path is only one zombie wide
       fireImmune: !!(def.fireImmune || (def.statusImmune && !def.burnable)), // fire can't burn it (flamethrowers do nothing)
       statusImmune: !!def.statusImmune, // no burning, freezing, stuns, slime, chill or dancing
@@ -2599,7 +3145,7 @@ export class Sim {
       neuroT: 0, // Saboteur Neuralyze: seconds left that towers target it first
       poison: null, // Saboteur poison: { damage, tick, slow, left, next, by }
       hackSlow: 0, // Hacker slowness (fraction of speed lost, for good)
-      fraud: 0, // Hacker Wire Fraud: extra share of the kill reward
+      fraud: 0, // Hacker Wire Fraud: extra share of its damage cash (Versus: of the kill reward)
       hackEv: 0, // Hacker: comes back as a hologram with maxHp^hackEv health (0 = no)
       hackBy: 0, // the Hacker tower its hologram fights for
       harpoons: null, // Harpoon Hunter harpoons stuck in it: [{ slow, t }] (null = none)
@@ -2668,6 +3214,12 @@ export class Sim {
     if (def.build && !e.carry.built) e.buildT = def.build.after;
     if (def.healPulse) e.healT = def.healPulse.every * rand(0.4, 1);
     if (def.taunt) e.tauntT = def.taunt.time; // Overlord Taunt: stands still and barely takes damage
+    // Hardcore: "+ shield" pools (TDX, Tower Blitz Ranked Up), Drop Pods that can't be hit until they open.
+    if (def.osh) e.osh = e.oshMax = Math.max(1, Math.round(def.osh * (def.fixedHp ? 1 : mp)));
+    if (def.pod) {
+      e.podT = def.pod.open;
+      e.noTarget = true;
+    }
     const mods = at?.mods;
     if (mods) {
       if (mods.boss) e.boss = true;
@@ -2683,7 +3235,7 @@ export class Sim {
     if (this.voidArmor && at?.wave && !def.noVoidArmor && !def.remains && (mods?.voidArmor || Math.random() < (this.waves[this.wave.index]?.va ?? 0))) this.armorUp(e);
     else if (this.voidArmor && mods?.voidArmor) this.armorUp(e);
     e.speed = e.baseSpeed;
-    path.at(e.dist, e);
+    path.at(e.dist, e, e.route);
     e.x += -e.dz * e.lateral;
     e.z += e.dx * e.lateral;
     // Businessman Attrition: zombies that spawn while it's on lose part of their health.
@@ -2715,7 +3267,23 @@ export class Sim {
   end(win) {
     this.over = win ? 1 : -1;
     this.wave.state = win ? 'victory' : 'defeat';
-    this.events.push({ k: 'end', win });
+    const bonus = win ? this.winCredits() : null;
+    this.events.push({ k: 'end', win, ...(bonus ? { bonus } : {}) });
+  }
+
+  /**
+   * Oil Derrick US Military Budget: bonus credits for winning with one on the field, as
+   * { player id: credits } (null: nobody has one). `noStack`: several don't add up.
+   */
+  winCredits() {
+    let out = null;
+    for (const t of this.towers.values()) {
+      const v = TOWERS[t.type].levels[t.level].winCredits;
+      if (!v || t.holo) continue;
+      out ??= {};
+      out[t.owner] = TOWERS[t.type].noStack ? Math.max(out[t.owner] ?? 0, v) : (out[t.owner] ?? 0) + v;
+    }
+    return out;
   }
 
   // ---------------------------------------------------------------- towers
@@ -2854,7 +3422,7 @@ export class Sim {
    * Airstrike beam glides toward its owner's cursor, melting everything under it.
    */
   updateGoldCommander(t, s, dt) {
-    const sw = s.sword;
+    const sw = s.sword?.radius ? s.sword : null;
     if (sw && (sw.always || t.active > 0)) {
       t.swordT = (t.swordT || 0) - dt;
       if (t.swordT <= 0) {
@@ -2954,6 +3522,11 @@ export class Sim {
     }
     if (t.stunT > 0 || t.hp <= 0) return; // stunned, or knocked out until healed
     if (t.bleedT > 0 || t.corrupt) return; // Void mode: bleeding (Guardian) or turned by VOID
+    if (t.curseBy) {
+      // Hardcore: cursed by the Soul Stealer / Void Reaver: nothing works until that enemy is gone.
+      if (this.enemies.has(t.curseBy)) return;
+      t.curseBy = 0;
+    }
     if (t.parryT > 0) return; // Gladiator: recovering from a parry
     // Slowed towers (and ones the Beholder's sword has nerfed for good) do everything slower.
     // Time Dilator bubble: faster or slower (spawners only from Paradox Limiters).
@@ -2973,7 +3546,7 @@ export class Sim {
     if (s.oil) this.updateOil(t, s, dt);
     if (s.shield) this.updateShieldTower(t, s, dt);
     if (s.revive) this.updateRevive(t, s, dt);
-    if (s.sword || t.orb) this.updateGoldCommander(t, s, dt);
+    if (s.sword?.radius || t.orb) this.updateGoldCommander(t, s, dt); // not the Warlock / Engineer melee `sword` (that has `reach`)
     if (s.missiles && !def.heli) this.updateMissiles(t, s, dt); // Warship: passive weapons on their own timers
     if (s.companion) this.updateCompanion(t, s, dt); // Bubble Blower
     if (s.drop?.units) this.updateDrops(t, s, dt); // Buccaneer pirate barrel (Airdrop Farms / Markets use `drop` for crate timing)
@@ -4117,8 +4690,8 @@ export class Sim {
     const p = {};
     let best = null;
     let bestD = Infinity;
-    for (let d = 0; d <= path.length; d += 0.5) {
-      path.at(d, p);
+    for (let r = 0; r < path.routes.length; r++) for (let d = 0; d <= path.length; d += 0.5) {
+      path.at(d, p, r);
       const d2 = (p.x - x) ** 2 + (p.z - z) ** 2;
       if (d2 < bestD) {
         bestD = d2;
@@ -4413,10 +4986,13 @@ export class Sim {
   trapSpots(t, range) {
     const spots = [];
     const p = {};
-    for (let d = 0; d < path.length; d += 1) {
-      path.at(d, p);
-      if ((p.x - t.x) ** 2 + (p.z - t.z) ** 2 <= range * range) spots.push({ d, x: p.x, z: p.z, dx: p.dx, dz: p.dz });
+    for (let r = 0; r < path.routes.length; r++) {
+      for (let d = 0; d < path.length; d += 1) {
+        path.at(d, p, r);
+        if ((p.x - t.x) ** 2 + (p.z - t.z) ** 2 <= range * range) spots.push({ d, r, x: p.x, z: p.z, dx: p.dx, dz: p.dz });
+      }
     }
+    if (path.multi) spots.sort((a, b) => a.d - b.d); // castle-most last, whatever its lane
     return spots;
   }
 
@@ -4655,7 +5231,7 @@ export class Sim {
     }
     const side = Math.random() < 0.5 ? -1 : 1;
     const lat = side * (PATH_WIDTH / 2 + 1.2);
-    const g = { id: this.nextId++, tower: t.id, kind: 'grave', x: best.x - best.dz * lat, z: best.z + best.dx * lat, d: best.d, lvl: 1, land: 0, uses: 1, yaw: Math.atan2(best.dz * side, -best.dx * side) }; // facing the path
+    const g = { id: this.nextId++, tower: t.id, kind: 'grave', x: best.x - best.dz * lat, z: best.z + best.dx * lat, d: best.d, r: best.r ?? 0, lvl: 1, land: 0, uses: 1, yaw: Math.atan2(best.dz * side, -best.dx * side) }; // facing the path
     this.traps.set(g.id, g);
     t.yaw = Math.atan2(g.x - t.x, g.z - t.z);
     this.events.push({ k: 'grave', t: t.id, x: r2(g.x), z: r2(g.z) });
@@ -4668,6 +5244,7 @@ export class Sim {
       const pool = s.raise[Math.min(g.lvl, s.raise.length) - 1];
       const u = this.spawnUnit(t, pool[Math.floor(Math.random() * pool.length)]);
       u.dist = Math.max(0, Math.min(path.length - 1, g.d));
+      u.route = g.r ?? 0;
       u.lateral = 0; // single file
       this.placeUnit(u);
       this.traps.delete(g.id);
@@ -4944,6 +5521,7 @@ export class Sim {
       const def = { name: 'Hologram', model: `holo:${e.type}`, hp, speed: ENEMIES[e.type].speed, ram: true, holo: true };
       const u = this.spawnUnit(t, def);
       u.dist = Math.max(0, Math.min(path.length - 1, e.dist));
+      u.route = e.route;
       u.lateral = e.lateral;
       this.placeUnit(u);
       this.events.push({ k: 'convert', u: u.id, x: r2(u.x), z: r2(u.z) });
@@ -5385,7 +5963,7 @@ export class Sim {
       for (const sn of this.traps.values()) {
         if (sn.kind !== 'sentry' || (sn.x - x) ** 2 + (sn.z - z) ** 2 > r * r) continue;
         const t = this.towers.get(sn.tower);
-        if (t && TOWERS[t.type].levels[t.level].sentry.shield) continue;
+        if (t && (sn.def ?? TOWERS[t.type].levels[t.level].sentry)?.shield) continue;
         sn.stunT = Math.max(sn.stunT, secs);
       }
     }
@@ -5496,7 +6074,7 @@ export class Sim {
     for (const q of t.queues) {
       q.left -= dt;
       if (q.left > 0) continue;
-      this.spawnUnit(t, s.roster[q.r].unit, 0, this.deployDist(t, s));
+      this.spawnUnit(t, s.roster[q.r].unit, 0, this.deployDist(t, s), t.deployR);
       this.nextInQueue(t, s, q);
     }
   }
@@ -5542,7 +6120,7 @@ export class Sim {
       }
       t.plantT[i] = p.every;
       const spot = t.spots[Math.floor(Math.random() * t.spots.length)];
-      const u = this.spawnUnit(t, p.unit, 0, spot.d);
+      const u = this.spawnUnit(t, p.unit, 0, spot.d, spot.r);
       u.lateral = (Math.random() - 0.5) * 2.4;
       this.placeUnit(u);
       this.events.push({ k: 'sprout', x: r2(u.x), z: r2(u.z) });
@@ -5551,25 +6129,30 @@ export class Sim {
 
   /** Mercenary Base: units roll out at the castle-most bit of path inside its range (or the castle if none is). */
   deployDist(t, s) {
+    t.deployR = path.nearestRoute(t.x, t.z);
     if (!s.range) return path.length - 1;
     if (t.spotsR !== s.range) {
       t.spots = this.trapSpots(t, s.range);
       t.spotsR = s.range;
     }
-    return t.spots.length ? t.spots[t.spots.length - 1].d : path.length - 1;
+    if (!t.spots.length) return path.length - 1;
+    const last = t.spots[t.spots.length - 1];
+    t.deployR = last.r ?? 0;
+    return last.d;
   }
 
   /** Air-Drop: every unit in the queues drops onto the path near (x, z), and the queues start over. */
   airDrop(t, s, x, z) {
     this.fillQueues(t, s);
     const d = path.project(x, z);
+    const route = path.lastRoute;
     t.queues.forEach((q, i) => {
-      const u = this.spawnUnit(t, s.roster[q.r].unit);
+      const u = this.spawnUnit(t, s.roster[q.r].unit, 0, path.length - 1, route);
       u.dist = Math.max(0, Math.min(path.length - 1, d + (i - (t.queues.length - 1) / 2) * 2));
       this.placeUnit(u);
       this.nextInQueue(t, s, q);
     });
-    const p = path.at(d, {});
+    const p = path.at(d, {}, route);
     this.events.push({ k: 'airdrop', x: r2(p.x), z: r2(p.z), n: t.queues.length });
   }
 
@@ -5593,18 +6176,19 @@ export class Sim {
     const n = def.max ? Math.min(def.count || 1, def.max - this.countOf(t, def)) : def.count || 1;
     // Valkyr / Punkbuster / Squadron / Borealis: units start at the drop point picked with an ability.
     const start = t.dropD ?? (TOWERS[t.type].throwNear ? path.project(t.x, t.z) : path.length - 1); // throwNear: the path closest to it
-    for (let i = 0; i < n; i++) this.spawnUnit(t, def, i * 4, start);
+    const route = t.dropD != null ? t.dropR ?? 0 : path.nearestRoute(t.x, t.z);
+    for (let i = 0; i < n; i++) this.spawnUnit(t, def, i * 4, start, route);
     // Void Port: a train's wagons follow its locomotive.
-    if (def.train) def.train.forEach((w, i) => this.spawnUnit(t, w, (n + i) * 4, start));
+    if (def.train) def.train.forEach((w, i) => this.spawnUnit(t, w, (n + i) * 4, start, route));
   }
 
   /** A unit starts at the castle end of the path (or `start`). It keeps its tower's firerate boost from now on. */
-  spawnUnit(t, def, back = 0, start = path.length - 1) {
+  spawnUnit(t, def, back = 0, start = path.length - 1, route = path.nearestRoute(t.x, t.z)) {
     const n = def.soldiers || 1;
     const u = {
       id: this.nextId++, tower: t.id, model: def.model, def,
       hp: def.hp * n, maxHp: def.hp * n, alive: n,
-      dist: Math.max(0, start - back), lateral: 0, speed: def.speed,
+      dist: Math.max(0, start - back), route: route ?? 0, lateral: 0, speed: def.speed,
       rate: buffOf(this.buffs, t.id).rate,
       cooldown: 0, gap: 0, burstLeft: 0, cannonT: def.cannon ? def.cannon.every / 2 : 0, yaw: 0,
       beamT: def.beam ? def.beam.first ?? def.beam.every : 0, summonT: def.summon ? def.summon.every : 0, pauseT: 0,
@@ -5627,7 +6211,7 @@ export class Sim {
   }
 
   placeUnit(u) {
-    path.at(u.dist, u);
+    path.at(u.dist, u, u.route);
     u.x += -u.dz * u.lateral;
     u.z += u.dx * u.lateral;
   }
@@ -5798,7 +6382,7 @@ export class Sim {
         if (u.summonT <= 0) {
           u.summonT = d.summon.every;
           u.pauseT = d.summon.pause;
-          this.spawnUnit(tower, d.summon.unit, 0, u.dist);
+          this.spawnUnit(tower, d.summon.unit, 0, u.dist, u.route);
           this.events.push({ k: 'sprout', x: r2(u.x), z: r2(u.z) });
         }
       }
@@ -5808,11 +6392,13 @@ export class Sim {
       u.speed = (d.soldiers && (target || u.healing)) || u.pauseT > 0 ? 0 : target && d.slowFire ? d.speed * 0.4 : d.speed; // slowFire: Turret Trucks, Void Port carts
       if (u.starT > 0) u.speed = d.speed * 1.6; // Kart Kid star power
       // Bubble Companion: stands its ground while it's blocking a zombie.
-      if (d.block) for (const e of this.enemies.values()) if (!e.flying && !e.remains && Math.abs(e.dist - u.dist) <= CONTACT) u.speed = 0;
+      if (d.block) for (const e of this.enemies.values()) if (!e.flying && !e.remains && !ENEMIES[e.type].noCollide && e.route === u.route && Math.abs(e.dist - u.dist) <= CONTACT) u.speed = 0;
       if (d.still) {
         // Plants and Ice Turrets stay put; zombies walking over them still wear them down.
         u.speed = 0;
-      } else {
+      }
+      const from = u.dist; // where it was before this tick's move (for the pass-through check below)
+      if (!d.still) {
         u.dist -= u.speed * dt;
         if (u.dist <= 0) {
           this.units.delete(u.id); // reached the entrance
@@ -5823,8 +6409,18 @@ export class Sim {
       if (d.air || u.ghostT > 0) continue; // Gift Bombers fly over the zombies; ghosts pass through them
 
       // Crashes (hidden zombies too: you don't need to see a zombie to run it over).
+      // Every walking summon crashes: vehicles and squads alike (Punkbuster punks, Field Barracks
+      // soldiers... used to let zombies walk straight through them). Only still units (plants, Ice
+      // Shards) and blockers (Bubble Companions) take contact damage instead.
+      const crash = !d.still && !d.block;
       for (const e of this.enemies.values()) {
-        if (e.flying || Math.abs(e.dist - u.dist) > CONTACT) continue; // flyers pass overhead
+        if (e.flying) continue; // flyers pass overhead
+        if (e.route !== u.route) continue; // another lane
+        if (ENEMIES[e.type].noCollide) continue; // Halloween Ghosts float right through units
+        // Touching, or they swapped sides since the last tick (a fast zombie and a unit can jump
+        // past each other in one step without ever being within CONTACT).
+        const gap = e.dist - u.dist;
+        if (Math.abs(gap) > CONTACT && !((e.ud ?? e.dist) - from > 0 !== gap > 0)) continue;
         if (d.noGhosts && ENEMIES[e.type].model === 'ghost') continue; // elves walk right through Ghosts
         if (d.block) e.holdT = Math.max(e.holdT || 0, 0.1); // Bubble Companion: zombies can't walk past it
         if (u.starT > 0) {
@@ -5835,7 +6431,7 @@ export class Sim {
           u.starDmg *= d.star.fade;
           continue;
         }
-        if (d.ram) {
+        if (crash) {
           // Behemoths take less damage when they ram (ramArmor), so they hit for more before breaking.
           const soak = 1 - (d.ramArmor || 0);
           const hit = Math.min(e.hp, u.hp / soak);
@@ -5876,6 +6472,7 @@ export class Sim {
       if (d.soldiers) u.alive = Math.max(0, Math.ceil(u.hp / d.hp - 1e-6));
       if (u.hp <= 0) this.destroyUnit(u, tower);
     }
+    for (const e of this.enemies.values()) e.ud = e.dist; // for next tick's pass-through check
   }
 
   /**
@@ -5913,7 +6510,7 @@ export class Sim {
     if (u.def.onDeath && tower) {
       // Trojan Duck: lets its passengers out where it went down.
       const o = u.def.onDeath;
-      for (let i = 0; i < o.n; i++) this.spawnUnit(tower, o.unit, 0, Math.min(path.length - 1, u.dist + i * 1.2));
+      for (let i = 0; i < o.n; i++) this.spawnUnit(tower, o.unit, 0, Math.min(path.length - 1, u.dist + i * 1.2), u.route);
     }
     if (u.def.cash && tower) {
       // Kingpin Money Runner: pays its tower's owner when it goes down.
@@ -5971,7 +6568,7 @@ export class Sim {
         this.events.push({ k: 'shot', t: t.id, e: e.id, c: 1 });
       }
     } else if (ab.key === 'voltPoint') {
-      const u = this.spawnUnit(t, { ...ab.unit, radius: ab.radius }, 0, path.project(Number(m.x), Number(m.z)));
+      const u = this.spawnUnit(t, { ...ab.unit, radius: ab.radius }, 0, path.project(Number(m.x), Number(m.z)), path.lastRoute);
       u.x = Number(m.x);
       u.z = Number(m.z);
       this.events.push({ k: 'sprout', x: r2(u.x), z: r2(u.z), volt: 1 });
@@ -6154,7 +6751,8 @@ export class Sim {
     else if (ab.key === 'deploy') {
       // Valkyr / Punkbuster / Squadron / Borealis: units now start from the path closest to this spot.
       t.dropD = path.project(Number(m.x), Number(m.z));
-      const p = path.at(t.dropD, {});
+      t.dropR = path.lastRoute;
+      const p = path.at(t.dropD, {}, t.dropR);
       this.events.push({ k: 'airdrop', x: r2(p.x), z: r2(p.z), n: 0 });
     }
     else if (ab.key === 'iceTurret' || ab.key === 'iceShard') this.placeIceTurret(t, ab, Number(m.x), Number(m.z));
@@ -6357,8 +6955,9 @@ export class Sim {
     if (t.dropT > 0) return;
     t.dropT = s.drop.every;
     const d = path.length * s.drop.at;
-    s.drop.units.forEach((u, i) => this.spawnUnit(t, u, i * 1.5, d));
-    const p = path.at(d, {});
+    const route = path.nearestRoute(t.x, t.z);
+    s.drop.units.forEach((u, i) => this.spawnUnit(t, u, i * 1.5, d, route));
+    const p = path.at(d, {}, route);
     this.events.push({ k: 'airdrop', x: r2(p.x), z: r2(p.z), n: s.drop.units.length });
   }
 
@@ -6438,7 +7037,7 @@ export class Sim {
     while (u.built < b.at.length && u.dist <= path.length * b.at[u.built]) {
       u.built++;
       if (!tower) continue;
-      this.spawnUnit(tower, b.unit, 0, u.dist);
+      this.spawnUnit(tower, b.unit, 0, u.dist, u.route);
       this.events.push({ k: 'sprout', x: r2(u.x), z: r2(u.z) });
     }
   }
@@ -6459,18 +7058,19 @@ export class Sim {
   /** Relic Summon: drops every unit in `ab.drop` on the path near (x, z), a little apart. */
   relicSummon(t, ab, x, z) {
     const d = path.project(x, z);
+    const route = path.lastRoute;
     const all = ab.drop.flatMap((g) => Array(g.n).fill(g.unit));
     all.forEach((def, i) => {
-      const u = this.spawnUnit(t, def);
+      const u = this.spawnUnit(t, def, 0, path.length - 1, route);
       u.dist = Math.max(0, Math.min(path.length - 1, d + (i - (all.length - 1) / 2) * 1.5));
       this.placeUnit(u);
     });
-    const p = path.at(d, {});
+    const p = path.at(d, {}, route);
     this.events.push({ k: 'airdrop', x: r2(p.x), z: r2(p.z), n: all.length, relic: 1 });
   }
 
   placeIceTurret(t, ab, x, z) {
-    const u = this.spawnUnit(t, ab.unit, 0, path.project(x, z));
+    const u = this.spawnUnit(t, ab.unit, 0, path.project(x, z), path.lastRoute);
     this.events.push({ k: 'sprout', x: r2(u.x), z: r2(u.z), ice: 1 });
   }
 
@@ -6483,7 +7083,7 @@ export class Sim {
     patch(x, z, 1);
     for (const o of this.towers.values()) {
       if (o.owner !== t.owner || familyOf(o.type) !== 'farm' || (o.x - t.x) ** 2 + (o.z - t.z) ** 2 > s.range * s.range) continue;
-      const p = path.at(path.project(o.x, o.z), {});
+      const p = path.at(path.project(o.x, o.z), {}, path.lastRoute);
       patch(p.x, p.z, ab.farmMult);
     }
   }
@@ -6491,9 +7091,10 @@ export class Sim {
   /** Goo Gunner Spawn Puddle: a goo puddle on the bit of path closest to the tower. */
   dropPuddle(t, ab) {
     const d = path.project(t.x, t.z);
-    const p = path.at(d, {});
+    const r = path.lastRoute;
+    const p = path.at(d, {}, r);
     const id = this.nextId++;
-    this.traps.set(id, { id, tower: t.id, kind: 'goo', x: p.x, z: p.z, d, land: 0, radius: ab.radius, left: ab.time, every: ab.every, next: 0, units: ab.units });
+    this.traps.set(id, { id, tower: t.id, kind: 'goo', x: p.x, z: p.z, d, r, land: 0, radius: ab.radius, left: ab.time, every: ab.every, next: 0, units: ab.units });
     this.events.push({ k: 'boom', x: r2(p.x), z: r2(p.z), r: ab.radius, slime: 1 });
   }
 
@@ -6508,7 +7109,7 @@ export class Sim {
     if ((p.next -= dt) > 0) return;
     p.next += p.every;
     const all = p.units.flatMap((g) => Array(g.n).fill(g.unit));
-    all.forEach((def, i) => this.spawnUnit(tower, def, i * 1.5, p.d));
+    all.forEach((def, i) => this.spawnUnit(tower, def, i * 1.5, p.d, p.r ?? 0));
     this.events.push({ k: 'boom', x: r2(p.x), z: r2(p.z), r: p.radius, slime: 1 });
   }
 
@@ -6640,7 +7241,7 @@ export class Sim {
   carpetBomb(t, s, ab, x, z) {
     if (!Number.isFinite(x) || !Number.isFinite(z)) return;
     // Line it up with the path where it's closest to the click.
-    const p = path.at(path.project(x, z), {});
+    const p = path.at(path.project(x, z), {}, path.lastRoute);
     const ux = p.dx;
     const uz = p.dz;
     const det = { ...this.detects(t, s), lead: true };
@@ -6689,11 +7290,11 @@ export class Sim {
     }
     const p = {};
     const r2max = s.range * s.range;
-    for (let d = 0; d <= path.length; d += 0.5) {
-      path.at(d, p);
+    for (let r = 0; r < path.routes.length; r++) for (let d = 0; d <= path.length; d += 0.5) {
+      path.at(d, p, r);
       if ((p.x - t.x) ** 2 + (p.z - t.z) ** 2 > r2max) continue;
       t.compT = c.every;
-      this.spawnUnit(t, c.unit, 0, d);
+      this.spawnUnit(t, c.unit, 0, d, r);
       this.events.push({ k: 'sprout', x: r2(p.x), z: r2(p.z), bubble: 1 });
       return;
     }
@@ -6839,7 +7440,7 @@ export class Sim {
 
   /** Where enemy `e` will be after `time` seconds at its current speed (at most `maxSpeed`). */
   leadPoint(e, time, maxSpeed = Infinity) {
-    const p = path.at(e.dist + Math.min(e.speed, maxSpeed) * time, {});
+    const p = path.at(e.dist + Math.min(e.speed, maxSpeed) * time, {}, e.route);
     p.x += -p.dz * e.lateral;
     p.z += p.dx * e.lateral;
     return p;
@@ -7229,9 +7830,50 @@ export class Sim {
    * 'laser', 'golden' or 'none' for bullet / laser resistance; by default the tower's own kind
    * (damageKind), except for damage over time, explosions and unit crashes (`this.hitKind`).
    */
+  /**
+   * Cash for damage, the way Roblox tower defense games pay (Tower Battles, TDS): `dealt` health
+   * damage to `e` pays every player `dealt` x the mode's rate, so a tougher wave pays for the
+   * defense it takes. The extra health enemies get in multiplayer pays nothing extra (everyone
+   * earns what the enemy is worth solo), and in a `pot` mode the cash is split between the players
+   * instead. Shields pay nothing, summons flagged `noCash` and minions with `reward: 0` pay
+   * nothing, and an enemy never pays for more than its max health (healing can't be farmed).
+   * Wire Fraud and Gold Digging pay their bonus on top.
+   */
+  payDamage(t, e, dealt) {
+    if (e.noCash || dealt <= 0) return;
+    const def = ENEMIES[e.type];
+    if (def.reward === 0 && !e.boss) return; // summoned minions (final bosses are `reward: 0` too, but they pay)
+    const rate = this.dmgCash * (def.cash ?? 1) * (this.dmgShare || 1 / this.mpHpMult(def));
+    let v = Math.min(dealt * rate, e.maxHp * rate - e.paid);
+    if (v <= 0) return;
+    e.paid += v;
+    if (e.fraud) v *= 1 + e.fraud; // Hacker Wire Fraud
+    if (t && this.towers.has(t.id)) v *= buffOf(this.buffs, t.id).killCash; // Gold Commander Gold Digging
+    e.earned += v;
+    this.cashAcc += v;
+    const whole = Math.floor(this.cashAcc);
+    if (!whole) return;
+    this.cashAcc -= whole;
+    for (const p of this.players.values()) p.cash += whole + this.cashBack(p, whole);
+  }
+
+  /**
+   * Oil Derrick Cash Back: the extra `p` gets on top of `v` cash from damage (Versus: from a kill),
+   * their Derrick's `dmgCash` share of it, in whole dollars (the rest carries over).
+   */
+  cashBack(p, v) {
+    const share = this.cashBacks.get(p.id);
+    if (!share) return 0;
+    p.backAcc = (p.backAcc ?? 0) + v * share;
+    const extra = Math.floor(p.backAcc);
+    p.backAcc -= extra;
+    return extra;
+  }
+
   damage(t, e, dmg, pierceArmor = false, kind = undefined) {
     kind ??= this.hitKind ?? (this.dot || !t ? 'none' : damageKind(t.type, t.level));
     if (e.invulnT > 0) return; // Breakers: invincible for a moment as they pop out
+    if (e.noTarget) return; // Hardcore: closed Drop Pods, a downed Void Reaver, the protected Void Caster
     if (e.consume && this.splashing) return; // Void Consumption: only direct hits work
     const ts0 = t ? TOWERS[t.type]?.levels[t.level] : null;
     const hm = this.hitMods; // a Mechanic turret's or an ability's own defPierce / shieldMult
@@ -7325,6 +7967,20 @@ export class Sim {
       }
       if (dmg <= 0) return;
     }
+    if (e.osh > 0) {
+      // Hardcore shields ("+ shield"): they take the hit first.
+      const used = Math.min(e.osh, dmg);
+      e.osh -= used;
+      dmg -= used;
+      if (e.osh <= 0) {
+        e.osh = 0;
+        const sb = ENEMIES[e.type].oshBreakSpeed;
+        if (sb) e.baseSpeed *= sb; // Reforged Gargantuan: faster without its shield
+        this.events.push({ k: 'oshBreak', e: e.id, x: r2(e.x), z: r2(e.z), big: e.boss ? 1 : 0 });
+      }
+      if (dmg <= 0) return;
+    }
+    if (this.dmgCash) this.payDamage(t, e, Math.min(dmg, e.hp));
     e.hp -= dmg;
     // The Beholder can't die before it has pulled everyone into the time dimension.
     if (e.hp <= 0 && !e.shifted && ENEMIES[e.type].shift) {
@@ -7344,13 +8000,15 @@ export class Sim {
     if (shell && e.hp > 0 && e.hp <= e.maxHp * (1 - shell.at) && this.enemies.delete(e.id)) {
       this.events.push({ k: 'decay', e: e.id });
       this.events.push({ k: 'shellBreak', x: r2(e.x), z: r2(e.z), type: e.type });
-      this.reborn.push({ type: shell.into, dist: e.dist, lateral: e.lateral, hpScale: 1, from: e.type, shell: 1, keep: { hp: e.hp, maxHp: e.maxHp } });
+      this.reborn.push({ route: e.route, type: shell.into, dist: e.dist, lateral: e.lateral, hpScale: 1, from: e.type, shell: 1, keep: { hp: e.hp, maxHp: e.maxHp } });
       return;
     }
     if (e.boneAt || e.drops != null) this.kingHurt(e); // Fallen King: Bone Armor, cash drops
     // Firework Technician: a boosted tower may launch a firework where it hit (fireworks never chain).
     if (t?.fwT > 0 && t.fw && dmg > 0 && !this.dot && this.towers.has(t.id)) this.firework(t, e);
     if (e.hp > 0) return;
+    const pdef = ENEMIES[e.type];
+    if ((pdef.pair || pdef.rageAt) && this.enemies.has(e.id) && this.pairDeath(e, pdef)) return; // Hardcore Void Reaver / Caster
     if (!this.enemies.delete(e.id)) return; // already dead (no double rewards or double cage monsters)
     if (t) t.kills++;
     const hunt = t && TOWERS[t.type]?.levels[t.level]?.hunt;
@@ -7359,16 +8017,19 @@ export class Sim {
     const def = ENEMIES[e.type];
     // Wire Fraud: hacked zombies pay everyone extra (whole dollars; the rest carries over).
     let reward = e.noCash ? 0 : def.reward * GAME.earnMult;
-    if (e.fraud && !e.noCash) {
+    if (e.fraud && !e.noCash && !this.dmgCash) {
       this.fraudAcc += def.reward * GAME.earnMult * e.fraud;
       const extra = Math.floor(this.fraudAcc);
       this.fraudAcc -= extra;
       reward += extra;
     }
     if (e.hackEv) this.holos.push(e);
-    // Gold Commander Gold Digging: kills by towers in its aura pay more.
-    if (t && this.towers.has(t.id) && buffOf(this.buffs, t.id).killCash > 1) reward = Math.round(reward * buffOf(this.buffs, t.id).killCash);
-    for (const p of this.players.values()) p.cash += reward;
+    if (this.dmgCash) reward = Math.round(e.earned); // already paid, hit by hit (see payDamage): this is only what the kill shows
+    else {
+      // Gold Commander Gold Digging: kills by towers in its aura pay more.
+      if (t && this.towers.has(t.id) && buffOf(this.buffs, t.id).killCash > 1) reward = Math.round(reward * buffOf(this.buffs, t.id).killCash);
+      for (const p of this.players.values()) p.cash += reward + this.cashBack(p, reward);
+    }
     this.events.push({ k: 'kill', e: e.id, r: reward });
     if (e.bounty) {
       // Mobster Place Bounty: the player who placed it cashes in.
@@ -7378,7 +8039,7 @@ export class Sim {
     }
     // Cages release a random monster; the Slime King comes back for round two; Moltens leave corpses.
     const next = def.phase2 ?? def.corpse ?? (def.cage ? def.cage[Math.floor(Math.random() * def.cage.length)] : null);
-    if (next) this.reborn.push({ type: next, dist: e.dist, lateral: e.lateral, hpScale: def.phase2 ? 1 : def.cageHp ?? 1, from: e.type, ...(def.phase2 && e.boss ? { boss: true } : {}), ...(def.phase2 ? { carry: e.carry } : {}) });
+    if (next) this.reborn.push({ route: e.route, type: next, dist: e.dist, lateral: e.lateral, hpScale: def.phase2 ? 1 : def.cageHp ?? 1, from: e.type, ...(def.phase2 && e.boss ? { boss: true } : {}), ...(def.phase2 ? { carry: e.carry } : {}) });
     // Multipliers copy the enemies around them; Berserkers burst into a crowd.
     if (def.multiply) {
       const m = def.multiply;
@@ -7408,7 +8069,7 @@ export class Sim {
       for (const o of this.enemies.values()) {
         const rv = ENEMIES[o.type].revive;
         if (!rv || (o.x - e.x) ** 2 + (o.z - e.z) ** 2 > rv.radius * rv.radius) continue;
-        this.reborn.push({ type: 'devotee', dist: e.dist, lateral: e.lateral, hpScale: 1, from: e.type, revived: 1 });
+        this.reborn.push({ route: e.route, type: 'devotee', dist: e.dist, lateral: e.lateral, hpScale: 1, from: e.type, revived: 1 });
         break;
       }
     }
@@ -7417,6 +8078,14 @@ export class Sim {
       if (def.blast.dmg) this.hurtTowers(e.x, e.z, def.blast.radius, def.blast.dmg, true);
       if (def.blast.stun) this.hexTowers(e.x, e.z, def.blast.radius, 'stun', def.blast.stun, true); // Medium Shocker
       if (def.blast.units) this.hurtUnitsNear(e.x, e.z, def.blast.radius, def.blast.units); // Void Toxic gas
+      if (def.blast.weak) {
+        // Hardcore Unknowns: towers nearby deal less damage for a while.
+        for (const t of this.towers.values()) {
+          if ((t.x - e.x) ** 2 + (t.z - e.z) ** 2 > def.blast.radius ** 2 || this.stealthy(t)) continue;
+          if (buffOf(this.buffs, t.id).invuln || t.invulnT > 0) continue;
+          this.weakTower(t, def.blast.weak.amt, def.blast.weak.time);
+        }
+      }
       this.events.push({ k: 'eBlast', x: r2(e.x), z: r2(e.z), r: def.blast.radius, ...(def.blast.color ? { c: def.blast.color } : {}) });
     }
     if (def.acid) {
@@ -7426,6 +8095,13 @@ export class Sim {
       this.events.push({ k: 'acid', x: r2(e.x), z: r2(e.z), r: a.radius, life: a.life });
     }
     if (def.finale) this.voidDown(e); // VOID is finally defeated
+    if (def.endShift) this.endTimeShift(); // Hardcore: the Beholder beaten in its Field: back to the real map
+    if (def.deathZone) {
+      // Hardcore Speedy King / Nuclear Tank: a circle on the path that makes enemies in it faster.
+      const z = def.deathZone;
+      this.zones.push({ kind: 'trail', x: e.x, z: e.z, r: z.radius, left: z.life, speed: z.speed, by: e.id });
+      this.events.push({ k: 'trail', x: r2(e.x), z: r2(e.z), r: z.radius, life: z.life, c: z.color });
+    }
     if (def.necroBurst) this.necroBurst(e, def.necroBurst);
     if (def.deathHaste) {
       // Overcharged: the enemies around it get a big burst of speed.
@@ -7437,12 +8113,17 @@ export class Sim {
       }
       this.events.push({ k: 'eBlast', x: r2(e.x), z: r2(e.z), r: h.radius, c: 0xff4fa3 });
     }
-    if (def.deathSpawn) {
+    if (def.deathSpawn?.fixed) {
+      // Hardcore: a set list ([type, n, mods?]), e.g. Mandrake: 1 Hefty, 2 Odds and 2 Swifts.
+      let j = 0;
+      for (const [type, n, mods] of def.deathSpawn.fixed) for (let i = 0; i < n; i++, j++) this.reborn.push({ route: e.route, type, dist: Math.max(0, e.dist - j * 1.1), lateral: e.lateral, hpScale: 1, from: e.type, ...(mods ? { mods } : {}) });
+      this.events.push({ k: 'burst', e: e.id, n: j, kind: 'berserk' });
+    } else if (def.deathSpawn) {
       const d = def.deathSpawn;
       const cnt = Array.isArray(d.n) ? d.n[0] + Math.floor(Math.random() * (d.n[1] - d.n[0] + 1)) : d.n; // Void Slime: 3-4 Goos
       for (let i = 0; i < cnt; i++) {
         const type = d.list[Math.floor(Math.random() * d.list.length)];
-        this.reborn.push({ type, dist: Math.max(0, e.dist - i * 1.2), lateral: e.lateral, hpScale: 1, from: e.type });
+        this.reborn.push({ route: e.route, type, dist: Math.max(0, e.dist - i * 1.2), lateral: e.lateral, hpScale: 1, from: e.type });
       }
       this.events.push({ k: 'burst', e: e.id, n: cnt, kind: 'berserk' });
     }
@@ -7776,6 +8457,7 @@ export class Sim {
         if (!ab) return "That tower can't do that";
         if (t.silenceT > 0) return 'Poisoned! Its abilities are locked until the poison fades';
         if (t.bleedT > 0) return 'Bleeding! It can\'t use abilities until it stops';
+        if (t.curseBy && this.enemies.has(t.curseBy)) return 'Cursed! It can\'t do anything until the enemy that cursed it is gone';
         if (t.corrupt) return 'Corrupted by VOID! It only works for him now. Sell it!';
         if (t.cd[ab.key] > 0) return `${ab.name} is recharging (${Math.ceil(t.cd[ab.key])}s)`;
         const price = abilityCost(t, ab); // rising prices / limited uses (Magic Boost, Volt Points...)
@@ -8164,7 +8846,7 @@ export class Sim {
   landNuki(sh) {
     const t = this.towers.get(sh.tower);
     if (!t) return;
-    const u = this.spawnUnit(t, sh.nuki, 0, path.project(sh.x, sh.z));
+    const u = this.spawnUnit(t, sh.nuki, 0, path.project(sh.x, sh.z), path.lastRoute);
     u.lateral = (Math.random() - 0.5) * 2.4;
     this.placeUnit(u);
     this.events.push({ k: 'sprout', x: r2(u.x), z: r2(u.z) });
@@ -8195,7 +8877,7 @@ export class Sim {
       }
     }
     const spot = t.spots[Math.floor(Math.random() * t.spots.length)];
-    const u = this.spawnUnit(t, pick, 0, spot.d);
+    const u = this.spawnUnit(t, pick, 0, spot.d, spot.r);
     u.lateral = (Math.random() - 0.5) * 2.4;
     this.placeUnit(u);
     t.yaw = Math.atan2(u.x - t.x, u.z - t.z);
@@ -8326,13 +9008,14 @@ export class Sim {
       w: [w.state, w.index, Math.round(w.countdown * 10) / 10, w.left, w.votes, this.votesNeeded, this.canSkipWave ? 1 : 0],
       b: this.baseHp,
       m: this.mode,
+      mk: this.map,
       sp: this.speed,
       o: this.over,
       // JSON can't hold Infinity (Konami code cash), so it travels as 'inf'.
       p: [...this.players.values()].map((p) => [p.id, p.name, p.cash === Infinity ? 'inf' : p.cash, p.color]),
       t: [...this.towers.values()].map((t) => [
         t.id, t.owner, t.type, t.level, r2(t.x), r2(t.z), r2(t.yaw), t.targetMode, t.kills, t.damageDealt, t.spent,
-        r2(t.ang), t.lock, r2(t.charge), r2(t.active), cdSnap(t.cd), (t.smoke > 0 ? 1 : 0) | (t.stunT > 0 ? 2 : 0) | (t.shieldT > 0 ? 4 : 0) | (t.revT > 0 ? 8 : 0) | (this.stealthy(t) ? 16 : 0) | (t.slowT > 0 ? 32 : 0) | ((t.nerf ?? 1) < 1 ? 64 : 0) | (t.weakT > 0 ? 128 : 0) | (t.silenceT > 0 ? 256 : 0) | (t.bleedT > 0 ? 512 : 0) | (t.corrupt ? 1024 : 0), t.dir, t.track,
+        r2(t.ang), t.lock, r2(t.charge), r2(t.active), cdSnap(t.cd), (t.smoke > 0 ? 1 : 0) | (t.stunT > 0 ? 2 : 0) | (t.shieldT > 0 ? 4 : 0) | (t.revT > 0 ? 8 : 0) | (this.stealthy(t) ? 16 : 0) | (t.slowT > 0 ? 32 : 0) | ((t.nerf ?? 1) < 1 ? 64 : 0) | (t.weakT > 0 ? 128 : 0) | (t.silenceT > 0 ? 256 : 0) | (t.bleedT > 0 || t.curseBy ? 512 : 0) | (t.corrupt ? 1024 : 0), t.dir, t.track,
         r2(t.radioT),
         // Pursuit / Gatling Gun extras: [ammo, reload left, helicopter dx, dz, heading, patrol zone dx, dz, FPS Mode, cone facing]
         // (positions relative to the tower, so Versus lanes don't have to shift them).
@@ -8362,8 +9045,8 @@ export class Sim {
       // Traps, plus Necromancer gravestones and Engineer sentries: [..., level, facing, health left (0-1), stunned, thermite radius].
       tr: [...this.traps.values()].map((tr) => [tr.id, tr.tower, tr.kind, r2(tr.x), r2(tr.z), tr.land > 0 ? 0 : 1, tr.lvl ?? 0, r2(tr.yaw ?? 0), tr.maxHp ? r2(tr.hp / tr.maxHp) : 1, tr.stunT > 0 ? 1 : 0, tr.kind === 'thermite' || tr.kind === 'gas' || tr.kind === 'thorns' || tr.kind === 'goo' ? tr.radius : 0]),
       // Units: free ones (crows, bees, Volt Points) also send where they are, [x, z].
-      u: [...this.units.values()].map((u) => [u.id, u.tower, u.model, Math.ceil(u.hp), u.maxHp, r2(u.dist), r2(u.lateral), u.alive, r2(u.speed), r2(u.yaw), u.def.free ? [r2(u.x), r2(u.z)] : 0]),
-      e: [...this.enemies.values()].map((e) => [e.id, e.type, e.hp, e.maxHp, r2(e.dist), r2(e.speed), r2(e.lateral), e.st]),
+      u: [...this.units.values()].map((u) => [u.id, u.tower, u.model, Math.ceil(u.hp), u.maxHp, r2(u.dist), r2(u.lateral), u.alive, r2(u.speed), r2(u.yaw), u.def.free ? [r2(u.x), r2(u.z)] : 0, u.route || 0]),
+      e: [...this.enemies.values()].map((e) => [e.id, e.type, e.hp, e.maxHp, r2(e.dist), r2(e.speed), r2(e.lateral), e.st, e.route || 0]),
       // Insane mode: the time dimension, and Beholder time bombs [id, x, z, seconds left].
       ...(this.timeWorld ? { tw: 1 } : {}),
       ...(this.bombs.length ? { tb: this.bombs.map((b) => [b.id, r2(b.x), r2(b.z), r2(b.left)]) } : {}),
@@ -8373,6 +9056,8 @@ export class Sim {
       ...(this.orbs.length ? { vo: this.orbs.map((o) => [o.id, r2(o.x), r2(o.z)]) } : {}),
       // Void armor shields left: [enemy id, share of the shield left].
       ...(this.voidArmor ? { va: [...this.enemies.values()].filter((e) => e.vShield > 0).map((e) => [e.id, r2(e.vShield / e.vShieldMax)]) } : {}),
+      // Hardcore shields left: [enemy id, share of the shield left], and enemies that can't be targeted.
+      ...([...this.enemies.values()].some((e) => e.osh > 0 || e.noTarget) ? { os: [...this.enemies.values()].filter((e) => e.osh > 0 || e.noTarget).map((e) => [e.id, e.osh > 0 ? r2(e.osh / e.oshMax) : 0, e.noTarget ? 1 : 0]) } : {}),
       // Gold Commander Orbital Airstrike beams: [tower, x, z, seconds left, radius].
       ...([...this.towers.values()].some((t) => t.orb) ? { ob: [...this.towers.values()].filter((t) => t.orb).map((t) => [t.id, r2(t.orb.x), r2(t.orb.z), r2(t.orb.left), t.orb.radius]) } : {}),
     };

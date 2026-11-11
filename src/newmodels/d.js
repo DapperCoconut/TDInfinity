@@ -239,15 +239,6 @@ const MECH_LOOKS = {
   mechult: { s: 1.7, paint: 0x1a1a2e, dark: 0x0d0d14, eye: 0xffd740, armor: 0xffc107, twin: true, pods: true, core: 0x00e5ff, crown: true },
 };
 
-function mechUnit(key) {
-  const look = MECH_LOOKS[key];
-  const u = newUnit();
-  buildMech(u, look.s, look);
-  u.tracer = look.eye;
-  u.tracerWidth = 0.2 + look.s * 0.15;
-  return u;
-}
-
 /**
  * Valkyr (0-4): a mech drop base. A landing pad with a drop beacon and a hangar that grows each
  * level. Lv 1 floodlights, Lv 2 a mech parked on the pad, Lv 3 a radar dish and supply crates,
@@ -819,149 +810,7 @@ function punkbuster(level) {
 
 /* ------------------------------------------------------------------ flying units */
 
-/** A jet on u.body (nose +Z) with options; returns nothing. Adds nose muzzles. */
-function jet(u, o) {
-  const { M } = u;
-  const s = o.s ?? 1;
-  const g = u.body;
-  const body = M(o.body);
-  const dark = M(o.dark ?? 0x37474f);
-  const fl = (o.len ?? 5.6) * s;
-  const fw = (o.fat ?? 1.1) * s;
-  part(g, boxGeo(fw, fw * 0.9, fl), body, 0, 0, 0);
-  part(g, boxGeo(fw * 0.55, fw * 0.55, 1.0 * s), dark, 0, -0.05 * s, fl / 2 + 0.45 * s); // nose
-  part(g, boxGeo(fw * 0.7, 0.45 * s, 1.3 * s), o.glass ?? M(0x4fc3f7), 0, fw * 0.55, fl * 0.2);
-  const span = (o.span ?? 3.2) * s;
-  for (const side of [-1, 1]) {
-    const w = part(g, boxGeo(span, 0.15 * s, (o.chord ?? 1.9) * s), body, side * (span / 2 + fw * 0.35), -0.1 * s, -0.3 * s);
-    w.rotation.y = side * (o.sweep ?? 0.45);
-    part(g, boxGeo(1.4 * s, 0.12 * s, 0.8 * s), body, side * 1.0 * s, 0, -fl / 2 + 0.3 * s);
-    if (o.twinFin !== false) part(g, boxGeo(0.12 * s, 1.1 * s, 1.0 * s), dark, side * 0.5 * s, 0.8 * s, -fl / 2 + 0.4 * s).rotation.z = side * -0.3;
-  }
-  if (o.twinFin === false) part(g, boxGeo(0.14 * s, 1.4 * s, 1.2 * s), dark, 0, 0.9 * s, -fl / 2 + 0.5 * s);
-  part(g, boxGeo(fw * 0.7, fw * 0.7, 0.3 * s), glowThing(u, o.burner ?? 0xff9100), 0, 0, -fl / 2 - 0.1 * s);
-  for (const x of [-0.5, 0.5]) gunMuzzle(u, g, x * s, -0.2 * s, fl / 2 + 0.4 * s);
-  u.height = 1.6 * s;
-}
-
-function propPlane(u, o) {
-  // A straight-winged propeller plane (nose +Z).
-  const { M } = u;
-  const s = o.s ?? 1;
-  const g = u.body;
-  const body = M(o.body);
-  const trim = M(o.trim);
-  part(g, boxGeo(1.2 * s, 1.2 * s, 5 * s), body, 0, 0, 0);
-  part(g, boxGeo(7 * s, 0.2 * s, 1.5 * s), body, 0, -0.2 * s, 0.4 * s);
-  part(g, boxGeo(7.05 * s, 0.22 * s, 0.4 * s), trim, 0, -0.2 * s, 0.2 * s);
-  part(g, boxGeo(2.6 * s, 0.15 * s, 0.9 * s), body, 0, 0.1 * s, -2.2 * s);
-  part(g, boxGeo(0.15 * s, 1.1 * s, 1.0 * s), trim, 0, 0.7 * s, -2.2 * s);
-  part(g, boxGeo(0.9 * s, 0.5 * s, 1.1 * s), o.glass ?? M(0x90caf9), 0, 0.75 * s, 0.6 * s);
-  part(g, boxGeo(0.7 * s, 0.7 * s, 0.4 * s), trim, 0, 0, 2.6 * s);
-  part(g, boxGeo(0.3 * s, 2.6 * s, 0.1 * s), M(0x3e2723), 0, 0, 2.85 * s); // propeller
-  for (const x of [-0.9, 0.9]) gunMuzzle(u, g, x * s, -0.2 * s, 1.3 * s);
-  u.height = 1.6 * s;
-}
-
-function jmerlin() {
-  // Merlin: a nimble prop trainer-fighter, blue with yellow trim.
-  const u = newUnit();
-  propPlane(u, { body: 0x1e88e5, trim: 0xfdd835, s: 0.8 });
-  u.fly = 8;
-  u.tracer = 0xffe082;
-  return u;
-}
-
-function jfalcon() {
-  const u = newUnit();
-  jet(u, { body: 0x9e9e9e, dark: 0x424242, s: 0.85, twinFin: false });
-  part(u.body, boxGeo(0.2, 0.06, 1.0), u.M(0xd32f2f), 0, 0.45, -1.5); // red tail stripe
-  u.fly = 9;
-  u.tracer = 0xffd740;
-  return u;
-}
-
-function jraptor() {
-  // Raptor: angular stealth fighter, dark grey with a gold canopy.
-  const u = newUnit();
-  jet(u, { body: 0x546e7a, dark: 0x263238, s: 1.0, sweep: 0.6, chord: 2.4, glass: glowThing(u, 0xffb300), burner: 0xff6d00 });
-  for (const side of [-1, 1]) part(u.body, boxGeo(0.4, 0.3, 1.6), u.M(0x37474f), side * 0.75, -0.2, 1.0); // intakes
-  u.fly = 10;
-  u.tracer = 0xffab40;
-  return u;
-}
-
-function jhardpoint() {
-  // Hardpoint: a strike bomber loaded with bombs under its wings.
-  const u = newUnit();
-  jet(u, { body: 0x6b7d3a, dark: 0x3e4a22, s: 1.15, sweep: 0.3, span: 3.6, fat: 1.4 });
-  const bomb = u.M(0x263238);
-  for (const side of [-1, 1]) for (const k of [0, 1]) {
-    part(u.body, boxGeo(0.45, 0.45, 1.3), bomb, side * (1.4 + k * 1.1), -0.6, -0.2);
-    part(u.body, boxGeo(0.47, 0.1, 0.2), u.M(0xfdd835), side * (1.4 + k * 1.1), -0.6, 0.2);
-  }
-  u.fly = 10;
-  u.tracer = 0xffab40;
-  u.projectile = { color: 0x263238, size: 0.6 };
-  return u;
-}
-
-function jairlifter() {
-  // Airlifter: a huge cargo plane with four engines and a high wing.
-  const u = newUnit();
-  const { M } = u;
-  const body = M(0x90a4ae);
-  const dark = M(0x546e7a);
-  const g = u.body;
-  part(g, boxGeo(2.4, 2.2, 9), body, 0, 0, 0);
-  part(g, boxGeo(1.8, 1.6, 1.2), body, 0, -0.1, 5.0); // nose
-  part(g, boxGeo(1.6, 0.5, 0.6), M(0x4fc3f7), 0, 0.6, 5.0);
-  part(g, boxGeo(13, 0.3, 2.2), body, 0, 1.15, 0.6); // high wing
-  for (const x of [-4.2, -2.2, 2.2, 4.2]) {
-    part(g, boxGeo(0.8, 0.8, 1.8), dark, x, 0.6, 1.2); // engines
-    part(g, boxGeo(0.5, 0.5, 0.1), glowThing(u, 0xff9100), x, 0.6, 0.27);
-    part(g, boxGeo(0.15, 1.8, 0.08), M(0x212121), x, 0.6, 2.15); // props
-  }
-  part(g, boxGeo(0.2, 2.6, 2.0), body, 0, 2.0, -4.0); // tail fin
-  part(g, boxGeo(5, 0.2, 1.4), body, 0, 3.1, -4.2); // T-tail
-  part(g, boxGeo(2.0, 0.1, 2.0), M(0x37474f), 0, -1.0, -4.0); // cargo ramp
-  for (const x of [-1, 1]) part(g, boxGeo(0.8, 0.8, 2.6), dark, x * 1.4, -0.9, 0); // gear pods
-  gunMuzzle(u, g, 0, -1.0, -4.8); // drops from the cargo ramp
-  u.height = 3.4;
-  u.fly = 12;
-  u.tracer = 0xffe082;
-  return u;
-}
-
-function jtentative() {
-  // Tentative: a heavy side-firing gunship with cannons along its flank.
-  const u = newUnit();
-  const { M } = u;
-  const body = M(0x37474f);
-  const dark = M(0x212121);
-  const g = u.body;
-  part(g, boxGeo(2.2, 2.0, 8), body, 0, 0, 0);
-  part(g, boxGeo(1.6, 1.4, 1.2), body, 0, -0.1, 4.5);
-  part(g, boxGeo(1.4, 0.5, 0.5), glowThing(u, 0xff5252), 0, 0.5, 4.6);
-  part(g, boxGeo(11, 0.3, 2.0), body, 0, 1.0, 0.4);
-  for (const x of [-3.8, -1.9, 1.9, 3.8]) {
-    part(g, boxGeo(0.7, 0.7, 1.6), dark, x, 0.5, 0.9);
-    part(g, boxGeo(0.12, 1.6, 0.08), dark, x, 0.5, 1.75);
-  }
-  part(g, boxGeo(0.2, 2.2, 1.8), body, 0, 1.8, -3.4);
-  part(g, boxGeo(4, 0.2, 1.2), body, 0, 0.4, -3.6);
-  // Side guns (left flank), pointing out to the side but angled forward-down
-  for (const [z, len] of [[1.5, 1.4], [0, 2.0], [-1.5, 1.2]]) {
-    part(g, boxGeo(len, 0.3, 0.3), dark, 1.1 + len / 2, -0.4, z);
-    gunMuzzle(u, g, 1.2 + len, -0.4, z);
-  }
-  part(g, boxGeo(0.8, 0.8, 0.8), glowThing(u, 0x76ff03), -0.6, -1.1, 3.6); // sensor ball
-  u.height = 3.2;
-  u.fly = 11;
-  u.tracer = 0xffab40;
-  u.tracerWidth = 0.3;
-  return u;
-}
+// The Jet Trooper's planes and the Borealis frost planes are built with the vehicle kit (airunits.js).
 
 function jpara(count = 1) {
   // Paratroopers: soldiers in jump gear with a packed chute and a rifle.
@@ -1084,40 +933,6 @@ function pnucleus(count = 1) {
 
 /* ------------------------------------------------------------------ Borealis units */
 
-function bbreeze() {
-  // Breeze: a little frost prop plane, white with ice-blue trim.
-  const u = newUnit();
-  propPlane(u, { body: 0xeceff1, trim: 0x4fc3f7, s: 0.8, glass: glowThing(u, 0x80d8ff) });
-  u.fly = 8;
-  u.tracer = 0x80d8ff;
-  return u;
-}
-
-function bornament() {
-  // Ornament: a festive frost plane with glowing baubles hanging from its wings.
-  const u = newUnit();
-  propPlane(u, { body: 0x2e7d32, trim: 0xfafafa, s: 0.9 });
-  const cols = [0xff1744, 0xffd740, 0x40c4ff, 0xd500f9];
-  for (let i = 0; i < 4; i++) {
-    const x = (i < 2 ? -1 : 1) * (1.4 + (i % 2) * 1.2);
-    part(u.body, boxGeo(0.06, 0.4, 0.06), u.M(0xbdbdbd), x, -0.5, 0.4);
-    part(u.body, boxGeo(0.45, 0.45, 0.45), glowThing(u, cols[i]), x, -0.9, 0.4);
-  }
-  u.fly = 9;
-  u.tracer = 0xffd740;
-  return u;
-}
-
-function bnorthwind() {
-  // Northwind: an ice-blue jet fighter with aurora engine glow.
-  const u = newUnit();
-  jet(u, { body: 0xb3e5fc, dark: 0x0288d1, s: 1.0, sweep: 0.55, glass: glowThing(u, 0x80deea), burner: 0x69f0ae });
-  for (const side of [-1, 1]) part(u.body, boxGeo(0.14, 0.14, 1.6), glowThing(u, 0xb388ff), side * 3.0, -0.05, -1.3); // wingtip glow
-  u.fly = 10;
-  u.tracer = 0x80deea;
-  return u;
-}
-
 function bsleigh() {
   // Sleigh: a flying red-and-gold sleigh pulled by two blocky reindeer, gift pile on the back.
   const u = newUnit();
@@ -1148,6 +963,7 @@ function bsleigh() {
   gunMuzzle(u, g, 0, 1.0, 1.1);
   u.height = 2.6;
   u.fly = 9;
+  u.noTurn = true; // aircraft fly straight on; they don't swing round to shoot (views.js)
   u.tracer = 0xffd740;
   u.projectile = { color: 0xc62828, size: 0.5 };
   return u;
@@ -1182,39 +998,9 @@ function bfortress() {
   }
   u.height = 6;
   u.fly = 12;
+  u.noTurn = true; // aircraft fly straight on; they don't swing round to shoot (views.js)
   u.tracer = 0x69f0ae;
   u.tracerWidth = 0.35;
-  return u;
-}
-
-function bfestivetank() {
-  // Festive Tank: red-and-green tank with a candy-cane cannon, string lights and a star.
-  const u = newUnit();
-  const { M } = u;
-  const red = M(0xc62828);
-  const green = M(0x1b5e20);
-  const white = M(0xfafafa);
-  const tire = M(0x1b1b1b);
-  part(u.body, boxGeo(3.4, 1.3, 5.2), red, 0, 1.2, 0);
-  part(u.body, boxGeo(3.5, 0.25, 5.3), white, 0, 1.9, 0); // snowy trim
-  for (const x of [-1.8, 1.8]) part(u.body, boxGeo(0.8, 1.2, 5.4), green, x, 0.7, 0); // tracks
-  wheels(u, tire, [-2.25, 2.25], [-1.8, -0.6, 0.6, 1.8], 0.6, 0.9);
-  const lights = [0xff1744, 0xffd740, 0x40c4ff, 0x76ff03];
-  for (let i = 0; i < 6; i++) for (const x of [-1.72, 1.72]) part(u.body, boxGeo(0.15, 0.2, 0.15), glowThing(u, lights[(i + (x > 0 ? 2 : 0)) % 4]), x, 1.75, -2.2 + i * 0.88);
-  const t = turret(u, 2.0);
-  part(t, boxGeo(2.4, 1.0, 2.6), green, 0, 0.5, -0.2);
-  part(t, boxGeo(2.0, 0.2, 2.2), white, 0, 1.05, -0.2);
-  // Candy-cane cannon
-  for (let i = 0; i < 6; i++) part(t, boxGeo(0.5, 0.5, 0.55), i % 2 ? white : red, 0, 0.55, 1.35 + i * 0.55);
-  part(t, boxGeo(0.4, 0.4, 0.1), glowThing(u, 0xffd740), 0, 0.55, 4.6);
-  // Star on an antenna and a bow
-  part(t, boxGeo(0.1, 1.2, 0.1), M(0x9e9e9e), -0.8, 1.6, -1.0);
-  part(t, boxGeo(0.5, 0.5, 0.12), glowThing(u, 0xffd740), -0.8, 2.3, -1.0).rotation.z = Math.PI / 4;
-  part(t, boxGeo(0.9, 0.4, 0.3), M(0xffc107), 0.6, 1.2, -1.2);
-  gunMuzzle(u, t, 0, 0.55, 4.7);
-  u.height = 3.8;
-  u.tracer = 0xffd740;
-  u.projectile = { color: 0xc62828, size: 0.55 };
   return u;
 }
 
@@ -1223,26 +1009,11 @@ function bfestivetank() {
 export const TOWER_MODELS_D = { eldritch, valkyr, squadron, splash, ghostbuster, giftElf, stormwing, punkbuster, borealis };
 
 export const UNIT_MODELS_D = {
-  mech1: () => mechUnit('mech1'),
-  mech2: () => mechUnit('mech2'),
-  mech45: () => mechUnit('mech45'),
-  mech10: () => mechUnit('mech10'),
-  mechult: () => mechUnit('mechult'),
-  jmerlin,
-  jfalcon,
-  jraptor,
-  jhardpoint,
-  jairlifter,
-  jtentative,
   jpara,
   pfragger,
   pboogie,
   procketeer,
   pnucleus,
-  bbreeze,
-  bornament,
-  bnorthwind,
   bsleigh,
   bfortress,
-  bfestivetank,
 };

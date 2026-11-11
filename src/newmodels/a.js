@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { boxGeo, part, makeHumanoid, makeThing, glow, glowThing, helmet, setMuzzle, gunMuzzle, addRevolver, wheels, turret } from '../models.js';
+import { boxGeo, part, makeHumanoid, makeThing, glow, glowThing, helmet, setMuzzle, gunMuzzle, addRevolver, turret } from '../models.js';
+import { wheel } from '../vehicles.js';
 
 // New towers and units (set A). Characters face +Z; see makeHumanoid in models.js for proportions.
 
@@ -740,30 +741,6 @@ function makeRuptor(level) {
 // Units
 // ---------------------------------------------------------------------------------------------
 
-/** A small green airdropped tank with one cannon. */
-function hgtank() {
-  const u = makeThing();
-  u.static = false;
-  u.wheels = [];
-  const { M } = u;
-  const paint = M(0x4caf50);
-  const dark = M(0x2e7d32);
-  const tire = M(0x1b1b1b);
-  part(u.body, boxGeo(2.6, 1.0, 3.8), paint, 0, 1.0, 0);
-  part(u.body, boxGeo(2.6, 0.3, 0.6), dark, 0, 1.2, 1.9); // front slope
-  for (const x of [-1.4, 1.4]) part(u.body, boxGeo(0.6, 0.9, 4.0), tire, x, 0.55, 0); // tracks
-  wheels(u, M(0x424242), [-1.45, 1.45], [-1.3, 0, 1.3], 0.5, 0.8);
-  const t = turret(u, 1.5);
-  part(t, boxGeo(1.7, 0.8, 1.8), dark, 0, 0.4, -0.1);
-  part(t, boxGeo(0.7, 0.3, 0.7), paint, 0.3, 0.95, -0.3); // hatch
-  part(t, boxGeo(0.35, 0.35, 2.0), M(0x1b5e20), 0, 0.45, 1.6);
-  part(t, boxGeo(0.25, 1.0, 0.04), M(0xfafafa), -0.88, 0.4, -0.1); // white ID stripe
-  gunMuzzle(u, t, 0, 0.45, 2.6);
-  u.height = 2.8;
-  u.tracer = 0xffab40;
-  return u;
-}
-
 /** One duck soldier (squad member). Returns a humanoid-like handle with root, legs, mats, muzzles. */
 function makeDuck(model) {
   const d = makeThing();
@@ -870,7 +847,11 @@ function ducktrojan() {
   const wood = M(0xa1887f);
   const plank = M(0x795548);
   part(u.body, boxGeo(3.0, 0.4, 4.4), plank, 0, 0.95, 0); // cart
-  wheels(u, M(0x4e342e), [-1.6, 1.6], [-1.5, 1.5], 0.65, 1.3);
+  // Round wooden cart wheels on two axles (vehicle kit)
+  for (const z of [-1.5, 1.5]) {
+    part(u.body, boxGeo(3.3, 0.16, 0.16), M(0x3e2723), 0, 0.65, z);
+    for (const x of [-1.72, 1.72]) wheel(u, u.body, x, 0.65, z, 0.65, 0.34, { tyre: 0x4e342e, rim: 0x8d6e63, lugs: false });
+  }
   part(u.body, boxGeo(2.6, 2.2, 3.4), wood, 0, 2.25, -0.2); // body
   for (const y of [1.6, 2.3, 3.0]) part(u.body, boxGeo(2.62, 0.08, 3.42), plank, 0, y, -0.2); // plank seams
   part(u.body, boxGeo(1.6, 1.0, 0.8), wood, 0, 3.0, -2.2); // tail
@@ -925,7 +906,6 @@ export const TOWER_MODELS_A = {
 };
 
 export const UNIT_MODELS_A = {
-  hgtank: () => hgtank(),
   duckscout: (count = 1) => duckSquad('duckscout', count),
   ducksoldier: (count = 1) => duckSquad('ducksoldier', count),
   duckrail: (count = 1) => duckSquad('duckrail', count),

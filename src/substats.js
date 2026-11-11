@@ -33,8 +33,8 @@ export function findUnitDef(type, level, model) {
 const detRow = (d) => ['Detection', detectText(d)];
 
 /**
- * Panel info for a selected sub-thing: { name, sub, icon (tower type), towerId, rows: [label, value, cls?][],
- * status, range, inner? } or null if it's gone. `buff` is the parent tower's buff.
+ * Panel info for a selected sub-thing: { name, sub, icon (tower type), pic (its own portrait, see
+ * icons.js subIcon), towerId, rows: [label, value, cls?][], status, range, inner? } or null if it's gone. `buff` is the parent tower's buff.
  */
 export function subInfo(st, sel, buff) {
   if (sel.kind === 'plane') {
@@ -85,7 +85,7 @@ export function subInfo(st, sel, buff) {
       const hp = tr.maxHp ? tr.hp : (tr.hp ?? 1) * sn.hp;
       const stunned = tr.stunT > 0 || tr.stun;
       const status = `❤ ${Math.ceil(hp)}/${sn.hp} · about ${Math.ceil(hp / sn.decay)}s left${stunned ? ' · 💫 Stunned' : ''}`;
-      return { name: sn.name, sub: `Built by ${def.name} (Lv ${t.level + 1})`, icon: t.type, towerId: t.id, owner: t.owner, rows, status, range: sn.gun.range };
+      return { name: sn.name, sub: `Built by ${def.name} (Lv ${t.level + 1})`, icon: t.type, pic: { kind: 'sentry', lvl: tr.lvl ?? 0 }, towerId: t.id, owner: t.owner, rows, status, range: sn.gun.range };
     }
     if (tr.kind === 'grave') {
       const s = def.levels[t.level];
@@ -100,7 +100,7 @@ export function subInfo(st, sel, buff) {
       }
       if (boom) rows.push(['Explodes', `${boom.damage} dmg, blast ${boom.radius}`, 'yes']);
       return {
-        name: 'Gravestone', sub: `Raised by ${def.name} (Lv ${t.level + 1})`, icon: t.type, towerId: t.id, owner: t.owner, rows,
+        name: 'Gravestone', sub: `Raised by ${def.name} (Lv ${t.level + 1})`, icon: t.type, pic: { kind: 'grave', lvl }, towerId: t.id, owner: t.owner, rows,
         status: 'Smash it with Raise the Dead', range: boom?.radius ?? 0,
       };
     }
@@ -123,14 +123,22 @@ export function subInfo(st, sel, buff) {
       if (e) rows.push(['Speed', `${e.speed}`]);
     } else if (def) {
       if (def.soldiers > 1) rows.push(['Soldiers', `${def.soldiers}, ${def.hp} HP each`]);
-      if (def.speed != null) rows.push(['Speed', `${def.speed}`]);
+      else rows.push(['Health', `${u.maxHp.toLocaleString()} HP`]);
+      if (def.speed != null) rows.push(['Speed', def.still ? 'Stays put' : `${def.speed}`]);
       if (def.gun) {
         rows.push(['Gun', gunText(def.gun)]);
         rows.push(['Range', limitText(def.gun.range)]);
         if (Number.isFinite(def.gun.range)) range = def.gun.range;
       }
       if (def.cannon) rows.push(['Cannon', cannonText(def.cannon)]);
-      if (def.cannon?.range && !range) range = def.cannon.range;
+      if (def.cannon?.range && !range) {
+        range = def.cannon.range;
+        rows.push(['Range', `${range}`]);
+      }
+      if (def.beam) {
+        rows.push(['Laser', `${def.beam.damage.toLocaleString()} dmg every ${def.beam.every}s, range ${def.beam.range}`]);
+        range ||= def.beam.range; // the ring shows the gun's reach when it has one
+      }
       if (def.heal) {
         rows.push(['Heals', unitExtraText(def), 'yes']);
         range ||= def.heal.range;
@@ -145,7 +153,8 @@ export function subInfo(st, sel, buff) {
     const alive = def?.soldiers > 1 ? ` · ${u.alive}/${def.soldiers} standing` : '';
     return {
       name, sub: t ? `Sent by ${TOWERS[t.type].name} (Lv ${t.level + 1})` : 'Its tower is gone',
-      icon: t?.type ?? null, towerId: t?.id ?? null, owner: t?.owner, rows,
+      icon: t?.type ?? null, pic: u.model ? { kind: 'unit', model: u.model, count: Math.min(def?.soldiers ?? 1, 6) } : null,
+      towerId: t?.id ?? null, owner: t?.owner, rows,
       status: `❤ ${Math.ceil(u.hp)}/${u.maxHp}${alive}`, range,
     };
   }

@@ -23,7 +23,7 @@ const RUBY = { tints: { 5: [0xd50000] } };
 // ---------------------------------------------------------------- Golden Mercenary (Hired Gun)
 
 const G_TANK = { name: 'Golden Tank', model: 'goldhgtank', hp: 350, speed: 3, flying: false, lead: true, gun: { damage: 80, cooldown: 2.4, range: 23 } };
-const G_TANK_DROP = { key: 'summon', name: 'Tank Airdrop', desc: 'A Golden Tank (350 HP, 80 damage every 2.4s) drops onto the path where you click', cooldown: 45, aim: true, radius: 4, drop: [{ unit: G_TANK, n: 1 }] };
+const G_TANK_DROP = { key: 'summon', name: 'Tank Airdrop', desc: 'A Golden Tank (350 HP, 110 damage every 2.4s) drops onto the path where you click', cooldown: 45, aim: true, radius: 4, drop: [{ unit: G_TANK, n: 1 }] };
 
 // ---------------------------------------------------------------- Golden Focus
 
@@ -54,7 +54,7 @@ const GEB = {
 // ---------------------------------------------------------------- Golden Submerge
 
 const DIVE_AB = { key: 'dive', name: 'Dive', desc: 'Switch between Afloat (fast coastal missiles) and Submerged (slow, huge golden nukes, hidden detection)', cooldown: 3 };
-const JERICHO_AB = { key: 'wipeout', name: 'Golden Jericho Missile', desc: 'A cluster missile that splits midair: 10,000 damage split among every zombie on the map', cooldown: 90, damage: 10000 };
+const JERICHO_AB = { key: 'wipeout', name: 'Golden Jericho Missile', desc: 'A cluster missile that splits midair: 18,000 damage split among every zombie on the map', cooldown: 90, damage: 10000 };
 
 // ---------------------------------------------------------------- Golden Commando (Shock Commando)
 
@@ -78,8 +78,8 @@ const orb = (damage, gap, range, fire, recharge, shield) => {
 const CYBER_TANK = {
   name: 'Golden Cyber Tank', model: 'gcybertank', hp: 30000, speed: 3, flying: true, hidden: true, lead: true,
   ram: true, ramArmor: 0.5, hover: true, ghost: { life: 60 },
-  gun: { damage: 150, cooldown: 0.06, range: 22 },
-  cannon: { damage: 4000, every: 2, radius: 6, range: 48 },
+  gun: { damage: 60, cooldown: 0.06, range: 22 },
+  cannon: { damage: 1500, every: 2, radius: 6, range: 48 },
 };
 const callToBattle = (rate, dmg, swordMult, duration) => ({ key: 'cta', name: 'Call to Battle!',
   desc: `For ${duration}s: towers in range attack ${rate * 100}% faster and do ${dmg * 100}% more damage, and the Gold Commander ${swordMult > 1 ? `swings his broadsword for ${swordMult}x damage` : 'pulls out his giant golden broadsword'}`,
@@ -126,14 +126,14 @@ export const GOLD_TOWERS = {
     limit: 8,
     goldFx: RUBY,
     blurb: 'The golden Hired Gun. Still fires long bursts of 30 to 40 golden shots (they hurt lead zombies), with buffed stats. Hidden detection from Lv 2. At max level his Tank Airdrop calls in a Golden Tank that fires faster than the normal one. His first two levels are weak.',
-    tip: 'Cheap, strong late levels: $20,600 in total for about 78 DPS plus the tank.',
+    tip: 'Cheap, strong late levels: $20,600 in total for about 110 DPS plus the tank.',
     levels: [
       { name: 'Golden Mercenary', desc: 'Bursts of 30 golden bullets.', damage: 2.5, burst: 30, burstGap: 0.25, cooldown: cyc(30, 0.25, 3), range: 9, hidden: false },
       { name: 'Gold Sights', desc: 'Faster, much more range.', cost: 450, damage: 2.5, burst: 30, burstGap: 0.225, cooldown: cyc(30, 0.225, 3), range: 11.5, hidden: false },
-      { name: 'Golden Night Vision', desc: 'Damage 2.5 → 4, faster, bursts of 40, shorter pauses, and hidden detection.', cost: 950, damage: 4, burst: 40, burstGap: 0.2, cooldown: cyc(40, 0.2, 2.7), range: 11.5, hidden: true },
-      { name: 'Gilded Mag', desc: 'Damage 4 → 5, more range.', cost: 3150, damage: 5, burst: 40, burstGap: 0.2, cooldown: cyc(40, 0.2, 2.7), range: 13, hidden: true },
-      { name: 'Golden Armor', desc: 'Damage 5 → 8, much faster.', cost: 5600, damage: 8, burst: 40, burstGap: 0.15, cooldown: cyc(40, 0.15, 2.7), range: 13, hidden: true },
-      { name: 'Golden Radio', desc: 'Damage 8 → 15, faster, more range. Unlocks Tank Airdrop: a Golden Tank. Turns ruby red.', cost: 9850, damage: 15, burst: 40, burstGap: 0.125, cooldown: cyc(40, 0.125, 2.7), range: 15, hidden: true, abilities: [G_TANK_DROP] },
+      { name: 'Golden Night Vision', desc: 'Damage 3.5 → 5.6, faster, bursts of 40, shorter pauses, and hidden detection.', cost: 950, damage: 4, burst: 40, burstGap: 0.2, cooldown: cyc(40, 0.2, 2.7), range: 11.5, hidden: true },
+      { name: 'Gilded Mag', desc: 'Damage 5.6 → 7, more range.', cost: 3150, damage: 5, burst: 40, burstGap: 0.2, cooldown: cyc(40, 0.2, 2.7), range: 13, hidden: true },
+      { name: 'Golden Armor', desc: 'Damage 7 → 11, much faster.', cost: 5600, damage: 8, burst: 40, burstGap: 0.15, cooldown: cyc(40, 0.15, 2.7), range: 13, hidden: true },
+      { name: 'Golden Radio', desc: 'Damage 11 → 21, faster, more range. Unlocks Tank Airdrop: a Golden Tank. Turns ruby red.', cost: 9850, damage: 15, burst: 40, burstGap: 0.125, cooldown: cyc(40, 0.125, 2.7), range: 15, hidden: true, abilities: [G_TANK_DROP] },
     ],
   },
 
@@ -254,17 +254,17 @@ export const GOLD_TOWERS = {
     homing: true,
     lob: 1,
     goldFx: RUBY,
-    blurb: 'The golden Submerge. Harder-hitting golden missiles in both modes. Afloat fires bursts of missiles; from Lv 3 it can dive and fire slow, huge golden nukes (1,000 damage each at max), the only mode with hidden detection. Very expensive. Water only.',
+    blurb: 'The golden Submerge. Harder-hitting golden missiles in both modes. Afloat fires bursts of missiles; from Lv 3 it can dive and fire slow, huge golden nukes (1,800 damage each at max), the only mode with hidden detection. Very expensive. Water only.',
     tip: 'Keep it Submerged against bosses. Set it to Strongest.',
     levels: [
       { name: 'Golden Submerge', desc: 'Bursts of 2 golden missiles.', damage: 45, burst: 2, burstGap: 1, cooldown: cyc(2, 1, 7), range: 110, radius: 3, hidden: false },
-      { name: 'More Gold Tubes', desc: 'Damage 45 → 50, bursts of 4.', cost: 4500, damage: 50, burst: 4, burstGap: 1, cooldown: cyc(4, 1, 7), range: 110, radius: 3, hidden: false },
-      { name: 'Golden Missile Deck', desc: 'Damage 50 → 75, more range, bursts of 8, shorter pauses.', cost: 9750, damage: 75, burst: 8, burstGap: 1, cooldown: cyc(8, 1, 6.5), range: 130, radius: 3, hidden: false },
-      { name: 'Golden Dive', desc: 'Afloat: damage 75 → 100, much shorter pauses. Unlocks Submerged mode: 380-damage nukes every 3s with a huge blast and hidden detection.', cost: 16000, damage: 100, burst: 8, burstGap: 1, cooldown: cyc(8, 1, 3.5), range: 130, radius: 3, hidden: false,
+      { name: 'More Gold Tubes', desc: 'Damage 81 → 90, bursts of 4.', cost: 4500, damage: 50, burst: 4, burstGap: 1, cooldown: cyc(4, 1, 7), range: 110, radius: 3, hidden: false },
+      { name: 'Golden Missile Deck', desc: 'Damage 90 → 135, more range, bursts of 8, shorter pauses.', cost: 9750, damage: 75, burst: 8, burstGap: 1, cooldown: cyc(8, 1, 6.5), range: 130, radius: 3, hidden: false },
+      { name: 'Golden Dive', desc: 'Afloat: damage 135 → 180, much shorter pauses. Unlocks Submerged mode: 685-damage nukes every 3s with a huge blast and hidden detection.', cost: 16000, damage: 100, burst: 8, burstGap: 1, cooldown: cyc(8, 1, 3.5), range: 130, radius: 3, hidden: false,
         sub: { damage: 380, burst: 1, burstGap: 3, cooldown: 6, range: 150, radius: 8, lob: 2.5, hidden: true }, abilities: [DIVE_AB] },
-      { name: 'Golden Hunter', desc: 'Afloat: faster, more range. Submerged: 600-damage nukes, 2 per burst, more range.', cost: 26500, damage: 100, burst: 8, burstGap: 0.8, cooldown: cyc(8, 0.8, 3.5), range: 140, radius: 3, hidden: false,
+      { name: 'Golden Hunter', desc: 'Afloat: faster, more range. Submerged: 1,080-damage nukes, 2 per burst, more range.', cost: 26500, damage: 100, burst: 8, burstGap: 0.8, cooldown: cyc(8, 0.8, 3.5), range: 140, radius: 3, hidden: false,
         sub: { damage: 600, burst: 2, burstGap: 2.5, cooldown: cyc(2, 2.5, 6), range: 190, radius: 8, lob: 2.5, hidden: true }, abilities: [DIVE_AB] },
-      { name: 'Ruby Jericho', desc: 'Afloat: damage 160, faster. Submerged: 1,000-damage nukes, 3 per burst. Unlocks the Golden Jericho Missile. Turns ruby red.', cost: 58000, damage: 160, burst: 8, burstGap: 0.75, cooldown: cyc(8, 0.75, 3.5), range: 130, radius: 3, hidden: false,
+      { name: 'Ruby Jericho', desc: 'Afloat: damage 290, faster. Submerged: 1,800-damage nukes, 3 per burst. Unlocks the Golden Jericho Missile. Turns ruby red.', cost: 58000, damage: 160, burst: 8, burstGap: 0.75, cooldown: cyc(8, 0.75, 3.5), range: 130, radius: 3, hidden: false,
         sub: { damage: 1000, burst: 3, burstGap: 2.5, cooldown: cyc(3, 2.5, 10), range: 150, radius: 9, lob: 2.5, hidden: true }, abilities: [DIVE_AB, JERICHO_AB] },
     ],
   },
@@ -310,17 +310,17 @@ export const GOLD_TOWERS = {
     tip: 'Put it in the middle of the map: its range covers most of the path.',
     levels: [
       { name: 'Golden Orbit', desc: '5s of golden laser fire, then 8s recharging. Shields towers nearby (100 every 15s).', ...orb(6, 0.165, 40, 5, 8, 100) },
-      { name: 'Golden Lens', desc: 'Damage 6 → 11, faster, more range, 6s of fire.', cost: 4400, ...orb(11, 0.13, 44, 6, 8, 150) },
-      { name: 'Golden Core', desc: 'Damage 11 → 14, faster.', cost: 9000, ...orb(14, 0.12, 44, 6, 8, 250) },
-      { name: 'Golden Array', desc: 'Damage 14 → 22, more range, 7s of fire.', cost: 17000, ...orb(22, 0.12, 50, 7, 8, 400) },
-      { name: 'Golden Recharge', desc: 'Damage 22 → 25, more range, recharges in 7s.', cost: 26500, ...orb(25, 0.12, 55, 7, 7, 600) },
-      { name: 'Ruby Wipeout', desc: 'Damage 25 → 30, more range, 10s of fire, recharges in 6.5s. Unlocks Golden Wipeout. Turns ruby red.', cost: 41500, ...orb(30, 0.12, 60, 10, 6.5, 1000), abilities: [WIPEOUT_AB] },
+      { name: 'Golden Lens', desc: 'Damage 11 → 20, faster, more range, 6s of fire.', cost: 4400, ...orb(11, 0.13, 44, 6, 8, 150) },
+      { name: 'Golden Core', desc: 'Damage 20 → 25, faster.', cost: 9000, ...orb(14, 0.12, 44, 6, 8, 250) },
+      { name: 'Golden Array', desc: 'Damage 25 → 40, more range, 7s of fire.', cost: 17000, ...orb(22, 0.12, 50, 7, 8, 400) },
+      { name: 'Golden Recharge', desc: 'Damage 40 → 45, more range, recharges in 7s.', cost: 26500, ...orb(25, 0.12, 55, 7, 7, 600) },
+      { name: 'Ruby Wipeout', desc: 'Damage 45 → 54, more range, 10s of fire, recharges in 6.5s. Unlocks Golden Wipeout. Turns ruby red.', cost: 41500, ...orb(30, 0.12, 60, 10, 6.5, 1000), abilities: [WIPEOUT_AB] },
     ],
   },
 
   // Gold Commander: the ultimate support tower (golden perk of the Commander, 50,000 credits).
   // Mechanics (see sim.js):
-  //   killCash: kills by towers in its aura pay that much (1.5 = 1.5x).
+  //   killCash: damage by towers in its aura pays that much (1.5 = 1.5x; in Versus, their kills do).
   //   goldRate: extra firerate for golden towers in its aura, on top of the other boosts.
   //   cta ability `dmg`: extra damage while Call to Battle is on (besides `boost` firerate).
   //   sword: { damage, every, radius, always } his giant broadsword: every `every` s it hits every
@@ -340,19 +340,19 @@ export const GOLD_TOWERS = {
     limit: 2,
     kind: 'support',
     goldFx: {},
-    blurb: 'The ultimate tower. Towers in his range do 33% more damage with 33% more range, earn 1.5x cash from kills, and golden towers attack faster too. Call to Battle! pulls out his giant golden broadsword and pushes nearby towers even harder; Deus Ex Machina summons a hovering golden cyber tank; and at max level an Orbital Airstrike beam follows your cursor, melting everything in its path. Every upgrade is very expensive.',
+    blurb: 'The ultimate tower. Towers in his range do 33% more damage with 33% more range, earn 1.5x cash for their damage, and golden towers attack faster too. Call to Battle! pulls out his giant golden broadsword and pushes nearby towers even harder; Deus Ex Machina summons a hovering golden cyber tank; and at max level an Orbital Airstrike beam follows your cursor, melting everything in its path. Every upgrade is very expensive.',
     tip: 'Surround him with your best towers, golden ones most of all. Steer the Orbital Airstrike along the path with your mouse.',
     levels: [
       { name: 'Gold Commander', desc: 'Towers in range get +33% damage and +33% range. 33% more range than a Commander.', aura: 18.6, rangeBoost: 0.33, dmgBoost: 0.33, hidden: false },
-      { name: 'Gold Digging', desc: 'Towers in range earn 1.5x cash from kills, and golden towers in range attack 15% faster on top of the other boosts.', cost: 8000, aura: 18.6, rangeBoost: 0.33, dmgBoost: 0.33, killCash: 1.5, goldRate: 0.15, hidden: false },
-      { name: 'Call to Battle!', desc: 'Ability: for 12s he pulls out his giant golden broadsword (2,500 damage to every zombie within 12, every second), and towers in range attack 50% faster and do 25% more damage.', cost: 25000, aura: 18.6, rangeBoost: 0.33, dmgBoost: 0.33, killCash: 1.5, goldRate: 0.15, hidden: true,
-        sword: { damage: 2500, every: 1, radius: 12 },
+      { name: 'Gold Digging', desc: 'Towers in range earn 1.5x cash for their damage, and golden towers in range attack 15% faster on top of the other boosts.', cost: 8000, aura: 18.6, rangeBoost: 0.33, dmgBoost: 0.33, killCash: 1.5, goldRate: 0.15, hidden: false },
+      { name: 'Call to Battle!', desc: 'Ability: for 12s he pulls out his giant golden broadsword (300 damage to every zombie within 12, every second), and towers in range attack 50% faster and do 25% more damage.', cost: 25000, aura: 18.6, rangeBoost: 0.33, dmgBoost: 0.33, killCash: 1.5, goldRate: 0.15, hidden: true,
+        sword: { damage: 300, every: 1, radius: 12 },
         abilities: [callToBattle(0.5, 0.25, 1, 12)] },
       { name: 'Deus Ex Machina', desc: 'Ability ($5,000): summons a hovering golden cyber tank with a huge-range cannon and two machine guns. When destroyed it fights on as a ghost (it just can\'t ram).', cost: 60000, aura: 18.6, rangeBoost: 0.33, dmgBoost: 0.33, killCash: 1.5, goldRate: 0.15, hidden: true,
-        sword: { damage: 2500, every: 1, radius: 12 },
+        sword: { damage: 300, every: 1, radius: 12 },
         abilities: [callToBattle(0.5, 0.25, 1, 12), DEUS_EX] },
-      { name: 'Give them hell!', desc: 'Call to Battle is always on (+50% firerate, +66% damage in total) and his sword is greatly boosted (8,000 damage within 14). The Call to Battle! ability now doubles his sword and adds another +50% firerate and +50% damage. Ability: Orbital Airstrike, a beam that follows your cursor for 12s.', cost: 150000, aura: 18.6, rangeBoost: 0.33, dmgBoost: 0.66, rateBoost: 0.5, killCash: 1.5, goldRate: 0.15, hidden: true,
-        sword: { damage: 8000, every: 1, radius: 14, always: true },
+      { name: 'Give them hell!', desc: 'Call to Battle is always on (+50% firerate, +66% damage in total) and his sword is boosted (500 damage within 14). The Call to Battle! ability now doubles his sword and adds another +50% firerate and +50% damage. Ability: Orbital Airstrike, a beam that follows your cursor for 12s.', cost: 150000, aura: 18.6, rangeBoost: 0.33, dmgBoost: 0.66, rateBoost: 0.5, killCash: 1.5, goldRate: 0.15, hidden: true,
+        sword: { damage: 500, every: 1, radius: 14, always: true },
         abilities: [callToBattle(0.5, 0.5, 2, 12), DEUS_EX, ORBITAL] },
     ],
   },

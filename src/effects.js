@@ -1,9 +1,13 @@
 import * as THREE from 'three';
 import { bladePos } from './sim/sim.js';
 import { MODEL_SCALE as K } from './scale.js';
+import { heightAt } from './sim/map.js';
+import { BEAM, BULLET, CubePool, StreakPool, TRAIL } from './particles.js';
 
 const unitBox = new THREE.BoxGeometry(1, 1, 1);
-const ringGeo = new THREE.RingGeometry(0.8, 1, 32);
+// Rings and glows are eight-sided: blocky, like everything else.
+const ringGeo = new THREE.RingGeometry(0.78, 1, 8, 1, Math.PI / 8);
+const discGeo = new THREE.CircleGeometry(1, 8, Math.PI / 8);
 const puddleGeo = new THREE.CircleGeometry(1, 24);
 const textCache = new Map();
 const heliMat = new THREE.MeshLambertMaterial({ color: 0x263238 });
@@ -35,7 +39,74 @@ function textTexture(str, color) {
   return t;
 }
 
-/** Short-lived visual effects: tracers, muzzle flashes, debris, floating text. */
+// ---------------------------------------------------------------- particle helpers
+const rnd = (a, b) => a + Math.random() * (b - a);
+const pick = (list) => list[(Math.random() * list.length) | 0];
+const _a = new THREE.Vector3();
+const _b = new THREE.Vector3();
+const _c = new THREE.Vector3();
+const _d = new THREE.Vector3();
+const _e = new THREE.Vector3();
+const _f = new THREE.Vector3();
+
+/** A lighter (f > 1, towards white) or darker (f < 1) shade of a hex color. */
+export function shade(hex, f) {
+  let r = (hex >> 16) & 255;
+  let g = (hex >> 8) & 255;
+  let b = hex & 255;
+  if (f <= 1) {
+    r *= f; g *= f; b *= f;
+  } else {
+    const k = Math.min(1, (f - 1) / 1.2);
+    r += (255 - r) * k; g += (255 - g) * k; b += (255 - b) * k;
+  }
+  return (Math.round(r) << 16) | (Math.round(g) << 8) | Math.round(b);
+}
+
+// Shared particle settings (see DEF in particles.js).
+const HALO = { out: 0, mid: 0.3 }; // light: fades by going dark, never shrinks
+const CORE = { out: 0.3, mid: 0.4 }; // the white-hot block at the heart of a flash
+const MUZZLE = { out: 0.5, mid: 0.45, spin: 0 };
+const TRAIL_FIRE = { drag: 2, spin: 6, out: 0.8 };
+const TRAIL_SMOKE = { drag: 1.5, grav: -1.2, spin: 1.5, in: 0.15, out: 0.55, grow: 2 };
+const STATUS_UP = { drag: 1, spin: 5, out: 0.5, mid: 0.3 };
+const STATUS_DRIFT = { drag: 1, spin: 4, out: 0.6 };
+const STATUS_BUBBLE = { drag: 1.2, spin: null, in: 0.2, out: 0.15 };
+const STATUS_DRIP = { grav: 22, spin: 2, out: 0.5 };
+const FIRE = [0xfff59d, 0xff9100, 0x7f1d0a];
+const SOOT = [0x8a827b, 0x5c5550];
+const FIRES = [[0xfffde7, 0xffc400, 0x8a2a0a], [0xfff59d, 0xff9100, 0x7f1d0a], [0xffe082, 0xff5a1f, 0x5a1408], [0xffcc80, 0xf4511e, 0x3e2723]];
+const SMOKE = [0xbdbdbd, 0x9e9e9e, 0x8a8a8a];
+const DEBRIS = [0x4e342e, 0x3e3a36, 0x6d5d52];
+const ICE = [0xb3e5fc, 0x81d4fa, 0xe1f5fe];
+const PAINT = [0xff1744, 0x2979ff, 0xffea00, 0x00e676, 0xd500f9, 0xff9100];
+const RAINBOW = [0xff1744, 0xffea00, 0x00e5ff, 0x76ff03, 0xff4081];
+
+// Projectile bodies share their materials (one per color, kept for good).
+const litMats = new Map();
+const glowMats = new Map();
+function litMat(color) {
+  let m = litMats.get(color);
+  if (!m) litMats.set(color, (m = new THREE.MeshLambertMaterial({ color })));
+  return m;
+}
+function glowMat(color) {
+  let m = glowMats.get(color);
+  if (!m) glowMats.set(color, (m = new THREE.MeshBasicMaterial({ color })));
+  return m;
+}
+function block(parent, mat, sx, sy, sz, x = 0, y = 0, z = 0) {
+  const m = new THREE.Mesh(unitBox, mat);
+  m.scale.set(sx, sy, sz);
+  m.position.set(x, y, z);
+  parent.add(m);
+  return m;
+}
+
+/** The game's effects, so views can reach them without being handed them (status particles). */
+export let FX = null;
+
+/** Short-lived visual effects: tracers, muzzle flashes, explosions, debris, floating text. */
 export class Effects {
   /** scene: where effects go (the scaled map group); sky: the THREE.Scene whose sky and fog tint. */
   constructor(scene, sky = scene) {
@@ -46,6 +117,19 @@ export class Effects {
     this.emberOn = false;
     this.armadaK = 0; // 0..1: how much the Overlord's starships cover the sky
     this.armadaOn = false;
+    // Blocky particles (particles.js): shaded solids, full-bright cubes, light, and streaks.
+    this.lit = new CubePool(scene, 'lit', 3500);
+    this.glow = new CubePool(scene, 'glow', 3500);
+    this.halo = new CubePool(scene, 'add', 500);
+    this.streaks = new StreakPool(scene, 'glow', 900);
+    this.streakHalo = new StreakPool(scene, 'add', 900);
+    this.timers = [];
+    this.frame = 0;
+    this.onShake = null; // (time, amount): set by the game to shake the camera
+    this._lt = new THREE.Vector3(); // where the last tracer left from, its direction and frame
+    this._ld = new THREE.Vector3(0, 0, 1);
+    this._lf = -1;
+    FX = this;
   }
 
   /** The Overlord's armada: starships drift across the sky and the world grows dark. */
@@ -353,61 +437,378 @@ export class Effects {
     this.items.push({ obj, life, max: life, mat, update });
   }
 
-  tracer(from, to, color = 0xffe066, width = 0.14) {
-    width *= K;
-    const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.95 });
-    const m = new THREE.Mesh(unitBox, mat);
-    m.scale.set(width, width, from.distanceTo(to));
-    m.position.copy(from).lerp(to, 0.5);
-    m.lookAt(to);
-    // Thick (rail) shots linger and shrink; thin bullets just blink.
-    const thick = width > 0.2 * K;
-    const life = thick ? 0.35 : 0.08;
-    this.add(m, life, mat, (it, k) => {
-      mat.opacity = 0.95 * k;
-      if (thick) m.scale.set(width * k, width * k, m.scale.z);
+
+  // ================================================================ blocky effects (Visuals 2.0 part 3)
+  // Everything below is built from the cube and streak pools in particles.js: one draw call per
+  // pool, nothing see-through except light (the `halo` pools), and cubes that shrink instead of fading.
+
+  /** How many particles to really use when an effect wants `count`: fewer while the pools are busy. */
+  n(count) {
+    const l = Math.max(this.lit.load, this.glow.load);
+    return Math.max(1, Math.round(count * (l < 0.35 ? 1 : l < 0.65 ? 0.6 : 0.3)));
+  }
+
+  /** Runs `fn` after `delay` seconds (staged effects: a boss blowing up bit by bit). */
+  later(delay, fn) {
+    this.timers.push({ t: delay, fn });
+  }
+
+  /** Asks the game to shake the camera (GameClient sets `onShake`). */
+  shake(time, amount) {
+    this.onShake?.(time, amount);
+  }
+
+  /** Glowing shards flying out of `pos`. dir: their main direction (spread 0..1 around it). */
+  sparks(pos, color = 0xffd54f, count = 6, power = 12, dir = null, spread = 1, delay = 0) {
+    count = this.n(count);
+    const hot = shade(color, 1.7);
+    const o = { grav: 26, drag: 1.5, spin: 12, floor: heightAt(pos.x, pos.z), out: 0.6, mid: 0.3, az: 2.4, delay };
+    for (let i = 0; i < count; i++) {
+      let vx = rnd(-1, 1);
+      let vy = rnd(-0.2, 1);
+      let vz = rnd(-1, 1);
+      if (dir) {
+        vx = dir.x + vx * spread;
+        vy = dir.y + vy * spread + 0.25;
+        vz = dir.z + vz * spread;
+      }
+      const sp = power * rnd(0.45, 1.2);
+      this.glow.spawn(pos.x, pos.y, pos.z, vx * sp, vy * sp, vz * sp, rnd(0.18, 0.42), rnd(0.1, 0.2) * K, 0.05 * K, 0xffffff, hot, color, o);
+    }
+  }
+
+  /** A flat blocky ring racing outwards along the ground (shockwaves, pulses). */
+  shock(pos, radius, color = 0xffcc80, time = 0.4, y = null, opacity = 0.8) {
+    const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide });
+    const ring = new THREE.Mesh(ringGeo, mat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.rotation.z = Math.random() * 0.8;
+    ring.position.copy(pos).setY(y ?? heightAt(pos.x, pos.z) + 0.35);
+    ring.scale.setScalar(0.01);
+    this.add(ring, time, mat, (it, k) => {
+      const f = 1 - k * k; // fast at first, slowing down
+      ring.scale.setScalar(Math.max(0.05, radius * f));
+      mat.opacity = opacity * Math.min(1, k * 1.6);
     });
   }
 
+  /** Light thrown on the ground by a blast: a flat glowing patch that dies away. */
+  groundGlow(pos, radius, color = 0xffa726, time = 0.35) {
+    const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.32, depthWrite: false, blending: THREE.AdditiveBlending });
+    const m = new THREE.Mesh(discGeo, mat);
+    m.rotation.x = -Math.PI / 2;
+    m.rotation.z = Math.random() * 0.8;
+    m.position.copy(pos).setY(heightAt(pos.x, pos.z) + 0.22);
+    m.scale.setScalar(radius);
+    this.add(m, time, mat, (it, k) => {
+      mat.opacity = 0.32 * k * k;
+      m.scale.setScalar(radius * (1.15 - k * 0.15));
+    });
+  }
+
+  /** Dust kicked up in a ring: cubes sliding out along the ground to `radius`. */
+  dustRing(pos, radius, color = 0xa1958a, count = 12) {
+    count = this.n(count);
+    const floor = heightAt(pos.x, pos.z);
+    const dark = shade(color, 0.75);
+    const o = { drag: 3.6, grav: 3, spin: 2, floor, in: 0.1, out: 0.6, grow: 2 };
+    const a0 = Math.random() * 6.28;
+    for (let i = 0; i < count; i++) {
+      const a = a0 + (i / count) * 6.28 + rnd(-0.2, 0.2);
+      const v = radius * 3.6 * rnd(0.75, 1.1);
+      const s = Math.min(1.4, 0.3 + radius * 0.07) * rnd(0.7, 1.3) * K;
+      this.lit.spawn(pos.x + Math.cos(a) * 0.4, floor + 0.3, pos.z + Math.sin(a) * 0.4, Math.cos(a) * v, rnd(0.5, 2.2), Math.sin(a) * v, rnd(0.45, 0.8), s * 0.5, s * 1.5, color, color, dark, o);
+    }
+  }
+
+  /** A burn mark (or goo, frost, paint) left on the ground for `life` seconds: a few flat slabs. */
+  scorch(pos, radius, color = 0x4a4038, life = 6) {
+    if (this.lit.load > 0.6) return;
+    const floor = heightAt(pos.x, pos.z);
+    if (floor < -2) return; // out over the sea or the void
+    for (let i = 0; i < 3; i++) {
+      const s = radius * (i ? rnd(0.45, 0.8) : 1.1);
+      const d = i ? radius * 0.55 : 0;
+      const a = Math.random() * 6.28;
+      this.lit.spawn(pos.x + Math.cos(a) * d, floor + 0.06 + i * 0.02 + Math.random() * 0.02, pos.z + Math.sin(a) * d, 0, 0, 0, life * rnd(0.8, 1.1), s, s, color, color, color,
+        { yaw: Math.random() * 1.57, ay: 0.05 / s, in: 0.012, out: 0.3 });
+    }
+  }
+
+  /** A short blink of light: a white-hot block inside a soft glow, throwing a few shards. */
   flash(pos, color = 0xfff3b0, size = 0.7) {
+    // Right after a tracer from the same spot it's a gun firing: a muzzle flash along the shot.
+    if (this._lf === this.frame && pos.distanceToSquared(this._lt) < 1e-4) return this.muzzle(pos, this._ld, color, size);
+    const s = size * K;
+    const hot = shade(color, 1.7);
+    this.halo.spawn(pos.x, pos.y, pos.z, 0, 0, 0, 0.13, s * 2, s * 1.2, color, shade(color, 0.7), 0x000000, HALO);
+    this.glow.spawn(pos.x, pos.y, pos.z, 0, 0, 0, 0.09, s * 1.1, s * 0.5, 0xffffff, hot, color, CORE);
+    const o = { drag: 3, spin: 10, out: 0.7, az: 2 };
+    for (let i = this.n(Math.min(6, 2 + Math.round(size * 1.5))); i > 0; i--) {
+      const v = (4 + size * 5) * rnd(0.6, 1.2);
+      _a.set(rnd(-1, 1), rnd(-1, 1), rnd(-1, 1)).normalize();
+      this.glow.spawn(pos.x, pos.y, pos.z, _a.x * v, _a.y * v, _a.z * v, rnd(0.12, 0.24), s * 0.3, s * 0.08, hot, color, color, o);
+    }
+  }
+
+  /** Muzzle flash: a blocky star of fire along `dir`, sparks and a wisp of gun smoke. */
+  muzzle(pos, dir, color = 0xfff3b0, size = 0.7) {
+    const s = size * K;
+    const hot = 0xfffde7;
+    // Pale "bullet" colors burn as fire; a colored shot (laser, plasma, frost) keeps its own color.
+    const r = color >> 16;
+    const g = (color >> 8) & 255;
+    const b = color & 255;
+    const warm = r > 200 && g > 150 && b < 215;
+    const mid = warm ? 0xffd740 : shade(color, 1.25);
+    const deep = warm ? 0xff8f00 : shade(color, 0.8);
+    // The flame out of the barrel: three blocks, each smaller and redder than the last.
+    for (let i = 0; i < 3; i++) {
+      const d = s * (0.35 + i * 0.75);
+      const w = s * (0.85 - i * 0.24) * rnd(0.85, 1.15);
+      this.glow.spawn(pos.x + dir.x * d, pos.y + dir.y * d, pos.z + dir.z * d, dir.x * 6, dir.y * 6, dir.z * 6, 0.075 + i * 0.012, w, w * 0.45, i ? mid : 0xffffff, i ? mid : hot, deep, MUZZLE);
+    }
+    this.streaks.spawn(pos, _a.copy(pos).addScaledVector(dir, s * 3.3), BEAM, s * 0.38, hot, mid, { fade: 0.07 });
+    // Four short spikes across it.
+    _b.set(dir.z, 0, -dir.x);
+    if (_b.lengthSq() < 1e-4) _b.set(1, 0, 0);
+    _b.normalize();
+    _c.crossVectors(dir, _b);
+    for (let i = 0; i < 4; i++) {
+      const v = i < 2 ? _b : _c;
+      const len = s * (i < 2 ? 1.3 : 1.05) * (i % 2 ? -1 : 1);
+      _d.copy(pos).addScaledVector(dir, s * 0.3);
+      this.streaks.spawn(_d, _a.copy(_d).addScaledVector(v, len).addScaledVector(dir, s * 0.55), BEAM, s * 0.3, mid, deep, { fade: 0.065 });
+    }
+    this.halo.spawn(pos.x + dir.x * s * 0.6, pos.y + dir.y * s * 0.6, pos.z + dir.z * s * 0.6, 0, 0, 0, 0.09, s * 1.9, s * 1.1, deep, deep, 0x000000, HALO);
+    this.sparks(pos, warm ? 0xffc400 : color, size > 1 ? 4 : 2, 14 + size * 6, dir, 0.35);
+    if (Math.random() < 0.55 && this.lit.load < 0.5) {
+      const c = pick(SMOKE);
+      this.lit.spawn(pos.x + dir.x * s * 0.6, pos.y + dir.y * s * 0.6, pos.z + dir.z * s * 0.6, dir.x * 2.5, dir.y * 2.5 + 1.4, dir.z * 2.5, rnd(0.45, 0.8), s * 0.4, s * (0.9 + size * 0.3), c, c, shade(c, 0.8),
+        { drag: 2.6, grav: -1.6, spin: 1.5, in: 0.15, out: 0.6 });
+    }
+  }
+
+  /** A spent brass shell flipping out of a gun at `pos`, thrown to the side (`yaw` = where the gun points). */
+  casing(pos, yaw, size = 1) {
+    if (this.lit.load > 0.5) return;
+    const side = yaw - Math.PI / 2 + rnd(-0.4, 0.4);
+    const v = rnd(3.5, 6);
+    this.lit.spawn(pos.x, pos.y, pos.z, Math.sin(side) * v, rnd(5, 8), Math.cos(side) * v, rnd(0.9, 1.3), 0.13 * size * K, 0.13 * size * K, 0xffca28, 0xd4a017, 0x8d6e1f,
+      { grav: 30, spin: 18, floor: heightAt(pos.x, pos.z), bounce: 0.45, out: 0.2, az: 2.3 });
+  }
+
+  /** A bullet (thin) or a rail / laser shot (width over 0.2) from `from` to `to`. */
+  tracer(from, to, color = 0xffe066, width = 0.14) {
+    width *= K;
+    const dist = from.distanceTo(to);
+    this._ld.subVectors(to, from);
+    if (dist > 1e-5) this._ld.divideScalar(dist);
+    this._lt.copy(from);
+    this._lf = this.frame;
+    const hot = shade(color, 1.6);
+    if (width > 0.2 * K) {
+      // A beam: a white-hot core in a wide glow that thins out, with motes drifting off it.
+      this.streaks.spawn(from, to, BEAM, width * 0.9, 0xffffff, hot, { fade: 0.3 });
+      this.streakHalo.spawn(from, to, BEAM, width * 3.4, color, 0x000000, { fade: 0.42 });
+      const n = this.n(Math.min(14, Math.round(dist / 2.2)));
+      const o = { drag: 2, spin: 6, out: 0.8 };
+      for (let i = 0; i < n; i++) {
+        _a.lerpVectors(from, to, (i + Math.random()) / n);
+        this.glow.spawn(_a.x, _a.y, _a.z, rnd(-1.5, 1.5), rnd(-0.5, 2), rnd(-1.5, 1.5), rnd(0.25, 0.5), width * rnd(0.6, 1.1), 0.02, hot, color, color, o);
+      }
+      this.halo.spawn(to.x, to.y, to.z, 0, 0, 0, 0.16, width * 9, width * 4, color, color, 0x000000, HALO);
+      this.sparks(to, color, 7, 12, _b.copy(this._ld).negate(), 0.9);
+      return;
+    }
+    // A bullet: a bright slug crossing in a blink, a thin line of light behind it, sparks where it lands.
+    const travel = Math.min(0.1, Math.max(0.03, dist / 320));
+    this.streaks.spawn(from, to, BULLET, width * 1.5, hot, hot, { travel, len: Math.min(dist, 3.6) });
+    this.streakHalo.spawn(from, to, TRAIL, width * 1.7, color, 0x000000, { travel, fade: 0.17 });
+    if (this.glow.load < 0.6) this.sparks(to, color, 3, 9, _b.copy(this._ld).negate(), 0.8, travel);
+  }
+
+  /** Blocky debris burst. */
+  puff(pos, color, count = 8, size = 0.5, power = 8) {
     size *= K;
-    const mat = new THREE.MeshBasicMaterial({ color, transparent: true });
-    const m = new THREE.Mesh(unitBox, mat);
-    m.position.copy(pos);
-    m.scale.setScalar(size);
-    m.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
-    this.add(m, 0.06, mat, (it, k) => m.scale.setScalar(size * k + 0.2));
+    count = this.n(count);
+    const floor = heightAt(pos.x, pos.z);
+    const dark = shade(color, 0.7);
+    const o = { grav: 30, spin: 8, floor, bounce: 0.3, out: 0.5 };
+    for (let i = 0; i < count; i++) {
+      const s = size * rnd(0.6, 1.4);
+      const c = i % 3 === 0 ? shade(color, 1.18) : i % 3 === 1 ? color : dark;
+      this.lit.spawn(pos.x, pos.y, pos.z, rnd(-0.5, 0.5) * power, power * rnd(0.5, 1.5), rnd(-0.5, 0.5) * power, rnd(0.5, 0.9), s, s, c, c, c, o);
+    }
+    // Finer grit around the big pieces.
+    for (let i = this.n(Math.ceil(count / 2)); i > 0; i--) {
+      const s = size * rnd(0.25, 0.45);
+      this.lit.spawn(pos.x, pos.y, pos.z, rnd(-0.7, 0.7) * power, power * rnd(0.3, 1.2), rnd(-0.7, 0.7) * power, rnd(0.35, 0.7), s, s, color, color, dark, o);
+    }
+  }
+
+  /** A ball of fire cubes boiling outwards: the heart of every explosion. */
+  fireball(pos, radius, count, colors = FIRE, delay = 0) {
+    count = this.n(count);
+    const o = { drag: 4.2, grav: -3.5, spin: 3, in: 0.12, out: 0.55, mid: 0.35, grow: 3, delay };
+    for (let i = 0; i < count; i++) {
+      _a.set(rnd(-1, 1), rnd(-0.35, 1), rnd(-1, 1)).normalize();
+      const v = radius * rnd(2, 5.5);
+      const s = radius * rnd(0.28, 0.62);
+      const d = radius * 0.3 * Math.random();
+      const c = colors === FIRE ? FIRES[i & 3] : colors;
+      this.glow.spawn(pos.x + _a.x * d, pos.y + _a.y * d, pos.z + _a.z * d, _a.x * v, _a.y * v, _a.z * v, rnd(0.34, 0.72), s * 0.6, s * 1.4, c[0], c[1], c[2], o);
+    }
+  }
+
+  /** Dark smoke rolling up out of `pos`. */
+  smokePuff(pos, radius, count, delay = 0.1, colors = SOOT) {
+    if (this.lit.load > 0.55) return;
+    count = this.n(count);
+    const o = { drag: 2.2, grav: -3.2, spin: 1.2, in: 0.2, out: 0.5, grow: 2, delay };
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * 6.28;
+      const v = radius * rnd(0.4, 1.6);
+      const s = radius * rnd(0.3, 0.55);
+      o.delay = delay + Math.random() * 0.15;
+      this.lit.spawn(pos.x, pos.y + radius * 0.2, pos.z, Math.cos(a) * v, radius * rnd(0.8, 2.2), Math.sin(a) * v, rnd(0.8, 1.5), s * 0.6, s * 1.5, colors[0], colors[1], colors[1], o);
+    }
+  }
+
+  /** White flash, fireball, shockwave, flying debris, sparks, smoke and a burn mark. */
+  explosion(pos, radius) {
+    const floor = heightAt(pos.x, pos.z);
+    const p = _e.copy(pos);
+    if (p.y < floor + 0.3) p.y = floor + 0.3;
+    const low = p.y - floor < 3.5; // close enough to the ground to mark it
+    const cy = p.y + radius * 0.25;
+    // The first frame: a white-hot block and a wash of light.
+    this.glow.spawn(p.x, cy, p.z, 0, 0, 0, 0.1, radius * 0.9, radius * 1.3, 0xffffff, 0xfff59d, 0xffb300, CORE);
+    this.halo.spawn(p.x, cy, p.z, 0, 0, 0, 0.16, radius * 1.7, radius * 2.3, 0xa86a2a, 0x7a3c08, 0x000000, HALO);
+    _f.set(p.x, cy, p.z);
+    this.fireball(_f, radius, Math.min(30, 9 + radius * 3.2));
+    this.smokePuff(_f, radius, Math.min(14, 5 + radius * 1.6));
+    this.sparks(_f, 0xffb300, Math.min(14, 5 + radius * 1.5), 9 + radius * 2.2);
+    // Chunks thrown high that bounce where they land; a few are still glowing.
+    const chunks = this.n(Math.min(12, 3 + radius * 1.6));
+    const o = { grav: 32, spin: 10, floor, bounce: 0.35, out: 0.3 };
+    for (let i = 0; i < chunks; i++) {
+      const a = Math.random() * 6.28;
+      const v = radius * rnd(1.2, 3.2) + 2;
+      const s = Math.min(0.9, 0.22 + radius * 0.06) * rnd(0.6, 1.3) * K;
+      if (i % 3 === 0) this.glow.spawn(p.x, cy, p.z, Math.cos(a) * v, rnd(8, 15) + radius, Math.sin(a) * v, rnd(0.7, 1.1), s, s * 0.6, 0xfff59d, 0xff6d00, 0x4e1a06, o);
+      else this.lit.spawn(p.x, cy, p.z, Math.cos(a) * v, rnd(7, 14) + radius, Math.sin(a) * v, rnd(0.8, 1.3), s, s, DEBRIS[i % 3], DEBRIS[i % 3], DEBRIS[i % 3], o);
+    }
+    if (low) {
+      this.shock(p, radius * 1.25, 0xffcc80, 0.42);
+      this.groundGlow(p, radius * 1.35, 0xff9100, 0.3);
+      this.dustRing(p, radius * 1.1, 0xa1958a, Math.min(16, 6 + radius * 2));
+      this.scorch(p, radius * 0.75);
+    }
+    if (radius >= 5) this.shake(0.3, Math.min(0.9, radius * 0.07));
+  }
+
+  /** City Buster: a blinding flash, twin shockwaves and a mushroom cloud of fire cubes. */
+  nuke(pos, radius) {
+    this.explosion(pos, radius * 1.3);
+    const floor = heightAt(pos.x, pos.z);
+    const y = Math.max(pos.y, floor + 0.3);
+    this.halo.spawn(pos.x, y + radius * 0.5, pos.z, 0, 0, 0, 0.3, radius * 2, radius * 3.2, 0xa07a40, 0x7a4a10, 0x000000, HALO);
+    this.glow.spawn(pos.x, y + radius * 0.4, pos.z, 0, 0, 0, 0.18, radius * 1.6, radius * 2.6, 0xffffff, 0xfffde7, 0xffd54f, CORE);
+    _f.set(pos.x, y, pos.z);
+    this.shock(_f, radius * 2.4, 0xffe0b2, 0.7);
+    this.later(0.15, () => this.shock(new THREE.Vector3(pos.x, y, pos.z), radius * 3.2, 0xffab40, 0.9, null, 0.5));
+    // The stem: fire climbing fast and slowing at the top.
+    const stem = { drag: 1.5, grav: 0, spin: 2, in: 0.1, out: 0.45, mid: 0.3, grow: 2, delay: 0 };
+    for (let i = this.n(26); i > 0; i--) {
+      stem.delay = Math.random() * 0.5;
+      const s = radius * rnd(0.28, 0.45);
+      this.glow.spawn(pos.x + rnd(-0.2, 0.2) * radius, y + radius * 0.3, pos.z + rnd(-0.2, 0.2) * radius, rnd(-0.3, 0.3) * radius, radius * rnd(1.6, 2.9), rnd(-0.3, 0.3) * radius,
+        rnd(1.3, 2), s, s * 1.4, 0xfff59d, 0xff6d00, 0x3e2723, stem);
+    }
+    // The cap: a ring of fire rolling outwards high up.
+    const cap = { drag: 1.9, grav: -0.6, spin: 1.5, in: 0.15, out: 0.45, mid: 0.3, grow: 2, delay: 0 };
+    for (let i = this.n(30); i > 0; i--) {
+      const a = Math.random() * 6.28;
+      const v = radius * rnd(0.6, 1.7);
+      cap.delay = 0.3 + Math.random() * 0.35;
+      const s = radius * rnd(0.4, 0.7);
+      this.glow.spawn(pos.x, y + radius * rnd(1.5, 1.9), pos.z, Math.cos(a) * v, radius * rnd(0, 0.5), Math.sin(a) * v, rnd(1.4, 2.2), s, s * 1.5, 0xffe082, 0xf4511e, 0x4e342e, cap);
+    }
+    this.smokePuff(_f.setY(y + radius), radius * 1.6, 14, 0.9);
+    this.scorch(pos, radius * 1.1, 0x3d342d, 10);
+    this.shake(0.9, 1.6);
+  }
+
+  /** Smoke and fire left behind by something flying: call every frame with where it is now. */
+  trail(st, p, dt, { smoke = true, fire = 0xff9100, size = 1, every = 0.022 } = {}) {
+    st.acc = (st.acc ?? 0) + dt;
+    if (st.acc < every) return;
+    st.acc = 0;
+    const s = size * K;
+    if (fire != null && this.glow.load < 0.8) {
+      this.glow.spawn(p.x + rnd(-0.1, 0.1) * s, p.y + rnd(-0.1, 0.1) * s, p.z + rnd(-0.1, 0.1) * s, rnd(-0.6, 0.6), rnd(-0.3, 0.9), rnd(-0.6, 0.6), rnd(0.18, 0.32), s * 0.55, s * 0.1, 0xfff59d, fire, shade(fire, 0.5), TRAIL_FIRE);
+    }
+    if (smoke && this.lit.load < 0.5 && (st.flip = !st.flip)) {
+      const g = pick(SMOKE);
+      this.lit.spawn(p.x, p.y, p.z, rnd(-0.5, 0.5), rnd(0.3, 1.3), rnd(-0.5, 0.5), rnd(0.5, 0.9), s * 0.4, s * 1.1, g, g, shade(g, 0.8), TRAIL_SMOKE);
+    }
   }
 
   /** A bomb falling from `from` to `to` over `time` seconds. */
   bomb(from, to, time) {
-    const mat = new THREE.MeshLambertMaterial({ color: 0x263238 });
-    const m = new THREE.Mesh(unitBox, mat);
-    m.scale.set(0.5 * K, 0.5 * K, 1.0 * K);
+    const g = new THREE.Group();
+    block(g, litMat(0x263238), 0.5, 0.5, 0.9);
+    block(g, litMat(0x37474f), 0.38, 0.38, 0.25, 0, 0, 0.55);
+    block(g, litMat(0xe53935), 0.52, 0.52, 0.14, 0, 0, 0.2);
+    block(g, litMat(0x455a64), 0.9, 0.08, 0.32, 0, 0, -0.5);
+    block(g, litMat(0x455a64), 0.08, 0.9, 0.32, 0, 0, -0.5);
+    g.scale.setScalar(K);
     const start = from.clone();
-    this.add(m, time, mat, (it, k) => {
+    const prev = new THREE.Vector3();
+    const st = {};
+    this.add(g, time, null, (it, k, dt) => {
       const f = 1 - k;
-      m.position.lerpVectors(start, to, f).setY(start.y + (to.y - start.y) * f * f);
-      m.rotation.x = f * 1.2;
+      prev.copy(g.position);
+      g.position.lerpVectors(start, to, f).setY(start.y + (to.y - start.y) * f * f);
+      if (g.position.distanceToSquared(prev) > 1e-5) g.lookAt(prev.lerp(g.position, 2));
+      this.trail(st, g.position, dt, { fire: null, size: 0.7, every: 0.03 });
     });
   }
 
   /** A homing missile from `from` to wherever `target()` is, arriving after `time`. */
   missile(from, target, time, color = 0xff6d00, size = 1) {
-    size *= K;
-    const mat = new THREE.MeshBasicMaterial({ color });
-    const m = new THREE.Mesh(unitBox, mat);
-    m.scale.set(0.35 * size, 0.35 * size, 1.3 * size);
+    const g = new THREE.Group();
+    block(g, litMat(0xcfd8dc), 0.34, 0.34, 1.1);
+    block(g, litMat(color), 0.36, 0.36, 0.16, 0, 0, 0.2);
+    block(g, litMat(color), 0.26, 0.26, 0.26, 0, 0, 0.66);
+    block(g, litMat(color), 0.14, 0.14, 0.16, 0, 0, 0.86);
+    block(g, litMat(0x455a64), 0.86, 0.07, 0.34, 0, 0, -0.42);
+    block(g, litMat(0x455a64), 0.07, 0.86, 0.34, 0, 0, -0.42);
+    block(g, litMat(0x263238), 0.26, 0.26, 0.12, 0, 0, -0.6);
+    const flame = block(g, glowMat(0xffe082), 0.24, 0.24, 0.5, 0, 0, -0.9);
+    g.scale.setScalar(size * K);
+    g.position.copy(from);
     const start = from.clone();
     const end = new THREE.Vector3();
     const prev = new THREE.Vector3();
-    this.add(m, time, mat, (it, k) => {
+    const back = new THREE.Vector3();
+    const st = {};
+    // Launch: a kick of smoke where it leaves.
+    this.smokePuff(from, 0.7 * size, 3, 0, SMOKE);
+    this.add(g, time, null, (it, k, dt) => {
       const f = 1 - k;
       target(end);
-      prev.copy(m.position);
-      m.position.lerpVectors(start, end, f);
-      m.position.y += Math.sin(f * Math.PI) * 3; // little arc
-      if (m.position.distanceToSquared(prev) > 1e-4) m.lookAt(prev.lerp(m.position, 2));
+      prev.copy(g.position);
+      g.position.lerpVectors(start, end, f);
+      g.position.y += Math.sin(f * Math.PI) * 3; // little arc
+      back.subVectors(prev, g.position);
+      if (back.lengthSq() > 1e-4) {
+        g.lookAt(prev.lerp(g.position, 2));
+        back.normalize().multiplyScalar(0.9 * size * K).add(g.position);
+      } else back.copy(g.position);
+      flame.scale.z = 0.35 + Math.random() * 0.45;
+      this.trail(st, back, dt, { fire: color, size });
     });
   }
 
@@ -418,87 +819,127 @@ export class Effects {
    */
   toss(from, target, time, { color = 0x9e9e9e, size = 0.5, arc = 1, glowing = false, long = false, blob = false } = {}) {
     size *= K;
-    const mat = glowing ? new THREE.MeshBasicMaterial({ color }) : new THREE.MeshLambertMaterial({ color });
-    const m = new THREE.Mesh(unitBox, mat);
-    if (long) m.scale.set(0.16 * size, 0.16 * size, 1.5 * size);
-    else m.scale.setScalar(size);
+    const mat = glowing ? glowMat(color) : litMat(color);
+    const g = new THREE.Group();
+    const body = new THREE.Group();
+    g.add(body);
+    if (long) {
+      block(body, mat, 0.16, 0.16, 1.5);
+      block(body, glowing ? mat : litMat(shade(color, 1.35)), 0.26, 0.26, 0.34, 0, 0, 0.72); // the head
+      block(body, glowing ? mat : litMat(shade(color, 0.7)), 0.3, 0.05, 0.3, 0, 0, -0.66); // the flights
+      block(body, glowing ? mat : litMat(shade(color, 0.7)), 0.05, 0.3, 0.3, 0, 0, -0.66);
+    } else if (blob) {
+      block(body, mat, 1, 1, 1);
+      block(body, glowing ? mat : litMat(shade(color, 1.3)), 0.5, 0.5, 0.5, 0.3, 0.32, 0.3);
+    } else {
+      block(body, mat, 1, 1, 1);
+      block(body, glowing ? glowMat(0xffffff) : litMat(shade(color, 0.6)), 1.06, 0.3, 1.06);
+      block(body, glowing ? mat : litMat(shade(color, 1.4)), 0.4, 0.3, 0.4, 0, 0.6, 0);
+    }
+    g.scale.setScalar(size);
+    g.position.copy(from);
     const start = from.clone();
     const end = new THREE.Vector3();
     const prev = new THREE.Vector3();
     const total = Math.max(time, 1e-3);
-    this.add(m, time, mat, (it, k) => {
+    const st = {};
+    const drop = { grav: 22, spin: 6, out: 0.7, floor: heightAt(from.x, from.z) };
+    const spinX = rnd(8, 14);
+    this.add(g, time, null, (it, k, dt) => {
       const f = 1 - k;
       target(end);
-      prev.copy(m.position);
-      m.position.lerpVectors(start, end, f);
-      m.position.y += Math.sin(f * Math.PI) * arc * Math.min(1, total * 2); // quick shots fly flatter
+      prev.copy(g.position);
+      g.position.lerpVectors(start, end, f);
+      g.position.y += Math.sin(f * Math.PI) * arc * Math.min(1, total * 2); // quick shots fly flatter
       if (blob) {
         const w = 1 + Math.sin(f * total * 40) * 0.18;
-        m.scale.set(size * w, size / w, size * w);
-      } else if (m.position.distanceToSquared(prev) > 1e-6) m.lookAt(prev.lerp(m.position, 2));
+        body.scale.set(w, 1 / w, w);
+        // Drips fall off a flying glob.
+        st.acc = (st.acc ?? 0) + dt;
+        if (st.acc > 0.05 && this.lit.load < 0.5) {
+          st.acc = 0;
+          (glowing ? this.glow : this.lit).spawn(g.position.x, g.position.y, g.position.z, rnd(-1, 1), rnd(-1, 1), rnd(-1, 1), rnd(0.3, 0.5), size * 0.35, size * 0.1, color, color, shade(color, 0.7), drop);
+        }
+        return;
+      }
+      if (g.position.distanceToSquared(prev) > 1e-6) g.lookAt(prev.lerp(g.position, 2));
+      if (!long) body.rotation.x += spinX * dt; // grenades tumble end over end
+      if (glowing) this.trail(st, g.position, dt, { smoke: false, fire: color, size: size * 1.3, every: 0.02 });
+      else if (long && this.streakHalo.n < 300 && (st.flip = !st.flip)) this.halo.spawn(g.position.x, g.position.y, g.position.z, 0, 0, 0, 0.12, size * 0.5, 0.02, 0xffffff, 0x9e9e9e, 0x000000, HALO);
     });
   }
 
   /** A thrown grenade or mortar shell flying in an arc from `from` to `to` over `time` seconds. */
   lob(from, to, time, { color = 0x33691e, size = 0.5, arc = 4, glowing = false } = {}) {
     size *= K;
-    const mat = glowing ? new THREE.MeshBasicMaterial({ color }) : new THREE.MeshLambertMaterial({ color });
-    const m = new THREE.Mesh(unitBox, mat);
-    m.scale.set(size, size, size * 1.4);
+    const mat = glowing ? glowMat(color) : litMat(color);
+    const g = new THREE.Group();
+    block(g, mat, 1, 1, 1.4);
+    block(g, glowing ? glowMat(0xffffff) : litMat(shade(color, 1.4)), 0.7, 0.7, 0.4, 0, 0, 0.85); // the nose
+    block(g, glowing ? mat : litMat(shade(color, 0.6)), 1.06, 1.06, 0.22, 0, 0, 0.15); // a band
+    block(g, glowing ? mat : litMat(shade(color, 0.55)), 1.5, 0.14, 0.5, 0, 0, -0.8); // tail fins
+    block(g, glowing ? mat : litMat(shade(color, 0.55)), 0.14, 1.5, 0.5, 0, 0, -0.8);
+    g.scale.setScalar(size);
+    g.position.copy(from);
     const start = from.clone();
     const prev = new THREE.Vector3();
-    this.add(m, time, mat, (it, k) => {
+    const st = {};
+    this.add(g, time, null, (it, k, dt) => {
       const f = 1 - k;
-      prev.copy(m.position);
-      m.position.lerpVectors(start, to, f);
-      m.position.y += Math.sin(f * Math.PI) * arc;
-      if (m.position.distanceToSquared(prev) > 1e-4) m.lookAt(prev.lerp(m.position, 2));
+      prev.copy(g.position);
+      g.position.lerpVectors(start, to, f);
+      g.position.y += Math.sin(f * Math.PI) * arc;
+      if (g.position.distanceToSquared(prev) > 1e-4) g.lookAt(prev.lerp(g.position, 2));
+      g.rotation.z += dt * 9; // spinning like a rifled shell
+      this.trail(st, g.position, dt, glowing ? { smoke: false, fire: color, size: size * 1.4 } : { fire: null, size: size * 1.5, every: 0.03 });
     });
   }
 
-  /** A puff of fire sprayed from `from` along `yaw`, spreading over a cone of half-angle `cone`. */
+  /** A blast of fire sprayed from `from` along `yaw`, spreading over a cone of half-angle `cone`. */
   flames(from, yaw, range, cone) {
-    for (let i = 0; i < 5; i++) {
-      const mat = new THREE.MeshBasicMaterial({ color: 0xffb300, transparent: true, opacity: 0.9, depthWrite: false });
-      const m = new THREE.Mesh(unitBox, mat);
-      const a = yaw + (Math.random() * 2 - 1) * cone * 0.9;
-      const dir = new THREE.Vector3(Math.sin(a), 0, Math.cos(a));
-      const reach = range * (0.75 + Math.random() * 0.3);
-      const start = from.clone();
-      const spin = Math.random() * 6;
-      const life = 0.32 + Math.random() * 0.12;
-      this.add(m, life, mat, (it, k) => {
-        const f = 1 - k;
-        m.position.copy(start).addScaledVector(dir, reach * f);
-        m.position.y = start.y * (1 - f) + 1.2 * f + Math.sin(f * 3) * 0.6;
-        m.scale.setScalar(0.4 + f * 1.8);
-        m.rotation.set(spin * f, spin * f * 0.7, 0);
-        mat.color.setHex(f < 0.3 ? 0xffe082 : f < 0.65 ? 0xff9100 : 0xd84315);
-        mat.opacity = 0.9 * Math.min(1, k * 2);
-      });
+    const n = this.n(11);
+    const floor = heightAt(from.x, from.z);
+    const o = { drag: 1.6, grav: -5, spin: 5, in: 0.08, out: 0.5, mid: 0.4, grow: 2, floor };
+    for (let i = 0; i < n; i++) {
+      const a = yaw + rnd(-1, 1) * cone * 0.9;
+      const life = rnd(0.3, 0.46);
+      const v = (range * rnd(0.85, 1.25)) / life;
+      const drop = (1.2 - from.y) / life * 0.6;
+      this.glow.spawn(from.x, from.y, from.z, Math.sin(a) * v, drop + rnd(-1, 2.5), Math.cos(a) * v, life, 0.35 * K, rnd(1.3, 2.1) * K, 0xfff9c4, i % 4 === 0 ? 0xffca28 : 0xff9100, 0xb71c1c, o);
     }
+    // Soot where the fire dies, and embers that keep flying.
+    const tip = _a.set(from.x + Math.sin(yaw) * range * 0.8, Math.max(floor + 1, from.y * 0.5), from.z + Math.cos(yaw) * range * 0.8);
+    if (Math.random() < 0.5) this.smokePuff(tip, 1.1, 2, 0.28);
+    this.sparks(from, 0xff9100, 2, range * 1.6, _b.set(Math.sin(yaw), 0.1, Math.cos(yaw)), cone);
+    this.halo.spawn(from.x, from.y, from.z, 0, 0, 0, 0.12, 1.6 * K, 0.8 * K, 0xffb300, 0xff6d00, 0x000000, HALO);
   }
 
-  /** Icy burst: pale-blue flash, frost ring and ice chips. */
+  /** Icy burst: a pale flash, a frost ring, ice shards and frost left on the ground. */
   iceBlast(pos, radius) {
-    const mat = new THREE.MeshBasicMaterial({ color: 0xe1f5fe, transparent: true, opacity: 0.8, depthWrite: false });
-    const ball = new THREE.Mesh(unitBox, mat);
-    ball.position.copy(pos).setY(pos.y + 1);
-    ball.rotation.set(Math.random(), Math.random(), Math.random());
-    this.add(ball, 0.3, mat, (it, k) => {
-      ball.scale.setScalar(Math.max(1.2, radius) * (0.5 + (1 - k)));
-      mat.opacity = 0.8 * k;
-    });
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0x81d4fa, transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide });
-    const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.copy(pos).setY(0.35);
-    this.add(ring, 0.5, ringMat, (it, k) => {
-      ring.scale.setScalar(radius * (1.1 - k * 0.8));
-      ringMat.opacity = 0.8 * k;
-    });
-    this.puff(pos.clone().setY(pos.y + 1), 0xb3e5fc, Math.min(14, 5 + Math.round(radius * 1.5)), 0.35, 5 + radius);
+    const floor = heightAt(pos.x, pos.z);
+    const y = Math.max(pos.y, floor) + 1;
+    this.halo.spawn(pos.x, y, pos.z, 0, 0, 0, 0.24, radius * 1.1, radius * 1.9, 0xb3e5fc, 0x4fa8d8, 0x000000, HALO);
+    this.glow.spawn(pos.x, y, pos.z, 0, 0, 0, 0.12, Math.max(1, radius * 0.5), Math.max(1.4, radius * 0.9), 0xffffff, 0xe1f5fe, 0xb3e5fc, CORE);
+    this.shock(pos, radius, 0x81d4fa, 0.5);
+    // Shards of ice shooting out and sticking up out of the ground for a moment.
+    const n = this.n(Math.min(16, 6 + Math.round(radius * 1.6)));
+    const o = { grav: 24, spin: 7, floor, bounce: 0.2, out: 0.35, ay: 2.6 };
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * 6.28 + rnd(-0.3, 0.3);
+      const v = radius * rnd(1.4, 3);
+      const s = rnd(0.2, 0.4) * K;
+      this.lit.spawn(pos.x, y, pos.z, Math.cos(a) * v, rnd(4, 10), Math.sin(a) * v, rnd(0.6, 1), s, s, ICE[i % 3], ICE[i % 3], 0xe1f5fe, o);
+    }
+    // Snow hanging in the air.
+    const snow = { drag: 3, grav: 2, spin: 2, out: 0.7 };
+    for (let i = this.n(Math.min(14, 4 + radius * 2)); i > 0; i--) {
+      const a = Math.random() * 6.28;
+      const v = radius * rnd(1, 3.2);
+      this.glow.spawn(pos.x, y + rnd(-0.5, 1), pos.z, Math.cos(a) * v, rnd(0.5, 4), Math.sin(a) * v, rnd(0.5, 1.1), 0.22 * K, 0.1 * K, 0xffffff, 0xe1f5fe, 0xb3e5fc, snow);
+    }
+    this.scorch(pos, radius * 0.7, 0xd6f1fb, 2.5);
   }
+
 
   /**
    * A boomerang (loop) or thrown knife (straight) along the same path the sim uses.
@@ -532,136 +973,6 @@ export class Effects {
     });
   }
 
-  /** Whirlwind Slash: a fast spinning silver ring around the tower. */
-  whirl(pos, radius) {
-    const mat = new THREE.MeshBasicMaterial({ color: 0xcfd8dc, transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide });
-    const ring = new THREE.Mesh(ringGeo, mat);
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.copy(pos).setY(2);
-    this.add(ring, 0.3, mat, (it, k) => {
-      ring.scale.setScalar(radius * (1.1 - k * 0.5));
-      ring.rotation.z += 0.6;
-      mat.opacity = 0.8 * k;
-    });
-  }
-
-  /** Exploding slime: a green splat and goo drops. */
-  slimeSplash(pos, radius) {
-    const mat = new THREE.MeshBasicMaterial({ color: 0x76ff03, transparent: true, opacity: 0.75, depthWrite: false });
-    const blob = new THREE.Mesh(unitBox, mat);
-    blob.position.copy(pos).setY(0.6);
-    this.add(blob, 0.35, mat, (it, k) => {
-      blob.scale.set(radius * (1.6 - k), 0.5, radius * (1.6 - k));
-      mat.opacity = 0.75 * k;
-    });
-    this.puff(pos.clone().setY(1), 0x64dd17, Math.min(12, 4 + Math.round(radius * 1.5)), 0.4, 5 + radius);
-  }
-
-  /** Paintball burst: a flat splat in a random bright color plus colorful drops. */
-  paintSplat(pos, radius) {
-    const colors = [0xff1744, 0x2979ff, 0xffea00, 0x00e676, 0xd500f9, 0xff9100];
-    const color = colors[Math.floor(Math.random() * colors.length)];
-    const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8, depthWrite: false });
-    const blob = new THREE.Mesh(unitBox, mat);
-    blob.position.copy(pos).setY(0.4);
-    blob.rotation.y = Math.random() * Math.PI;
-    this.add(blob, 0.4, mat, (it, k) => {
-      blob.scale.set(radius * (1.6 - k * 0.6), 0.15, radius * (1.6 - k * 0.6));
-      mat.opacity = 0.8 * k;
-    });
-    this.puff(pos.clone().setY(1), color, Math.min(10, 3 + Math.round(radius)), 0.35, 4 + radius);
-  }
-
-  /** Fireball + shock ring + debris. */
-  explosion(pos, radius) {
-    const mat = new THREE.MeshBasicMaterial({ color: 0xffa726, transparent: true, opacity: 0.85, depthWrite: false });
-    const ball = new THREE.Mesh(unitBox, mat);
-    ball.position.copy(pos).setY(pos.y + radius * 0.3);
-    ball.rotation.set(Math.random(), Math.random(), Math.random());
-    this.add(ball, 0.35, mat, (it, k) => {
-      const f = 1 - k;
-      ball.scale.setScalar(radius * (0.6 + f * 1.2));
-      mat.opacity = 0.85 * k;
-      mat.color.setHex(f < 0.4 ? 0xffe082 : 0xff7043);
-    });
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0xffcc80, transparent: true, opacity: 0.7, depthWrite: false, side: THREE.DoubleSide });
-    const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.copy(pos).setY(0.35);
-    this.add(ring, 0.4, ringMat, (it, k) => {
-      ring.scale.setScalar(radius * (1.15 - k * 0.9));
-      ringMat.opacity = 0.7 * k;
-    });
-    this.puff(pos.clone().setY(pos.y + 0.5), 0x5d4037, Math.min(14, 4 + Math.round(radius)), 0.45, 6 + radius);
-  }
-
-  /** City Buster: a bright flash and a small mushroom cloud rising out of a big explosion. */
-  nuke(pos, radius) {
-    this.explosion(pos, radius * 1.3);
-    const flashMat = new THREE.MeshBasicMaterial({ color: 0xfffde7, transparent: true, opacity: 0.9, depthWrite: false });
-    const flash = new THREE.Mesh(unitBox, flashMat);
-    flash.position.copy(pos).setY(pos.y + 1);
-    this.add(flash, 0.25, flashMat, (it, k) => {
-      flash.scale.setScalar(radius * (2.2 - k));
-      flashMat.opacity = 0.9 * k;
-    });
-    const mat = new THREE.MeshBasicMaterial({ color: 0xff8f00, transparent: true, opacity: 0.8, depthWrite: false });
-    const stem = new THREE.Mesh(unitBox, mat);
-    const cap = new THREE.Mesh(unitBox, mat);
-    this.add(stem, 1.4, null, (it, k) => {
-      const f = 1 - k;
-      stem.position.copy(pos).setY(pos.y + f * radius * 0.7);
-      stem.scale.set(radius * 0.35, radius * 1.4 * f + 0.1, radius * 0.35);
-    });
-    this.add(cap, 1.4, mat, (it, k) => {
-      const f = 1 - k;
-      cap.position.copy(pos).setY(pos.y + f * radius * 1.5);
-      cap.scale.set(radius * (0.6 + f * 0.9), radius * (0.4 + f * 0.3), radius * (0.6 + f * 0.9));
-      mat.opacity = 0.8 * Math.min(1, k * 2);
-      mat.color.setHex(f < 0.3 ? 0xffd54f : 0x8d6e63);
-    });
-  }
-
-  /** Electroshocker: a jagged lightning bolt through `points` (world positions, in order). */
-  lightning(points, color = 0x80d8ff) {
-    for (let i = 0; i < points.length - 1; i++) {
-      const a = points[i];
-      const b = points[i + 1];
-      // Each hop is split into a few kinked segments.
-      const n = 4;
-      let prev = a.clone();
-      for (let k = 1; k <= n; k++) {
-        const next = a.clone().lerp(b, k / n);
-        if (k < n) next.add(new THREE.Vector3((Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 1.2));
-        const w = 0.22;
-        const mat = new THREE.MeshBasicMaterial({ color: k % 2 ? color : 0xffffff, transparent: true, opacity: 1, depthWrite: false });
-        const m = new THREE.Mesh(unitBox, mat);
-        m.scale.set(w, w, prev.distanceTo(next));
-        m.position.copy(prev).lerp(next, 0.5);
-        m.lookAt(next);
-        this.add(m, 0.18, mat, (it, f) => {
-          mat.opacity = f;
-          m.scale.set(w * f, w * f, m.scale.z);
-        });
-        prev = next;
-      }
-      this.flash(b, color, 1.1);
-    }
-  }
-
-  /** Pulse Trooper: a glowing ring that grows from the tower out to `radius` in `time` seconds. */
-  pulse(pos, radius, time, color = 0x40c4ff) {
-    const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide });
-    const ring = new THREE.Mesh(ringGeo, mat);
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.copy(pos).setY(1.2);
-    const fade = 0.12; // the ring lingers a moment at full size
-    this.add(ring, time + fade, mat, (it) => {
-      const age = it.max - it.life;
-      ring.scale.setScalar(Math.max(0.3, radius * Math.min(1, age / time)));
-      mat.opacity = age < time ? 0.85 : 0.85 * (it.life / fade);
-    });
-  }
 
   /** Lava Golem magma: a glowing puddle on the ground that cools and fades over `life` seconds. */
   puddle(pos, radius, life, color = 0xff6d00) {
@@ -708,22 +1019,6 @@ export class Effects {
     }
   }
 
-  /** Apocalypse Rave: rainbow rings pulse out across the dance floor, with confetti. */
-  rave(pos, radius) {
-    const colors = [0xff1744, 0xffea00, 0x76ff03, 0x00e5ff, 0xd500f9];
-    colors.forEach((color, i) => {
-      const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide });
-      const ring = new THREE.Mesh(ringGeo, mat);
-      ring.rotation.x = -Math.PI / 2;
-      ring.position.copy(pos).setY(0.4 + i * 0.02);
-      const life = 0.9 + i * 0.25;
-      this.add(ring, life, mat, (it, k) => {
-        ring.scale.setScalar(radius * (1 - k) + 0.5);
-        mat.opacity = 0.8 * Math.min(1, k * 3);
-      });
-      this.puff(pos.clone().setY(3), color, 6, 0.35, 14);
-    });
-  }
 
   /** Versus: an Anarchist's helicopter sweeps over (x, z) at 14 high. */
   heli(at) {
@@ -831,54 +1126,6 @@ export class Effects {
     }
   }
 
-  /** Pyrotechnics: colourful firework bursts over (x, z), plus a stun ring of radius r. */
-  fireworks(at, r) {
-    const colors = [0xff1744, 0xffea00, 0x00e5ff, 0x76ff03, 0xff4081];
-    for (let i = 0; i < 5; i++) {
-      const c = colors[i];
-      const p = new THREE.Vector3(at.x + (Math.random() - 0.5) * r * 1.6, 6 + Math.random() * 5, at.z + (Math.random() - 0.5) * r * 1.6);
-      this.puff(p, c, 10, 0.35, 16);
-      this.flash(p, c, 2.2);
-    }
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0xffeb3b, transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide });
-    const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.set(at.x, 0.4, at.z);
-    this.add(ring, 0.8, ringMat, (it, k) => {
-      ring.scale.setScalar(r * (1.2 - k * 0.9));
-      ringMat.opacity = 0.8 * k;
-    });
-  }
-
-  /** Blocky debris burst. */
-  puff(pos, color, count = 8, size = 0.5, power = 8) {
-    size *= K;
-    const mat = new THREE.MeshLambertMaterial({ color });
-    const lives = Array.from({ length: count }, () => 0.5 + Math.random() * 0.4);
-    const owner = lives.indexOf(Math.max(...lives));
-    for (let i = 0; i < count; i++) {
-      const m = new THREE.Mesh(unitBox, mat);
-      m.position.copy(pos);
-      const s = size * (0.6 + Math.random() * 0.8);
-      m.scale.setScalar(s);
-      const vel = new THREE.Vector3((Math.random() - 0.5) * power, power * (0.5 + Math.random()), (Math.random() - 0.5) * power);
-      const spin = new THREE.Vector3(Math.random() * 8, Math.random() * 8, Math.random() * 8);
-      // Only the longest-lived cube owns the shared material so it is disposed once, last.
-      this.add(m, lives[i], i === owner ? mat : null, (it, k, dt) => {
-        vel.y -= 30 * dt;
-        m.position.addScaledVector(vel, dt);
-        if (m.position.y < s / 2) {
-          m.position.y = s / 2;
-          vel.multiplyScalar(0.5);
-          vel.y = Math.abs(vel.y) * 0.3;
-        }
-        m.rotation.x += spin.x * dt;
-        m.rotation.y += spin.y * dt;
-        m.scale.setScalar(s * Math.min(1, k * 2));
-      });
-    }
-  }
-
   text(pos, str, color = '#ffd54f', size = 3) {
     size *= K;
     const map = textTexture(str, color);
@@ -893,11 +1140,371 @@ export class Effects {
     });
   }
 
+  /** Whirlwind Slash: a fast spinning silver ring around the tower, throwing off slivers of light. */
+  whirl(pos, radius) {
+    const mat = new THREE.MeshBasicMaterial({ color: 0xcfd8dc, transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide });
+    const ring = new THREE.Mesh(ringGeo, mat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.copy(pos).setY(pos.y + 2);
+    this.add(ring, 0.3, mat, (it, k) => {
+      ring.scale.setScalar(radius * (1.1 - k * 0.5));
+      ring.rotation.z += 0.6;
+      mat.opacity = 0.8 * k;
+    });
+    const n = this.n(10);
+    const a0 = Math.random() * 6.28;
+    for (let i = 0; i < n; i++) {
+      const a = a0 + (i / n) * 6.28;
+      _a.set(pos.x + Math.cos(a) * radius * 0.55, pos.y + 2, pos.z + Math.sin(a) * radius * 0.55);
+      _b.set(pos.x + Math.cos(a + 0.9) * radius, pos.y + 2, pos.z + Math.sin(a + 0.9) * radius);
+      this.streaks.spawn(_a, _b, BEAM, 0.16 * K, 0xffffff, 0xcfd8dc, { fade: 0.16, delay: i * 0.012 });
+    }
+  }
+
+  /** Goo, paint or anything wet: a splat on the ground and drops flying out. */
+  splat(pos, radius, color, life = 3) {
+    const floor = heightAt(pos.x, pos.z);
+    const light = shade(color, 1.3);
+    const dark = shade(color, 0.7);
+    this.scorch(pos, radius * 0.8, color, life);
+    const n = this.n(Math.min(16, 5 + Math.round(radius * 2)));
+    const o = { grav: 26, spin: 5, floor, bounce: 0.05, out: 0.5 };
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * 6.28;
+      const v = radius * rnd(1, 3.2);
+      const s = rnd(0.25, 0.5) * K;
+      this.lit.spawn(pos.x, floor + 0.6, pos.z, Math.cos(a) * v, rnd(4, 10), Math.sin(a) * v, rnd(0.5, 0.9), s, s * 0.7, i % 2 ? light : color, color, dark, o);
+    }
+    // The splash itself: a low crown of goo jumping up and falling flat.
+    const crown = { grav: 30, spin: null, floor, bounce: 0, out: 0.4, ay: 1.8 };
+    for (let i = this.n(8); i > 0; i--) {
+      const a = (i / 8) * 6.28;
+      const d = radius * 0.45;
+      this.lit.spawn(pos.x + Math.cos(a) * d, floor + 0.3, pos.z + Math.sin(a) * d, Math.cos(a) * radius, rnd(5, 8), Math.sin(a) * radius, 0.45, 0.5 * K, 0.4 * K, light, color, dark, crown);
+    }
+  }
+
+  /** Exploding slime: a green splat and goo drops. */
+  slimeSplash(pos, radius) {
+    this.splat(pos, radius, 0x64dd17, 3);
+    this.halo.spawn(pos.x, pos.y + 0.8, pos.z, 0, 0, 0, 0.18, radius * 1.2, radius * 2, 0x76ff03, 0x64dd17, 0x000000, HALO);
+  }
+
+  /** Paintball burst: a flat splat in a random bright color plus colorful drops. */
+  paintSplat(pos, radius) {
+    this.splat(pos, radius, pick(PAINT), 4);
+  }
+
+  /** Electroshocker: a jagged lightning bolt through `points` (world positions, in order). */
+  lightning(points, color = 0x80d8ff) {
+    const hot = shade(color, 1.8);
+    for (let i = 0; i < points.length - 1; i++) {
+      const a = points[i];
+      const b = points[i + 1];
+      const len = a.distanceTo(b);
+      const n = Math.max(3, Math.min(8, Math.round(len / 2.2)));
+      const kink = Math.min(1.1, 0.35 + len * 0.06);
+      // Two strikes down slightly different paths, a blink apart: the bolt flickers.
+      for (let strike = 0; strike < 2; strike++) {
+        const delay = strike * 0.07;
+        let prev = _a.copy(a);
+        for (let k = 1; k <= n; k++) {
+          const next = _b.copy(a).lerp(b, k / n);
+          if (k < n) next.add(_c.set(rnd(-1, 1), rnd(-1, 1), rnd(-1, 1)).multiplyScalar(kink));
+          this.streaks.spawn(prev, next, BEAM, (strike ? 0.13 : 0.2) * K, 0xffffff, hot, { fade: 0.16, delay });
+          this.streakHalo.spawn(prev, next, BEAM, 0.75 * K, color, 0x000000, { fade: 0.24, delay });
+          // A side fork now and then.
+          if (!strike && k < n && Math.random() < 0.3) {
+            _d.copy(next).add(_c.set(rnd(-1, 1), rnd(-0.3, 1), rnd(-1, 1)).multiplyScalar(kink * 2));
+            this.streaks.spawn(next, _d, BEAM, 0.11 * K, hot, color, { fade: 0.12, delay });
+          }
+          prev = _a.copy(next);
+        }
+      }
+      this.halo.spawn(b.x, b.y, b.z, 0, 0, 0, 0.18, 2.4 * K, 1.2 * K, color, color, 0x000000, HALO);
+      this.glow.spawn(b.x, b.y, b.z, 0, 0, 0, 0.09, 0.8 * K, 0.3 * K, 0xffffff, hot, color, CORE);
+      this.sparks(b, color, 5, 11);
+    }
+  }
+
+  /** Pulse Trooper: a glowing ring that grows from the tower out to `radius` in `time` seconds. */
+  pulse(pos, radius, time, color = 0x40c4ff) {
+    const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide });
+    const ring = new THREE.Mesh(ringGeo, mat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.copy(pos).setY(pos.y + 1.2);
+    // A second, fainter ring follows the first.
+    const mat2 = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.4, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
+    const ring2 = new THREE.Mesh(ringGeo, mat2);
+    ring2.rotation.x = -Math.PI / 2;
+    ring2.rotation.z = Math.PI / 8;
+    ring.add(ring2);
+    const fade = 0.12; // the ring lingers a moment at full size
+    this.add(ring, time + fade, mat, (it) => {
+      const age = it.max - it.life;
+      const f = Math.min(1, age / time);
+      ring.scale.setScalar(Math.max(0.3, radius * f));
+      ring2.scale.setScalar(0.5 + 0.35 * f);
+      mat.opacity = age < time ? 0.85 : 0.85 * (it.life / fade);
+      mat2.opacity = mat.opacity * 0.5;
+    });
+    this.items[this.items.length - 1].extra = [mat2];
+    // Bright blocks ride the ring outwards.
+    if (radius < 1.5) return;
+    const n = this.n(Math.min(16, 6 + Math.round(radius * 0.8)));
+    const hot = shade(color, 1.6);
+    const o = { spin: 6, out: 0.5, in: 0.15 };
+    const a0 = Math.random() * 6.28;
+    const v = radius / Math.max(0.05, time);
+    for (let i = 0; i < n; i++) {
+      const a = a0 + (i / n) * 6.28;
+      this.glow.spawn(pos.x, pos.y + 1.2, pos.z, Math.cos(a) * v, 0, Math.sin(a) * v, time + fade, 0.3 * K, 0.45 * K, hot, color, color, o);
+    }
+  }
+
+  /** Apocalypse Rave: rainbow rings pulse out across the dance floor, with confetti. */
+  rave(pos, radius) {
+    RAINBOW.forEach((color, i) => {
+      const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide });
+      const ring = new THREE.Mesh(ringGeo, mat);
+      ring.rotation.x = -Math.PI / 2;
+      ring.rotation.z = i * 0.2;
+      ring.position.copy(pos).setY(pos.y + i * 0.02);
+      const life = 0.9 + i * 0.25;
+      this.add(ring, life, mat, (it, k) => {
+        ring.scale.setScalar(radius * (1 - k) + 0.5);
+        mat.opacity = 0.8 * Math.min(1, k * 3);
+      });
+      this.confetti(_a.set(pos.x, pos.y + 3, pos.z), 6, 14, [color]);
+    });
+  }
+
+  /** Flat paper squares fluttering down. */
+  confetti(pos, count = 12, power = 10, colors = RAINBOW) {
+    count = this.n(count);
+    const o = { grav: 9, drag: 2.2, spin: 12, out: 0.3, ay: 0.12, floor: heightAt(pos.x, pos.z), bounce: 0 };
+    for (let i = 0; i < count; i++) {
+      const c = colors[i % colors.length];
+      this.glow.spawn(pos.x, pos.y, pos.z, rnd(-1, 1) * power, rnd(0.4, 1.3) * power, rnd(-1, 1) * power, rnd(0.9, 1.6), 0.36 * K, 0.36 * K, c, c, c, o);
+    }
+  }
+
+  /** One firework shell bursting at `p`: a ball of sparks that droop, twinkle and burn out. */
+  starburst(p, color, size = 1, delay = 0) {
+    const n = this.n(Math.round(26 * size));
+    const o = { grav: 7, drag: 2.4, spin: 6, out: 0.6, mid: 0.2, delay };
+    for (let i = 0; i < n; i++) {
+      _a.set(rnd(-1, 1), rnd(-1, 1), rnd(-1, 1)).normalize();
+      const v = 15 * size * rnd(0.75, 1.1);
+      this.glow.spawn(p.x, p.y, p.z, _a.x * v, _a.y * v, _a.z * v, rnd(0.7, 1.2), 0.34 * K, 0.1 * K, 0xffffff, color, shade(color, 0.6), o);
+    }
+    this.halo.spawn(p.x, p.y, p.z, 0, 0, 0, 0.3, 2 * size, 7 * size, color, color, 0x000000, { out: 0, mid: 0.3, delay });
+    this.glow.spawn(p.x, p.y, p.z, 0, 0, 0, 0.1, 1.2 * size, 0.4, 0xffffff, 0xffffff, color, { out: 0.3, delay });
+  }
+
+  /** Pyrotechnics: colourful firework bursts over (x, z), plus a stun ring of radius r. */
+  fireworks(at, r) {
+    const floor = heightAt(at.x, at.z);
+    for (let i = 0; i < 5; i++) {
+      const c = RAINBOW[i];
+      const p = new THREE.Vector3(at.x + (Math.random() - 0.5) * r * 1.6, floor + 6 + Math.random() * 5, at.z + (Math.random() - 0.5) * r * 1.6);
+      const delay = i * 0.09;
+      // The shell whistles up from the ground, then bursts.
+      this.streaks.spawn(_a.set(p.x, floor + 0.5, p.z), p, BULLET, 0.2 * K, 0xfff59d, 0xfff59d, { travel: 0.16, len: 2.5, delay: Math.max(0, delay - 0.16) });
+      this.starburst(p, c, 1, delay);
+    }
+    this.shock(_a.set(at.x, floor, at.z), r, 0xffeb3b, 0.6);
+  }
+
+  /**
+   * A model breaking into its blocks. parts: [{ x, y, z, s, c }] (where each block is, how big, its
+   * color); `center`: where they fly away from; power: how hard; up: extra lift.
+   */
+  shatter(parts, center, { power = 7, up = 1, life = 1, glow = false, push = null } = {}) {
+    const floor = heightAt(center.x, center.z);
+    const o = { grav: 30, spin: 9, floor, bounce: 0.38, out: 0.35 };
+    const pool = glow ? this.glow : this.lit;
+    if (pool.load > 0.85) return;
+    for (const p of parts) {
+      _a.set(p.x - center.x, p.y - center.y, p.z - center.z);
+      const d = _a.length() || 1;
+      _a.multiplyScalar(1 / d).add(_b.set(rnd(-0.5, 0.5), rnd(-0.2, 0.6), rnd(-0.5, 0.5)));
+      const v = power * rnd(0.45, 1.15);
+      let vx = _a.x * v;
+      let vz = _a.z * v;
+      if (push) {
+        vx += push.x;
+        vz += push.z;
+      }
+      pool.spawn(p.x, Math.max(p.y, floor + p.s / 2), p.z, vx, _a.y * v + power * up * rnd(0.5, 1.1), vz, life * rnd(0.7, 1.25), p.s, p.s * 0.85, p.c, p.c, shade(p.c, 0.65), o);
+    }
+  }
+
+  /** A model coming apart into motes that drift up and wink out (ghosts, void things, holograms). */
+  dissolve(parts, color = null) {
+    const o = { grav: -7, drag: 1.8, spin: 3, out: 0.8, mid: 0.3, delay: 0 };
+    if (this.glow.load > 0.85) return;
+    for (const p of parts) {
+      o.delay = Math.random() * 0.25;
+      const c = color ?? p.c;
+      this.glow.spawn(p.x, p.y, p.z, rnd(-1.5, 1.5), rnd(0.5, 3), rnd(-1.5, 1.5), rnd(0.6, 1.1), p.s * 0.8, p.s * 0.2, shade(c, 1.5), c, shade(c, 0.5), o);
+    }
+  }
+
+  /** Gold coins fountaining up out of `pos` (selling a tower, cash shots). */
+  coins(pos, count = 8) {
+    count = this.n(count);
+    const o = { grav: 28, spin: 14, floor: heightAt(pos.x, pos.z), bounce: 0.5, out: 0.25, az: 0.25 };
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * 6.28;
+      const v = rnd(1.5, 4.5);
+      this.glow.spawn(pos.x, pos.y, pos.z, Math.cos(a) * v, rnd(9, 15), Math.sin(a) * v, rnd(0.8, 1.2), 0.42 * K, 0.42 * K, 0xfff59d, 0xffd54f, 0xffa000, o);
+    }
+  }
+
+  /** A tower set down: it lands with a thump of dust and a ring. */
+  placeFx(pos, color = 0xcfd8dc) {
+    const floor = heightAt(pos.x, pos.z);
+    _f.set(pos.x, floor, pos.z);
+    this.dustRing(_f, 3.2, 0xb0a698, 12);
+    this.shock(_f, 3.4, color, 0.35, floor + 0.25, 0.6);
+    // Pebbles hopping up.
+    const o = { grav: 30, spin: 9, floor, bounce: 0.3, out: 0.4 };
+    for (let i = this.n(6); i > 0; i--) {
+      const a = Math.random() * 6.28;
+      const s = rnd(0.16, 0.3) * K;
+      this.lit.spawn(pos.x + Math.cos(a) * 1.6, floor + 0.2, pos.z + Math.sin(a) * 1.6, Math.cos(a) * rnd(1, 4), rnd(4, 8), Math.sin(a) * rnd(1, 4), rnd(0.5, 0.8), s, s, 0x8d8171, 0x8d8171, 0x6d6257, o);
+    }
+  }
+
+  /** An upgrade: light climbs the tower in a spiral, a ring bursts out and sparkles rain down. */
+  levelUp(pos, color = 0xffd54f, height = 6) {
+    const floor = heightAt(pos.x, pos.z);
+    const hot = shade(color, 1.6);
+    _f.set(pos.x, floor, pos.z);
+    this.shock(_f, 3.6, color, 0.5, floor + 0.3);
+    this.groundGlow(_f, 3, color, 0.5);
+    // Two strands winding up around the tower.
+    const o = { spin: 5, in: 0.1, out: 0.6, drag: 0.6, delay: 0 };
+    const n = this.n(22);
+    const a0 = Math.random() * 6.28;
+    for (let i = 0; i < n; i++) {
+      const f = i / n;
+      const a = a0 + f * 7.5 + (i % 2) * Math.PI;
+      o.delay = f * 0.4;
+      this.glow.spawn(pos.x + Math.cos(a) * 2.1, floor + 0.3 + f * height * K, pos.z + Math.sin(a) * 2.1, -Math.sin(a) * 2.5, 2.2, Math.cos(a) * 2.5, rnd(0.45, 0.7), 0.36 * K, 0.1 * K, 0xffffff, hot, color, o);
+    }
+    // A pillar of light.
+    this.halo.spawn(pos.x, floor + height * 0.5 * K, pos.z, 0, 3, 0, 0.45, 2.6 * K, 0.6 * K, color, color, 0x000000, { out: 0, mid: 0.3, spin: null, ay: height * 0.42 });
+    // A pop of stars at the top.
+    this.later(0.35, () => this.sparks(_f.set(pos.x, floor + (height + 0.5) * K, pos.z), color, 10, 9));
+  }
+
+  /** A tower sold: it pops into a puff of dust and a fountain of coins. */
+  sellFx(pos) {
+    const floor = heightAt(pos.x, pos.z);
+    _f.set(pos.x, floor + 2, pos.z);
+    this.coins(_f, 10);
+    this.smokePuff(_f.setY(floor + 1), 1.6, 6, 0, SMOKE);
+    this.dustRing(_f.setY(floor), 2.6, 0xb0a698, 8);
+    this.halo.spawn(pos.x, floor + 2.5, pos.z, 0, 0, 0, 0.2, 2.5, 5, 0xffd54f, 0xffb300, 0x000000, HALO);
+  }
+
+  /** The base takes a hit: red sparks, flying stones and a ring of warning light. */
+  baseHit(pos) {
+    const floor = heightAt(pos.x, pos.z);
+    _f.set(pos.x, floor + 3, pos.z);
+    this.halo.spawn(pos.x, floor + 3, pos.z, 0, 0, 0, 0.25, 3, 5.5, 0xff1744, 0xe53935, 0x000000, HALO);
+    this.sparks(_f, 0xff5252, 8, 12);
+    this.puff(_f, 0x8d8d8d, 6, 0.45, 8);
+    this.shock(_f.setY(floor), 5, 0xff1744, 0.45);
+    this.shake(0.25, 0.5);
+  }
+
+  /** A boss goes up: a huge blast, shock rings one after another, smaller blasts around it and smoke. */
+  bossBoom(pos, radius) {
+    const p = pos.clone();
+    const floor = heightAt(p.x, p.z);
+    const ground = new THREE.Vector3(p.x, floor, p.z);
+    this.explosion(p, radius);
+    this.halo.spawn(p.x, p.y, p.z, 0, 0, 0, 0.28, radius * 1.8, radius * 3, 0xa07a40, 0x7a4a10, 0x000000, HALO);
+    this.sparks(p, 0xfff59d, 26, 20 + radius * 2);
+    [0xffffff, 0xffcc80, 0xff7043].forEach((c, i) => {
+      this.later(i * 0.13, () => this.shock(ground, radius * (1.7 + i * 0.9), c, 0.55 + i * 0.15, null, 0.8 - i * 0.15));
+    });
+    for (let i = 0; i < 4; i++) {
+      const a = Math.random() * 6.28;
+      const q = new THREE.Vector3(p.x + Math.cos(a) * radius * 0.8, p.y + rnd(-0.3, 0.6) * radius, p.z + Math.sin(a) * radius * 0.8);
+      this.later(0.08 + i * 0.09, () => this.explosion(q, radius * 0.45));
+    }
+    this.smokePuff(p, radius * 1.3, 12, 0.35);
+    this.scorch(ground, radius * 0.9, 0x3d342d, 10);
+    this.shake(0.7, Math.min(1.5, 0.5 + radius * 0.1));
+  }
+
+  /** Embers drifting up off something burnt. */
+  embers(pos, count = 6, spread = 1) {
+    count = this.n(count);
+    const o = { grav: -5, drag: 1.2, spin: 6, out: 0.7, mid: 0.3, delay: 0 };
+    for (let i = 0; i < count; i++) {
+      o.delay = Math.random() * 0.3;
+      this.glow.spawn(pos.x + rnd(-1, 1) * spread, pos.y + rnd(-0.5, 0.5) * spread, pos.z + rnd(-1, 1) * spread, rnd(-1, 1), rnd(1, 4), rnd(-1, 1), rnd(0.5, 1), 0.2 * K, 0.05 * K, 0xfff59d, 0xff9100, 0xb71c1c, o);
+    }
+  }
+
+  /**
+   * Small particles for an enemy's condition, called a few times a second while it lasts.
+   * kind: 'burn', 'frost', 'shock', 'poison', 'slime', 'dust'. (x, y, z): its middle; s: its size.
+   */
+  statusFx(kind, x, y, z, s = 1) {
+    if (this.glow.load > 0.5 || this.lit.load > 0.5) return;
+    const r = 0.8 * s;
+    const px = x + rnd(-r, r);
+    const pz = z + rnd(-r, r);
+    switch (kind) {
+      case 'burn':
+        for (let i = 0; i < 2; i++) {
+          this.glow.spawn(x + rnd(-r, r), y + rnd(-1.6, 1.8) * s, z + rnd(-r, r), rnd(-0.6, 0.6), rnd(3.5, 7), rnd(-0.6, 0.6), rnd(0.4, 0.7), rnd(0.8, 1.2) * s * K, 0.45 * s * K, 0xfff59d, i ? 0xff9100 : 0xff5a1f, 0x8a1c0a, STATUS_UP);
+        }
+        if (Math.random() < 0.3) this.lit.spawn(px, y + 2.4 * s, pz, 0, 2.8, 0, 0.8, 0.35 * s * K, 0.9 * s * K, SOOT[0], SOOT[1], SOOT[1], TRAIL_SMOKE);
+        break;
+      case 'frost':
+        this.glow.spawn(px, y + rnd(-0.5, 2.4) * s, pz, rnd(-0.8, 0.8), rnd(-3, -1), rnd(-0.8, 0.8), rnd(0.55, 0.9), 0.6 * K, 0.3 * K, 0xffffff, 0xe1f5fe, 0x81d4fa, STATUS_DRIFT);
+        if (Math.random() < 0.4) this.glow.spawn(x + rnd(-r, r), y + rnd(-1.5, 2.4) * s, z + rnd(-r, r), 0, -0.6, 0, 0.5, 0.45 * K, 0.45 * K, 0xffffff, 0xb3e5fc, 0x81d4fa, STATUS_BUBBLE);
+        break;
+      case 'shock': {
+        _a.set(px, y + rnd(-1.5, 2.2) * s, pz);
+        _b.copy(_a).add(_c.set(rnd(-1, 1), rnd(-1, 1), rnd(-1, 1)).multiplyScalar(1.7 * s));
+        this.streaks.spawn(_a, _b, BEAM, 0.2 * K, 0xffffff, 0xfff176, { fade: 0.12 });
+        _a.copy(_b).add(_c.set(rnd(-1, 1), rnd(-1, 1), rnd(-1, 1)).multiplyScalar(1.2 * s));
+        this.streaks.spawn(_b, _a, BEAM, 0.15 * K, 0xffffff, 0xfff176, { fade: 0.12 });
+        this.glow.spawn(_a.x, _a.y, _a.z, rnd(-3, 3), rnd(0, 4), rnd(-3, 3), 0.25, 0.25 * K, 0.06 * K, 0xffffff, 0xfff176, 0xffd600, STATUS_DRIFT);
+        break;
+      }
+      case 'poison':
+        this.glow.spawn(px, y + rnd(0, 2.2) * s, pz, rnd(-0.5, 0.5), rnd(1.8, 3.4), rnd(-0.5, 0.5), rnd(0.55, 0.95), 0.35 * K, 0.8 * s * K, 0xb2ff59, 0x76ff03, 0x33691e, STATUS_BUBBLE);
+        break;
+      case 'slime':
+        this.lit.spawn(px, y + rnd(-0.5, 1.2) * s, pz, 0, -1, 0, rnd(0.45, 0.7), 0.6 * K, 0.3 * K, 0x76ff03, 0x64dd17, 0x33691e, STATUS_DRIP);
+        break;
+      case 'dust':
+        this.lit.spawn(px, y, pz, rnd(-1.5, 1.5), rnd(1, 2.5), rnd(-1.5, 1.5), rnd(0.4, 0.7), 0.3 * s * K, 0.75 * s * K, 0xb0a698, 0xa1958a, 0x8d8171, TRAIL_SMOKE);
+        break;
+    }
+  }
+
   update(dt) {
+    this.frame++;
     this.updateEmbers(dt);
     this.updateArmada(dt);
     this.updateChrono(dt);
     this.updateVoid(dt);
+    for (let i = this.timers.length - 1; i >= 0; i--) {
+      const t = this.timers[i];
+      if ((t.t -= dt) > 0) continue;
+      this.timers.splice(i, 1);
+      t.fn();
+    }
     for (let i = this.items.length - 1; i >= 0; i--) {
       const it = this.items[i];
       it.life -= dt;
@@ -910,5 +1517,10 @@ export class Effects {
       }
       it.update?.(it, it.life / it.max, dt);
     }
+    this.lit.update(dt);
+    this.glow.update(dt);
+    this.halo.update(dt);
+    this.streaks.update(dt);
+    this.streakHalo.update(dt);
   }
 }

@@ -1,7 +1,7 @@
 // The in-game client: renders the world, handles input, and mirrors a session's state.
 // Works identically for solo (LocalSession) and multiplayer (NetSession).
 import * as THREE from 'three';
-import { ENEMIES, GAME, PERKS, PERK_NAMES, TOWERS, TRACKS, VERSUS, WAVES, cloneCost, difficulty, facesCone, rootType, timedAbility, towerCost, towerLimit, xpKey } from './config.js';
+import { DIFFICULTIES, ENEMIES, GAME, PERKS, PERK_NAMES, TOWERS, TRACKS, VERSUS, WAVES, cloneCost, difficulty, facesCone, rootType, timedAbility, towerCost, towerLimit, xpKey } from './config.js';
 
 // Tower XP: the most XP one tower type can earn each wave (see earnXp).
 const XP_PER_WAVE_CAP = 40;
@@ -14,10 +14,12 @@ import { audio } from './audio.js';
 import { ABILITY_BAR_KEYS, UI } from './ui.js';
 import { subInfo } from './substats.js';
 import { TOWER_MODELS, setEmissive, setOpacity } from './models.js';
+import { towerIcon } from './icons.js';
 import { clamp } from './utils.js';
 import { MODEL_SCALE, WORLD_SCALE } from './scale.js';
 import { BOUNDS, PLAYER_SPAWN, path, setTimeWorld } from './sim/path.js';
-import { CASTLE, CLIFFS, MAP, canPlace, heightAt, laneOf, laneOz, levelAt, placeFail } from './sim/map.js';
+import { CASTLE, CLIFFS, MAP, canPlace, heightAt, laneOf, laneOz, levelAt, mapInfo, mapKey, mapVersion, setMap, nexusWalkable, gridWalkable, courtWalkable, emberWalkable, rampartWalkable, brookWalkable, rigWalkable, placeFail } from './sim/map.js';
+import { baseKey } from './sim/maps.js';
 import { FPS_BACK, borrowsHidden, buffOf, computeBuffs, mediCharge, medicShields, nextUpgrade, spyCircles, upgradeCost } from './sim/sim.js';
 
 const CAM_PITCH_MIN = -0.35; // below 0 the camera sits lower than the player and looks up
@@ -45,29 +47,38 @@ function innerRings(type, level) {
 }
 const ABILITY_KEYS = { KeyF: 0, KeyG: 1, KeyH: 2 };
 const EMPTY = new Map();
-const CLIFF_COLLIDERS = CLIFFS.map((c) => ({ x: c.x, z: c.z, r: c.r, h: c.h }));
 // What the player bumps into and can stand on, shaped like the models drawn in world.js
-// (MAP.obstacles is coarser: it's for tower placement and decoration spacing).
-const CASTLE_COLLIDERS = [
-  { x: CASTLE.x, z: CASTLE.z, hx: 5, hz: 7, h: 10 }, // keep
-  ...[-3, -1, 1, 3].flatMap((i) => [-4.4, 4.4].map((dx) => ({ x: CASTLE.x + dx, z: CASTLE.z + i * 2, hx: 0.6, hz: 0.8, h: 11.4 }))), // battlements
-  ...[[-5, -7], [-5, 7], [5, -7], [5, 7]].flatMap(([dx, dz]) => [
-    { x: CASTLE.x + dx, z: CASTLE.z + dz, hx: 1.7, hz: 1.7, h: 14 }, // corner towers
-    { x: CASTLE.x + dx, z: CASTLE.z + dz, hx: 2, hz: 2, h: 16.4 }, // their roofs
-  ]),
-];
-const LANE_COLLIDERS = [
-  ...MAP.trees.flatMap(({ x, z, s }) => [
-    { x, z, r: 2.3 * s, h: 6.9 * s }, // leaves (the player is taller than the trunk under them)
-    { x, z, r: 1.5 * s, h: 8.6 * s }, // top tuft
-  ]),
-  ...MAP.rocks.map(({ x, z, s }) => ({ x, z, r: 0.9 * s, h: 1.3 * s })),
-  ...CASTLE_COLLIDERS,
-  ...CLIFF_COLLIDERS,
-];
+// (MAP.obstacles is coarser: it's for tower placement and decoration spacing). Rebuilt for each map.
+let CASTLE_COLLIDERS = [];
+let LANE_COLLIDERS = [];
+function buildColliders() {
+  CASTLE_COLLIDERS = mapInfo.nexus || mapInfo.base === 'cave' || mapInfo.court || mapInfo.ember || mapInfo.rampart || mapInfo.brook || mapInfo.rig ? [] : [ // Twilight Nexus has no castle; Sunset Crossing has a cave; Shattered Court's castle is off the tiles
+    { x: CASTLE.x, z: CASTLE.z, hx: 5, hz: 7, h: 10 }, // keep
+    ...[-3, -1, 1, 3].flatMap((i) => [-4.4, 4.4].map((dx) => ({ x: CASTLE.x + dx, z: CASTLE.z + i * 2, hx: 0.6, hz: 0.8, h: 11.4 }))), // battlements
+    ...[[-5, -7], [-5, 7], [5, -7], [5, 7]].flatMap(([dx, dz]) => [
+      { x: CASTLE.x + dx, z: CASTLE.z + dz, hx: 1.7, hz: 1.7, h: 14 }, // corner towers
+      { x: CASTLE.x + dx, z: CASTLE.z + dz, hx: 2, hz: 2, h: 16.4 }, // their roofs
+    ]),
+  ];
+  const round = mapInfo.tree === 'round';
+  LANE_COLLIDERS = [
+    ...MAP.trees.flatMap(({ x, z, s }) =>
+      round
+        ? [
+          { x, z, r: 2.3 * s, h: 6.9 * s }, // leaves (the player is taller than the trunk under them)
+          { x, z, r: 1.5 * s, h: 8.6 * s }, // top tuft
+        ]
+        : [{ x, z, r: 0.9 * s, h: Infinity }], // pines, cacti, palms, crystals: bump into the trunk
+    ),
+    ...MAP.rocks.map(({ x, z, s }) => ({ x, z, r: 0.9 * s, h: 1.3 * s })),
+    ...MAP.colliders,
+    ...CASTLE_COLLIDERS,
+    ...CLIFFS.map((c) => ({ x: c.x, z: c.z, r: c.r, h: c.h })),
+  ];
+}
+buildColliders();
 const ORDINAL = ['', '1st', '2nd', '3rd', '4th'];
 
-const SKY = 0x8fd3ff;
 const ICE_NADE = { color: 0x4fc3f7, size: 0.5, arc: 3.5, glowing: true }; // Frost / Cryo Grenade
 const FPS_SEND_INTERVAL = 1 / 15; // Gatling FPS Mode: how often the aim goes to the sim
 const FPS_LOOK = 0.0025; // mouse look speed (radians per pixel)
@@ -110,8 +121,8 @@ export class GameClient {
     this.renderer = renderer;
 
     const root = new THREE.Scene();
-    root.background = new THREE.Color(SKY);
-    root.fog = new THREE.Fog(SKY, 90, 200);
+    root.background = new THREE.Color(mapInfo.theme.sky);
+    root.fog = new THREE.Fog(mapInfo.theme.sky, 90, 200);
     this.root = root;
     // Everything on the map lives in this group, in sim units; the group draws it WORLD_SCALE big.
     const scene = new THREE.Group();
@@ -120,7 +131,8 @@ export class GameClient {
     this.scene = scene;
     this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.2, 700);
 
-    root.add(new THREE.HemisphereLight(0xdff3ff, 0x4a6b3a, 1.6));
+    this.hemi = new THREE.HemisphereLight(0xdff3ff, 0x4a6b3a, 1.6);
+    root.add(this.hemi);
     const sun = new THREE.DirectionalLight(0xfff4e0, 2.6);
     sun.position.set(60 * WORLD_SCALE, 120 * WORLD_SCALE, 45 * WORLD_SCALE);
     sun.castShadow = true;
@@ -133,11 +145,14 @@ export class GameClient {
     this.sun = sun; // follows the camera so every Versus map gets shadows
 
     this.baseWorld = buildWorld(scene);
+    this.mapVersion = mapVersion; // which map baseWorld shows
+    this.applyLighting();
     this.laneWorlds = []; // Versus maps, built on first use and kept for later games
     this.links = new Map(); // lane count -> water + bridges group
     this.laneTags = [];
     this.staticColliders = LANE_COLLIDERS;
     this.effects = new Effects(scene, root);
+    this.effects.onShake = (time, amount) => this.shake(time, amount); // big blasts shake the camera
     this.buildRing();
 
     // cam.target and cam.dist are in drawn (world) units, not sim units.
@@ -154,6 +169,7 @@ export class GameClient {
       onSkip: () => this.session?.send({ a: 'skip' }),
       onSpeed: (v) => this.session?.send({ a: 'speed', v }),
       onMute: () => this.ui.setMuted(audio.toggleMute()),
+      onMusic: () => this.ui.setMusic(audio.toggleMusic()),
       onSlot: (type) => (this.placing === type ? this.cancelPlace() : this.beginPlace(type)),
       onPanel: (action) => {
         if (action === 'close') this.deselect();
@@ -179,9 +195,10 @@ export class GameClient {
     });
     /** type -> data URL of the tower's portrait (also used by the menus). */
     // (Crosspath combos share their tower's icon: see ui.js.)
-    this.icons = Object.fromEntries(Object.entries(TOWER_MODELS).filter(([type]) => !TOWERS[type]?.crossHidden).map(([type, make]) => [type, this.renderIcon(make(0))]));
+    this.icons = new Proxy({}, { get: (_, type) => (typeof type === 'string' ? towerIcon(type, 0) : undefined) }); // drawn on first use (icons.js)
     this.loadout = [];
     this.ui.setMuted(false);
+    this.ui.setMusic(audio.musicLevel);
     this.ui.show(false);
 
     this.bindInput();
@@ -219,6 +236,7 @@ export class GameClient {
   start(session) {
     this.stop();
     this.session = session;
+    this.syncMap();
     this.showTimeWorld(false);
     this.ended = false;
     this.spectating = false;
@@ -230,10 +248,17 @@ export class GameClient {
     session.onError = (msg) => this.fail(msg);
     const ids = [...session.state.players.keys()];
     const idx = this.versus ? 0 : Math.max(0, ids.indexOf(session.myId));
-    const spawn = { x: PLAYER_SPAWN.x + (idx % 2) * 5 - 2.5, y: 0, z: PLAYER_SPAWN.z + Math.floor(idx / 2) * 5 + laneOz(this.myLane) };
+    const spawn = { x: PLAYER_SPAWN.x + (idx % 2) * 5 - 2.5, y: PLAYER_SPAWN.y, z: PLAYER_SPAWN.z + Math.floor(idx / 2) * 5 + laneOz(this.myLane) };
     if (this.versus) this.setupVersus(session.state.lanes);
     this.player = new Player(this.scene, spawn, this.me?.color);
-    if (this.versus) this.player.area = (x, z) => versusWalkable(x, z, session.state.lanes);
+    if (this.versus) this.player.area = (x, z) => versusWalkable(x, z, session.state.lanes) && (!mapInfo.nexus || nexusWalkable(x, z)) && (!mapInfo.court || courtWalkable(x, z)) && (!mapInfo.ember || emberWalkable(x, z)) && (!mapInfo.rampart || rampartWalkable(x, z)) && (!mapInfo.brook || brookWalkable(x, z)) && (!mapInfo.rig || rigWalkable(x, z));
+    else if (mapInfo.nexus) this.player.area = (x, z) => path.time || nexusWalkable(x, z); // the deck floats over the void
+    else if (mapInfo.grid) this.player.area = (x, z) => path.time || gridWalkable(x, z); // the plateau's cliff edges
+    else if (mapInfo.court) this.player.area = (x, z) => path.time || courtWalkable(x, z); // the tiles float over the void
+    else if (mapInfo.ember) this.player.area = (x, z) => path.time || emberWalkable(x, z); // the island is ringed by lava
+    else if (mapInfo.rampart) this.player.area = (x, z) => path.time || rampartWalkable(x, z); // the bowl, not the pond or the sewer
+    else if (mapInfo.brook) this.player.area = (x, z) => path.time || brookWalkable(x, z); // the bowl, not the stream's water
+    else if (mapInfo.rig) this.player.area = (x, z) => path.time || rigWalkable(x, z); // the deck, bridges and helipad, not the sea
     this.cam.yaw = 0;
     this.cam.pitch = 0.55;
     this.cam.dist = 34;
@@ -245,6 +270,174 @@ export class GameClient {
       : session.mp ? `Work together! Press ${keys} to place towers, Enter to chat.` : `Place towers (press ${keys}), then start the wave!`,
       this.versus ? 5000 : 3500,
     );
+  }
+
+  /** Rebuilds the scenery, colliders and sky if the session is on a different map than last game. */
+  syncMap() {
+    if (this.mapVersion === mapVersion) return;
+    this.mapVersion = mapVersion;
+    buildColliders();
+    this.scene.remove(this.baseWorld);
+    this.baseWorld = buildWorld(this.scene);
+    for (const w of this.laneWorlds) this.scene.remove(w);
+    this.laneWorlds = [];
+    if (this.timeWorld) this.scene.remove(this.timeWorld); // its path ends where this map's does
+    this.timeWorld = null;
+    this.timeShown = false;
+    this.staticColliders = LANE_COLLIDERS;
+    this.setSky(mapInfo.theme.sky);
+    this.applyLighting();
+  }
+
+  /**
+   * Menu pictures of maps. Asks for a picture of every map in `keys`: one is made per frame while
+   * no game is on (the world is rebuilt as that map and drawn from above into an off-screen
+   * buffer; the screen keeps its last frame meanwhile, so nothing flickers behind the menu).
+   * `each(key, url)` gets every picture as it's ready; `done()` runs after the last one and must
+   * put the menu's own map back.
+   */
+  requestMapThumbs(keys, each, done) {
+    this.thumbJob = { keys: [...keys], each, done };
+  }
+
+  /** One step of requestMapThumbs. */
+  stepThumbs() {
+    const job = this.thumbJob;
+    const key = job.keys.shift();
+    if (key == null) {
+      this.thumbJob = null;
+      job.done?.();
+      return;
+    }
+    let url = '';
+    try {
+      setMap(key);
+      this.syncMap();
+      url = this.drawMapThumb();
+    } catch (err) {
+      console.warn('map picture failed', key, err);
+    }
+    job.each(key, url);
+  }
+
+  /** Draws the map that's showing as a square picture, seen from high up in the south. Returns a data URL. */
+  drawMapThumb(size = 320) {
+    const W = WORLD_SCALE;
+    const r = this.renderer;
+    let t = this.thumb;
+    if (!t) {
+      // Lit colors are drawn into a half-float buffer and turned into screen colors by a second
+      // pass (an 8-bit buffer would band the dark night maps).
+      const float = r.extensions.has('EXT_color_buffer_float') || r.extensions.has('EXT_color_buffer_half_float');
+      const lit = new THREE.WebGLRenderTarget(size, size, { type: float ? THREE.HalfFloatType : THREE.UnsignedByteType, samples: 4 });
+      const out = new THREE.WebGLRenderTarget(size, size, { depthBuffer: false });
+      const quad = new THREE.Mesh(
+        new THREE.PlaneGeometry(2, 2),
+        new THREE.ShaderMaterial({
+          uniforms: { map: { value: lit.texture } },
+          vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+          fragmentShader: `uniform sampler2D map; varying vec2 vUv;
+            void main() {
+              vec3 c = clamp(texture2D(map, vUv).rgb, 0.0, 1.0);
+              vec3 lo = c * 12.92, hi = 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055;
+              gl_FragColor = vec4(mix(lo, hi, step(vec3(0.0031308), c)), 1.0);
+            }`,
+          depthTest: false,
+          depthWrite: false,
+        }),
+      );
+      quad.frustumCulled = false;
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = size;
+      t = this.thumb = { lit, out, quad, cam: new THREE.PerspectiveCamera(30, 1, 1, 900), flat: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), canvas, ctx: canvas.getContext('2d'), buf: new Uint8Array(size * size * 4) };
+    }
+    // Fit the play area (wider than deep on most maps) into the square.
+    const cx = ((BOUNDS.minX + BOUNDS.maxX) / 2) * W;
+    const cz = ((BOUNDS.minZ + BOUNDS.maxZ) / 2) * W;
+    const half = (Math.max(BOUNDS.maxX - BOUNDS.minX, (BOUNDS.maxZ - BOUNDS.minZ) * 1.2) / 2) * W;
+    const dist = (half / Math.tan((t.cam.fov * Math.PI) / 360)) * 0.9;
+    const yaw = 0.42;
+    const pitch = 0.9;
+    t.cam.position.set(cx + Math.sin(yaw) * Math.cos(pitch) * dist, Math.sin(pitch) * dist, cz + Math.cos(yaw) * Math.cos(pitch) * dist);
+    t.cam.lookAt(cx, 0, cz);
+    const so = this.sunOff ?? [60, 120, 45];
+    this.sun.position.set(cx + so[0] * W, so[1] * W, cz + so[2] * W);
+    this.sun.target.position.set(cx, 0, cz);
+    this.sun.target.updateMatrixWorld();
+    // The map's fog is set up for a camera on the ground: from up here it would hide everything.
+    const fog = this.root.fog;
+    const { near, far } = fog;
+    fog.near = dist * 0.85;
+    fog.far = dist * 2.4;
+    this.baseWorld.userData.tick?.(3);
+    // Clouds and the like (userData.sky) would cover the map from up here.
+    const hidden = [];
+    this.baseWorld.traverse((o) => o.userData.sky && o.visible && hidden.push(o));
+    for (const o of hidden) o.visible = false;
+    r.setRenderTarget(t.lit);
+    r.render(this.root, t.cam);
+    for (const o of hidden) o.visible = true;
+    r.setRenderTarget(t.out);
+    r.render(t.quad, t.flat);
+    r.readRenderTargetPixels(t.out, 0, 0, size, size, t.buf);
+    r.setRenderTarget(null);
+    fog.near = near;
+    fog.far = far;
+    // The buffer's rows run bottom to top.
+    const img = t.ctx.createImageData(size, size);
+    for (let y = 0; y < size; y++) img.data.set(t.buf.subarray((size - 1 - y) * size * 4, (size - y) * size * 4), y * size * 4);
+    t.ctx.putImageData(img, 0, 0);
+    return t.canvas.toDataURL('image/jpeg', 0.84);
+  }
+
+  /** Day maps: bright sun and sky light. Night maps (Twilight Nexus): dim, lit mostly by neon, thick haze. */
+  applyLighting() {
+    const t = mapInfo.theme;
+    const night = !!t.night;
+    this.hemi.color.set(night ? 0x6a7cc8 : 0xdff3ff);
+    this.hemi.groundColor.set(night ? 0x141a33 : 0x4a6b3a);
+    this.hemi.intensity = night ? 1.2 : 1.6;
+    this.sun.color.set(night ? 0x9fb4ff : 0xfff4e0);
+    this.sun.intensity = night ? 0.8 : 2.6;
+    // Sunset maps: a warm orange sun low in the west, soft and peachy all round.
+    this.sunOff = t.sunset ? [-120, 55, 40] : [60, 120, 45];
+    if (t.sunset) {
+      this.sun.color.set(0xffb070);
+      this.sun.intensity = 2.3;
+      this.hemi.color.set(0xffd2b0);
+      this.hemi.groundColor.set(0x6a4a3a);
+      this.hemi.intensity = 1.5;
+    }
+    // Lava maps (Ember Keep): no sun, a warm red-orange glow from everywhere, strongest from below.
+    if (t.lava) {
+      this.sunOff = [30, 120, 20];
+      this.sun.color.set(0xff7a40);
+      this.sun.intensity = 0.9;
+      this.hemi.color.set(0xff8a60);
+      this.hemi.groundColor.set(0xff6a10);
+      this.hemi.intensity = 1.9;
+    }
+    // Lamp-lit night maps (Midnight Rampart): a faint cold moon, warm low ambient light bouncing off orange ground.
+    if (t.lamps) {
+      this.sunOff = [-40, 120, -60];
+      this.sun.color.set(0xb8b4d8);
+      this.sun.intensity = 0.55;
+      this.hemi.color.set(0x8a8098);
+      this.hemi.groundColor.set(0x4a2a14);
+      this.hemi.intensity = 1.05;
+    }
+    if (t.sunOff) this.sunOff = t.sunOff; // a map's own sun direction (Brook Hollow: from the east)
+    this.root.fog.near = t.fogNear ?? 90; // drawn units
+    this.root.fog.far = t.fogFar ?? 200;
+    if (t.fog != null) this.root.fog.color.set(t.fog);
+  }
+
+  setSky(color) {
+    this.root.background.set(color);
+    this.root.fog.color.set(mapInfo.theme.fog != null && color === mapInfo.theme.sky ? mapInfo.theme.fog : color);
+    // The effects that tint the sky go back to these colors when they end.
+    if (this.effects.skyBase) this.effects.skyBase.set(color);
+    if (this.effects.fogBase) this.effects.fogBase.set(color);
   }
 
   /**
@@ -376,6 +569,9 @@ export class GameClient {
   frame() {
     const realDt = Math.min(this.clock.getDelta(), 0.05);
     const s = this.session;
+    // Music: the menu tracks, or in a game the map's track (a boss's own while it's alive).
+    if (!s || this.ended || s.state.over) audio.musicMenu(s ? 2 : 0);
+    else audio.musicGame(baseKey(mapKey), s.state.enemies.values());
     if (s) {
       const st = s.state;
       const gdt = st.over ? 0 : realDt * st.speed;
@@ -437,16 +633,26 @@ export class GameClient {
       }
     } else {
       this.cam.yaw += realDt * 0.05; // slow orbit behind the menus
+      // Menu map pictures: one per frame, once the menu's own backdrop has been drawn a few times.
+      if (this.thumbJob && (this.menuFrames = (this.menuFrames ?? 0) + 1) > 3) {
+        this.stepThumbs();
+        return;
+      }
     }
 
     this.updateCamera(realDt);
     const ct = this.cam.target;
-    this.sun.position.set(ct.x + 60 * WORLD_SCALE, 120 * WORLD_SCALE, ct.z + 45 * WORLD_SCALE);
+    const so = this.sunOff ?? [60, 120, 45];
+    this.sun.position.set(ct.x + so[0] * WORLD_SCALE, so[1] * WORLD_SCALE, ct.z + so[2] * WORLD_SCALE);
     this.sun.target.position.set(ct.x, 0, ct.z);
     this.raycaster.setFromCamera(this.mouse, this.camera);
     this.pickGround();
     this.effects.update(realDt);
     if (this.timeShown) this.timeWorld.userData.tick(performance.now() / 1000);
+    // Animated scenery (lava, smoke...) on whichever maps are showing.
+    const now = performance.now() / 1000;
+    if (this.baseWorld.visible) this.baseWorld.userData.tick?.(now);
+    for (const w of this.laneWorlds) if (w.visible) w.userData.tick?.(now);
     this.updateGhost();
     if (this.session) this.updateHud(realDt);
     if (this.session) this.updateSubRing();
@@ -745,6 +951,7 @@ export class GameClient {
           // Field Barracks Flamethrower: a spray of fire toward its target.
           const v = this.unitViews.get(ev.u);
           if (!v) break;
+          v.aimAt(ev.y);
           this.effects.flames(v.muzzlePosition(new THREE.Vector3()), ev.y, ev.r, 0.5);
           audio.flame();
           break;
@@ -753,6 +960,7 @@ export class GameClient {
           // Mercenary Grenadier: a grenade arcing from the unit to where the zombie will be.
           const v = this.unitViews.get(ev.u);
           if (!v) break;
+          v.aimAt(ev.x, ev.z);
           this.effects.lob(v.muzzlePosition(new THREE.Vector3()), new THREE.Vector3(ev.x, 0.3, ev.z), ev.d, v.m.projectile);
           audio.lob('grenadier');
           break;
@@ -1023,6 +1231,11 @@ export class GameClient {
         }
         case 'kill': {
           const v = this.enemyViews.get(ev.e);
+          if (v?.def.headRoll) {
+            // Halloween Jack: falls on his back, his head rolls off, and a whisper.
+            audio.whisper();
+            this.ui.banner('JACK HAS FALLEN', 'Happy Halloween!', 4000);
+          }
           if (v) {
             v.die(ev.r, this.effects, audio);
             this.enemyViews.delete(ev.e);
@@ -1233,6 +1446,15 @@ export class GameClient {
               this.effects.lob(from, to, ev.d, { color: v?.def.mlook === 'eliteGrenadier' ? 0xff9100 : 0x40c4ff, size: 0.7, arc: 6, glowing: true });
               audio.lob();
               break;
+            case 'shell': // Hardcore TDX shooters
+              this.effects.missile(from, aim, ev.d, 0xff6d00, 0.9);
+              if (Math.random() < 0.4) audio.missile();
+              break;
+            case 'pumpkin': // Hardcore Expired Jack
+              this.effects.lob(from, to, ev.d, { color: 0xff6d00, size: 1.6, arc: 10, glowing: true });
+              audio.lob('mortar');
+              this.ui.toast(`🎃 ${v?.def.name ?? 'Jack'} threw a flaming pumpkin! Towers it hits burn and can't fight for 42 seconds.`, 1800);
+              break;
             case 'sword': // Beholder (time dimension): throws its sword
               this.effects.axe(from, to, ev.d);
               audio.rocket(1);
@@ -1246,6 +1468,10 @@ export class GameClient {
           if (ev.kind === 'magma') {
             this.effects.puddle(at, ev.r, ev.life ?? 6);
             this.effects.puff(at.clone().setY(1), 0xff6d00, 10, 0.5, 8);
+          } else if (ev.kind === 'pumpkin') {
+            this.effects.pulse(at, ev.r, 0.5, 0xff6d00);
+            this.effects.puff(at.clone().setY(1), 0xff3d00, 16, 0.7, 8);
+            audio.boom(3);
           } else if (ev.kind === 'voidRock') {
             this.effects.pulse(at, ev.r * 1.5, 0.4, 0xd500f9);
             this.effects.puff(at.clone().setY(1), 0x4a0072, 10, 0.6, 8);
@@ -1683,6 +1909,50 @@ export class GameClient {
             case 'staffSlam':
               this.effects.pulse(at, ev.r, 0.35, 0x40c4ff);
               break;
+            // ------------------------------------------------ Hardcore moves
+            case 'gaze': {
+              for (const [x, z] of ev.h) {
+                const to = new THREE.Vector3(x, 1.5, z + oz);
+                this.effects.tracer(v ? v.aimPoint(new THREE.Vector3()) : to.clone().setY(20), to, 0xaa00ff, 0.3);
+                this.effects.flash(to, 0xd500f9, 1);
+              }
+              break;
+            }
+            case 'dSword':
+            case 'dSpikes':
+              if (ev.key === 'dSword') this.effects.whirl(at, ev.r);
+              this.effects.pulse(at, ev.r, 0.5, ev.key === 'dSword' ? 0x9e9e9e : 0xaa00ff);
+              audio.boom(ev.key === 'dSword' ? 4 : 6);
+              if (ev.n) this.ui.toast(`${ev.key === 'dSword' ? '🗡️ Demise swung its sword' : '🪨 Spikes burst from the ground'}: ${plural(ev.n)} stunned!`, 1600);
+              break;
+            case 'dMist':
+              this.effects.smoke(at.clone().setY(0.5), ev.r, 3, [0xff80ab, 0xf48fb1], 14);
+              audio.boom(3);
+              this.ui.toast(ev.n ? `🌸 PINK MIST! Demise downgraded ${plural(ev.n)} by one level.` : '🌸 Demise breathes a pink mist…', 2400);
+              break;
+            case 'crystalLaser':
+              this.effects.pulse(at, ev.r, 0.6, 0xd500f9);
+              this.effects.pulse(at, ev.r * 0.5, 0.4, 0xffffff);
+              audio.shot(0, 'phaser');
+              this.ui.toast(`💎 The Crystalian fires its laser${ev.n ? `: ${plural(ev.n)} deal less damage` : ''}. It can be hurt for ${ev.open}s: HIT IT!`, 2000);
+              break;
+            case 'hammerBounce': {
+              let prev = v ? v.aimPoint(new THREE.Vector3()) : null;
+              for (const [x, z] of ev.h) {
+                const to = new THREE.Vector3(x, 1.5, z + oz);
+                if (prev) this.effects.tracer(prev, to, 0xb388ff, 0.4);
+                this.effects.flash(to, 0xb388ff, 1);
+                prev = to;
+              }
+              audio.boom(4);
+              this.ui.toast(`🔨 The Vindicator's hammer scared ${plural(ev.h.length)}: they can't attack for a while!`, 2000);
+              break;
+            }
+            case 'spear':
+              for (let i = 1; i <= 6; i++) this.effects.pulse(new THREE.Vector3(ev.x + (ev.dx * ev.len * i) / 6, 0.3, ev.z + (ev.dz * ev.len * i) / 6 + oz), 2.5, 0.25 + i * 0.05, 0x80d8ff);
+              audio.boom(5);
+              if (ev.n) this.ui.toast(`🔱 The Void Guardian's spear froze ${plural(ev.n)} for 10 seconds!`, 1800);
+              break;
             case 'timeParadox':
               this.effects.pulse(at, 10, 0.6, 0xffffff);
               for (const [x, z] of ev.h) this.effects.puff(new THREE.Vector3(x, 3, z + oz), 0xeceff1, 18, 0.7, 8);
@@ -1906,9 +2176,9 @@ export class GameClient {
         case 'vLaser': {
           const oz = laneOz(ev.L ?? 0);
           const pts = [];
-          for (let d = 0; d <= path.length; d += 3) {
-            const at = path.at(d, {});
-            pts.push(new THREE.Vector3(at.x, 0, at.z + oz));
+          for (let r = 0; r < path.routes.length; r++) for (let d = 0; d <= path.length; d += 3) {
+            const at = path.at(d, {}, r);
+            pts.push(new THREE.Vector3(at.x, at.y, at.z + oz));
           }
           this.effects.skyLaser(pts, 1.6);
           this.ui.screenFlash('#ff1744', 700);
@@ -1968,6 +2238,7 @@ export class GameClient {
           }
           if (!this.versus || ev.L === this.myLane) audio.baseHit();
           this.effects.puff(new THREE.Vector3(path.end.x, 3, path.end.z + laneOz(ev.L ?? 0)), 0xe53935, 10, 0.5, 8);
+          if (!this.versus || ev.L === this.myLane) this.effects.baseHit(new THREE.Vector3(path.end.x, 0, path.end.z + laneOz(ev.L ?? 0)));
           break;
         }
         case 'waveStart': {
@@ -1989,10 +2260,13 @@ export class GameClient {
           break;
         case 'place':
           if (ev.owner === myId) audio.place();
-          this.effects.puff(new THREE.Vector3(ev.x, 0.5, ev.z), ev.holo ? 0x18ffff : 0xbdbdbd, ev.holo ? 16 : 8, 0.4, 6);
+          if (ev.holo) this.effects.puff(new THREE.Vector3(ev.x, 0.5, ev.z), 0x18ffff, 16, 0.4, 6);
+          this.effects.placeFx(new THREE.Vector3(ev.x, 0, ev.z), ev.holo ? 0x18ffff : 0xcfd8dc);
           break;
         case 'towerDown': // a tower ran out of health: knocked out until healed
           this.effects.puff(new THREE.Vector3(ev.x, 2, ev.z), 0x616161, 14, 0.6, 8);
+          this.effects.sparks(new THREE.Vector3(ev.x, 3, ev.z), 0xffd54f, 10, 13);
+          this.effects.smokePuff(new THREE.Vector3(ev.x, 3, ev.z), 1.6, 6);
           if (ev.owner === myId) this.ui.toast('💫 One of your towers was knocked out! Heal it with a Medic or Health Pack', 2200);
           break;
         case 'bounty': {
@@ -2024,7 +2298,7 @@ export class GameClient {
           break;
         case 'upgrade':
           if (ev.owner === myId) audio.upgrade();
-          this.effects.puff(new THREE.Vector3(ev.x, 3, ev.z), 0xffd54f, 12, 0.35, 10);
+          this.effects.levelUp(new THREE.Vector3(ev.x, 0, ev.z), 0xffd54f, 6);
           this.effects.text(new THREE.Vector3(ev.x, 7.5 * MODEL_SCALE, ev.z), ev.name, '#ffd54f', 2.6);
           break;
         case 'konami':
@@ -2086,24 +2360,198 @@ export class GameClient {
           break;
         }
         case 'sell':
+          if (ev.x != null) this.effects.sellFx(new THREE.Vector3(ev.x, 0, ev.z));
           if (ev.owner === myId) {
             audio.sell();
             this.effects.text(new THREE.Vector3(ev.x, 5 * MODEL_SCALE, ev.z), `+$${ev.value}`, '#a5f36b');
           }
+          break;
+        // ---------------------------------------------------------------- Hardcore mode (2026-11-09)
+        case 'hcMove': {
+          // Soul Stealer, Void Reaver, Void Caster and Emperor moves (see Sim.hcMove).
+          const oz = laneOz(ev.L ?? 0);
+          const v = this.enemyViews.get(ev.e);
+          v?.attack();
+          const at = new THREE.Vector3(ev.x, 0.3, ev.z + oz);
+          const from = v ? v.aimPoint(new THREE.Vector3()) : at.clone().setY(8);
+          const plural = (n, w = 'tower') => `${n} ${w}${n === 1 ? '' : 's'}`;
+          const marks = (h, color) => {
+            for (const [x, z] of h ?? []) {
+              const to = new THREE.Vector3(x, 1.5, z + oz);
+              this.effects.tracer(from, to, color, 0.4);
+              this.effects.pulse(to.clone().setY(0.3), 2.5, 0.5, color);
+            }
+          };
+          switch (ev.key) {
+            case 'curseTower': {
+              const to = new THREE.Vector3(ev.tx, 1.5, ev.tz + oz);
+              this.effects.tracer(from, to, 0xffc400, 0.5);
+              this.effects.puff(to, 0xffc400, 12, 0.6, 6);
+              this.ui.toast('🔒 The Soul Stealer CURSED a tower! It can\'t do anything until the Soul Stealer dies.', 2200);
+              break;
+            }
+            case 'soulSummon':
+              this.effects.puff(at.clone().setY(3), 0xeeeeee, 24, 0.8, 10);
+              this.ui.toast(`👻 The Soul Stealer summoned ${ev.n} Souls and a Void Eye, and vanished for a while!`, 2200);
+              break;
+            case 'cursedBlade':
+            case 'spearLine':
+              for (let i = 1; i <= 7; i++) this.effects.pulse(new THREE.Vector3(ev.x + (ev.dx * ev.len * i) / 7, 0.3, ev.z + (ev.dz * ev.len * i) / 7 + oz), 3, 0.25 + i * 0.05, 0xaa00ff);
+              audio.boom(5);
+              this.ui.toast(`🗡️ CURSED BLADE! ${ev.n ? `${plural(ev.n)} deal less damage and lose range` : 'A wave of void cuts down the path'}, and Blessed Souls appear.`, 2000);
+              break;
+            case 'judgement':
+              for (const [x, z] of ev.h) this.effects.lightning([new THREE.Vector3(x, 60, z + oz), new THREE.Vector3(x, 1, z + oz)], 0xd500f9);
+              audio.boom(6);
+              this.ui.toast(`⚖️ VOID JUDGEMENT! ${plural(ev.h.length)} can't attack until the Void Reaver hits 0 health.`, 2800);
+              break;
+            case 'unnervingGaze':
+              this.effects.pulse(at, 8, 0.6, 0xaa00ff);
+              this.ui.toast('👁️ Unnerving Gaze! Portals opened: Void Eyes will stun your towers. Destroy them!', 2200);
+              break;
+            case 'rupture':
+              this.effects.whirl(at, ev.r);
+              this.effects.pulse(at, ev.r, 0.5, 0xd500f9);
+              audio.boom(6);
+              this.ui.banner('VOID RUPTURE', `Deal ${ev.cancel.toLocaleString()} damage in ${ev.charge}s to stop the slash!`, ev.charge * 1000);
+              break;
+            case 'ruptureSlash':
+              this.effects.pulse(at, 80, 1, 0xd500f9);
+              this.effects.pulse(at, 50, 0.8, 0xffffff);
+              audio.boom(9);
+              this.shake(1.4, 2);
+              this.ui.screenFlash('#4a0072', 900);
+              this.ui.toast(`💥 VOID RUPTURE! Every tower is stunned for ${ev.stun}s.`, 3000);
+              break;
+            case 'ruptureCancel':
+              this.effects.puff(at.clone().setY(4), 0xffffff, 30, 0.8, 12);
+              this.ui.toast('✋ You interrupted the Void Rupture!', 2500);
+              break;
+            case 'casterShield': {
+              const to = new THREE.Vector3(ev.tx, 3, ev.tz + oz);
+              this.effects.tracer(from, to, 0xd500f9, 0.6);
+              this.effects.puff(to, 0xea80fc, 20, 0.7, 8);
+              this.ui.toast('🛡️ The Void Caster shielded the Void Reaver!', 1800);
+              break;
+            }
+            case 'casterPortal':
+              this.effects.pulse(at, 5, ev.time, 0xaa00ff);
+              this.effects.puff(at.clone().setY(3), 0xaa00ff, 30, 1, 10);
+              this.ui.toast(`🌀 The Void Caster opened a portal: ${ev.n} enemies are pouring out!`, 2500);
+              break;
+            case 'finalEradication':
+              this.effects.pulse(at, 60, 0.9, 0xff1744);
+              this.effects.pulse(at, 30, 0.6, 0xffffff);
+              audio.boom(9);
+              this.shake(1.2, 2);
+              this.ui.toast(`🔨 FINAL ERADICATION! Every unit destroyed${ev.n ? ` and ${plural(ev.n)} stunned` : ''}.`, 2800);
+              break;
+            case 'chronoStasis':
+              this.ui.screenFlash('#ffffff', 700);
+              this.effects.pulse(at, 40, ev.time, 0xeceff1);
+              audio.boom(6);
+              this.ui.toast(`⏱️ CHRONO STASIS! Time crawls (your towers barely move), and an orb hit your base for ${ev.d}.`, 3000);
+              break;
+            case 'encore':
+              this.effects.puff(at.clone().setY(4), 0xff1744, 30, 0.9, 12);
+              this.ui.toast(`🤖 ERADICATORS' ENCORE! The Emperor called in ${ev.n} drones and clones.`, 2600);
+              break;
+            case 'divineProtection':
+              this.effects.pulse(at, ev.r, 0.6, 0xffd740);
+              this.effects.puff(at.clone().setY(4), 0xffe57f, 24, 0.8, 8);
+              this.ui.toast('✨ Divine Protection! The Emperor raised a huge shield.', 2000);
+              break;
+            case 'meteoricSwarm':
+              for (const [x, z, d] of ev.h) {
+                const to = new THREE.Vector3(x, 0.3, z + oz);
+                this.effects.pulse(to, ev.r, d, 0xff1744);
+                this.effects.missile(to.clone().setY(60), (out) => out.copy(to), d, 0xff6d00, 1.4);
+              }
+              audio.missile();
+              this.ui.toast('☄️ METEORIC SWARM! Drones are raining down on your towers.', 2200);
+              break;
+            case 'corruptingBlast':
+              marks(ev.h, 0xff1744);
+              this.ui.toast(`🟥 CORRUPTING BLAST! ${plural(ev.h.length)} can't fight for ${ev.time}s.`, 2400);
+              break;
+            case 'harvest':
+              marks(ev.h, 0xff5252);
+              audio.shot(0, 'phaser');
+              this.ui.toast(`🩸 EMPEROR'S HARVEST! Beams drain ${plural(ev.h.length)} while he heals.`, 2400);
+              break;
+            case 'execution': {
+              const to = new THREE.Vector3(ev.tx, 1.5, ev.tz + oz);
+              this.effects.pulse(to.clone().setY(0.3), 3, 0.5, 0xffffff);
+              this.effects.puff(to, 0xff1744, 20, 0.7, 10);
+              audio.boom(7);
+              this.ui.toast('👋 PERSONAL EXECUTION! The Emperor slapped down your priciest tower nearby.', 2600);
+              break;
+            }
+            case 'overdrive':
+              this.effects.puff(at.clone().setY(3), 0xff1744, 16, 0.6, 10);
+              break;
+          }
+          break;
+        }
+        case 'hcWrath': {
+          const v = this.enemyViews.get(ev.e);
+          audio.boom(8);
+          this.shake(1.2, 2);
+          this.ui.screenFlash('#4a0072', 1200);
+          this.ui.banner("VOID'S WRATH", 'The Void Reaver rips off its mask… and the Void Caster answers.', 4000);
+          if (v) this.effects.puff(v.aimPoint(new THREE.Vector3()), 0xd500f9, 40, 1, 14);
+          break;
+        }
+        case 'hcDown':
+          audio.waveStart();
+          this.ui.toast(`💀 The Void Reaver is down! The Void Caster is reviving him in ${ev.t}s. HIT HER NOW!`, 4000);
+          break;
+        case 'hcRevive':
+          this.ui.toast('🔮 The Void Caster revived the Void Reaver!', 2500);
+          break;
+        case 'hcDeathwish':
+          audio.boom(8);
+          this.ui.banner('VOID DEATHWISH', 'The Caster is gone. The Reaver runs for your base!', 3500);
+          break;
+        case 'hcRage':
+          this.ui.toast('😡 The Void Caster is ENRAGED!', 2000);
+          break;
+        case 'hcRecede':
+          audio.waveStart();
+          this.ui.toast(ev.left ? `🌀 TAUNTING RECESSION! The Emperor warped back to the start (${ev.left} more time${ev.left === 1 ? '' : 's'}).` : '🌀 The Emperor warped back to the start. Next time he WILL enter your base!', 3500);
+          break;
+        case 'hcDowngrade': {
+          const at = new THREE.Vector3(ev.x, 2, ev.z + laneOz(ev.L ?? 0));
+          this.effects.puff(at, 0xff80ab, 14, 0.6, 6);
+          break;
+        }
+        case 'oshBreak': {
+          const at = new THREE.Vector3(ev.x, 2.5, ev.z + laneOz(ev.L ?? 0));
+          this.effects.puff(at, 0x80deea, ev.big ? 24 : 8, 0.4, ev.big ? 10 : 5);
+          if (ev.big) {
+            audio.boom(4);
+            this.ui.toast(`💥 ${ENEMIES[st.enemies.get(ev.e)?.type]?.name ?? 'The boss'}'s shield broke!`, 1600);
+          }
+          break;
+        }
+        case 'timeShiftEnd':
+          audio.waveStart();
+          this.ui.screenFlash('#ffffff', 900);
+          this.ui.toast('🌍 The Beholder is beaten! You\'re back on the real map, and every tower was refunded. You have extra time to rebuild!', 6000);
           break;
         case 'reborn': {
           // A cage broke open, or a boss came back for its second phase.
           const e = st.enemies.get(ev.e);
           const def = ENEMIES[ev.type];
           if (e) {
-            const at = path.at(e.dist, {});
+            const at = path.at(e.dist, {}, e.route);
             const color = def.fire ? 0xff6d00 : ENEMIES[ev.from].cage ? 0x9e9e9e : def.skin;
             this.effects.puff(new THREE.Vector3(at.x, 2, at.z + laneOz(e.lane ?? 0)), color, def.boss ? 24 : 10, 0.5, def.boss ? 12 : 6);
           }
           if (ev.type === 'devotee' && ENEMIES[ev.from].name !== 'Devotee' && e) {
             // Reviver: a fallen enemy rises again as a Devotee.
-            const at = path.at(e.dist, {});
-            this.effects.pulse(new THREE.Vector3(at.x, 0.3, at.z + laneOz(e.lane ?? 0)), 3, 0.4, 0x69f0ae);
+            const at = path.at(e.dist, {}, e.route);
+            this.effects.pulse(new THREE.Vector3(at.x, at.y + 0.3, at.z + laneOz(e.lane ?? 0)), 3, 0.4, 0x69f0ae);
           } else if (ENEMIES[ev.from].shield) {
             // Shielders: the crystal shield shatters.
             audio.boom(1);
@@ -2167,25 +2615,32 @@ export class GameClient {
             if (win) audio.victory();
             const place = ev.places[myId] ?? st.lanes;
             const waves = win ? ev.wave : this.elimWave;
-            const credits = VERSUS.credits(waves, place);
+            const derrick = (win && ev.bonus?.[myId]) || 0; // Oil Derrick US Military Budget
+            const credits = VERSUS.credits(waves, place) + derrick;
             const shards = VERSUS.shards(place);
             profile.addCredits(credits);
             profile.addShards(shards);
-            this.ui.showVersusEnd(place, st.players.get(ev.winner)?.name ?? '?', win ? ev.wave : this.elimWave + 1, credits, shards);
+            this.ui.showVersusEnd(place, st.players.get(ev.winner)?.name ?? '?', win ? ev.wave : this.elimWave + 1, credits, shards, derrick);
             break;
           }
           this.cancelPlace();
           this.deselect();
           ev.win ? audio.victory() : audio.defeat();
           const diff = difficulty(st.mode);
-          const credits = Math.round(GAME.credits(ev.win ? st.wave.total : st.wave.index, ev.win) * diff.credits);
+          const derrick = (ev.win && ev.bonus?.[myId]) || 0; // Oil Derrick US Military Budget: a flat bonus for a win
+          const credits = Math.round(GAME.credits(ev.win ? st.wave.total : st.wave.index, ev.win) * diff.credits) + derrick;
           const shards = GAME.shards(ev.win) * diff.shards;
+          const gems = diff.gems ? GAME.gems(ev.win ? st.wave.total : st.wave.index, ev.win) : 0; // Hardcore
           profile.addCredits(credits);
           profile.addShards(shards);
+          profile.addGems(gems);
+          const opened = ev.win && profile.markBeaten(st.mode) && Object.keys(DIFFICULTIES).find((k) => DIFFICULTIES[k].needs?.includes(st.mode) && profile.modeOpen(k));
           // Win rewards: a tower or variant (Easy, Medium, Hard, Void) or an upgrade perk (Insane).
           let unlocked = ev.win && diff.unlock && profile.grant(diff.unlock) ? (TOWERS[diff.unlock].altOf ? `${TOWERS[diff.unlock].name} (${TOWERS[TOWERS[diff.unlock].altOf].name} variant)` : TOWERS[diff.unlock].name) : null;
           if (ev.win && diff.perk && profile.grantPerk(diff.perk)) unlocked = PERK_NAMES[diff.perk];
-          this.ui.showEnd(ev.win, st.wave.index + 1, this.session.mp, credits, shards, st.wave.total, st.mode, unlocked);
+          if (opened && !unlocked) unlocked = `${DIFFICULTIES[opened].icon} ${DIFFICULTIES[opened].name} mode`; // every mode beaten: Hardcore is open
+          else if (opened) unlocked += ` and ${DIFFICULTIES[opened].icon} ${DIFFICULTIES[opened].name} mode`;
+          this.ui.showEnd(ev.win, st.wave.index + 1, this.session.mp, credits, shards, st.wave.total, st.mode, unlocked, gems, derrick);
           break;
         }
       }
@@ -2247,6 +2702,13 @@ export class GameClient {
         if (v.def.embers) {
           audio.waveStart();
           this.ui.toast(`🔥 ${v.def.name} has arrived! The world burns…`, 3500);
+        } else if (v.def.jack) {
+          // Halloween Jack laughs (his theme plays while he's alive, like every boss's: audio.musicGame).
+          audio.laugh();
+          this.shake(1, 2);
+          this.ui.screenFlash('#ff6d00', 900);
+          this.ui.banner('JACK', 'The Pumpkin King of Lantern Hill', 5000);
+          this.ui.toast(v.def.intro, 6000);
         } else if (v.def.arrive) {
           // The False Void / VOID arrives: the world goes dark purple.
           const a = v.def.arrive;
@@ -2266,15 +2728,17 @@ export class GameClient {
       if (v.def.embers) embers = true;
       if (v.def.armada) armada = true;
       if (v.def.chrono) chrono = true;
-      if (v.def.voidWorld && (!boss || v.def.voidWorld > ENEMIES[boss.type].voidWorld)) boss = e;
+      if (v.def.voidWorld && (!boss || v.def.voidWorld > (ENEMIES[boss.type].voidWorld ?? 0))) boss = e;
+      else if (v.def.bar && (!boss || (!ENEMIES[boss.type].voidWorld && e.maxHp > boss.maxHp))) boss = e; // Hardcore bosses (the biggest one)
       v.sync(e, gdt, this.camera);
     }
     // VOID's health bar across the top of the screen.
     this.ui.bossBar(boss && !st.over ? {
       name: ENEMIES[boss.type].barName ?? ENEMIES[boss.type].name,
-      sub: ENEMIES[boss.type].barSub ?? '',
+      sub: (ENEMIES[boss.type].barSub ?? '') + (boss.noTarget ? ' · can\'t be hurt right now' : ''),
       frac: boss.hp / boss.maxHp,
-      shield: boss.vShield || 0, // Void armor (wave 45 False Void)
+      // Void armor (wave 45 False Void), Hardcore shields (the local sim has raw amounts, snapshots shares).
+      shield: (boss.vShieldMax ? boss.vShield / boss.vShieldMax : boss.vShield) || (boss.oshMax ? boss.osh / boss.oshMax : boss.osh) || 0,
       phase2: ENEMIES[boss.type].voidWorld > 1,
     } : null);
     this.effects.setEmbers(embers);
@@ -2616,14 +3080,19 @@ export class GameClient {
     const objs = [...this.towerViews.values()].map((v) => v.group);
     for (const v of this.trapViews.values()) if (v.kind === 'sentry' || v.kind === 'grave') objs.push(v.group);
     for (const v of this.unitViews.values()) objs.push(v.root);
+    let near = null; // a unit whose click box (bigger than the unit) is under the mouse
     for (const { object: o } of this.raycaster.intersectObjects(objs, true)) {
       const d = o.userData;
+      if (d.pad) {
+        near ??= { kind: 'unit', id: d.unitId };
+        continue;
+      }
       if (d.sub === 'plane' && d.towerId != null) return { kind: 'plane', id: d.towerId };
       if (d.towerId != null) return { kind: 'tower', id: d.towerId };
       if (d.trapId != null) return { kind: 'trap', id: d.trapId };
       if (d.unitId != null) return { kind: 'unit', id: d.unitId };
     }
-    return null;
+    return near;
   }
 
   /** The Beholder time bomb under the mouse (id), if any. */
@@ -2662,6 +3131,19 @@ export class GameClient {
         best = d;
         this.groundHit.copy(hit);
         this.hasGround = true;
+      }
+    }
+    if (!this.hasGround && (mapInfo.nexus || mapInfo.floors) && !path.time) {
+      // Twilight Nexus: the platform, the upper deck, then the lower floor (Sunset Crossing: its
+      // terrain heights); the first floor the ray meets that really is at that height.
+      this.floorPlane ??= new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+      for (const h of mapInfo.floors ?? [12, 10]) {
+        this.floorPlane.constant = -h;
+        if (ray.intersectPlane(this.floorPlane, hit) && heightAt(hit.x, hit.z) === h) {
+          this.groundHit.copy(hit);
+          this.hasGround = true;
+          break;
+        }
       }
     }
     if (!this.hasGround) this.hasGround = !!ray.intersectPlane(this.groundPlane, this.groundHit);
@@ -3217,35 +3699,6 @@ export class GameClient {
   fail(msg) {
     audio.error();
     this.ui.toast(msg);
-  }
-
-  // ------------------------------------------------------------------ misc
-
-  renderIcon(model) {
-    const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
-    r.setSize(128, 128);
-    const s = new THREE.Scene();
-    s.add(new THREE.HemisphereLight(0xffffff, 0x666666, 2.2));
-    const d = new THREE.DirectionalLight(0xffffff, 2);
-    d.position.set(3, 5, 6);
-    s.add(d);
-    model.root.rotation.y = 0.6;
-    s.add(model.root);
-    if (model.plane) {
-      // Aviator: show its plane flying overhead in the portrait.
-      model.plane.position.set(-0.4, 5.6, -2.5);
-      model.plane.rotation.set(0.25, 1.9, 0);
-      model.plane.scale.setScalar(0.55);
-      s.add(model.plane);
-    }
-    const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
-    cam.position.set(1.5, 4.2, 11);
-    cam.lookAt(0, 3.1, 0);
-    r.render(s, cam);
-    const url = r.domElement.toDataURL();
-    r.dispose();
-    r.forceContextLoss();
-    return url;
   }
 }
 

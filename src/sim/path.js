@@ -1,47 +1,70 @@
 // Shared (client + server) path geometry. Plain math only — no three.js, no DOM.
 import { clamp } from '../utils.js';
+import { DEFAULT_MAP, mapDef } from './maps.js';
 
 // Just wide enough for one zombie (~4 units wide) to walk single file.
 export const PATH_WIDTH = 4.4;
-export const BOUNDS = { minX: -104, maxX: 104, minZ: -66, maxZ: 66 };
-export const PLAYER_SPAWN = { x: 8, y: 0, z: 0 };
+const DEFAULT_BOUNDS = { minX: -104, maxX: 104, minZ: -66, maxZ: 66 };
+// The current map's playable area (most maps use the default; set by setMapPath).
+export const BOUNDS = { ...DEFAULT_BOUNDS };
+// Where players appear on the current map (set by setMapPath).
+export const PLAYER_SPAWN = { x: 0, y: 0, z: 0 };
 
-// Winding path from the spawn portal (west) to the base (east).
-const PATH_POINTS = [
-  [-100, -40], [-45, -40], [-45, 30], [-10, 30], [-10, -35],
-  [25, -35], [25, 35], [55, 35], [55, -10], [90, -10],
-];
+// The current map's routes (see maps.js): every route runs from a spawn portal to the base and
+// they all have the same length. Most maps have one; `PATH_POINTS` is the first.
+let PATH_ROUTES = [mapDef(DEFAULT_MAP).path];
+let PATH_POINTS = PATH_ROUTES[0];
 
 // Insane mode's Beholder pulls everyone into the time dimension: one long straight path that
 // ends where the normal one does (so the castle stays put).
-const TIME_POINTS = [[-100, -10], [90, -10]];
+const timePoints = () => {
+  const [ex, ez] = PATH_POINTS[PATH_POINTS.length - 1];
+  return [[-100, ez], [ex, ez]];
+};
+
+/** One polyline route: points { x, z, y } and its segments. */
+function layRoute(pts) {
+  const points = pts.map(([x, z, y = 0]) => ({ x, z, y }));
+  const segs = [];
+  let total = 0;
+  for (let i = 0; i < points.length - 1; i++) {
+    const a = points[i];
+    const b = points[i + 1];
+    const len = Math.hypot(b.x - a.x, b.z - a.z);
+    if (len < 1e-6) continue;
+    segs.push({ a, b, len, dx: (b.x - a.x) / len, dz: (b.z - a.z) / len, dy: (b.y - a.y) / len, start: total });
+    total += len;
+  }
+  return { points, segs, length: total };
+}
 
 export class Path {
   constructor(pts) {
     this.time = false; // true while the map is the Beholder's time dimension
+    this.lastRoute = 0; // the route the last project() call landed on
     this.set(pts);
   }
 
-  /** Re-lays the path through `pts` ([[x, z], ...]). */
+  /** Re-lays the path through `pts` ([[x, z, y?], ...]): a single route. */
   set(pts) {
-    this.points = pts.map(([x, z]) => ({ x, z }));
-    this.segs = [];
-    let total = 0;
-    for (let i = 0; i < this.points.length - 1; i++) {
-      const a = this.points[i];
-      const b = this.points[i + 1];
-      const len = Math.hypot(b.x - a.x, b.z - a.z);
-      this.segs.push({ a, b, len, dx: (b.x - a.x) / len, dz: (b.z - a.z) / len, start: total });
-      total += len;
-    }
-    this.length = total;
+    this.setRoutes([pts]);
   }
 
-  /** Writes x, z and direction dx, dz at distance d along the path into `out`. */
-  at(d, out = {}) {
+  /** Re-lays the path as several routes of (nearly) equal length; the first one is `points`/`segs`. */
+  setRoutes(list) {
+    this.routes = list.map(layRoute);
+    this.points = this.routes[0].points;
+    this.segs = this.routes[0].segs;
+    this.length = Math.min(...this.routes.map((r) => r.length));
+    this.multi = this.routes.length > 1;
+  }
+
+  /** Writes x, z, y (height) and direction dx, dz at distance d along route r into `out`. */
+  at(d, out = {}, r = 0) {
+    const segs = (this.routes[r] ?? this.routes[0]).segs;
     d = clamp(d, 0, this.length);
-    let s = this.segs[this.segs.length - 1];
-    for (const seg of this.segs) {
+    let s = segs[segs.length - 1];
+    for (const seg of segs) {
       if (d <= seg.start + seg.len) {
         s = seg;
         break;
@@ -50,34 +73,47 @@ export class Path {
     const t = d - s.start;
     out.x = s.a.x + s.dx * t;
     out.z = s.a.z + s.dz * t;
+    out.y = s.a.y + s.dy * t;
     out.dx = s.dx;
     out.dz = s.dz;
     return out;
   }
 
-  /** Shortest 2D distance from (x, z) to the path centerline. */
+  /** Shortest 2D distance from (x, z) to any route's centerline. */
   distanceTo(x, z) {
     let best = Infinity;
-    for (const s of this.segs) {
-      const t = clamp((x - s.a.x) * s.dx + (z - s.a.z) * s.dz, 0, s.len);
-      best = Math.min(best, Math.hypot(x - (s.a.x + s.dx * t), z - (s.a.z + s.dz * t)));
+    for (const r of this.routes) {
+      for (const s of r.segs) {
+        const t = clamp((x - s.a.x) * s.dx + (z - s.a.z) * s.dz, 0, s.len);
+        best = Math.min(best, Math.hypot(x - (s.a.x + s.dx * t), z - (s.a.z + s.dz * t)));
+      }
     }
     return best;
   }
 
-  /** Distance along the path of the point on it closest to (x, z). */
+  /** Distance along the path of the point on it closest to (x, z). Its route goes in `lastRoute`. */
   project(x, z) {
     let best = Infinity;
     let at = 0;
-    for (const s of this.segs) {
-      const t = clamp((x - s.a.x) * s.dx + (z - s.a.z) * s.dz, 0, s.len);
-      const d = Math.hypot(x - (s.a.x + s.dx * t), z - (s.a.z + s.dz * t));
-      if (d < best) {
-        best = d;
-        at = s.start + t;
+    this.routes.forEach((r, i) => {
+      for (const s of r.segs) {
+        const t = clamp((x - s.a.x) * s.dx + (z - s.a.z) * s.dz, 0, s.len);
+        const d = Math.hypot(x - (s.a.x + s.dx * t), z - (s.a.z + s.dz * t));
+        if (d < best - 1e-6) {
+          best = d;
+          at = Math.min(this.length, s.start + t);
+          this.lastRoute = i;
+        }
       }
-    }
+    });
     return at;
+  }
+
+  /** The route closest to (x, z). */
+  nearestRoute(x, z) {
+    if (!this.multi) return 0;
+    this.project(x, z);
+    return this.lastRoute;
   }
 
   get start() {
@@ -98,5 +134,16 @@ export function setTimeWorld(on) {
   on = !!on;
   if (path.time === on) return;
   path.time = on;
-  path.set(on ? TIME_POINTS : PATH_POINTS);
+  path.setRoutes(on ? [timePoints()] : PATH_ROUTES);
 }
+
+/** Lays out map `def` (from maps.js): its path and the player spawn. Leaves the time dimension. */
+export function setMapPath(def) {
+  PATH_ROUTES = def.routes ?? [def.path];
+  PATH_POINTS = PATH_ROUTES[0];
+  Object.assign(PLAYER_SPAWN, { x: def.spawn.x, y: def.spawn.y ?? 0, z: def.spawn.z });
+  Object.assign(BOUNDS, def.bounds ?? DEFAULT_BOUNDS);
+  path.time = false;
+  path.setRoutes(PATH_ROUTES);
+}
+setMapPath(mapDef(DEFAULT_MAP));

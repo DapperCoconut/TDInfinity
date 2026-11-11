@@ -9,8 +9,12 @@
 import { DEFAULT_DIFFICULTY, DIFFICULTIES, GAME, MP, PLAYER_COLORS, TOWERS, VERSUS } from './config.js';
 import { Sim } from './sim/sim.js';
 import { VersusSim } from './sim/versus.js';
+import { setMap } from './sim/map.js';
+import { MAPS, pickableMap } from './sim/maps.js';
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+/** How many players room `r` holds: Hardcore co-op holds more (DIFFICULTIES[mode].maxPlayers). */
+const roomMax = (r) => (r.mode !== 'versus' && DIFFICULTIES[r.difficulty]?.maxPlayers) || MP.maxRoomPlayers;
 const TICK_MS = 1000 / MP.tickRate;
 
 /** A random 5-character room code (no look-alike letters), not in `taken`. */
@@ -58,7 +62,8 @@ export function createHub(timers = {}) {
       isPublic: r.isPublic,
       mode: r.mode,
       difficulty: r.difficulty,
-      max: MP.maxRoomPlayers,
+      map: r.map,
+      max: roomMax(r),
       state: r.state,
       members: r.members.map((id, i) => ({ id, name: clients.get(id)?.name ?? '?', ready: r.ready.has(id), color: PLAYER_COLORS[i % PLAYER_COLORS.length] })),
     };
@@ -72,7 +77,7 @@ export function createHub(timers = {}) {
   function roomList() {
     return [...rooms.values()]
       .filter((r) => r.isPublic)
-      .map((r) => ({ code: r.code, name: r.name, mode: r.mode, difficulty: r.difficulty, host: clients.get(r.host)?.name ?? '?', count: r.members.length, max: MP.maxRoomPlayers, state: r.state }));
+      .map((r) => ({ code: r.code, name: r.name, mode: r.mode, difficulty: r.difficulty, host: clients.get(r.host)?.name ?? '?', count: r.members.length, max: roomMax(r), state: r.state }));
   }
 
   /** Everyone browsing (not in a room) gets the updated public room list. */
@@ -113,7 +118,7 @@ export function createHub(timers = {}) {
     r.ready.clear();
     const players = r.members.map((id, i) => ({ id, name: clients.get(id)?.name ?? '?', color: PLAYER_COLORS[i % PLAYER_COLORS.length], loadout: clients.get(id)?.loadout, evo: clients.get(id)?.evo ?? {} }));
     // Versus: everyone gets their own map and fights to outlast the others.
-    r.sim = r.mode === 'versus' ? new VersusSim(players) : new Sim(players, { mode: r.difficulty });
+    r.sim = r.mode === 'versus' ? new VersusSim(players, r.map) : new Sim(players, { mode: r.difficulty, map: r.map });
     r.tick = 0;
     broadcastRoom(r, { type: 'game.start', host: r.host, mode: r.mode, totalWaves: r.mode === 'versus' ? 0 : r.sim.waves.length, s: r.sim.snapshot() });
     pushRoom(r);
@@ -124,6 +129,7 @@ export function createHub(timers = {}) {
   function stepRoom(r) {
     const sim = r.sim;
     if (!sim) return;
+    setMap(sim.map); // a server hosting several rooms: each steps on its own map
     sim.step(TICK_MS / 1000);
     const ev = sim.events;
     sim.events = [];
@@ -180,6 +186,7 @@ export function createHub(timers = {}) {
         isPublic: m.isPublic !== false,
         mode: m.mode === 'versus' ? 'versus' : 'coop',
         difficulty: DIFFICULTIES[m.difficulty] ? m.difficulty : DEFAULT_DIFFICULTY,
+        map: pickableMap(m.map),
         members: [],
         ready: new Set(),
         state: 'lobby',
@@ -195,7 +202,7 @@ export function createHub(timers = {}) {
       if (!r) return error(c, 'No room with that code');
       if (c.room) return error(c, 'You are already in a room');
       if (r.state !== 'lobby') return error(c, 'That room is already playing');
-      if (r.members.length >= MP.maxRoomPlayers) return error(c, 'That room is full');
+      if (r.members.length >= roomMax(r)) return error(c, 'That room is full');
       addToRoom(r, c);
       broadcastRoom(r, { type: 'chat', system: true, text: `${c.name} joined` });
     },
@@ -221,7 +228,9 @@ export function createHub(timers = {}) {
       const r = rooms.get(c.room);
       if (!r || r.state !== 'lobby') return;
       if (r.host !== c.id) return error(c, 'Only the host can change the mode');
-      r.mode = m.mode === 'versus' ? 'versus' : 'coop';
+      const mode = m.mode === 'versus' ? 'versus' : 'coop';
+      if (r.members.length > roomMax({ ...r, mode })) return error(c, `${mode === 'versus' ? 'Versus' : 'That mode'} holds at most ${roomMax({ ...r, mode })} players`);
+      r.mode = mode;
       r.ready.clear(); // everyone confirms again for the new mode
       broadcastRoom(r, { type: 'chat', system: true, text: r.mode === 'versus' ? 'Mode: Versus — every player for themselves!' : 'Mode: Co-op — defend together!' });
       pushRoom(r);
@@ -232,9 +241,21 @@ export function createHub(timers = {}) {
       if (!r || r.state !== 'lobby') return;
       if (r.host !== c.id) return error(c, 'Only the host can change the difficulty');
       if (!DIFFICULTIES[m.difficulty] || m.difficulty === r.difficulty) return;
+      if (r.members.length > roomMax({ ...r, difficulty: m.difficulty })) return error(c, `${DIFFICULTIES[m.difficulty].name} holds at most ${roomMax({ ...r, difficulty: m.difficulty })} players`);
       r.difficulty = m.difficulty;
       r.ready.clear(); // everyone confirms again
       broadcastRoom(r, { type: 'chat', system: true, text: `Difficulty: ${DIFFICULTIES[r.difficulty].name}` });
+      pushRoom(r);
+      pushRoomList();
+    },
+    'room.map'(c, m) {
+      const r = rooms.get(c.room);
+      if (!r || r.state !== 'lobby') return;
+      if (r.host !== c.id) return error(c, 'Only the host can change the map');
+      if (!MAPS[m.map] || MAPS[m.map].event || m.map === r.map) return; // an event's map comes with the event only
+      r.map = m.map;
+      r.ready.clear(); // everyone confirms again
+      broadcastRoom(r, { type: 'chat', system: true, text: `Map: ${MAPS[r.map].name}` });
       pushRoom(r);
       pushRoomList();
     },

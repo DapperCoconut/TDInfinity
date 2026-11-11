@@ -729,104 +729,7 @@ function squad(count, look, scale = 0.6) {
   return u;
 }
 
-/** A small car / buggy body with wheels. */
-function buggy(color, { len = 3.2, wid = 2.0, gun = false, glowColor = null } = {}) {
-  const u = makeThing();
-  u.static = false;
-  u.wheels = [];
-  const { M } = u;
-  part(u.body, boxGeo(wid, 0.7, len), M(color), 0, 0.9, 0);
-  part(u.body, boxGeo(wid * 0.8, 0.5, len * 0.4), M(0x212121), 0, 1.45, -0.2); // roll cage seat
-  part(u.body, boxGeo(wid * 0.9, 0.2, 0.3), M(0x9e9e9e), 0, 1.05, len / 2); // bumper
-  wheels(u, M(0x1b1b1b), [-wid / 2 - 0.1, wid / 2 + 0.1], [-len / 3, len / 3], 0.55, 1.0);
-  if (glowColor) part(u.body, boxGeo(wid, 0.08, len), glow(u, glowColor), 0, 0.5, 0);
-  if (gun) {
-    const t = turret(u, 1.8);
-    part(t, boxGeo(0.4, 0.4, 0.8), M(0x424242), 0, 0, 0);
-    part(t, boxGeo(0.15, 0.15, 1.2), M(0x111111), 0, 0, 0.9);
-    gunMuzzle(u, t, 0, 0, 1.5);
-  }
-  u.height = 2.2;
-  u.tracer = 0xffd54f;
-  return u;
-}
-
-/** A tracked or wheeled heavy vehicle with a turret. */
-function heavy(color, { len = 4.2, wid = 2.8, barrel = 2.4, glowColor = null, rockets = 0 } = {}) {
-  const u = makeThing();
-  u.static = false;
-  u.wheels = [];
-  const { M } = u;
-  const paint = M(color);
-  part(u.body, boxGeo(wid, 1.0, len), paint, 0, 1.0, 0);
-  for (const x of [-wid / 2 - 0.15, wid / 2 + 0.15]) part(u.body, boxGeo(0.6, 0.9, len + 0.2), M(0x1b1b1b), x, 0.55, 0);
-  wheels(u, M(0x424242), [-wid / 2 - 0.2, wid / 2 + 0.2], [-len / 3, 0, len / 3], 0.5, 0.8);
-  const t = turret(u, 1.6);
-  part(t, boxGeo(wid * 0.65, 0.8, len * 0.45), paint, 0, 0.4, -0.1);
-  if (rockets) {
-    for (let i = 0; i < rockets; i++) part(t, boxGeo(0.3, 0.3, 1.4), M(0xc62828), -0.5 + (i % 3) * 0.5, 0.6 + Math.floor(i / 3) * 0.4, 0.3);
-    gunMuzzle(u, t, 0, 0.8, 1.0);
-  } else {
-    part(t, boxGeo(0.35, 0.35, barrel), M(0x263238), 0, 0.45, barrel / 2 + 0.6);
-    gunMuzzle(u, t, 0, 0.45, barrel + 0.6);
-    u.cannon = gunMuzzle(u, t, 0, 0.45, barrel + 0.6);
-    u.muzzles.pop();
-    gunMuzzle(u, t, 0.5, 0.9, 0.8); // machine gun on top
-  }
-  if (glowColor) {
-    part(u.body, boxGeo(wid + 0.1, 0.1, len * 0.9), glow(u, glowColor), 0, 1.4, 0);
-    part(t, boxGeo(0.4, 0.2, 0.4), glow(u, glowColor), 0, 0.85, -0.4);
-  }
-  u.height = 2.8;
-  u.tracer = glowColor ?? 0xffab40;
-  return u;
-}
-
-/** A small quadcopter drone that flies over the path. */
-function droneModel(color, { size = 1, bomb = false, cryo = false } = {}) {
-  const u = makeThing();
-  u.static = false;
-  u.wheels = [];
-  const { M } = u;
-  part(u.body, boxGeo(1.0 * size, 0.4 * size, 1.0 * size), M(color), 0, 0, 0);
-  for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-    part(u.body, boxGeo(0.12, 0.12, 0.9 * size), M(0x424242), (x * 0.45 * size), 0, (z * 0.45 * size));
-    part(u.body, boxGeo(0.8 * size, 0.04, 0.12), M(0x9e9e9e), x * 0.75 * size, 0.2, z * 0.75 * size);
-  }
-  part(u.body, boxGeo(0.25, 0.25, 0.1), glow(u, cryo ? 0x80deea : bomb ? 0xff6d00 : 0xff1744), 0, 0, 0.55 * size);
-  if (bomb) for (const x of [-0.25, 0.25]) part(u.body, boxGeo(0.3, 0.5, 0.3), M(0x263238), x, -0.45, 0);
-  if (cryo) part(u.body, boxGeo(0.5, 0.5, 0.5), glow(u, 0xb2ebf2), 0, -0.4, 0);
-  gunMuzzle(u, u.body, 0, -0.2, 0.6 * size);
-  u.fly = 5;
-  u.height = 1;
-  u.tracer = cryo ? 0x80deea : 0xffd54f;
-  return u;
-}
-
-/** Bliss of Finality: a huge mining warship hovering high above the path. */
-function blissShip() {
-  const u = makeThing();
-  u.static = false;
-  u.wheels = [];
-  const { M } = u;
-  const hull = M(0x37474f);
-  part(u.body, boxGeo(5.0, 1.6, 11.0), hull, 0, 0, 0);
-  part(u.body, boxGeo(3.4, 1.2, 6.0), M(0x455a64), 0, 1.2, -1.5); // bridge deck
-  part(u.body, boxGeo(1.6, 1.0, 2.0), glow(u, 0x40c4ff), 0, 2.2, -2.5); // bridge
-  for (const x of [-3, 3]) part(u.body, boxGeo(1.2, 1.2, 8.0), M(0x263238), x, -0.2, 0); // side pods
-  for (const x of [-1.6, 1.6]) part(u.body, boxGeo(1.0, 1.0, 0.4), glow(u, 0xff4081), x, 0, -5.6); // engines
-  const t = turret(u, -1.0, 2.5);
-  part(t, boxGeo(1.4, 0.8, 1.4), M(0x212121), 0, 0, 0);
-  part(t, boxGeo(0.4, 0.4, 5.0), glow(u, 0x18ffff), 0, 0, 3.0); // railgun
-  gunMuzzle(u, t, 0, 0, 5.5);
-  u.cannon = gunMuzzle(u, t, 0, 0, 5.5);
-  u.muzzles.pop();
-  for (const x of [-2.6, 2.6]) gunMuzzle(u, u.body, x, -0.6, 4.5); // miniguns
-  u.fly = 14;
-  u.height = 2;
-  u.tracer = 0x18ffff;
-  return u;
-}
+// The Sky-drones and the Bliss of Finality are built with the vehicle kit (airunits.js).
 
 export const UNIT_MODELS_E = {
   gsMerc: (n = 1) => squad(n, () => ({ shirt: 0x6d4c41, helmet: 0x3e2723 })),
@@ -834,22 +737,6 @@ export const UNIT_MODELS_E = {
   rbOperative2: (n = 1) => squad(n, () => ({ shirt: 0x37474f, helmet: 0x263238, visor: 0x76ff03 })),
   rbPrivate: (n = 1) => squad(n, () => ({ shirt: 0x1b5e20, helmet: 0x212121, visor: 0xffab00 })),
   rbSolemn: (n = 1) => squad(n, (i) => ({ shirt: 0x212121, helmet: 0x111111, visor: [0xff1744, 0x00e5ff, 0xffab00, 0x76ff03][i % 4], gun: i === 1 ? 3.2 : 2.2, tube: i === 3 }), 0.65),
-  rbGhoul: () => buggy(0x8d6e63),
-  rbGhoul2: () => buggy(0x6d4c41, { gun: true }),
-  rbPhantom: () => buggy(0x212121, { len: 3.6, glowColor: 0x7c4dff }),
-  rbLightstriker: () => buggy(0x263238, { len: 3.8, gun: true, glowColor: 0x00e676 }),
-  rbTruck: () => heavy(0x6d7b5b, { len: 4.6, wid: 2.4, rockets: 6 }),
-  rbJavelin: () => heavy(0x263238, { len: 4.8, wid: 2.4, rockets: 9, glowColor: 0x00e676 }),
-  rbTank: () => heavy(0x556b2f, { barrel: 2.8 }),
-  rbScyther: () => heavy(0x1a237e, { len: 4.8, wid: 3.2, barrel: 3.2, glowColor: 0x00e676 }),
-  rbBliss: () => blissShip(),
-  svBurst: () => droneModel(0x78909c),
-  svBurst2: () => droneModel(0x546e7a),
-  svBurst3: () => droneModel(0x37474f, { size: 1.15 }),
-  svBurst4: () => droneModel(0x263238, { size: 1.25 }),
-  svSentinel: () => droneModel(0xb71c1c, { size: 1.35 }),
-  svBomber: () => droneModel(0x5d4037, { size: 1.5, bomb: true }),
-  svCryo: () => droneModel(0x0277bd, { size: 1.2, cryo: true }),
 };
 
 // ---------------------------------------------------------------------------------------------

@@ -1,5 +1,7 @@
-// Tiny synthesized sound effects (no audio files needed).
-import { TOWERS } from './config.js';
+// Tiny synthesized sound effects and the music (no audio files needed).
+import { ENEMIES, TOWERS } from './config.js';
+import { MusicEngine } from './music/engine.js';
+import { MENU_TRACKS, bossFamily } from './music/tracks.js';
 
 let ctx = null;
 let master = null;
@@ -40,6 +42,46 @@ function noise(dur, { vol = 0.3, freq = 2000, type = 'bandpass' } = {}) {
   src.stop(t + dur + 0.02);
 }
 
+// ---- Music: there's always a track playing. The menus rotate through three, every map has its
+// own, and every boss has its own that takes over while that boss is alive (music/tracks.js).
+const MUSIC_KEY = 'td-music';
+const BOSS_LINGER = 2500; // ms a boss's track plays on after the boss is gone
+const MUSIC_LEVELS = { on: 1, quiet: 0.4, off: 0 };
+const music = {
+  engine: null, // created with the audio context (a browser only allows sound after a click or key)
+  level: 'on', // on | quiet | off
+  want: null, // the track that should be playing
+  opts: undefined,
+  menuAt: Math.floor(Math.random() * MENU_TRACKS.length),
+  boss: null, // the boss family whose track is on
+  bossSeen: 0,
+};
+try {
+  const saved = localStorage.getItem(MUSIC_KEY);
+  if (saved in MUSIC_LEVELS) music.level = saved;
+} catch {
+  // no storage (private mode): music stays on
+}
+
+/** Makes `id` the track that plays (see MusicEngine.play for `opts`). */
+function wantTrack(id, opts) {
+  if (music.want === id) return;
+  music.want = id;
+  music.opts = opts;
+  if (music.engine && music.level !== 'off') music.engine.play(id, opts);
+}
+
+/** Silent while sound is muted or the tab is hidden; nothing plays while music is switched off. */
+function syncMusic() {
+  const m = music.engine;
+  if (!m) return;
+  const off = music.level === 'off';
+  m.pause(muted || off || document.hidden);
+  if (!off) m.setVolume(MUSIC_LEVELS[music.level]);
+  if (off) m.stop(0.3);
+  else if (music.want) m.play(music.want, music.opts);
+}
+
 export const audio = {
   unlock() {
     if (!ctx) {
@@ -50,12 +92,89 @@ export const audio = {
       noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
       const d = noiseBuf.getChannelData(0);
       for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      music.engine = new MusicEngine(ctx);
+      // A menu track that has played through hands over to the next one.
+      music.engine.onLoop = (id) => {
+        if (id !== music.want || !MENU_TRACKS.includes(id)) return;
+        music.menuAt = (MENU_TRACKS.indexOf(id) + 1) % MENU_TRACKS.length;
+        wantTrack(MENU_TRACKS[music.menuAt], { cut: true });
+      };
+      document.addEventListener('visibilitychange', syncMusic);
+      syncMusic();
     }
     if (ctx.state === 'suspended') ctx.resume();
   },
   toggleMute() {
     muted = !muted;
+    syncMusic();
     return muted;
+  },
+  /** Music: on -> quiet -> off -> on (remembered for next time). Returns the new level. */
+  toggleMusic() {
+    const levels = Object.keys(MUSIC_LEVELS);
+    music.level = levels[(levels.indexOf(music.level) + 1) % levels.length];
+    try {
+      localStorage.setItem(MUSIC_KEY, music.level);
+    } catch {
+      // not saved, then
+    }
+    syncMusic();
+    return music.level;
+  },
+  /** 'on', 'quiet' or 'off'. */
+  get musicLevel() {
+    return music.level;
+  },
+  /** The id of the track that should be playing (music/tracks.js). */
+  get track() {
+    return music.want;
+  },
+  /**
+   * Menus: the three menu tracks, one after the other. Coming back from a game starts the next
+   * one, after `delay` seconds (room for the victory or defeat jingle).
+   */
+  musicMenu(delay = 0) {
+    if (MENU_TRACKS.includes(music.want)) return;
+    if (music.want) music.menuAt = (music.menuAt + 1) % MENU_TRACKS.length;
+    music.boss = null;
+    wantTrack(MENU_TRACKS[music.menuAt], { fade: 0.6, delay });
+  },
+  /**
+   * In a game on map `map` (its key in maps.js): the map's track, or the track of the biggest boss
+   * among `enemies` (objects with type, hp and maxHp). A boss's track stays on while any of its
+   * kind is alive (a boss with a health bar takes over from one without), and a moment longer.
+   */
+  musicGame(map, enemies) {
+    let best = null;
+    let bestRank = -1;
+    let bestBar = false;
+    let curAlive = false;
+    let curBar = false;
+    for (const e of enemies) {
+      const def = ENEMIES[e.type];
+      if (!def?.boss || !(e.hp > 0)) continue;
+      const fam = bossFamily(e.type);
+      const rank = (def.bar ? 1e15 : 0) + (e.maxHp ?? def.hp ?? 0);
+      if (fam === music.boss) {
+        curAlive = true;
+        curBar ||= !!def.bar;
+      }
+      if (rank > bestRank) {
+        bestRank = rank;
+        best = fam;
+        bestBar = !!def.bar;
+      }
+    }
+    if (curAlive && (curBar || !bestBar)) best = music.boss;
+    const now = performance.now();
+    if (best) {
+      music.boss = best;
+      music.bossSeen = now;
+      wantTrack(`boss:${best}`, { fade: 0.8 });
+    } else if (!music.boss || now - music.bossSeen > BOSS_LINGER) {
+      music.boss = null;
+      wantTrack(`map:${map}`, { fade: 1.5, resume: true }); // the map's track carries on where it was
+    }
   },
   shot(level, type) {
     if (!ctx) return;
@@ -285,6 +404,21 @@ export const audio = {
   },
   victory() {
     [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.25, { type: 'triangle', vol: 0.2, delay: i * 0.12 }));
+  },
+  /** Halloween Jack laughs when he spawns: a deep, wobbling "ha-ha-ha-haaa". */
+  laugh() {
+    [0, 0.2, 0.4, 0.6, 0.85].forEach((d, i) => {
+      const f = 210 - i * 18;
+      tone(f, i === 4 ? 0.6 : 0.16, { type: 'sawtooth', vol: 0.14, slide: f * 0.7, delay: d });
+      tone(f * 2.5, i === 4 ? 0.5 : 0.12, { type: 'square', vol: 0.04, slide: f * 1.6, delay: d });
+    });
+    noise(1.4, { vol: 0.08, freq: 600 });
+  },
+  /** A breathy whisper (Halloween Jack's death). */
+  whisper() {
+    noise(1.8, { vol: 0.16, freq: 3200 });
+    noise(1.2, { vol: 0.1, freq: 1800 });
+    tone(880, 1.6, { type: 'sine', vol: 0.03, slide: 440 });
   },
   defeat() {
     [392, 330, 262, 196].forEach((f, i) => tone(f, 0.35, { type: 'sawtooth', vol: 0.12, delay: i * 0.2 }));

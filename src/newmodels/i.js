@@ -1607,98 +1607,6 @@ function vtsupport(count) {
   });
 }
 
-/**
- * Golden Zed tanks (n 1-5), the size of the Zed's M1: 1 a golden tank with a gun; 2 adds side
- * cannons and diamond-plate tracks; 3 two machine guns; 4 a giant 8-barrel neon-gold gun; 5 bigger,
- * with a golden halo, wings and dual laser cannons.
- */
-function gzed(n) {
-  return () => {
-    const u = newUnit();
-    const M = mm(u);
-    const G = gm(u);
-    const s = n >= 5 ? 1.3 : 1;
-    const gold = M(0xd4a017);
-    gold.emissive.setHex(0x2e2000);
-    gold.userData.glow = 0x2e2000;
-    const paleGold = M(0xffd54f);
-    const dark = M(0x2b2b2b);
-    const neon = G(0xffea00);
-    const tread = M(n >= 2 ? 0x9e9e9e : 0x1b1b1b);
-    const hipY = 1.3 * s;
-    for (const x of [-1.7, 1.7]) {
-      B(u.body, 0.9 * s, 1.4 * s, 5 * s, tread, x * s, 0.7 * s, 0);
-      if (n >= 2) for (let i = 0; i < 6; i++) B(u.body, 0.92 * s, 0.1, 0.35, M(0xcfd8dc), x * s, 1.42 * s, (-2.0 + i * 0.8) * s).rotation.y = 0.6; // diamond plate
-      B(u.body, 0.95 * s, 0.25 * s, 4.6 * s, gold, x * s, 1.45 * s, 0); // track guards
-    }
-    B(u.body, 3.2 * s, 1.8 * s, 3.8 * s, gold, 0, hipY + 0.9 * s, 0); // hull
-    B(u.body, 2.8 * s, 0.6 * s, 0.4 * s, paleGold, 0, hipY + 0.6 * s, 2.0 * s);
-    B(u.body, 1.6 * s, 0.4 * s, 0.1, neon, 0, hipY + 1.3 * s, 1.92 * s); // eye slit
-    const t = turret(u, hipY + 1.8 * s);
-    B(t, 2.0 * s, 1.0 * s, 2.2 * s, paleGold, 0, 0.5 * s, 0);
-    B(t, 2.05 * s, 0.15, 2.25 * s, neon, 0, 0.95 * s, 0);
-    if (n === 4) {
-      // Giant 8-barrel neon-gold gun
-      B(t, 1.3 * s, 1.3 * s, 1.2 * s, dark, 0, 0.6 * s, 1.5 * s);
-      for (let i = 0; i < 8; i++) {
-        const a = (i / 8) * Math.PI * 2;
-        B(t, 0.2, 0.2, 3.2, i % 2 ? neon : gold, Math.cos(a) * 0.4, 0.6 + Math.sin(a) * 0.4, 3.6);
-      }
-      B(t, 1.1, 1.1, 0.2, neon, 0, 0.6, 5.2);
-      for (const a of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) gunMuzzle(u, t, Math.cos(a) * 0.4, 0.6 + Math.sin(a) * 0.4, 5.3);
-    } else if (n >= 5) {
-      // Dual laser cannons
-      for (const x of [-0.55, 0.55]) {
-        B(t, 0.45 * s, 0.45 * s, 3.4 * s, dark, x * s, 0.55 * s, 2.4 * s);
-        for (const z of [1.4, 2.2, 3.0]) B(t, 0.55 * s, 0.55 * s, 0.15, neon, x * s, 0.55 * s, z * s);
-        B(t, 0.3 * s, 0.3 * s, 0.2, G(0xfff59d), x * s, 0.55 * s, 4.15 * s);
-        gunMuzzle(u, t, x * s, 0.55 * s, 4.25 * s);
-      }
-    } else {
-      B(t, 0.45, 0.45, 3.0, gold, 0, 0.5, 2.6); // main gun
-      B(t, 0.6, 0.6, 0.4, dark, 0, 0.5, 4.1);
-      gunMuzzle(u, t, 0, 0.5, 4.3);
-    }
-    if (n >= 3) {
-      // Two machine guns on the turret
-      for (const x of [-0.8, 0.8]) {
-        B(t, 0.3, 0.3, 0.5, dark, x * s, 1.2 * s, 0.4 * s);
-        B(t, 0.12, 0.12, 1.3, dark, x * s, 1.2 * s, 1.2 * s);
-        gunMuzzle(u, t, x * s, 1.2 * s, 1.9 * s);
-      }
-    }
-    if (n >= 2) {
-      // Side cannons on the hull
-      for (const x of [-1, 1]) {
-        B(u.body, 0.7 * s, 0.7 * s, 2.6 * s, gold, x * 2.0 * s, hipY + 1.0 * s, 0.6 * s);
-        B(u.body, 0.45 * s, 0.45 * s, 0.1, neon, x * 2.0 * s, hipY + 1.0 * s, 1.95 * s);
-      }
-      u.cannon = gunMuzzle(u, u.body, 2.0 * s, hipY + 1.0 * s, 2.0 * s);
-      u.muzzles.pop(); // the cannon muzzle is separate from the gun muzzles
-    } else {
-      u.cannon = mz(t, 0, 0.5, 4.3);
-    }
-    if (n >= 5) {
-      // Golden halo and wings
-      const halo = G(0xffe57f);
-      for (let i = 0; i < 12; i++) {
-        const a = (i / 12) * Math.PI * 2;
-        B(t, 0.5, 0.15, 0.2, halo, Math.cos(a) * 1.3, 2.4, Math.sin(a) * 1.3 - 0.3).rotation.y = -a + Math.PI / 2;
-      }
-      for (const side of [-1, 1]) {
-        const w = B(u.body, 1.6, 0.15, 1.6, paleGold, side * 2.7, hipY + 2.1 * s, -1.0);
-        w.rotation.z = side * 0.35;
-        const w2 = B(u.body, 1.2, 0.12, 1.1, neon, side * 3.5, hipY + 2.6 * s, -1.4);
-        w2.rotation.z = side * 0.55;
-      }
-    }
-    u.height = hipY + (n >= 5 ? 4.2 : 3.4) * s;
-    u.tracer = n >= 4 ? 0xffea00 : 0xffd54f;
-    if (n >= 5) u.tracerWidth = 0.4;
-    return u;
-  };
-}
-
 /* ================================================================== Engineer devices */
 
 /**
@@ -1810,65 +1718,6 @@ export function makeEngDevice(n) {
 
 /* ------------------------------------------------------------------ exports */
 
-/**
- * Gold Commander's Deus Ex Machina: a hovering golden cyber tank. A sleek hull on glowing hover
- * pads (no tracks), a big turret with a long main cannon and twin machine guns on its sides, neon
- * trim and fins. `ghost`: the see-through pale-gold ghost it turns into when destroyed.
- */
-function cyberTank(ghost) {
-  return () => {
-    const u = newUnit();
-    const M = mm(u);
-    const G = gm(u);
-    const mat = (c) => (ghost ? clear(u, c, 0.45, true) : M(c));
-    const gold = mat(0xd4a017);
-    if (!ghost) {
-      gold.emissive.setHex(0x2e2000);
-      gold.userData.glow = 0x2e2000;
-    }
-    const pale = mat(0xffe082);
-    const dark = mat(ghost ? 0xfff9c4 : 0x263238);
-    const neon = ghost ? clear(u, 0xffffff, 0.7, true) : G(0x00e5ff);
-    const thrust = ghost ? clear(u, 0xfff59d, 0.5, true) : G(0xffea00);
-    // Hover pads with glowing thrusters underneath
-    for (const x of [-1.8, 1.8]) for (const z of [-1.8, 1.8]) {
-      B(u.body, 1.2, 0.45, 1.4, dark, x, 0.5, z);
-      B(u.body, 0.9, 0.12, 1.1, thrust, x, 0.22, z);
-    }
-    // Hull: a wide wedge
-    B(u.body, 3.8, 1.2, 5.6, gold, 0, 1.3, 0);
-    B(u.body, 3.2, 0.6, 1.4, pale, 0, 1.15, 3.1).rotation.x = 0.35; // sloped nose
-    B(u.body, 4.0, 0.12, 5.7, neon, 0, 1.92, 0); // neon trim line
-    for (const x of [-1, 1]) {
-      B(u.body, 0.25, 0.9, 2.2, pale, x * 2.05, 1.35, -0.4); // side skirts
-      B(u.body, 0.15, 1.2, 1.0, gold, x * 1.5, 2.3, -2.5).rotation.z = x * 0.3; // tail fins
-    }
-    B(u.body, 1.8, 0.25, 0.1, neon, 0, 1.45, 2.82); // headlight strip
-    // Turret
-    const t = turret(u, 2.0);
-    B(t, 2.6, 1.0, 2.8, pale, 0, 0.5, -0.2);
-    B(t, 2.65, 0.12, 2.85, neon, 0, 1.0, -0.2);
-    B(t, 0.8, 0.5, 0.8, gold, 0, 1.25, -0.6); // commander hatch
-    // Main cannon: long barrel with neon rings
-    B(t, 0.7, 0.7, 1.0, dark, 0, 0.55, 1.5);
-    B(t, 0.42, 0.42, 4.4, gold, 0, 0.55, 3.8);
-    for (const z of [2.6, 3.8, 5.0]) B(t, 0.55, 0.55, 0.14, neon, 0, 0.55, z);
-    B(t, 0.6, 0.6, 0.4, dark, 0, 0.55, 6.1);
-    u.cannon = mz(t, 0, 0.55, 6.4);
-    // Twin machine guns on the turret sides
-    for (const x of [-1, 1]) {
-      B(t, 0.45, 0.45, 0.8, dark, x * 1.5, 0.5, 0.8);
-      B(t, 0.14, 0.14, 1.6, dark, x * 1.5, 0.5, 1.8);
-      B(t, 0.2, 0.2, 0.12, neon, x * 1.5, 0.5, 2.55);
-      gunMuzzle(u, t, x * 1.5, 0.5, 2.7);
-    }
-    u.fly = 1.2; // it hovers
-    u.height = 3.6;
-    u.tracer = ghost ? 0xfff9c4 : 0xffea00;
-    return u;
-  };
-}
-
 export const TOWER_MODELS_I = {
   scarecrow: scarecrowI,
   paralyzer,
@@ -1888,15 +1737,8 @@ export const TOWER_MODELS_I = {
 };
 
 export const UNIT_MODELS_I = {
-  gcybertank: cyberTank(false),
-  gcybertankghost: cyberTank(true),
   tbsquad,
   tbtuber,
   tbcommando,
   vtsupport,
-  gzed1: gzed(1),
-  gzed2: gzed(2),
-  gzed3: gzed(3),
-  gzed4: gzed(4),
-  gzed5: gzed(5),
 };

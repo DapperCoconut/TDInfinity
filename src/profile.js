@@ -1,7 +1,7 @@
-// The player's saved progress: credits, Dimension Shards, towers and alternate forms they own,
+// The player's saved progress: credits, Dimension Shards, Gems (Hardcore), the modes beaten, towers and alternate forms they own,
 // which form each tower uses, golden perks they own / have switched on, tower XP (tower levels and
 // evolution levels), and their loadout (hotbar). Stored in localStorage, so it is per browser.
-import { BASE_TOWERS, EVENT_TOWERS, EVOLVED_TOWERS, GAME, STARTER_TOWERS, TOWERS, TOWER_MAX_LEVEL, goldOf, xpKey, xpToNext } from './config.js';
+import { BASE_TOWERS, DIFFICULTIES, EVENT_TOWERS, EVOLVED_TOWERS, GAME, HARDCORE_NEEDS, STARTER_TOWERS, TOWERS, TOWER_MAX_LEVEL, goldOf, xpKey, xpToNext } from './config.js';
 
 const KEY = 'td.profile';
 
@@ -61,7 +61,11 @@ function load() {
   const xp = {};
   for (const [t, v] of Object.entries(data.xp || {})) if (TOWERS[t]) xp[t] = readCount(v);
   const perks = [...new Set((data.perks || []).filter((k) => typeof k === 'string'))];
-  return { credits: readCount(data.credits), shards: readCount(data.shards), owned: [...owned], loadout, ownedForms, forms, ownedGold, goldOn, xp, perks };
+  // Modes beaten (Hardcore unlocks once every one in HARDCORE_NEEDS is). Saves from before this was
+  // kept: a mode counts as beaten if you own what winning it gives (its tower or upgrade perk).
+  let beaten = Array.isArray(data.beaten) ? data.beaten.filter((k) => DIFFICULTIES[k]) : null;
+  if (!beaten) beaten = Object.keys(DIFFICULTIES).filter((k) => (DIFFICULTIES[k].unlock && (owned.has(DIFFICULTIES[k].unlock) || ownedForms.includes(DIFFICULTIES[k].unlock))) || (DIFFICULTIES[k].perk && perks.includes(DIFFICULTIES[k].perk)));
+  return { credits: readCount(data.credits), shards: readCount(data.shards), gems: readCount(data.gems), owned: [...owned], loadout, ownedForms, forms, ownedGold, goldOn, xp, perks, beaten: [...new Set(beaten)] };
 }
 
 export const profile = {
@@ -74,6 +78,8 @@ export const profile = {
       JSON.stringify({
         credits: writeCount(this.credits),
         shards: writeCount(this.shards),
+        gems: writeCount(this.gems),
+        beaten: this.beaten,
         owned: this.owned,
         loadout: this.loadout,
         ownedForms: this.ownedForms,
@@ -100,7 +106,11 @@ export const profile = {
     if (!def || def.altOf) return 'Unknown tower';
     if (this.owns(type)) return `You already own the ${def.name}`;
     if (def.event) return `The ${def.name} is an event tower: it can't be bought`;
-    if (def.shards) {
+    if (def.gems) {
+      // Necromancer, Hacker: bought with Gems (only Hardcore pays them).
+      if (this.gems < def.gems) return `Need ${def.gems - this.gems} more Gems (earn them in Hardcore)`;
+      this.gems -= def.gems;
+    } else if (def.shards) {
       if (this.shards < def.shards) return `Need ${def.shards - this.shards} more Dimension Shard${def.shards - this.shards === 1 ? '' : 's'}`;
       this.shards -= def.shards;
     } else {
@@ -175,6 +185,31 @@ export const profile = {
     if (!n) return;
     this.shards += n;
     this.save();
+  },
+
+  addGems(n) {
+    if (!n) return;
+    this.gems += n;
+    this.save();
+  },
+
+  /** Remembers that mode `key` was beaten. Returns true the first time. */
+  markBeaten(key) {
+    if (this.beaten.includes(key)) return false;
+    this.beaten.push(key);
+    this.save();
+    return true;
+  },
+
+  /** Can mode `key` be played (Hardcore: every mode it needs is beaten)? */
+  modeOpen(key) {
+    const need = DIFFICULTIES[key]?.needs;
+    return !need || need.every((k) => this.beaten.includes(k));
+  },
+
+  /** The modes mode `key` still needs beaten (names). */
+  modeMissing(key) {
+    return (DIFFICULTIES[key]?.needs ?? []).filter((k) => !this.beaten.includes(k)).map((k) => DIFFICULTIES[k].name);
   },
 
   // ---- alternate forms

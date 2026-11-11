@@ -7,7 +7,9 @@ import { path } from './sim/path.js';
 import { heightAt } from './sim/map.js';
 import { TOWERS, TRACKS } from './config.js';
 import { lerpAngle } from './utils.js';
+import { kickGun, newState, poseEnemy, poseTower, settleGuns } from './anim.js';
 import { MODEL_SCALE as K, PLAYER_SCALE, WORLD_SCALE } from './scale.js';
+import { FX, shade } from './effects.js';
 import { orbitOf, FLY_HEIGHT, ST_VOIDAURA, ST_CHARGING, ST_ARMORED, ST_GLITCHED, ST_HASTED, ST_SMOKED, ST_AIRBORNE, ST_ENRAGED, ST_SHROOM, ST_BURNING, ST_CHILLED, ST_CONFUSED, ST_DANCE, ST_FLOAT, ST_FROZEN, ST_GASSED, ST_HACKED, ST_SLIMED, ST_STUNNED, ST_SHOCKED, ST_BIOHAZARD, ST_CLOAKED, ST_VOIDARMOR } from './sim/sim.js';
 
 const tmp = new THREE.Vector3();
@@ -66,7 +68,21 @@ const spotConeGeo = new THREE.CylinderGeometry(1, 0.12, 1, 20, 1, true).rotateX(
 const spotDiscGeo = new THREE.CircleGeometry(1, 28).rotateX(-Math.PI / 2);
 const tmpB = new THREE.Vector3();
 
+const _walk = { phase: 0, t: 0, atk: -1, dance: false, fly: false };
+const _pose = { t: 0, dt: 0, recoil: 0, shots: 0, snap: false, aim: false, kick: 1 };
+// Towers whose yellow tracers are not bullets: nothing to throw brass out of.
+const NO_BRASS = /bow|archer|sling|wizard|mage|witch|wand|staff|elf|magic|necro|warlock|flame|pyro|freez|frost|cryo|ice|snow|paint|tweet|harpoon|slime|ghost|dj|medic|farm|grenad|rocket|missile|mortar|laser|rail|phaser|plasma|electro|tesla|pulse|star|spark|void|refractor|spotlight|relic|orbit|stasis|boomerang|jester|element|bee|swarm|toxic|goo|hacker|spectre|eldritch|borealis|glacier/i;
+const _dir = new THREE.Vector3();
 export const LEAP_TIME = 0.45; // seconds a Brawler's Reposition leap takes
+
+/** Hero tower effects (blitzup.js): rings and orbiting pieces that keep turning and bob gently. */
+export function driftFx(m, dt, t) {
+  for (const g of m.drift) {
+    const u = g.userData;
+    g.rotation.y += dt * u.speed;
+    if (u.bob) g.position.y = u.y + Math.sin(t * 1.6 + u.speed) * u.bob;
+  }
+} // seconds a Brawler's Reposition leap takes
 
 export class TowerView {
   constructor(scene, t, ownerColor) {
@@ -117,7 +133,7 @@ export class TowerView {
       const z = h.fz + (h.z - h.fz) * k;
       p.set(x, heightAt(x, z) + Math.sin(k * Math.PI) * 4 * K, z);
       if (k >= 1) this.hop = null;
-    } else if (p.x !== t.x || p.z !== t.z) p.set(t.x, heightAt(t.x, t.z), t.z);
+    } else if (p.x !== t.x || p.z !== t.z || p.y !== heightAt(t.x, t.z)) p.set(t.x, heightAt(t.x, t.z), t.z); // (y: Twilight Nexus decks vs the flat time dimension)
   }
   get z() {
     return this.group.position.z;
@@ -132,6 +148,14 @@ export class TowerView {
     this.level = level;
     this.trackShown = -1; // DJ Booth: track color the new model still needs
     this.model = TOWER_MODELS[this.type](level);
+    this.ps = newState(); // pose state (see anim.js)
+    // Recoil: slow, hard-hitting guns kick further and take longer to settle than fast ones.
+    const def = TOWERS[this.type];
+    const cd = def?.levels?.[level]?.cooldown ?? def?.levels?.[0]?.cooldown ?? 0.5;
+    this.kick = Math.min(1.9, Math.max(0.85, 0.75 + cd * 0.55));
+    this.settle = Math.min(16, Math.max(4.5, 3.4 / Math.max(0.05, cd)));
+    const tr = this.model.tracer ?? 0xffe066;
+    this.brass = !this.model.melee && !this.model.beam && !this.model.tracerWidth && (tr >> 16) > 200 && ((tr >> 8) & 255) > 150 && (tr & 255) < 190 && !NO_BRASS.test(this.type);
     this.model.root.position.y = 0.4;
     // How tall the model stands (sim units), so players can jump on top of it.
     this.model.root.updateMatrixWorld(true);
@@ -176,28 +200,26 @@ export class TowerView {
     // A hologram flickers in its last few seconds.
     if (this.holo) m.root.visible = t.holo > 3 || Math.sin(performance.now() / 45) > -0.3;
     m.root.rotation.y = this.yaw;
-    this.recoil = Math.max(0, this.recoil - dt * (m.swing ? 4 : 10)); // swings recover slower than gun kick
-    if (m.static) {
-      // Buildings (Farm, Patrol, Barracks, Zed) have no arms to animate.
-    } else if (m.punch) {
-      // Brawler: left and right fists take turns jabbing forward, then pull back to guard.
-      const left = this.shots % 2 === 0;
-      m.rightArm.rotation.x = m.pose.right + (left ? 0 : this.recoil * m.swing);
-      m.leftArm.rotation.x = m.pose.left + (left ? this.recoil * m.swing : 0);
-    } else if (m.swing) {
-      // Melee swing / grenade throw: the arm snaps forward-down, then eases back up.
-      m.rightArm.rotation.x = m.pose.right + this.recoil * m.swing;
-      m.leftArm.rotation.x = m.pose.left;
-    } else if (!m.plane) {
-      // With two guns, each shot kicks only the arm that fired.
-      const dual = m.muzzles.length > 1;
-      const leftFired = dual && this.shots % 2 === 0;
-      const kick = this.recoil * (m.recoilScale ?? 1);
-      m.rightArm.rotation.x = m.pose.right - (leftFired ? 0 : kick * 0.35);
-      m.leftArm.rotation.x = m.pose.left - (dual && !leftFired ? 0 : kick * m.pose.leftRecoil);
+    // Swings follow through at a steady pace; a gun's kick snaps back fast at first, then settles.
+    if (m.swing) this.recoil = Math.max(0, this.recoil - dt * 4);
+    else if ((this.recoil *= Math.exp(-dt * this.settle)) < 0.012) this.recoil = 0;
+    if (m.goldSword) {
+      // Gold Commander: the broadsword is out during Call to Battle (always at max level).
+      const out = this.level >= 4 || t.active > 0;
+      m.goldSword.visible = out;
+      m.pose.right = out ? m.swordUp : m.swordRest;
     }
+    // Stance, weapon hold, idle and firing animation: each tower has its own (see visuals.js).
     this.breath += dt;
-    m.body.position.y = (m.lift || 0) + Math.sin(this.breath * 2) * (m.bob ?? (m.lift ? 0.15 : 0.04));
+    _pose.t = this.breath;
+    _pose.dt = dt;
+    _pose.recoil = this.recoil;
+    _pose.kick = this.kick;
+    _pose.shots = this.shots;
+    _pose.snap = false;
+    _pose.aim = this.busy > 0; // a beam is on
+    if (this.busy > 0) this.busy--;
+    poseTower(m, this.ps, _pose);
     if (m.goldFx) {
       // Golden perks: the mist slowly turns and the stars bob and spin.
       m.goldFx.rotation.y += dt * 0.4;
@@ -206,12 +228,7 @@ export class TowerView {
         st.rotation.y += dt * 3;
       }
     }
-    if (m.goldSword) {
-      // Gold Commander: the broadsword is out during Call to Battle (always at max level).
-      const out = this.level >= 4 || t.active > 0;
-      m.goldSword.visible = out;
-      m.pose.right = out ? m.swordUp : m.swordRest;
-    }
+    if (m.drift) driftFx(m, dt, this.breath);
     if (m.spin) {
       // Minigun barrels spin up while firing (or revving up, fx bit 8) and wind down after.
       if (t.fx & 8) this.spinSpeed = Math.min(30, this.spinSpeed + dt * 40);
@@ -446,6 +463,7 @@ export class TowerView {
       this.scene.add(this.beam);
     }
     this.beamMat.color.setHex(m.beam);
+    this.busy = 2; // keeps the weapon up while the beam is on
     const from = simPos(m.muzzles[0], tmpB);
     const to = ev.aimPoint(tmp);
     const w = (0.12 + 0.5 * (t.charge || 0)) * (0.85 + Math.random() * 0.3);
@@ -471,6 +489,7 @@ export class TowerView {
       this.scene.add(mesh);
       this.links.push(mesh);
     }
+    if (targets.length) this.busy = 2;
     if (targets.length && !m.mediFrom) {
       this.yaw = Math.atan2(targets[0].x - this.x, targets[0].z - this.z);
       m.root.rotation.y = this.yaw;
@@ -504,6 +523,20 @@ export class TowerView {
     return pods?.length ? simPos(pods[i % pods.length], out) : this.bayPosition(out);
   }
 
+  /** Snaps into the firing pose, so the shot leaves from where the muzzle really is. */
+  aimNow() {
+    const m = this.model;
+    _pose.t = this.breath;
+    _pose.dt = 0;
+    _pose.recoil = 0;
+    _pose.kick = this.kick;
+    _pose.shots = this.shots;
+    _pose.snap = true;
+    _pose.aim = false;
+    poseTower(m, this.ps, _pose);
+    m.root.updateMatrixWorld(true);
+  }
+
   /**
    * Turns toward (x, z), kicks the gun (or throws), and returns the world position of the
    * next muzzle. Used for grenades, shells, rockets and flames.
@@ -515,8 +548,10 @@ export class TowerView {
       m.root.rotation.y = this.yaw;
     }
     this.recoil = 1;
-    m.root.updateMatrixWorld(true);
-    return simPos(m.muzzles[this.shots++ % m.muzzles.length], out);
+    this.aimNow();
+    const muzzle = m.muzzles[this.shots++ % m.muzzles.length];
+    if (!m.rig || m.static) kickGun(m, muzzle, _dir.set(Math.sin(this.yaw), 0, Math.cos(this.yaw)), 0.45 * this.kick * (m.recoilScale ?? 1));
+    return simPos(muzzle, out);
   }
 
   /** Ghost C7 Drone shot: a tracer from the drone (not the tower's gun). */
@@ -558,12 +593,27 @@ export class TowerView {
       return;
     }
     const muzzles = m.muzzles;
-    const from = simPos(muzzles[this.shots++ % muzzles.length], new THREE.Vector3());
+    this.aimNow();
+    const muzzle = muzzles[this.shots++ % muzzles.length];
+    const from = simPos(muzzle, new THREE.Vector3());
+    // Bigger guns (slow, hard hitters) flash bigger.
+    const big = m.tracerWidth ? 1.4 : 0.55 + this.kick * 0.22;
     if (enemyView) {
       effects.tracer(from, enemyView.aimPoint(tmp), m.tracer ?? 0xffe066, m.tracerWidth);
       enemyView.hit();
+      effects.flash(from, m.tracerWidth ? m.tracer : 0xfff3b0, big);
+      _dir.subVectors(tmp, from).normalize();
+    } else {
+      _dir.set(Math.sin(this.yaw), 0, Math.cos(this.yaw));
+      effects.muzzle(from, _dir, m.tracerWidth ? m.tracer : 0xfff3b0, big);
     }
-    effects.flash(from, m.tracerWidth ? m.tracer : 0xfff3b0, m.tracerWidth ? 1.4 : 0.7);
+    // Turrets and gun emplacements: the barrel slams back (figures recoil through their pose).
+    if (!m.rig || m.static || m.plane) kickGun(m, muzzle, _dir, 0.45 * this.kick * (m.recoilScale ?? 1));
+    if (this.brass) {
+      // The spent shell flips out of the side of the gun, a little way back from the muzzle.
+      const back = m.plane ? 0 : 1.3 * K;
+      effects.casing(tmp.set(from.x - Math.sin(this.yaw) * back, from.y, from.z - Math.cos(this.yaw) * back), this.yaw, this.kick);
+    }
     audio.shot(this.level, this.type);
   }
 
@@ -805,6 +855,7 @@ export class TrapView {
     if (this.kind === 'sentry') {
       this.yaw = lerpAngle(this.yaw, tr.yaw ?? 0, Math.min(1, dt * 12));
       this.m.turret.rotation.y = this.yaw;
+      settleGuns(this.m, dt);
       // Sparks fly from a sentry that is nearly worn out or stunned.
       // (Solo play reads the sim's own sentry, with real HP; multiplayer gets the share left.)
       const left = tr.maxHp ? tr.hp / tr.maxHp : tr.hp ?? 1;
@@ -826,6 +877,7 @@ export class TrapView {
       enemyView.hit();
     }
     effects.flash(from, rocket ? 0xffab40 : 0xfff3b0, rocket ? 1.2 : 0.5);
+    if (enemyView) kickGun(m, muzzle, _dir.subVectors(enemyView.aimPoint(tmp), from).normalize(), rocket ? 0.6 : 0.3);
     if (rocket) audio.boom(2);
     else audio.shot(0, 'sentry');
   }
@@ -842,6 +894,73 @@ const barBgGeo = new THREE.PlaneGeometry(1, 1);
 const barFgGeo = new THREE.PlaneGeometry(1, 1).translate(0.5, 0, 0); // origin at left edge
 const barBgMat = new THREE.MeshBasicMaterial({ color: 0x1a1a1a, transparent: true, opacity: 0.75, depthWrite: false });
 const DEATH_TIME = 0.7;
+const BOSS_DEATH = 1.5; // seconds a boss shakes and pops before it blows apart
+const ICE_SHARDS = [0xb3e5fc, 0x81d4fa, 0xe1f5fe];
+
+// How an enemy dies, from what it is: machines explode, slimes splat, spirits fade...
+const ROBOT_NAME = /mech|bot\b|robot|drone|tank|turret|sentry|truck|carrier|ufo|machine|cyber|android|eradicator|engine|mk ?\d|automaton|golem/i;
+const ROBOT_MODEL = /Truck|Carrier|MK11|crystalCar|crystalUfo|Sentry|Turret|XTank|Drone|Pod|amplifier|Golem/;
+const SLIME_NAME = /slime|ooze|blob|goo|jelly|sludge/i;
+const GHOST_NAME = /ghost|spirit|shadow|wraith|phantom|soul|spectre|specter|shade|void|wisp|banshee|reaper/i;
+const CRYSTAL_NAME = /crystal|shard|glass|rune|fragment|prism/i;
+const FIRE_NAME = /molten|lava|magma|fire|flame|inferno|ember|burn|blaze/i;
+const STATUS_FX = ST_BURNING | ST_FROZEN | ST_CHILLED | ST_SHOCKED | ST_HACKED | ST_GLITCHED | ST_GASSED | ST_BIOHAZARD | ST_SLIMED;
+const STYLES = new Map();
+function deathStyle(def) {
+  let s = STYLES.get(def);
+  if (s) return s;
+  const model = def.model ?? '';
+  if (def.boss) s = def.phase2 ? 'burst' : 'boss';
+  else if (def.robot || ROBOT_NAME.test(def.name) || ROBOT_MODEL.test(model)) s = 'robot';
+  else if (SLIME_NAME.test(def.name) || /slime|blob/i.test(model)) s = 'slime';
+  else if (CRYSTAL_NAME.test(def.name) || /crystal|rune|fragment/i.test(model)) s = 'crystal';
+  else if (def.ghost || def.hidden || def.void || GHOST_NAME.test(def.name) || /ghost|reaper|orb/i.test(model)) s = 'ghost';
+  else if (def.fireType || def.lava || FIRE_NAME.test(def.name)) s = 'fire';
+  else s = 'fall';
+  STYLES.set(def, s);
+  return s;
+}
+
+const _sz = new THREE.Vector3();
+const _wsc = new THREE.Vector3();
+const _wp = new THREE.Vector3();
+/**
+ * The visible blocks of a model as loose cubes, [{ x, y, z, s, c }] in sim units: where each one
+ * is, how big and what color. At most `max` meshes are used; big ones give a few cubes each.
+ */
+function modelParts(root, max = 16) {
+  const meshes = [];
+  root.updateMatrixWorld(true);
+  root.traverseVisible((o) => {
+    if (!o.isMesh || o.userData.pad) return;
+    const mat = Array.isArray(o.material) ? o.material[0] : o.material;
+    if (!mat?.color || mat.map || mat.visible === false || (mat.transparent && mat.opacity < 0.35)) return;
+    meshes.push(o);
+  });
+  const parts = [];
+  const step = Math.max(1, meshes.length / max);
+  for (let f = 0; f < meshes.length; f += step) {
+    const o = meshes[Math.floor(f)];
+    const g = o.geometry;
+    if (!g.boundingBox) g.computeBoundingBox();
+    g.boundingBox.getSize(_sz).multiply(o.getWorldScale(_wsc)).multiplyScalar(1 / WORLD_SCALE);
+    const x = Math.abs(_sz.x);
+    const y = Math.abs(_sz.y);
+    const z = Math.abs(_sz.z);
+    const s = Math.min(2.6, Math.max(0.22, Math.cbrt(x * y * z) * 0.8));
+    // A model made of a few big pieces (a slime, a crate) breaks into more, smaller blocks.
+    const share = Math.floor(max / meshes.length);
+    const n = Math.min(8, Math.max(1, s > 0.6 ? share : 1, Math.round(Math.max(x, y, z) / (s * 1.6))));
+    simPos(o, _wp);
+    const c = (Array.isArray(o.material) ? o.material[0] : o.material).color.getHex();
+    const ps = n > 1 ? Math.max(0.2, (s / Math.cbrt(n)) * 1.15) : s;
+    const j = n > 1 ? 0.7 : 0;
+    for (let i = 0; i < n; i++) {
+      parts.push({ x: _wp.x + (Math.random() - 0.5) * x * j, y: _wp.y + (Math.random() - 0.5) * y * j, z: _wp.z + (Math.random() - 0.5) * z * j, s: ps * (0.8 + Math.random() * 0.4), c });
+    }
+  }
+  return parts;
+}
 const starGeo = new THREE.BoxGeometry(0.35, 0.35, 0.35);
 const starMat = new THREE.MeshBasicMaterial({ color: 0xffeb3b });
 const clockTickMat = new THREE.MeshBasicMaterial({ color: 0xb388ff });
@@ -882,9 +1001,10 @@ export class EnemyView {
     this.root = this.model.root;
     this.root.scale.setScalar(this.def.scale * K);
     this.lift = this.def.flying ? FLY_HEIGHT * K : 0;
-    path.at(e.dist, tmpPt);
+    path.at(e.dist, tmpPt, e.route);
+    this.ground = tmpPt.y; // floor height under it (Twilight Nexus has two floors)
     this.off.set(-tmpPt.dz, 0, tmpPt.dx).multiplyScalar(e.lateral);
-    this.pos.set(tmpPt.x, this.lift, tmpPt.z + (e.oz || 0)).add(this.off);
+    this.pos.set(tmpPt.x, this.ground + this.lift, tmpPt.z + (e.oz || 0)).add(this.off);
     this.root.position.copy(this.pos);
     this.root.rotation.y = Math.atan2(tmpPt.dx, tmpPt.dz);
     scene.add(this.root);
@@ -911,7 +1031,7 @@ export class EnemyView {
   }
 
   aimPoint(out) {
-    return out.set(this.pos.x, this.lift + this.height * 0.62, this.pos.z);
+    return out.set(this.pos.x, this.ground + this.lift + this.height * 0.62, this.pos.z);
   }
 
   hit() {
@@ -926,7 +1046,8 @@ export class EnemyView {
   /** Mirror sim state `e` (type, hp, maxHp, dist, lateral). */
   sync(e, dt, camera) {
     const m = this.model;
-    path.at(e.dist, tmpPt);
+    path.at(e.dist, tmpPt, e.route);
+    this.ground = tmpPt.y;
     // Smoothly-applied sideways offset so a crowd doesn't walk in single file.
     tmp.set(-tmpPt.dz, 0, tmpPt.dx).multiplyScalar(e.lateral);
     this.off.lerp(tmp, Math.min(1, dt * 4));
@@ -935,7 +1056,7 @@ export class EnemyView {
     // Eradicator: rises into the air while it flies, and comes back down after.
     const lift = this.def.flying ? FLY_HEIGHT * K : e.st & ST_AIRBORNE ? FLY_HEIGHT * 2 * K : 0;
     this.lift += (lift - this.lift) * Math.min(1, dt * 3);
-    this.pos.set(tmpPt.x, this.lift + this.floatY, tmpPt.z + (e.oz || 0)).add(this.off);
+    this.pos.set(tmpPt.x, this.ground + this.lift + this.floatY, tmpPt.z + (e.oz || 0)).add(this.off);
     this.root.position.copy(this.pos);
     const back = e.st & ST_CONFUSED ? Math.PI : 0; // confused zombies turn around and walk back
     this.root.rotation.y = lerpAngle(this.root.rotation.y, Math.atan2(tmpPt.dx, tmpPt.dz) + back, Math.min(1, dt * 8));
@@ -957,36 +1078,47 @@ export class EnemyView {
       this.afterPose(e, dt, camera);
       return;
     }
-    const sw = Math.sin(this.phase) * 0.6;
-    m.leftLeg.rotation.x = sw;
-    m.rightLeg.rotation.x = -sw;
-    m.leftArm.rotation.x = -Math.PI / 2 + sw * 0.15;
-    m.rightArm.rotation.x = -Math.PI / 2 - sw * 0.15;
-    if (this.swing > 0) {
-      // Arms go up over the head, then chop down.
-      this.swing = Math.max(0, this.swing - dt);
-      const f = 1 - this.swing / 0.7;
-      const a = f < 0.6 ? -Math.PI * 0.95 * (f / 0.6) : -Math.PI * 0.95 + (Math.PI * 0.6 * (f - 0.6)) / 0.4;
-      m.leftArm.rotation.x = m.rightArm.rotation.x = a;
+    const now = performance.now() / 1000;
+    if (this.swing > 0) this.swing = Math.max(0, this.swing - dt);
+    _walk.phase = this.phase;
+    _walk.t = now;
+    _walk.atk = this.swing > 0 ? 1 - this.swing / 0.7 : -1;
+    _walk.dance = !!(e.st & ST_DANCE);
+    _walk.fly = !!m.wings;
+    // Every kind of enemy has its own gait (visuals.js); models without a rig shuffle the old way.
+    if (!poseEnemy(m, (this.es ??= newState()), _walk)) {
+      const sw = Math.sin(this.phase) * 0.6;
+      m.leftLeg.rotation.x = sw;
+      m.rightLeg.rotation.x = -sw;
+      m.leftArm.rotation.x = -Math.PI / 2 + sw * 0.15;
+      m.rightArm.rotation.x = -Math.PI / 2 - sw * 0.15;
+      if (_walk.atk >= 0) {
+        // Arms go up over the head, then chop down.
+        const f = _walk.atk;
+        const a = f < 0.6 ? -Math.PI * 0.95 * (f / 0.6) : -Math.PI * 0.95 + (Math.PI * 0.6 * (f - 0.6)) / 0.4;
+        m.leftArm.rotation.x = m.rightArm.rotation.x = a;
+      }
+      m.body.position.y = Math.abs(Math.cos(this.phase)) * 0.12;
+      m.body.rotation.z = Math.sin(this.phase * 0.5) * 0.06;
+      if (_walk.dance) {
+        // Apocalypse Rave: wiggle, bounce and wave both arms in the air.
+        const t = now + this.phase;
+        m.body.rotation.y = Math.sin(t * 6) * 0.7;
+        m.body.position.y = Math.abs(Math.sin(t * 8)) * 0.6;
+        m.leftArm.rotation.x = -Math.PI + Math.sin(t * 8) * 0.5;
+        m.rightArm.rotation.x = -Math.PI - Math.sin(t * 8) * 0.5;
+      } else m.body.rotation.y = 0;
+      if (m.wings) {
+        m.leftLeg.rotation.x = m.rightLeg.rotation.x = 0.3;
+        m.body.position.y = Math.sin((now + this.phase) * 3) * 0.4;
+      }
     }
-    m.body.position.y = Math.abs(Math.cos(this.phase)) * 0.12;
-    m.body.rotation.z = Math.sin(this.phase * 0.5) * 0.06;
-    if (e.st & ST_DANCE) {
-      // Apocalypse Rave: wiggle, bounce and wave both arms in the air.
-      const t = performance.now() / 1000 + this.phase;
-      m.body.rotation.y = Math.sin(t * 6) * 0.7;
-      m.body.position.y = Math.abs(Math.sin(t * 8)) * 0.6;
-      m.leftArm.rotation.x = -Math.PI + Math.sin(t * 8) * 0.5;
-      m.rightArm.rotation.x = -Math.PI - Math.sin(t * 8) * 0.5;
-    } else m.body.rotation.y = 0;
     if (m.wings) {
       // Flyers: legs dangle, wings flap, and the body bobs up and down in the air.
       const t = performance.now() / 1000 + this.phase;
       const flap = Math.sin(t * 12) * 0.6;
       m.wings[0].rotation.y = flap;
       m.wings[1].rotation.y = -flap;
-      m.leftLeg.rotation.x = m.rightLeg.rotation.x = 0.3;
-      m.body.position.y = Math.sin(t * 3) * 0.4;
     }
     this.afterPose(e, dt, camera);
   }
@@ -1006,12 +1138,40 @@ export class EnemyView {
     this.updateBubble();
     this.updateShroom();
     this.updateFlash(dt);
-    this.bar.position.set(this.pos.x, this.lift + this.height + 0.9 * K, this.pos.z);
+    this.bar.position.set(this.pos.x, this.ground + this.lift + this.height + 0.9 * K, this.pos.z);
     this.bar.quaternion.copy(camera.quaternion);
     const r = Math.min(1, Math.max(0, e.hp / e.maxHp)); // (Mothership heals can overheal)
     this.fg.scale.x = Math.max(0.001, this.barW * r);
     this.fgMat.color.setHex(r > 0.5 ? 0x66bb6a : r > 0.25 ? 0xffca28 : 0xef5350);
     this.updateVoidArmor(e, dt);
+    this.updateOsh(e);
+  }
+
+  /**
+   * Hardcore shields ("+ shield"): a cyan bar over the health bar while there's shield left. Enemies
+   * that can't be targeted right now (closed Drop Pods, a downed Void Reaver, the protected Void
+   * Caster) turn see-through.
+   */
+  updateOsh(e) {
+    const left = e.oshMax ? e.osh / e.oshMax : e.osh || 0; // the local sim has amounts, snapshots shares
+    if (left > 0 && !this.oBar && !this.dying) {
+      const w = this.barW;
+      this.oBarMat = new THREE.MeshBasicMaterial({ color: 0x4dd0e1, transparent: true, depthWrite: false });
+      this.oBar = new THREE.Mesh(barFgGeo, this.oBarMat);
+      this.oBar.position.set(-w / 2, -0.45 * K, 0.02);
+      this.oBar.scale.set(w, 0.2 * K, 1);
+      this.oBar.renderOrder = 12;
+      this.bar.add(this.oBar);
+    }
+    if (this.oBar) {
+      this.oBar.visible = left > 0 && !this.dying;
+      this.oBar.scale.x = Math.max(0.001, this.barW * Math.min(1, left));
+    }
+    const ghost = !!e.noTarget && !this.def.hidden;
+    if (ghost !== !!this.untouchable) {
+      this.untouchable = ghost;
+      setOpacity(this.model, ghost ? 0.4 : 1);
+    }
   }
 
   /** Void armor: a purple shell with tendrils waving around the enemy, and a purple shield bar over its health bar. */
@@ -1092,6 +1252,29 @@ export class EnemyView {
       setEmissive(this.model, color);
       this.flashOn = color;
     }
+    if (!this.dying && FX) this.statusParticles(st, dt);
+  }
+
+  /** What's wrong with it, as particles: flames, frost, sparks, gas bubbles, slime drips; bosses kick up dust. */
+  statusParticles(st, dt) {
+    const p = this.pos;
+    if (!p) return;
+    if (st & STATUS_FX) {
+      if ((this.fxT = (this.fxT ?? Math.random() * 0.15) - dt) > 0) return;
+      this.fxT = 0.07 + Math.random() * 0.07;
+      const s = Math.min(2.4, Math.max(0.7, this.height / 5.2));
+      const y = this.root.position.y + this.height * 0.5;
+      if (st & ST_BURNING) FX.statusFx('burn', p.x, y, p.z, s);
+      if (st & (ST_FROZEN | ST_CHILLED)) FX.statusFx('frost', p.x, y, p.z, s);
+      if (st & (ST_SHOCKED | ST_HACKED | ST_GLITCHED)) FX.statusFx('shock', p.x, y, p.z, s);
+      if (st & (ST_GASSED | ST_BIOHAZARD)) FX.statusFx('poison', p.x, y, p.z, s);
+      if (st & ST_SLIMED) FX.statusFx('slime', p.x, y, p.z, s);
+    } else if (this.def.boss && this.height > 7 && !this.def.flying && !this.lift && !(st & ST_STUNNED)) {
+      // Something that heavy shakes dust loose with every step.
+      if ((this.dustT = (this.dustT ?? 0.3) - dt) > 0) return;
+      this.dustT = 0.3 + Math.random() * 0.15;
+      FX.statusFx('dust', p.x, (this.ground ?? 0) + 0.3, p.z, Math.min(2.5, this.height / 6));
+    }
   }
 
   /** Bubble Blower: a see-through bubble around a floating zombie. */
@@ -1144,29 +1327,149 @@ export class EnemyView {
   }
 
   die(reward, effects, audio, quiet = false) {
-    this.dying = DEATH_TIME;
+    const st = this.status || 0;
+    const def = this.def;
     this.status = 0;
     if (this.stars) this.stars.visible = false;
     if (this.bubble) this.bubble.visible = false;
     if (this.shroom) this.shroom.visible = false;
     this.bar.visible = false;
     this.flash = 0.1;
+    this.fx = effects;
+    this.audio = audio;
+    this.charred = !!(st & ST_BURNING);
     const p = this.aimPoint(new THREE.Vector3());
-    effects.puff(p.clone(), this.def.skin, this.def.boss ? 18 : 7, 0.45 * this.def.scale);
-    if (reward) effects.text(p.add(new THREE.Vector3(0, 1.5 * K, 0)), `+$${reward}`, '#ffd54f', this.def.boss ? 5 : 2.6);
+    // How it goes: by what it is, and by what state it was in when it died (see deathStyle).
+    const style = quiet ? 'crumble' : st & ST_FROZEN && !def.boss ? 'ice' : deathStyle(def);
+    this.style = style;
+    this.deathTime = def.headRoll ? 3.2 : style === 'boss' ? BOSS_DEATH + 0.4 : style === 'fall' ? DEATH_TIME : 0.3;
+    this.dying = this.deathTime;
+    const sc = def.scale;
+    const big = Math.min(4, this.height * 0.3);
+    switch (style) {
+      case 'fall':
+        effects.puff(p, def.skin, 4, 0.4 * sc);
+        break;
+      case 'boss':
+        this.popT = 0;
+        break;
+      case 'crumble':
+        this.breakUp(3, 0.5);
+        break;
+      case 'ice': {
+        // Frozen solid: it shatters like glass.
+        const parts = this.takeParts();
+        for (const part of parts) part.c = ICE_SHARDS[(Math.random() * 3) | 0];
+        effects.shatter(parts, p, { power: 9, up: 0.7, life: 0.9 });
+        effects.sparks(p, 0xb3e5fc, 8, 12);
+        effects.scorch(p, big * 0.8, 0xd6f1fb, 3);
+        break;
+      }
+      case 'robot':
+        // Machines blow up: a blast, sparks and scrap.
+        effects.explosion(p, Math.min(4.5, 1.1 + big * 0.7));
+        effects.sparks(p, 0x80d8ff, 6, 14);
+        effects.shatter(this.takeParts(), p, { power: 12, up: 1.1, life: 1.3 });
+        break;
+      case 'slime':
+        effects.splat(p, Math.min(5, 1 + big), def.color ?? def.skin, 4);
+        effects.shatter(this.takeParts(24), p, { power: 6, up: 0.9, life: 0.6 });
+        break;
+      case 'ghost':
+        // Spirits and void things come apart and drift away.
+        effects.dissolve(this.takeParts(), def.glowC ?? null);
+        effects.flash(p, def.glowC ?? 0xb39ddb, 0.8 * sc);
+        break;
+      case 'crystal': {
+        const parts = this.takeParts();
+        effects.shatter(parts, p, { power: 10, up: 0.8, life: 1, glow: true });
+        effects.sparks(p, def.glowC ?? parts[0]?.c ?? 0x80d8ff, 10, 14);
+        effects.flash(p, def.glowC ?? 0x80d8ff, 1.1 * sc);
+        break;
+      }
+      case 'fire':
+        effects.fireball(p, Math.min(3.5, 0.8 + big * 0.6), 10);
+        effects.embers(p, 10, big);
+        effects.shatter(this.takeParts(), p, { power: 7, up: 1, life: 0.9 });
+        break;
+      case 'burst':
+        // A boss changing shape: its shell is blown off.
+        effects.flash(p, def.glowC ?? 0xffffff, 2 * sc);
+        effects.shock(p, 3 + this.height * 0.5, def.glowC ?? 0xffffff, 0.45);
+        effects.shatter(this.takeParts(30), p, { power: 13, up: 0.9, life: 1.1 });
+        break;
+    }
+    if (reward) effects.text(p.add(new THREE.Vector3(0, 1.5 * K, 0)), `+$${reward}`, '#ffd54f', def.boss ? 5 : 2.6);
     if (!quiet) audio.kill();
   }
 
-  /** Fall over backwards, then shrink away. */
+  /** The model's blocks as loose cubes (see modelParts); the model itself is hidden from here on. */
+  takeParts(max = this.def.boss ? 44 : 16) {
+    const parts = modelParts(this.root, this.fx.lit.load > 0.6 ? Math.min(6, max) : max);
+    if (this.charred) for (const part of parts) part.c = shade(part.c, 0.3);
+    this.root.visible = false;
+    this.gone = true;
+    return parts;
+  }
+
+  /** Falls to pieces where it lies. */
+  breakUp(power = 4, up = 0.9) {
+    const fx = this.fx;
+    const center = new THREE.Vector3(this.pos.x, this.ground + 0.4, this.pos.z);
+    fx.shatter(this.takeParts(), center, { power, up, life: 0.9 });
+    fx.dustRing(center, Math.min(3, 0.6 + this.height * 0.2), 0xa1958a, 6);
+    if (this.charred) fx.embers(center.setY(center.y + 0.6), 6, this.height * 0.2);
+  }
+
+  /** Falls over backwards and breaks into its blocks; bosses blow up bit by bit. */
   updateDying(dt) {
     this.dying -= dt;
+    if (this.dying <= 0) this.done = true;
+    if (this.gone) return;
     this.updateFlash(dt);
-    const k = Math.max(0, this.dying / DEATH_TIME);
+    if (this.style === 'boss' && !this.def.headRoll) return this.updateBossDeath(dt);
+    const k = Math.max(0, this.dying / (this.deathTime ?? DEATH_TIME));
     const fall = Math.min(1, (1 - k) * 2.5);
     this.model.body.rotation.x = -fall * fall * (Math.PI / 2);
-    if (this.lift) this.root.position.y = this.lift * (1 - fall); // shot-down Flyers drop out of the sky
-    if (k < 0.35) this.root.scale.setScalar(this.def.scale * K * (k / 0.35));
-    if (this.dying <= 0) this.done = true;
+    if (this.def.headRoll && this.model.head) {
+      // Once he's on his back, the pumpkin head comes off and rolls away past his shoulders.
+      const r = Math.max(0, (1 - k - 0.35) / 0.5);
+      const head = this.model.head;
+      head.position.y = 4 + r * 3.5;
+      head.position.x = r * 1.2;
+      head.rotation.x = -r * Math.PI * 3;
+    }
+    if (this.lift) this.root.position.y = this.ground + this.lift * (1 - fall); // shot-down Flyers drop out of the sky
+    if (k < (this.def.headRoll ? 0.08 : 0.42)) this.breakUp();
+  }
+
+  /** A boss's end: it stops dead, shakes while blasts go off all over it, then blows apart. */
+  updateBossDeath(dt) {
+    const fx = this.fx;
+    const t = this.deathTime - this.dying;
+    const sc = this.def.scale;
+    const h = this.height;
+    if (t >= BOSS_DEATH) {
+      const p = this.aimPoint(new THREE.Vector3());
+      fx.shatter(this.takeParts(), p, { power: 12 + sc * 2, up: 1.1, life: 1.7 });
+      fx.bossBoom(p, Math.min(9, 2.5 + h * 0.28));
+      this.audio?.boom(8);
+      return;
+    }
+    // Shaking harder and harder, sinking forwards.
+    const j = Math.min(1, t / BOSS_DEATH) * 0.12 * sc;
+    this.root.position.set(this.pos.x + (Math.random() - 0.5) * j, this.root.position.y, this.pos.z + (Math.random() - 0.5) * j);
+    this.model.body.rotation.x = Math.min(1, t / BOSS_DEATH) * 0.22;
+    if ((this.popT -= dt) <= 0) {
+      this.popT = Math.max(0.08, 0.3 - t * 0.16);
+      const a = Math.random() * 6.28;
+      const r = Math.min(3, h * 0.16);
+      const p = tmp.set(this.pos.x + Math.cos(a) * r, this.ground + this.lift + h * (0.2 + Math.random() * 0.7), this.pos.z + Math.sin(a) * r);
+      fx.explosion(p, Math.min(3, 0.7 + h * 0.07));
+      fx.sparks(p, this.def.glowC ?? 0xffd54f, 6, 14);
+      this.flash = 0.09;
+      this.audio?.boom(2);
+    }
   }
 
   dispose() {
@@ -1179,6 +1482,9 @@ export class EnemyView {
 // ------------------------------------------------------------------ units (Jeeps, Tanks, squads...)
 
 const unitBarMat = new THREE.MeshBasicMaterial({ color: 0x1a1a1a, transparent: true, opacity: 0.75, depthWrite: false });
+const unitBoxGeo = new THREE.BoxGeometry(1, 1, 1);
+const pickMat = new THREE.MeshBasicMaterial({ visible: false }); // never drawn, still hit by the mouse ray
+const pickBox = new THREE.Box3();
 
 export class UnitView {
   constructor(scene, u) {
@@ -1187,19 +1493,38 @@ export class UnitView {
     this.kind = u.model;
     this.m = u.model.startsWith('holo:') ? makeHologram(ENEMIES[u.model.slice(5)]) : makeUnit(u.model, u.alive);
     this.root = this.m.root;
+    // Easier to click: an unseen box around the whole thing, a little bigger than it is
+    // (userData.pad: Game.pickAny lets anything really under the mouse win over it).
+    this.root.updateMatrixWorld(true);
+    pickBox.setFromObject(this.root);
+    if (!pickBox.isEmpty()) {
+      const pad = new THREE.Mesh(unitBoxGeo, pickMat);
+      pickBox.getSize(pad.scale).addScalar(1.2);
+      pickBox.getCenter(pad.position);
+      pad.userData.pad = true;
+      this.root.add(pad);
+    }
     this.pos = new THREE.Vector3();
     this.off = new THREE.Vector3();
     this.phase = 0;
     this.shots = 0;
-    path.at(u.dist, tmpPt);
+    path.at(u.dist, tmpPt, u.route);
+    this.ground = tmpPt.y;
     this.off.set(-tmpPt.dz, 0, tmpPt.dx).multiplyScalar(u.lateral);
-    this.pos.set(tmpPt.x, 0, tmpPt.z + (u.oz || 0)).add(this.off);
+    this.pos.set(tmpPt.x, this.ground, tmpPt.z + (u.oz || 0)).add(this.off);
     if (u.fx != null) this.pos.set(u.fx, (this.m.fly || 0) * K, u.fz + (u.oz || 0)); // crows, bees, Volt Points
     this.root.position.copy(this.pos);
     this.root.rotation.y = u.fx != null ? u.yaw ?? 0 : Math.atan2(-tmpPt.dx, -tmpPt.dz);
     this.root.scale.multiplyScalar(K);
     this.root.traverse((o) => (o.userData.unitId = u.id)); // clickable: Game.pickAny
     scene.add(this.root);
+    // Aiming: the sim's yaw only means something while the unit has a target, so the view keeps
+    // its own "is fighting" timer, wound up by a change of aim and by every shot (see aimAt).
+    this.heading = this.root.rotation.y;
+    this.simYaw = u.yaw;
+    this.aimYaw = 0;
+    this.aimT = 0;
+    this.treadT = 0;
 
     const w = (this.m.soldiers ? 2.4 : 3.2) * K;
     this.barW = w;
@@ -1219,6 +1544,7 @@ export class UnitView {
 
   /** Mirror sim unit `u` (dist, lateral, speed, yaw, hp, maxHp, alive). Units drive toward the entrance. */
   sync(u, dt, camera) {
+    settleGuns(this.m, dt, 11);
     const m = this.m;
     if (m.wings) {
       // Crows and bees flap (wings stick out along ±X; bees much faster).
@@ -1227,6 +1553,7 @@ export class UnitView {
       m.wings[0].rotation.z = a;
       m.wings[1].rotation.z = -a;
     }
+    if (m.spin) for (const s of m.spin) s.o.rotation[s.axis] += dt * s.rate; // propellers, rotors, radars
     if (u.fx != null) {
       // Free flyers: straight to the sim's position, facing where they fly.
       tmp.set(u.fx, (m.fly || 0) * K + Math.sin((this.flap || 0) * 0.15) * 0.2 * K, u.fz + (u.oz || 0));
@@ -1238,17 +1565,34 @@ export class UnitView {
       return;
     }
     if (m.bounce) m.bounce.position.y = Math.abs(Math.sin(this.phase * 1.5)) * 1.2; // Chaos Ball
-    path.at(u.dist, tmpPt);
+    path.at(u.dist, tmpPt, u.route);
+    this.ground = tmpPt.y;
     tmp.set(-tmpPt.dz, 0, tmpPt.dx).multiplyScalar(u.lateral);
     this.off.lerp(tmp, Math.min(1, dt * 4));
-    this.pos.set(tmpPt.x, (m.fly || 0) * K, tmpPt.z + (u.oz || 0)).add(this.off); // Gift Bombers fly
+    this.pos.set(tmpPt.x, this.ground + (m.fly || 0) * K, tmpPt.z + (u.oz || 0)).add(this.off); // Gift Bombers fly
     this.root.position.copy(this.pos);
-    this.root.rotation.y = lerpAngle(this.root.rotation.y, Math.atan2(-tmpPt.dx, -tmpPt.dz), Math.min(1, dt * 6));
-    const local = (u.yaw ?? 0) - this.root.rotation.y; // aim direction relative to the body
+    if (Number.isFinite(u.yaw) && u.yaw !== this.simYaw) {
+      this.simYaw = u.yaw; // the sim turned it toward a zombie
+      this.aimAt(u.yaw);
+    }
+    this.aimT = Math.max(0, this.aimT - dt);
+    const aiming = this.aimT > 0;
+    this.heading = lerpAngle(this.heading, Math.atan2(-tmpPt.dx, -tmpPt.dz), Math.min(1, dt * 6));
+    // What turns to face the zombie: the turret (or a mech's whole upper body) if it has one, each
+    // soldier of a squad, and otherwise the whole thing, which turns back to the road afterwards.
+    const turnsWhole = !m.turret && !m.soldiers && !m.noTurn;
+    this.root.rotation.y = turnsWhole ? lerpAngle(this.root.rotation.y, aiming ? this.aimYaw : this.heading, Math.min(1, dt * (aiming ? 9 : 5))) : this.heading;
+    const local = aiming ? this.aimYaw - this.root.rotation.y : 0; // aim direction relative to the body
     const speed = u.speed ?? 0;
     this.phase += (dt * speed * 1.4) / K;
-    if (m.turret) m.turret.rotation.y = lerpAngle(m.turret.rotation.y, local, Math.min(1, dt * 10));
-    for (const w of m.wheels) w.rotation.x += (dt * speed * 1.8) / K;
+    if (m.turret) m.turret.rotation.y = lerpAngle(m.turret.rotation.y, local, Math.min(1, dt * (aiming ? 10 : 4)));
+    // Wheels roll as far as the ground goes by (userData.r: the wheel's radius), tracks crawl with them.
+    const roll = (dt * speed) / K;
+    for (const w of m.wheels) w.rotation.x += roll / (w.userData.r ?? 0.55);
+    if (m.treads) {
+      this.treadT += roll;
+      for (const t of m.treads) t.mesh.position.z = t.z0 + ((this.treadT / t.sc + t.phase) % t.pitch);
+    }
     if (m.walk) {
       // Hacker holograms shamble along like the zombies they were.
       const sw = Math.sin(this.phase * 2) * 0.6;
@@ -1267,14 +1611,20 @@ export class UnitView {
         const sw = Math.sin(this.phase * 2 + i) * 0.6 * (speed > 0 ? 1 : 0);
         h.leftLeg.rotation.x = sw;
         h.rightLeg.rotation.x = -sw;
-        // Walking: rifles forward; stopped: turn to face the target.
-        h.root.rotation.y = lerpAngle(h.root.rotation.y, speed > 0 ? 0 : local, Math.min(1, dt * 10));
+        // Rifles forward on the march; shooting, each soldier turns to face the target.
+        h.root.rotation.y = lerpAngle(h.root.rotation.y, local, Math.min(1, dt * 10));
       });
     }
-    this.bar.position.set(this.pos.x, (m.height + (m.fly || 0) + 0.8) * K, this.pos.z);
+    this.bar.position.set(this.pos.x, this.ground + (m.height + (m.fly || 0) + 0.8) * K, this.pos.z);
     this.bar.quaternion.copy(camera.quaternion);
     const r = Math.max(0, u.hp / u.maxHp);
     this.fg.scale.x = Math.max(0.001, this.barW * r);
+  }
+
+  /** Turn toward world yaw `yaw` (or toward the point x, z) and stay turned for a moment. */
+  aimAt(yaw, z) {
+    this.aimYaw = z == null ? yaw : Math.atan2(yaw - this.pos.x, z - this.pos.z);
+    this.aimT = 1.5;
   }
 
   /** World position of the unit's (first) muzzle. */
@@ -1286,16 +1636,23 @@ export class UnitView {
   /** Visual-only shot (or cannon blast with `cannon`) at an enemy view. */
   shoot(enemyView, effects, audio, i, cannon, rail) {
     const m = this.m;
-    const muzzle = cannon ? m.cannon : m.muzzles[(i ?? this.shots++) % m.muzzles.length];
+    // A cannon shot from a model with no cannon of its own (mortar carts...) comes from its gun.
+    const muzzle = (cannon ? m.cannon : null) ?? m.muzzles[(i ?? this.shots++) % (m.muzzles.length || 1)];
     if (!muzzle) return;
     this.root.updateMatrixWorld(true);
     const from = simPos(muzzle, new THREE.Vector3());
+    if (enemyView && (!this.aimT || !Number.isFinite(this.simYaw))) {
+      // Cannon-only and laser-only units get no aim from the sim: face what they just shot.
+      enemyView.aimPoint(tmp);
+      this.aimAt(tmp.x, tmp.z);
+    } else if (this.aimT) this.aimT = 1.5;
     if (enemyView) {
       // Laser Behemoth railguns: a thick glowing beam right across the map.
       effects.tracer(from, enemyView.aimPoint(tmp), cannon ? 0xff9100 : m.tracer, cannon ? 0.3 : rail ? 0.5 : undefined);
       enemyView.hit();
     }
     effects.flash(from, cannon ? 0xffab40 : rail ? m.tracer ?? 0xfff3b0 : 0xfff3b0, cannon ? 1.5 : rail ? 1.6 : 0.6);
+    if (enemyView) kickGun(m, muzzle, _dir.subVectors(tmp, from).normalize(), cannon || rail ? 0.9 : m.soldiers ? 0.25 : 0.4);
     if (cannon || rail) audio.boom(3);
     else audio.shot(m.soldiers ? 0 : 1, 'unit');
   }

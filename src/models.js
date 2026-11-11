@@ -10,6 +10,14 @@ import { TOWER_MODELS_F, UNIT_MODELS_F } from './newmodels/f.js';
 import { TOWER_MODELS_G, UNIT_MODELS_G } from './newmodels/g.js';
 import { TOWER_MODELS_H, UNIT_MODELS_H } from './newmodels/h.js';
 import { TOWER_MODELS_I, UNIT_MODELS_I, makeEngDevice } from './newmodels/i.js';
+import { blitzUpgrades } from './newmodels/blitzup.js';
+import { HC_CREATURES, hcParts } from './newmodels/hc.js';
+import { hwParts } from './newmodels/halloween.js';
+import { ballGeo, bevelGeo, headGeo, rigify } from './rig.js';
+import { gaitFor, shapeEnemy, styleFor } from './visuals.js';
+import { armWeapons } from './weapons.js';
+import { axle, wheel } from './vehicles.js';
+import { VEHICLE_UNITS } from './vehicleunits.js';
 
 // Blocky humanoid proportions (in world units, ~5.2 tall):
 // legs 1x2x1, torso 2x2x1, arms 1x2x1, head 1.2 cube. Characters face +Z.
@@ -39,11 +47,38 @@ export function faceTexture(skin, style) {
   const key = `${skin}|${style}`;
   if (faceCache.has(key)) return faceCache.get(key);
   const c = document.createElement('canvas');
-  c.width = c.height = 64;
+  c.width = c.height = 256;
   const g = c.getContext('2d');
+  g.scale(4, 4); // faces are drawn on a 64 x 64 grid
   g.fillStyle = '#' + new THREE.Color(skin).getHexString();
   g.fillRect(0, 0, 64, 64);
   g.fillStyle = '#111';
+  g.lineCap = 'round';
+  // Rounded shapes for the friendlier faces.
+  const oval = (x, y, rx, ry) => {
+    g.beginPath();
+    g.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+    g.fill();
+  };
+  const line = (w, ...pts) => {
+    g.lineWidth = w;
+    g.beginPath();
+    g.moveTo(pts[0], pts[1]);
+    for (let i = 2; i < pts.length; i += 2) g.lineTo(pts[i], pts[i + 1]);
+    g.stroke();
+  };
+  const curve = (w, x0, y0, cx, cy, x1, y1) => {
+    g.lineWidth = w;
+    g.beginPath();
+    g.moveTo(x0, y0);
+    g.quadraticCurveTo(cx, cy, x1, y1);
+    g.stroke();
+  };
+  const eyes = (ry = 5.5, rx = 3.6, y = 27) => {
+    oval(22, y, rx, ry);
+    oval(42, y, rx, ry);
+  };
+  g.strokeStyle = '#111';
   switch (style) {
     case 'zombie':
       g.fillStyle = '#f4f4dc';
@@ -309,35 +344,183 @@ export function faceTexture(skin, style) {
       g.fillRect(40, 34, 4, 14);
       g.fillRect(10, 48, 12, 4);
       break;
-    case 'soldier':
-      g.fillRect(18, 25, 7, 9);
-      g.fillRect(39, 25, 7, 9);
-      g.fillRect(15, 21, 12, 3);
-      g.fillRect(37, 21, 12, 3);
-      g.fillRect(22, 45, 20, 3);
+    case 'soldier': // steady eyes under level brows, a straight mouth
+      eyes(4.6, 3.4);
+      line(2.6, 15, 19.5, 27, 20.5);
+      line(2.6, 37, 20.5, 49, 19.5);
+      line(2.6, 24, 45, 40, 45);
       break;
-    default: // classic smile
-      g.fillRect(19, 21, 7, 11);
-      g.fillRect(38, 21, 7, 11);
-      g.lineWidth = 4;
-      g.strokeStyle = '#111';
+    case 'stern': // heavy angled brows and a tight frown
+      eyes(4.2, 3.4, 28);
+      line(3, 14, 18, 28, 22);
+      line(3, 36, 22, 50, 18);
+      curve(2.6, 23, 47, 32, 43, 41, 47);
+      break;
+    case 'smirk': // one brow up and a crooked grin
+      eyes(4.8, 3.4);
+      line(2.4, 15, 20, 27, 20);
+      line(2.4, 37, 18, 49, 16);
+      curve(2.8, 24, 44, 36, 49, 44, 41);
+      break;
+    case 'grin': // wide open grin with teeth
+      eyes(5, 3.6, 25);
+      g.fillStyle = '#3a1410';
       g.beginPath();
-      g.arc(32, 34, 13, 0.2 * Math.PI, 0.8 * Math.PI);
-      g.stroke();
+      g.moveTo(18, 39); g.quadraticCurveTo(32, 56, 46, 39); g.closePath(); g.fill();
+      g.fillStyle = '#fafafa';
+      g.fillRect(21, 39.5, 22, 4);
+      break;
+    case 'focus': // narrowed eyes, one squinting down the sights
+      oval(22, 28, 4, 2.2);
+      oval(42, 27, 3.6, 4.4);
+      line(2.6, 15, 22, 28, 23);
+      line(2.6, 37, 20, 49, 19);
+      line(2.4, 26, 45, 39, 44);
+      break;
+    case 'calm': // closed, relaxed eyes and a small smile
+      curve(2.6, 17, 27, 22, 31, 27, 27);
+      curve(2.6, 37, 27, 42, 31, 47, 27);
+      curve(2.4, 26, 43, 32, 47, 38, 43);
+      break;
+    case 'cocky': // half-lidded eyes and a big side smile
+      eyes(4.4, 3.6, 28);
+      g.fillStyle = '#' + new THREE.Color(skin).getHexString();
+      g.fillRect(16, 21, 32, 5.5);
+      g.fillStyle = '#111';
+      line(2.4, 16, 25.5, 28, 25.5);
+      line(2.4, 36, 25.5, 48, 25.5);
+      curve(3, 22, 42, 34, 52, 46, 40);
+      break;
+    case 'grit': // gritted teeth and furious brows
+      eyes(4, 3.4, 28);
+      line(3.2, 13, 17, 28, 23);
+      line(3.2, 36, 23, 51, 17);
+      g.fillStyle = '#fafafa';
+      g.fillRect(20, 41, 24, 8);
+      g.strokeStyle = '#111';
+      g.lineWidth = 1.6;
+      g.strokeRect(20, 41, 24, 8);
+      for (const x of [26, 32, 38]) line(1.4, x, 41, x, 49);
+      break;
+    case 'scar': // a scar through one eye, stubble and a flat mouth
+      eyes(4.6, 3.4);
+      line(2.6, 15, 20, 27, 20.5);
+      line(2.6, 37, 20.5, 49, 20);
+      g.strokeStyle = '#8d3b2f';
+      line(2, 45, 14, 39, 38);
+      g.strokeStyle = '#111';
+      line(2.6, 25, 46, 39, 46);
+      g.fillStyle = 'rgba(40,30,25,0.28)';
+      g.fillRect(14, 40, 36, 16);
+      break;
+    case 'beard': // a full dark beard with a mouth line
+      eyes(4.8, 3.4, 25);
+      line(2.6, 15, 18.5, 27, 19);
+      line(2.6, 37, 19, 49, 18.5);
+      g.fillStyle = '#3b2a1e';
+      g.beginPath();
+      g.moveTo(8, 34); g.lineTo(56, 34); g.lineTo(56, 64); g.lineTo(8, 64); g.closePath(); g.fill();
+      g.fillStyle = '#' + new THREE.Color(skin).getHexString();
+      g.beginPath();
+      g.ellipse(32, 36, 13, 5, 0, 0, Math.PI * 2);
+      g.fill();
+      g.strokeStyle = '#1c120c';
+      line(2.4, 26, 46, 38, 46);
+      break;
+    case 'stache': // a big moustache
+      eyes(4.8, 3.4, 25);
+      line(2.6, 15, 18.5, 27, 19);
+      line(2.6, 37, 19, 49, 18.5);
+      g.fillStyle = '#4e342e';
+      g.beginPath();
+      g.moveTo(32, 38); g.quadraticCurveTo(46, 36, 50, 46); g.quadraticCurveTo(40, 42, 32, 44);
+      g.quadraticCurveTo(24, 42, 14, 46); g.quadraticCurveTo(18, 36, 32, 38); g.fill();
+      break;
+    case 'shades': // dark aviators and a smug mouth
+      g.fillStyle = '#0b0b0d';
+      g.beginPath();
+      g.roundRect(11, 21, 19, 13, 4); g.roundRect(34, 21, 19, 13, 4); g.fill();
+      g.fillRect(28, 23, 8, 3);
+      g.fillStyle = 'rgba(255,255,255,0.28)';
+      g.fillRect(14, 23, 6, 3);
+      g.fillRect(37, 23, 6, 3);
+      g.strokeStyle = '#111';
+      curve(2.6, 24, 45, 33, 48, 41, 43);
+      break;
+    case 'wink':
+      oval(22, 27, 3.6, 5.2);
+      curve(2.8, 37, 28, 42, 24, 47, 28);
+      curve(2.8, 22, 42, 32, 51, 43, 41);
+      break;
+    case 'mad': // wide wild eyes and a jagged grin
+      g.fillStyle = '#fafafa';
+      oval(21, 26, 7, 7);
+      oval(43, 26, 6, 6);
+      g.fillStyle = '#111';
+      oval(22, 27, 2.6, 2.6);
+      oval(42, 26, 2.2, 2.2);
+      g.fillStyle = '#2a1010';
+      g.beginPath();
+      g.moveTo(16, 40);
+      for (const [x, y] of [[21, 46], [26, 41], [32, 48], [38, 41], [43, 46], [48, 40], [44, 52], [20, 52]]) g.lineTo(x, y);
+      g.closePath(); g.fill();
+      break;
+    case 'cyber': // a glowing visor line where the eyes would be, and a grille mouth
+      g.fillStyle = '#10141a';
+      g.beginPath(); g.roundRect(8, 20, 48, 14, 5); g.fill();
+      g.fillStyle = '#4dd0e1';
+      g.beginPath(); g.roundRect(12, 24.5, 40, 5, 2.5); g.fill();
+      g.strokeStyle = '#222';
+      for (const x of [25, 29.5, 34, 38.5]) line(1.8, x, 42, x, 50);
+      break;
+    case 'kid': // big shiny eyes and a tiny smile
+      oval(21, 27, 5.4, 7);
+      oval(43, 27, 5.4, 7);
+      g.fillStyle = '#fff';
+      oval(22.5, 24, 2, 2.6);
+      oval(44.5, 24, 2, 2.6);
+      g.strokeStyle = '#111';
+      curve(2.4, 27, 43, 32, 47, 37, 43);
+      break;
+    case 'tired': // bags under the eyes and a flat mouth
+      eyes(3.6, 3.6, 27);
+      g.strokeStyle = 'rgba(60,40,60,0.55)';
+      curve(2, 16, 33, 22, 36, 28, 33);
+      curve(2, 36, 33, 42, 36, 48, 33);
+      g.strokeStyle = '#111';
+      line(2.4, 15, 21, 28, 22);
+      line(2.4, 36, 22, 49, 21);
+      line(2.4, 26, 46, 38, 46);
+      break;
+    case 'warpaint': // black stripes under hard eyes
+      eyes(4.4, 3.4, 26);
+      line(3, 14, 19, 28, 21.5);
+      line(3, 36, 21.5, 50, 19);
+      g.fillStyle = '#1b1b1b';
+      g.fillRect(12, 34, 15, 4);
+      g.fillRect(37, 34, 15, 4);
+      g.strokeStyle = '#111';
+      line(2.6, 25, 47, 39, 47);
+      break;
+    default: // the classic smile
+      eyes(5.8, 3.6, 26);
+      curve(3, 19, 40, 32, 53, 45, 40);
   }
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
-  t.magFilter = THREE.NearestFilter;
+  t.anisotropy = 4;
   faceCache.set(key, t);
   return t;
 }
 
 /**
- * Builds a blocky humanoid. Limbs are pivot groups at shoulder/hip so rotating
- * `rotation.x` swings them. Returns handles to every part plus the list of
- * materials (for tinting, transparency and disposal).
+ * Builds a humanoid: a round head, a block torso and jointed block limbs (arm = sleeve + hand,
+ * leg = thigh + shin + shoe). Limbs are pivot groups at the shoulder / hip, so `rotation.x` swings
+ * them; they are built straight, and rigify() (rig.js) adds working elbows and knees afterwards.
+ * Returns handles to every part plus the list of materials (for tinting, fading and disposal).
+ * Characters face +Z; `upper` holds the torso, head and arms so the chest can lean and twist.
  */
-export function makeHumanoid({ skin = 0xf5cd30, shirt = 0x1e88e5, pants = 0x43a047, arms = null, face = 'smile' } = {}) {
+export function makeHumanoid({ skin = 0xf5cd30, shirt = 0x1e88e5, pants = 0x43a047, arms = null, face = 'smile', hands = null, shoes = null } = {}) {
   const mats = [];
   const M = (color, map = null) => {
     const m = new THREE.MeshLambertMaterial({ color, map });
@@ -349,32 +532,55 @@ export function makeHumanoid({ skin = 0xf5cd30, shirt = 0x1e88e5, pants = 0x43a0
   const pantsM = M(pants);
   const armM = arms == null ? skinM : M(arms);
   const faceM = M(0xffffff, faceTexture(skin, face));
+  const handM = hands == null ? skinM : M(hands);
+  const shoeM = M(shoes ?? new THREE.Color(pants).multiplyScalar(0.5).getHex());
 
   const root = new THREE.Group();
   const body = new THREE.Group(); // pivot at the feet; used for bobbing / falling over
   root.add(body);
+  const upper = new THREE.Group(); // everything above the waist
+  body.add(upper);
 
-  const torso = part(body, boxGeo(2, 2, 1), shirtM, 0, 3, 0);
+  const torso = part(upper, bevelGeo(2, 2, 1, 0.09), shirtM, 0, 3, 0);
   const head = new THREE.Group();
   head.position.y = 4;
-  body.add(head);
-  // BoxGeometry face order: +x, -x, +y, -y, +z (front), -z
-  part(head, boxGeo(1.2, 1.2, 1.2), [skinM, skinM, skinM, skinM, faceM, skinM], 0, 0.6, 0);
+  upper.add(head);
+  const skull = part(head, headGeo(), [faceM, skinM], 0, 0, 0);
+  skull.userData.roundHead = true;
 
-  const limb = (x, y, m) => {
+  // A limb's own meshes live in its first child, so hiding children[0] still hides the bare limb.
+  const limb = (parent, x, y, build) => {
     const p = new THREE.Group();
     p.position.set(x, y, 0);
-    body.add(p);
-    part(p, boxGeo(1, 2, 1), m, 0, -1, 0);
+    parent.add(p);
+    const own = new THREE.Group();
+    p.add(own);
+    own.userData.lower = build(own);
     return p;
   };
+  const arm = (own) => {
+    part(own, bevelGeo(1, 1, 1, 0.09), armM, 0, -0.5, 0);
+    own.userData.end = [part(own, bevelGeo(0.94, 0.36, 0.94, 0.09), handM, 0, -1.82, 0)];
+    return [
+      part(own, ballGeo(0.49), armM, 0, -1, 0), // elbow
+      part(own, bevelGeo(1, 0.66, 1, 0.09), armM, 0, -1.33, 0),
+    ];
+  };
+  const leg = (own) => {
+    part(own, bevelGeo(1, 1, 1, 0.09), pantsM, 0, -0.5, 0);
+    own.userData.end = [part(own, bevelGeo(1, 0.32, 1.2, 0.09), shoeM, 0, -1.84, 0.1)];
+    return [
+      part(own, ballGeo(0.49), pantsM, 0, -1, 0), // knee
+      part(own, bevelGeo(1, 0.7, 1, 0.09), pantsM, 0, -1.35, 0),
+    ];
+  };
   // Facing +Z, the character's right side is -X.
-  const rightArm = limb(-1.5, 4, armM);
-  const leftArm = limb(1.5, 4, armM);
-  const rightLeg = limb(-0.5, 2, pantsM);
-  const leftLeg = limb(0.5, 2, pantsM);
+  const rightArm = limb(upper, -1.5, 4, arm);
+  const leftArm = limb(upper, 1.5, 4, arm);
+  const rightLeg = limb(body, -0.5, 2, leg);
+  const leftLeg = limb(body, 0.5, 2, leg);
 
-  return { root, body, torso, head, rightArm, leftArm, rightLeg, leftLeg, mats, M };
+  return { root, body, upper, torso, head, rightArm, leftArm, rightLeg, leftLeg, mats, M };
 }
 
 export function setOpacity(h, opacity) {
@@ -2248,7 +2454,16 @@ export function makeThing() {
 }
 
 export function wheels(u, mat, xs, zs, y = 0.55, size = 1.1) {
-  for (const x of xs) for (const z of zs) u.wheels.push(part(u.body, boxGeo(0.6, size, size), mat, x, y, z));
+  // Round wheels (vehicles.js): one spinning axle per pair, or single wheels when xs isn't a pair.
+  const r = size / 2;
+  const w = Math.min(0.6, size * 0.5);
+  const hex = mat?.color?.getHex();
+  const o = hex != null && (mat.userData.glow || hex > 0x303030) ? { tyre: hex } : undefined; // coloured tyres stay coloured
+  const pair = xs.length === 2 && Math.abs(xs[0] + xs[1]) < 1e-6;
+  for (const z of zs) {
+    if (pair) axle(u, u.body, Math.abs(xs[0]), y, z, r, w, o);
+    else for (const x of xs) wheel(u, u.body, x, y, z, r, w, o);
+  }
 }
 
 /** A turret group on `u.body` at height y; units turn it toward their target. */
@@ -2345,7 +2560,24 @@ const hsl = { h: 0, s: 0, l: 0 };
  */
 export function goldify(m) {
   for (const mat of m.mats) {
-    if (mat.map || mat.userData.glow || !mat.color) continue;
+    if (mat.map || !mat.color) continue;
+    if (mat.userData.vc) {
+      // kit models keep their colours on the vertices: turn each one gold in the shader, the same way
+      mat.onBeforeCompile = (sh) => {
+        sh.fragmentShader = sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+          {
+            float l = 0.28 + 0.25 * (max(vColor.r, max(vColor.g, vColor.b)) + min(vColor.r, min(vColor.g, vColor.b)));
+            float q = l < 0.5 ? l * 1.85 : l + 0.85 - l * 0.85;
+            float p = 2.0 * l - q;
+            diffuseColor.rgb = vec3(q, p + (q - p) * 0.75, p);
+          }`);
+      };
+      mat.customProgramCacheKey = () => 'goldvc';
+      mat.userData.glow = GOLD_SHEEN;
+      mat.emissive.setHex(GOLD_SHEEN);
+      continue;
+    }
+    if (mat.userData.glow) continue;
     mat.color.getHSL(hsl);
     mat.color.setHSL(0.125, 0.85, 0.28 + hsl.l * 0.5);
     mat.userData.glow = GOLD_SHEEN;
@@ -2361,6 +2593,7 @@ export function goldify(m) {
  * fortress) with `count` soldiers, or a Crook Boss goon (pistolgoon, tommygoon, dongoon).
  */
 export function makeUnit(model, count = 1) {
+  if (VEHICLE_UNITS[model]) return VEHICLE_UNITS[model](model); // the mechanical summons: jeeps, trucks, tanks, mechs, trains (vehicleunits.js)
   const extra = UNIT_MODELS_A[model] ?? UNIT_MODELS_B[model] ?? UNIT_MODELS_C[model] ?? UNIT_MODELS_D[model] ?? UNIT_MODELS_E[model] ?? UNIT_MODELS_F[model] ?? UNIT_MODELS_G[model] ?? UNIT_MODELS_H[model] ?? UNIT_MODELS_I[model]; // wave 7-10 units
   if (extra) {
     const m = extra(count);
@@ -10695,6 +10928,8 @@ export const TOWER_MODELS = {
   // Wave 10 (newmodels/i.js): last, so its scarecrow / barracks / knifer reworks win.
   ...TOWER_MODELS_I,
 };
+// Hero towers (wave 9): per-level outfits, signature pieces and max-level effects (see blitzup.js).
+blitzUpgrades(TOWER_MODELS);
 
 // Crosspath towers (wave 8): every Top / Bottom combo type draws its form's model for that combo.
 for (const [type, def] of Object.entries(TOWERS)) {
@@ -10727,6 +10962,173 @@ for (const [type, def] of Object.entries(TOWERS)) {
   if (!make) continue;
   const last = TOWERS[base.branch].levels.length - 1;
   TOWER_MODELS[type] = (level) => goldify(make(Math.min(level, last)));
+}
+
+// Every tower model is de-clipped once it's built (see declip below). Lookups between models
+// (golden forms...) go through this table too, so mark finished models to skip a second pass.
+for (const [type, make] of Object.entries(TOWER_MODELS)) {
+  TOWER_MODELS[type] = (level) => {
+    const model = make(level);
+    if (model?.root && !model.root.userData.declipped) {
+      rigify(model); // elbows, knees and a round head (rig.js)
+      armWeapons(model, type, level); // bigger, more detailed weapons (weapons.js)
+      declip(model.root);
+      model.root.userData.declipped = true;
+    }
+    if (model) model.vis = styleFor(type, level, model); // how this tower stands, holds its weapon and moves
+    return model;
+  };
+}
+
+// ---------------------------------------------------------------- de-clipping
+// Many models stack parts whose faces lie in (or very near) the same plane: a stripe flush with a
+// body, a visor on a helmet, a badge on a plate. Those faces z-fight: from a normal camera distance
+// the depth buffer can't tell them apart, so they flicker and poke through each other.
+// declip() finds every pair of same-facing faces that overlap and are closer than CLIP_GAP, and
+// moves the smaller part's face so it ends CLIP_PUSH in front of the bigger one (or, if it was
+// meant to sit just behind it, CLIP_PUSH behind). Only that face moves: the part's own geometry is
+// edited (never its scale), so it works for turned parts and parts with things hanging off them.
+// Runs once when a tower model is built; edited geometries are cached, so rebuilding is cheap.
+const CLIP_GAP = 0.02; // faces nearer than this (model units) fight at a distance
+const CLIP_PUSH = 0.025; // how far apart they end up: enough for the depth buffer from far away
+const CLIP_BEHIND = 0.004; // a face more than this behind the other was meant to be hidden behind it
+const CLIP_PASSES = 16; // moving one face can line it up with another: repeat until clean
+const clipGeoCache = new Map();
+const _v = new THREE.Vector3();
+const _e1 = new THREE.Vector3();
+const _e2 = new THREE.Vector3();
+
+/** Every triangle of every visible mesh under `root`, in model space. */
+function clipFaces(root, meshes) {
+  const out = [];
+  root.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(root.matrixWorld).invert();
+  root.traverse((m) => {
+    if (!m.isMesh || !m.geometry?.attributes.position) return;
+    for (let o = m; o && o !== root; o = o.parent) if (!o.visible) return;
+    const mi = meshes.length;
+    const toModel = new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld);
+    const g = m.geometry;
+    // Sized once, before any face moves, so two equal parts can't keep swapping which is on top.
+    if (m.userData.clipVol == null) {
+      g.computeBoundingBox();
+      const size = g.boundingBox.getSize(new THREE.Vector3()).multiply(new THREE.Vector3().setFromMatrixScale(toModel));
+      m.userData.clipVol = Math.max(size.x, 1e-3) * Math.max(size.y, 1e-3) * Math.max(size.z, 1e-3);
+    }
+    meshes.push({ m, toModel, vol: m.userData.clipVol, push: new Map() });
+    const pos = g.attributes.position;
+    const idx = g.index;
+    const n = idx ? idx.count : pos.count;
+    for (let i = 0; i + 2 < n; i += 3) {
+      const p = [0, 1, 2].map((k) => new THREE.Vector3().fromBufferAttribute(pos, idx ? idx.getX(i + k) : i + k).applyMatrix4(toModel));
+      const nr = _e1.subVectors(p[1], p[0]).cross(_e2.subVectors(p[2], p[0]));
+      const len = nr.length();
+      if (len < 1e-6) continue;
+      const normal = nr.clone().divideScalar(len);
+      out.push({ mi, n: normal, d: normal.dot(p[0]), p });
+    }
+  });
+  return out;
+}
+
+/** How deep two triangles in the same plane overlap (0 if they only touch or are apart). */
+function triOverlap(a, b, n) {
+  let pen = Infinity;
+  for (const T of [a, b]) {
+    for (let i = 0; i < 3; i++) {
+      const ax = _v.subVectors(T[(i + 1) % 3], T[i]).cross(n);
+      const l = ax.length();
+      if (l < 1e-9) continue;
+      ax.divideScalar(l);
+      let a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity;
+      for (const q of a) { const s = q.dot(ax); a0 = Math.min(a0, s); a1 = Math.max(a1, s); }
+      for (const q of b) { const s = q.dot(ax); b0 = Math.min(b0, s); b1 = Math.max(b1, s); }
+      const o = Math.min(a1, b1) - Math.max(a0, b0);
+      if (o <= 0.005) return 0;
+      pen = Math.min(pen, o);
+    }
+  }
+  return pen;
+}
+
+/** Moves every vertex of `mesh` that lies on model-space plane (n, d) by `dist` along n. */
+function moveFace(mesh, n, d, dist) {
+  const { m, toModel } = mesh;
+  if (!m.userData.clipOwn) {
+    m.userData.clipSrc = m.geometry;
+    m.geometry = m.geometry.clone();
+    m.userData.clipOwn = true;
+  }
+  const pos = m.geometry.attributes.position;
+  // The same step in the part's own space (the linear part of model -> local).
+  const local = new THREE.Matrix3().setFromMatrix4(new THREE.Matrix4().copy(toModel).invert());
+  const step = n.clone().multiplyScalar(dist).applyMatrix3(local);
+  for (let i = 0; i < pos.count; i++) {
+    _v.fromBufferAttribute(pos, i).applyMatrix4(toModel);
+    if (Math.abs(n.dot(_v) - d) > 1e-4) continue;
+    pos.setXYZ(i, pos.getX(i) + step.x, pos.getY(i) + step.y, pos.getZ(i) + step.z);
+  }
+  pos.needsUpdate = true;
+}
+
+/** One de-clipping pass over `root`. Returns how many faces it had to move. */
+function declipPass(root) {
+  const meshes = [];
+  declipGroup(clipFaces(root, meshes).sort((a, b) => a.d - b.d), meshes);
+  let moved = 0;
+  for (const mesh of meshes) {
+    for (const f of mesh.push.values()) {
+      if (Math.abs(f.dist) < 1e-5) continue;
+      moveFace(mesh, f.n, f.d, f.dist);
+      moved++;
+    }
+  }
+  return moved;
+}
+
+/** Finds the fighting pairs among `faces` (sorted by depth) and plans how far each face moves. */
+function declipGroup(faces, meshes) {
+  for (let i = 0; i < faces.length; i++) {
+    const a = faces[i];
+    for (let j = i + 1; j < faces.length && faces[j].d - a.d < CLIP_GAP; j++) {
+      const b = faces[j];
+      if (a.mi === b.mi || a.n.dot(b.n) < 0.9995) continue;
+      // The smaller part is the detail that should show; on a tie, the one added later.
+      const [top, under] = meshes[a.mi].vol < meshes[b.mi].vol || (meshes[a.mi].vol === meshes[b.mi].vol && a.mi > b.mi) ? [a, b] : [b, a];
+      if (!triOverlap(a.p, b.p, a.n)) continue;
+      const gap = top.d - under.d; // > 0: the detail is in front
+      const behind = gap < -CLIP_BEHIND;
+      const want = behind ? -CLIP_PUSH - gap : CLIP_PUSH - gap;
+      const key = `${top.n.x.toFixed(4)},${top.n.y.toFixed(4)},${top.n.z.toFixed(4)},${top.d.toFixed(4)}`;
+      const push = meshes[top.mi].push;
+      const prev = push.get(key);
+      if (!prev) push.set(key, { n: top.n, d: top.d, dist: want });
+      // Pushed out by one part and in by another: out wins (a detail should show, not hide).
+      else if (want > 0 ? prev.dist < 0 || want > prev.dist : prev.dist < 0 && want < prev.dist) prev.dist = want;
+    }
+  }
+}
+
+/** De-clips `root` (see above) and swaps edited geometries for cached copies. */
+export function declip(root) {
+  for (let pass = 0; pass < CLIP_PASSES && declipPass(root); pass++);
+  root.traverse((m) => {
+    if (!m.userData.clipOwn) return;
+    const g = m.geometry;
+    g.computeBoundingBox();
+    g.computeBoundingSphere();
+    const a = g.attributes.position.array;
+    let key = m.userData.clipSrc.uuid;
+    for (let i = 0; i < a.length; i++) key += ',' + Math.round(a[i] * 1e4);
+    const hit = clipGeoCache.get(key);
+    if (hit) {
+      g.dispose();
+      m.geometry = hit;
+    } else clipGeoCache.set(key, g);
+    delete m.userData.clipOwn;
+    delete m.userData.clipSrc;
+  });
+  root.traverse((m) => delete m.userData.clipVol);
 }
 
 export function makeZombie(def) {
@@ -10773,7 +11175,7 @@ export function makeZombie(def) {
       h.wings.push(w);
     }
   }
-  if (def.boss && !def.look && !def.crystal && !def.insane && !def.vlook && !def.mlook && !def.flook && !def.xlook && !def.ilook && !def.blook) {
+  if (def.boss && !def.look && !def.crystal && !def.insane && !def.vlook && !def.mlook && !def.flook && !def.xlook && !def.ilook && !def.blook && !def.hk) {
     const spikeM = M(0xb0bec5);
     part(h.torso, boxGeo(0.7, 0.5, 0.9), spikeM, -1.5, 1.2, 0);
     part(h.torso, boxGeo(0.7, 0.5, 0.9), spikeM, 1.5, 1.2, 0);
@@ -10790,8 +11192,15 @@ export function makeZombie(def) {
   if (def.xlook) expertParts(h, def);
   if (def.ilook) orionParts(h, def);
   if (def.blook) tbParts(h, def);
+  if (def.hk) hcParts(h, def); // Hardcore outfits
   h.rightArm.rotation.x = -Math.PI / 2;
   h.leftArm.rotation.x = -Math.PI / 2;
+  if (def.hw) hwParts(h, def); // Halloween Event looks (they may pose themselves with h.anim)
+  if (!h.anim && rigify(h)) {
+    // Elbows, knees and a round head, and its own way of walking (visuals.js, anim.js).
+    h.gait = gaitFor(def, h);
+    shapeEnemy(h);
+  }
   if (def.hidden) setOpacity(h, 0.35);
   else if (def.mlook === 'mult') setOpacity(h, 0.55); // Multipliers are see-through
   return h;
@@ -12972,6 +13381,7 @@ const CREATURES = {
   viorb: makeViorbModel,
   timeCrystal: makeTimeCrystalModel,
   timeFragment: makeTimeFragmentModel,
+  ...HC_CREATURES, // Hardcore creatures (newmodels/hc.js)
 };
 
 /**

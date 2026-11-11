@@ -29,6 +29,7 @@
         <button id="skip-btn" class="btn green hidden">Start Wave ▶</button>
         <select id="speed-btn" class="btn" title="Game speed"></select>
         <button id="mute-btn" class="btn" title="Sound">Sound: On</button>
+        <button id="music-btn" class="btn" title="Music">Music: On</button>
         <button id="leave-btn" class="btn red" title="Leave game">Leave</button>
       </div>
 
@@ -75,12 +76,30 @@
 
     <!-- ================= Title ================= -->
     <div id="menu" class="overlay hidden">
-      <h1>TD <span>INFINITY</span></h1>
-      <p>Hold the path. Protect the castle. Don't let the zombies through!</p>
-      <input id="name-input" class="name-input" maxlength="16" placeholder="Your name" autocomplete="off" />
-      <div id="difficulty-row" class="mode-row difficulty-row"></div>
-      <p id="difficulty-hint" class="hint difficulty-hint"></p>
-      <div class="row">
+      <!-- Special events (Halloween): each has its own button up here, not a mode card -->
+      <div id="event-btns" class="event-btns"></div>
+      <div class="menu-head">
+        <h1 class="logo">TD <span>INFINITY</span></h1>
+        <p class="tagline">Hold the path. Protect the castle. Don't let the zombies through!</p>
+      </div>
+      <div class="menu-panel">
+        <div id="pick-normal">
+          <div class="pick-head"><b>1</b> Pick a mode</div>
+          <div id="difficulty-row" class="card-grid"></div>
+          <p id="difficulty-hint" class="pick-hint"></p>
+          <div class="pick-head"><b>2</b> Pick a map</div>
+          <div id="map-row" class="card-grid"></div>
+          <p id="map-hint" class="pick-hint"></p>
+        </div>
+        <!-- An event is picked: its mode and its map together, instead of the cards -->
+        <div id="event-panel" class="hidden">
+          <div class="pick-head"><b>★</b> Special event</div>
+          <div id="event-banner"></div>
+          <p class="pick-hint"><button id="event-back" class="btn small">◀ Back to the normal modes</button></p>
+        </div>
+      </div>
+      <div class="menu-play">
+        <input id="name-input" class="name-input" maxlength="16" placeholder="Your name" autocomplete="off" />
         <button id="solo-btn" class="btn big green">SOLO</button>
         <button id="mp-btn" class="btn big blue">MULTIPLAYER</button>
       </div>
@@ -88,6 +107,7 @@
         <button id="loadout-btn" class="btn purple">🎒 Loadout &amp; Shop</button>
         <span class="credits">🪙 <b id="menu-credits">0</b></span>
         <span class="shards"><i class="shard-icon"></i> <b id="menu-shards">0</b></span>
+        <span class="gems" title="Gems: earned in Hardcore. Necromancer and Hacker cost Gems."><i class="gem-icon"></i> <b id="menu-gems">0</b></span>
       </div>
     </div>
 
@@ -99,6 +119,7 @@
           <h2>Loadout &amp; Shop</h2>
           <span class="credits lo-money">🪙 <b id="lo-credits">0</b> credits</span>
           <span class="shards" title="Dimension Shards: rare purple shards for alternate tower forms. Win games to earn them."><i class="shard-icon"></i> <b id="lo-shards">0</b> Dimension Shards</span>
+          <span class="gems" title="Gems: earned in Hardcore mode. Necromancer and Hacker are bought with Gems."><i class="gem-icon"></i> <b id="lo-gems">0</b> Gems</span>
         </div>
         <div class="lo-cols">
           <div class="lo-left">
@@ -162,12 +183,19 @@
             <h2 id="room-title"></h2>
             <div id="room-sub" class="hint"></div>
           </div>
-          <button id="room-leave" class="btn red">Leave Room</button>
+          <div class="room-head-btns">
+            <div id="room-event" class="event-btns"></div>
+            <button id="room-leave" class="btn red">Leave Room</button>
+          </div>
         </div>
         <div class="room-cols">
           <div class="room-left">
             <div id="room-mode" class="mode-row"></div>
-            <div id="room-difficulty" class="mode-row"></div>
+            <div class="pick-pair">
+              <div id="room-difficulty" class="pick-block"></div>
+              <div id="room-map" class="pick-block"></div>
+              <div id="room-event-banner" class="pick-block hidden"></div>
+            </div>
             <div id="room-players" class="members"></div>
             <div class="row">
               <button id="room-ready" class="btn green">Ready!</button>
@@ -184,6 +212,8 @@
     </div>
 
     <div id="menu-toast"></div>
+    <!-- Music on/off in the menus (the HUD has its own button) -->
+    <button id="menu-music-btn" class="btn small" title="Music">♪ Music: On</button>
 
     <script type="module" src="/src/main.js"></script>
   </body>

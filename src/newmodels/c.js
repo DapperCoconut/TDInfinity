@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { VEHICLE_UNITS } from '../vehicleunits.js';
 import {
   boxGeo,
   part,
@@ -208,7 +209,7 @@ function enforcementBase(level) {
     part(u.body, boxGeo(0.15, 2.4, 3.6), navy, bx - 1.0, 1.5, -0.2);
     part(u.body, boxGeo(2.3, 0.25, 3.8), dark, bx, 2.8, -0.2);
     part(u.body, boxGeo(2.0, 0.3, 0.12), M(0xfdd835), bx, 2.55, 1.6);
-    parkUnit(u, ebtruck(), 0.32, bx, 0.3, -0.1);
+    parkUnit(u, veh('ebtruck'), 0.32, bx, 0.3, -0.1);
   }
   if (level >= 5) {
     // Robot hangar behind: a tall dark shed with a glowing door frame and a mech peeking out
@@ -218,7 +219,7 @@ function enforcementBase(level) {
     part(u.body, boxGeo(3.85, 0.3, 1.6), dark, 0, 4.6, -2.8);
     for (const x of [-1.6, 1.6]) part(u.body, boxGeo(0.1, 4.0, 0.1), blue, x, 2.3, -2.08);
     part(u.body, boxGeo(3.2, 0.1, 0.1), blue, 0, 4.35, -2.08);
-    parkUnit(u, ebapm(), 0.5, 0, 0.3, -2.7);
+    parkUnit(u, veh('ebapm'), 0.5, 0, 0.3, -2.7);
   }
   u.static = true;
   return u;
@@ -620,9 +621,9 @@ function voidPort(level) {
   }
   if (level >= 3) {
     // Parked train on the rails (half out of the portal)
-    const loco = level >= 5 ? vvoidloco() : vloco();
+    const loco = veh(level >= 5 ? 'vvoidloco' : 'vloco');
     parkUnit(u, loco, 0.4, 0.6, 0.45, level >= 4 ? 1.0 : 0.3);
-    if (level >= 4) parkUnit(u, level >= 5 ? vvoidgwagon() : vgunwagon(), 0.4, 0.6, 0.45, -1.4);
+    if (level >= 4) parkUnit(u, veh(level >= 5 ? 'vvoidgwagon' : 'vgunwagon'), 0.4, 0.6, 0.45, -1.4);
   }
   u.static = true;
   return u;
@@ -740,212 +741,8 @@ function makeEnforcerSoldier(heavy) {
 const ebenforcer = (count = 1) => squad(count, () => makeEnforcerSoldier(false));
 const ebenforcerm = (count = 1) => squad(count, () => makeEnforcerSoldier(true));
 
-/** Enforcement armored truck: navy, light bar, roof turret. */
-function ebtruck() {
-  const u = makeThing();
-  u.wheels = [];
-  const { M } = u;
-  const navy = M(0x1a237e);
-  const dark = M(0x212121);
-  part(u.body, boxGeo(2.8, 1.6, 5.0), navy, 0, 1.6, -0.2); // armored box
-  part(u.body, boxGeo(2.7, 1.1, 1.6), navy, 0, 1.35, 2.9); // hood
-  part(u.body, boxGeo(2.6, 0.6, 0.1), M(0x90caf9), 0, 2.0, 2.06); // windshield
-  part(u.body, boxGeo(2.85, 0.3, 4.9), M(0xeceff1), 0, 1.3, -0.2); // white stripe
-  part(u.body, boxGeo(3.0, 0.5, 0.4), M(0x424242), 0, 0.95, 3.8); // ram bumper
-  for (const x of [-0.9, 0.9]) part(u.body, boxGeo(0.5, 0.25, 0.1), M(0xfff59d), x, 1.5, 3.71);
-  part(u.body, boxGeo(0.6, 0.2, 0.4), glowThing(u, 0xff1744), -0.5, 2.5, 1.7);
-  part(u.body, boxGeo(0.6, 0.2, 0.4), glowThing(u, 0x2979ff), 0.5, 2.5, 1.7);
-  wheels(u, M(0x111111), [-1.45, 1.45], [-1.8, 0.2, 2.8], 0.6, 1.2);
-  const t = turret(u, 2.4, -0.6);
-  part(t, boxGeo(1.2, 0.7, 1.2), dark, 0, 0.35, 0);
-  part(t, boxGeo(1.4, 0.6, 0.15), navy, 0, 0.45, 0.65); // gun shield
-  part(t, boxGeo(0.25, 0.25, 1.8), dark, 0, 0.5, 1.4);
-  gunMuzzle(u, t, 0, 0.5, 2.3);
-  u.height = 3.6;
-  u.tracer = 0xffd54f;
-  return u;
-}
+// The Turret Truck, the APM-Bot and Void Port's carts and trains are built with the vehicle kit
+// (moreunits.js, botunits.js, trainunits.js); makeUnit finds them through VEHICLE_UNITS.
+const veh = (model) => VEHICLE_UNITS[model](model);
 
-/** Enforcement APM: a big bipedal patrol mech with a shoulder cannon and an arm gun. */
-function ebapm() {
-  const u = makeThing();
-  u.wheels = [];
-  const { M } = u;
-  const navy = M(0x283593);
-  const white = M(0xeceff1);
-  const dark = M(0x212121);
-  const eye = glowThing(u, 0x2979ff);
-  const hipY = 3.2;
-  u.legs = [];
-  for (const x of [-1, 1]) {
-    const leg = new THREE.Group();
-    leg.position.set(x * 1.3, hipY, 0);
-    u.body.add(leg);
-    part(leg, boxGeo(1.0, hipY, 1.1), navy, 0, -hipY / 2, 0);
-    part(leg, boxGeo(1.2, 0.7, 0.9), white, 0, -hipY * 0.5, 0.35); // knee
-    part(leg, boxGeo(1.5, 0.5, 2.1), dark, 0, -hipY + 0.25, 0.3); // foot
-    u.legs.push(leg);
-  }
-  const t = turret(u, hipY);
-  const th = 2.2;
-  part(t, boxGeo(3.2, th, 2.6), navy, 0, th / 2, 0);
-  part(t, boxGeo(3.25, 0.3, 2.65), white, 0, th * 0.4, 0);
-  part(t, boxGeo(1.6, 0.4, 0.1), eye, 0, th * 0.75, 1.31); // visor
-  part(t, boxGeo(0.5, 0.25, 0.3), glowThing(u, 0xff1744), -0.6, th + 0.15, 0);
-  part(t, boxGeo(0.5, 0.25, 0.3), eye, 0.6, th + 0.15, 0);
-  // Shoulder cannon (left) and arm gun (right)
-  part(t, boxGeo(1.0, 1.0, 1.6), dark, 2.0, th, -0.2);
-  part(t, boxGeo(0.5, 0.5, 3.0), M(0x37474f), 2.0, th, 2.0);
-  part(t, boxGeo(0.7, 0.7, 0.4), dark, 2.0, th, 3.6);
-  gunMuzzle(u, t, 2.0, th, 3.9);
-  part(t, boxGeo(0.9, 2.2, 0.9), navy, -2.1, th * 0.5, 0.2); // right arm
-  part(t, boxGeo(0.35, 0.35, 1.8), dark, -2.1, 0.0, 1.2);
-  gunMuzzle(u, t, -2.1, 0.0, 2.2);
-  u.height = hipY + th + 0.6;
-  u.tracer = 0x40c4ff;
-  u.tracerWidth = 0.35;
-  return u;
-}
-
-// ------------------------------------------------------------------ Void Port carts and trains
-
-const TRAIN = { body: 0x37474f, trim: 0x8e2b2b, brass: 0xc9a227, dark: 0x212121, glow: null };
-const VOID_TRAIN = { body: 0x1a0033, trim: 0x311b92, brass: 0x4a148c, dark: 0x0b0014, glow: 0xd500f9 };
-
-/** Mine cart body on four small wheels. */
-function cartBody(u, pal) {
-  const { M } = u;
-  const body = M(pal.body);
-  const trim = pal.glow ? glowThing(u, pal.glow) : M(pal.trim);
-  part(u.body, boxGeo(2.2, 0.3, 2.8), M(pal.dark), 0, 0.75, 0); // chassis
-  part(u.body, boxGeo(2.2, 1.0, 2.6), body, 0, 1.4, 0);
-  part(u.body, boxGeo(2.4, 0.18, 2.8), trim, 0, 1.95, 0); // rim
-  for (const x of [-1.1, 1.1]) for (const z of [-0.9, 0.9]) part(u.body, boxGeo(0.1, 0.9, 0.1), M(pal.brass), x * 1.02, 1.4, z); // rivets
-  wheels(u, M(pal.dark), [-0.95, 0.95], [-0.8, 0.8], 0.45, 0.9);
-}
-
-/** Small armed mine cart (vgunner / void versions). */
-function gunCart(pal) {
-  const u = makeThing();
-  u.wheels = [];
-  cartBody(u, pal);
-  const { M } = u;
-  const t = turret(u, 2.0);
-  part(t, boxGeo(0.9, 0.6, 0.9), M(pal.dark), 0, 0.3, 0);
-  part(t, boxGeo(1.2, 0.7, 0.12), M(pal.trim), 0, 0.5, 0.5); // shield
-  part(t, boxGeo(0.22, 0.22, 1.6), M(0x111111), 0, 0.55, 1.1);
-  if (pal.glow) part(t, boxGeo(0.28, 0.28, 0.2), glowThing(u, pal.glow), 0, 0.55, 1.9);
-  gunMuzzle(u, t, 0, 0.55, 2.0);
-  u.height = 3.0;
-  u.tracer = pal.glow ?? 0xffd54f;
-  return u;
-}
-
-/** Mortar on a cart / wagon turret group. */
-function mortarOn(u, t, pal, s = 1) {
-  const { M } = u;
-  part(t, boxGeo(1.1 * s, 0.4 * s, 1.1 * s), M(pal.dark), 0, 0.2 * s, 0);
-  const tube = part(t, cylGeo(0.3 * s, 0.35 * s, 1.6 * s, 10), M(pal.glow ? pal.trim : 0x455a64), 0, 0.9 * s, 0.3 * s);
-  tube.rotation.x = 0.6;
-  part(t, cylGeo(0.36 * s, 0.36 * s, 0.15 * s, 10), pal.glow ? glowThing(u, pal.glow) : M(pal.brass), 0, 1.5 * s, 0.75 * s).rotation.x = 0.6;
-  for (const side of [-1, 1]) part(t, boxGeo(0.12 * s, 0.9 * s, 0.12 * s), M(pal.dark), side * 0.35 * s, 0.6 * s, 0.6 * s).rotation.x = -0.4; // bipod
-  gunMuzzle(u, t, 0, 1.65 * s, 0.85 * s);
-  u.projectile = { color: pal.glow ?? 0x424242, size: 0.6 * s };
-  u.tracer = pal.glow ?? 0xffab40;
-}
-
-function mortarCart(pal) {
-  const u = makeThing();
-  u.wheels = [];
-  cartBody(u, pal);
-  mortarOn(u, turret(u, 1.9), pal);
-  u.height = 3.4;
-  return u;
-}
-
-/** Locomotive: a boiler, stack, cab, cow-catcher and a small cab gun. */
-function loco(pal) {
-  const u = makeThing();
-  u.wheels = [];
-  const { M } = u;
-  const body = M(pal.body);
-  const trim = pal.glow ? glowThing(u, pal.glow) : M(pal.trim);
-  const brass = M(pal.brass);
-  const dark = M(pal.dark);
-  part(u.body, boxGeo(2.4, 0.5, 6.4), dark, 0, 0.9, 0); // frame
-  part(u.body, cylGeoX(1.0, 1.0, 4.0, 12), body, 0, 2.15, 1.0); // boiler
-  for (const z of [-0.4, 1.0, 2.4]) part(u.body, cylGeoX(1.05, 1.05, 0.15, 12), brass, 0, 2.15, z); // bands
-  part(u.body, cylGeoX(0.9, 0.9, 0.2, 12), trim, 0, 2.15, 3.05); // smokebox door
-  part(u.body, boxGeo(0.4, 0.3, 0.1), pal.glow ? trim : glowThing(u, 0xfff59d), 0, 2.6, 3.17); // headlamp
-  part(u.body, cylGeo(0.35, 0.5, 1.2, 10), dark, 0, 3.6, 2.2); // stack
-  part(u.body, cylGeo(0.55, 0.4, 0.3, 10), pal.glow ? trim : brass, 0, 4.3, 2.2);
-  part(u.body, cylGeo(0.3, 0.3, 0.5, 10), brass, 0, 3.3, 0.6); // dome
-  // Cab
-  part(u.body, boxGeo(2.4, 2.4, 2.0), body, 0, 2.4, -2.2);
-  part(u.body, boxGeo(2.6, 0.25, 2.3), trim, 0, 3.7, -2.2);
-  for (const x of [-1.21, 1.21]) part(u.body, boxGeo(0.05, 0.8, 1.0), pal.glow ? trim : M(0xfff59d), x, 2.8, -2.2); // windows
-  // Cow-catcher
-  part(u.body, boxGeo(2.2, 0.6, 0.7), trim, 0, 0.75, 3.5).rotation.x = 0.5;
-  wheels(u, M(0x111111), [-1.25, 1.25], [-2.2, 0, 1.6], 0.75, 1.5);
-  // Small gun on the cab roof
-  const t = turret(u, 3.85, -2.2);
-  part(t, boxGeo(0.7, 0.4, 0.7), dark, 0, 0.2, 0);
-  part(t, boxGeo(0.2, 0.2, 1.4), M(0x111111), 0, 0.35, 0.8);
-  gunMuzzle(u, t, 0, 0.35, 1.5);
-  u.height = 4.6;
-  u.tracer = pal.glow ?? 0xffd54f;
-  return u;
-}
-
-/** Train wagon: a flatbed with sides and a gun or mortar turret. */
-function wagon(pal, kind) {
-  const u = makeThing();
-  u.wheels = [];
-  const { M } = u;
-  const body = M(pal.body);
-  const trim = pal.glow ? glowThing(u, pal.glow) : M(pal.trim);
-  part(u.body, boxGeo(2.4, 0.5, 5.4), M(pal.dark), 0, 0.9, 0);
-  part(u.body, boxGeo(2.5, 0.8, 5.2), body, 0, 1.55, 0);
-  part(u.body, boxGeo(2.6, 0.15, 5.3), trim, 0, 2.0, 0);
-  for (const z of [-2.85, 2.85]) part(u.body, boxGeo(0.4, 0.3, 0.4), M(pal.dark), 0, 0.9, z); // couplers
-  for (const x of [-1.27, 1.27]) for (const z of [-1.8, 0, 1.8]) part(u.body, boxGeo(0.06, 0.6, 0.12), M(pal.brass), x, 1.55, z);
-  wheels(u, M(0x111111), [-1.25, 1.25], [-1.8, 1.8], 0.65, 1.2);
-  const t = turret(u, 2.0, 0.4);
-  if (kind === 'mortar') {
-    mortarOn(u, t, pal, 1.3);
-    part(u.body, boxGeo(1.6, 0.6, 1.2), M(pal.dark), 0, 2.3, -1.6); // shell crates
-    u.height = 4.0;
-  } else {
-    part(t, boxGeo(1.6, 0.8, 1.6), M(pal.dark), 0, 0.4, 0);
-    part(t, boxGeo(1.8, 0.9, 0.15), trim, 0, 0.6, 0.85); // shield
-    for (const x of [-0.25, 0.25]) {
-      part(t, boxGeo(0.22, 0.22, 2.0), M(0x111111), x, 0.65, 1.6);
-      gunMuzzle(u, t, x, 0.65, 2.6);
-    }
-    u.height = 3.4;
-    u.tracer = pal.glow ?? 0xffd54f;
-  }
-  if (pal.glow) {
-    const haze = part(u.body, boxGeo(2.7, 0.1, 5.6), clearMat(u, pal.glow, 0.3), 0, 0.4, 0);
-    haze.castShadow = false;
-  }
-  return u;
-}
-
-const vgunner = () => gunCart(TRAIN);
-const vmortar = () => mortarCart(TRAIN);
-const vloco = () => loco(TRAIN);
-const vgunwagon = () => wagon(TRAIN, 'gun');
-const vmortarwagon = () => wagon(TRAIN, 'mortar');
-const vvoidloco = () => {
-  const u = loco(VOID_TRAIN);
-  // Void flames from the stack and a glowing undercarriage haze
-  part(u.body, boxGeo(0.5, 0.6, 0.5), clearMat(u, 0xd500f9, 0.5), 0, 4.8, 2.2).castShadow = false;
-  part(u.body, boxGeo(2.7, 0.1, 6.6), clearMat(u, 0xd500f9, 0.3), 0, 0.4, 0).castShadow = false;
-  for (const side of [-1, 1]) part(u.body, boxGeo(0.25, 0.8, 0.25), glowThing(u, 0xd500f9), side * 1.1, 4.1, -2.2).rotation.z = side * -0.4; // horns
-  return u;
-};
-const vvoidgwagon = () => wagon(VOID_TRAIN, 'gun');
-const vvoidmortar = () => wagon(VOID_TRAIN, 'mortar');
-
-export const UNIT_MODELS_C = { ebenforcer, ebenforcerm, ebtruck, ebapm, vgunner, vmortar, vloco, vgunwagon, vmortarwagon, vvoidloco, vvoidgwagon, vvoidmortar };
+export const UNIT_MODELS_C = { ebenforcer, ebenforcerm };

@@ -9,6 +9,32 @@ import {
   trapText, isTrapper, spawnerUnits, unitDps, unitName, whirlText, comboText, repositionOf, graveText, poolText, sentryText, overchargeText, poisonText, smiteText,
   fireAspectText, penText, procText, beesText, axeText, bleedText, aftershockText, arrowsText, bombTypeText, swordText, starText, bubbleText, companionText,
 } from './stats.js';
+import { subIcon, towerIcon } from './icons.js';
+import { descHtml, splitBlurb } from './text.js';
+
+// A small picture for each line of an upgrade's changes, by what the line is about.
+const DIFF_ICONS = [
+  [/detection/i, '👁️'],
+  [/^\+ Ability|Unlocks/i, '✨'],
+  [/Health|Repairs|HP\b/, '❤️'],
+  [/\$|Income|Cash|Bundles|Bounty/, '💰'],
+  [/Freeze|Chill|Ice|Frost|Slow/i, '❄️'],
+  [/Stun|Riot/i, '💫'],
+  [/Burn|fire\b|flame|Molotov/i, '🔥'],
+  [/Poison|Slime|Toxin/i, '☠️'],
+  [/Lightning|Overcharge|Smite|Tesla|Shock/i, '⚡'],
+  [/Blast|Bomb|Missile|Rocket|Explo|Cluster|Nuclear|Cannon/i, '💥'],
+  [/Boost|Queues/i, '📣'],
+  [/Sentr|Turret|Drone|Goon|Unit|Sends|every \d|summon|Grave|Clone|Synaps/i, '🪖'],
+  [/Range|Patrol|zone|reach/i, '🎯'],
+  [/Cooldown|Tick|faster|Full charge|heats/i, '⏱️'],
+  [/piercing|Pierce|Hits|Targets|Extra targets|Pellets|Burst|Ammo|Throws/i, '🔸'],
+  [/Damage|dmg|Critical|Combo/i, '⚔️'],
+];
+function diffIcon(line) {
+  for (const [re, ico] of DIFF_ICONS) if (re.test(line)) return ico;
+  return line.startsWith('-') ? '🔻' : '⬆️';
+}
 
 const ABILITY_KEYS = 'FGH';
 // Ability bar (bottom right): one key per ability group, in bar order.
@@ -20,9 +46,11 @@ const hex = (n) => '#' + n.toString(16).padStart(6, '0');
 const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
 
 /** "+340 credits (+1 Dimension Shard)" line on the end screen. */
-function rewardText(credits, shards) {
+function rewardText(credits, shards, gems = 0, derrick = 0) {
   const shard = shards ? ` <span class="shard-text">+${shards} <i class="shard-icon"></i> Dimension Shard${shards === 1 ? '' : 's'}</span>` : '';
-  return `+${credits} credits${shard} — spend them in the Loadout & Shop!`;
+  const gem = gems ? ` <span class="gem-text">+${gems} <i class="gem-icon"></i> Gems</span>` : '';
+  const oil = derrick ? ` (${derrick} from your Oil Derrick)` : '';
+  return `+${credits} credits${oil}${shard}${gem} — spend them in the Loadout & Shop!`;
 }
 
 export class UI {
@@ -45,6 +73,8 @@ export class UI {
       skip: $('skip-btn'),
       speed: $('speed-btn'),
       mute: $('mute-btn'),
+      music: $('music-btn'),
+      menuMusic: $('menu-music-btn'),
       scoreboard: $('scoreboard'),
       chatLog: $('chat-log'),
       chatInput: $('chat-input'),
@@ -65,6 +95,7 @@ export class UI {
       this.el.speed.blur(); // give keyboard focus back to the game
     };
     this.el.mute.onclick = handlers.onMute;
+    this.el.music.onclick = this.el.menuMusic.onclick = handlers.onMusic;
     $('leave-btn').onclick = handlers.onLeave;
     $('end-primary').onclick = handlers.onEndPrimary;
     $('end-secondary').onclick = handlers.onEndSecondary;
@@ -127,7 +158,7 @@ export class UI {
         continue;
       }
       const def = TOWERS[type];
-      html += `<button class="slot" data-tower="${type}" title="${def.name} — ${def.blurb}">
+      html += `<button class="slot" data-tower="${type}" title="${def.name} — ${splitBlurb(def.blurb)[0]}">
         <img src="${icons[type]}" alt="${def.name}">
         <div class="slot-key">${i + 1}</div>
         <div class="slot-count"></div>
@@ -255,6 +286,13 @@ export class UI {
 
   setMuted(m) {
     this.el.mute.textContent = m ? 'Sound: Off' : 'Sound: On';
+  }
+
+  /** The music buttons (HUD and menus). `level`: 'on', 'quiet' or 'off'. */
+  setMusic(level) {
+    const text = `Music: ${{ on: 'On', quiet: 'Quiet', off: 'Off' }[level]}`;
+    this.el.music.textContent = text;
+    this.el.menuMusic.textContent = `♪ ${text}`;
   }
 
   setBoss(enemy) {
@@ -394,24 +432,24 @@ export class UI {
     setTimeout(() => div.classList.add('fade'), 10000);
   }
 
-  showEnd(win, waveNum, mp, credits, shards = 0, total = WAVES.length, mode = 'easy', unlocked = null) {
+  showEnd(win, waveNum, mp, credits, shards = 0, total = WAVES.length, mode = 'easy', unlocked = null, gems = 0, derrick = 0) {
     this.el.end.classList.remove('hidden');
     $('end-title').innerHTML = win ? 'VICTORY<span>!</span>' : 'DEFEAT';
     const foes = mode === 'easy' ? 'monsters' : 'zombies';
     $('end-sub').textContent = win
-      ? mode === 'void' ? `VOID has fallen. You survived all ${total} waves. It is finally over.` : `You survived all ${total} waves!`
+      ? mode === 'void' ? `VOID has fallen. You survived all ${total} waves. It is finally over.` : mode === 'hardcore' ? `All six final bosses have fallen. You beat HARDCORE: all ${total} waves!` : mode === 'halloween' ? `Jack is dead and Lantern Hill is quiet again. Happy Halloween!` : `You survived all ${total} waves!`
       : `The ${foes} broke through on wave ${waveNum}.`;
-    $('end-credits').innerHTML = rewardText(credits, shards) + (unlocked ? `<div class="end-unlock">🟣 Unlocked: <b>${esc(unlocked)}</b>!</div>` : '');
+    $('end-credits').innerHTML = rewardText(credits, shards, gems, derrick) + (unlocked ? `<div class="end-unlock">🟣 Unlocked: <b>${esc(unlocked)}</b>!</div>` : '');
     $('end-primary').textContent = mp ? 'Back to Room' : 'Play Again';
     $('end-secondary').classList.toggle('hidden', mp);
   }
 
-  showVersusEnd(place, winnerName, wave, credits, shards = 0) {
+  showVersusEnd(place, winnerName, wave, credits, shards = 0, derrick = 0) {
     this.el.end.classList.remove('hidden');
     const ord = ['', '1st', '2nd', '3rd', '4th'][place] ?? `#${place}`;
     $('end-title').innerHTML = place === 1 ? 'VICTORY<span>!</span>' : `${ord.toUpperCase()} PLACE`;
     $('end-sub').textContent = place === 1 ? `You outlasted everyone! (wave ${wave})` : `Your base fell on wave ${wave}. ${winnerName} won the battle.`;
-    $('end-credits').innerHTML = rewardText(credits, shards);
+    $('end-credits').innerHTML = rewardText(credits, shards, 0, derrick);
     $('end-primary').textContent = 'Back to Room';
     $('end-secondary').classList.add('hidden');
   }
@@ -428,13 +466,15 @@ export class UI {
   updateSubPanel(info, ctx) {
     if (!info) return this.hidePanel();
     const owner = ctx.mp && info.owner != null ? (info.owner === ctx.myId ? 'Yours' : `Owned by ${esc(ctx.ownerName)}`) : '';
-    const key = JSON.stringify(['sub', info.name, info.sub, info.rows, owner, info.towerId]);
+    const key = JSON.stringify(['sub', info.name, info.sub, info.rows, owner, info.towerId, info.pic]);
     if (key !== this.panelKey) {
       this.panelKey = key;
       const parent = info.towerId != null ? TOWERS[info.icon]?.name : null;
+      // Its own portrait (the jeep, the squad, the sentry...); the tower's if it can't be drawn.
+      const pic = subIcon(info.pic) || (info.icon && this.icons[info.icon]) || '';
       this.el.panel.innerHTML = `
         <div class="p-head">
-          ${info.icon && this.icons[info.icon] ? `<img src="${this.icons[info.icon]}" alt="">` : ''}
+          ${pic ? `<img src="${pic}" alt="">` : ''}
           <div><div class="p-name">${esc(info.name)}</div><div class="p-sub">${esc(info.sub)}</div></div>
           <button class="btn p-close" data-action="close">✕</button>
         </div>
@@ -539,6 +579,7 @@ export class UI {
       row('Counts', `Up to ${s.lemon.cap} zombies at once (hidden ones too), only while they are in range`);
       row('Range', s.range);
     } else if (def.kind === 'income' && (s.income || !s.oil)) row('Income', `+$${s.income ?? 0} / wave`, 'yes');
+    if (def.kind === 'income' && s.dmgCash) row('Cash back', `+${Math.round(s.dmgCash * 100)}% cash from damage${def.noStack ? ' (best Derrick only)' : ''}`, 'yes');
     if (s.shield) row('Shield', `${s.shield.amount.toLocaleString()} ${s.shield.shared ? 'shared by every tower in range' : 'for each tower in range'}, every ${s.shield.every}s`, 'yes');
     if (s.shield) row('Range', s.aura);
     if (s.shield && s.towerHeal) row('Repairs', `${s.towerHeal} HP/s to towers in range`, 'yes');
@@ -762,10 +803,17 @@ export class UI {
         for (const k of ['hidden', 'flying', 'lead']) if (d1[k] && !d0[k]) diffs.push(`+ ${k[0].toUpperCase() + k.slice(1)} detection`);
       }
       const key = action === 'upgrade' ? ' <small>(E)</small>' : '';
+      // The upgrade's picture: the tower as it will look, in its own stance (icons.js).
+      const pic = towerIcon(nextType, t.level + 1);
       return `<div class="next">
-        <div class="next-title">${pathTag ? `<span class="path-tag">${pathTag}</span> ` : ''}${def.cross ? next.tierText : `Lv ${t.level + 2}`} – ${next.name}</div>
-        <div class="next-desc">${next.desc}</div>
-        <div class="diff">${diffs.join('<br>')}</div>
+        <div class="next-head">
+          ${pic ? `<img class="next-ico" src="${pic}" alt="">` : ''}
+          <div class="next-main">
+            <div class="next-title">${pathTag ? `<span class="path-tag">${pathTag}</span> ` : ''}${def.cross ? next.tierText : `Lv ${t.level + 2}`} – ${next.name}</div>
+            <div class="next-desc">${descHtml(next.desc)}</div>
+          </div>
+        </div>
+        <div class="diff">${diffs.map((d) => `<div class="dl"><span class="di">${diffIcon(d)}</span><span>${d}</span></div>`).join('')}</div>
         ${mine && ctx.upgradeLock?.(nextType, next) ? `<button class="btn" disabled title="${next.perk ? 'A reward for winning a mode' : 'Earn XP with this tower to raise its evolution level'}">🔒 ${ctx.upgradeLock(nextType, next)}</button>` : ''}
         ${mine && !ctx.upgradeLock?.(nextType, next) ? `<button class="btn green" data-action="${action}" ${ctx.cash < upCost ? 'disabled' : ''}>Upgrade $${upCost.toLocaleString()}${upCost < next.cost ? ` <s>$${next.cost.toLocaleString()}</s>` : ''}${key}</button>` : ''}
       </div>`;
@@ -909,7 +957,7 @@ export class UI {
         ${s.chip ? `<span>No Mercy</span><span class="${ctx.versus ? 'yes' : 'no'}">-${s.chip.damage} enemy base / ${s.chip.every}s${ctx.versus ? '' : ' (Versus only)'}</span>` : ''}`;
     this.el.panel.innerHTML = `
       <div class="p-head">
-        <img src="${this.icons[t.type] ?? this.icons[rootType(t.type)]}" alt="">
+        <img src="${towerIcon(t.type, t.level) || (this.icons[t.type] ?? this.icons[rootType(t.type)])}" alt="">
         <div><div class="p-name">${def.name}</div><div class="p-sub">${def.cross ? `${def.cross.a}-${def.cross.b}` : `Lv ${t.level + 1}`} · ${s.name}${t.holo ? ' · Hologram' : ''}</div></div>
         <button class="btn p-close" data-action="close">✕</button>
       </div>

@@ -8,16 +8,16 @@
 //   sendPos(p), remotePos     (multiplayer avatar sync)
 //   onError(msg)              (set by the client to show rejected actions)
 import { Sim, ST_CONFUSED } from './sim/sim.js';
-import { laneOz } from './sim/map.js';
+import { laneOz, setMap } from './sim/map.js';
 import { setTimeWorld } from './sim/path.js';
 import { TOWERS } from './config.js';
 
 export class LocalSession {
-  constructor(name, color, mode, evo = null) {
+  constructor(name, color, mode, evo = null, map = null) {
     this.myId = 'local';
     this.mp = false;
     this.isHost = true;
-    this.sim = new Sim([{ id: this.myId, name, color, evo }], { mode });
+    this.sim = new Sim([{ id: this.myId, name, color, evo }], { mode, map });
     this.state = this.sim; // the sim already has the state shape the client reads
     this.remotePos = new Map();
     this.onError = null;
@@ -45,6 +45,7 @@ export class NetSession {
     this.myId = net.id;
     this.mp = true;
     this.isHost = startMsg.host === net.id;
+    setMap(startMsg.s.mk); // before anything reads the path
     this.state = {
       players: new Map(),
       towers: new Map(),
@@ -119,28 +120,30 @@ export class NetSession {
 
     // Enemies keep their object so we can smoothly extrapolate between snapshots.
     const seenE = new Set();
-    for (const [id, type, hp, maxHp, dist, speed, lateral, bits, lane = 0] of s.e) {
+    for (const [id, type, hp, maxHp, dist, speed, lateral, bits, route = 0, lane = 0] of s.e) {
       seenE.add(id);
       let e = st.enemies.get(id);
       if (!e) {
         e = { id, type, dist };
         st.enemies.set(id, e);
       }
-      Object.assign(e, { hp, maxHp, speed, lateral, st: bits, lane, oz: laneOz(lane), target: dist, vShield: 0 });
+      Object.assign(e, { hp, maxHp, speed, lateral, st: bits, route, lane, oz: laneOz(lane), target: dist, vShield: 0 });
     }
     for (const [id, left] of s.va ?? []) { const e = st.enemies.get(id); if (e) e.vShield = left; } // Void armor: share of the shield left
+    for (const e of st.enemies.values()) e.osh = e.noTarget = 0;
+    for (const [id, left, nt] of s.os ?? []) { const e = st.enemies.get(id); if (e) Object.assign(e, { osh: left, noTarget: nt }); } // Hardcore shields, untargetable bosses
     for (const id of st.enemies.keys()) if (!seenE.has(id)) st.enemies.delete(id);
 
     // Units (Jeeps, squads...) drive toward the entrance, so their dist goes down.
     const seenU = new Set();
-    for (const [id, tower, model, hp, maxHp, dist, lateral, alive, speed, yaw, free = 0, lane = 0] of s.u || []) {
+    for (const [id, tower, model, hp, maxHp, dist, lateral, alive, speed, yaw, free = 0, route = 0, lane = 0] of s.u || []) {
       seenU.add(id);
       let u = st.units.get(id);
       if (!u) {
         u = { id, dist };
         st.units.set(id, u);
       }
-      Object.assign(u, { tower, model, hp, maxHp, lateral, alive, speed, yaw, lane, oz: laneOz(lane), target: dist, fx: free ? free[0] : null, fz: free ? free[1] : null }); // fx/fz: crows, bees, Volt Points fly freely
+      Object.assign(u, { tower, model, hp, maxHp, lateral, alive, speed, yaw, route, lane, oz: laneOz(lane), target: dist, fx: free ? free[0] : null, fz: free ? free[1] : null }); // fx/fz: crows, bees, Volt Points fly freely
     }
     for (const id of st.units.keys()) if (!seenU.has(id)) st.units.delete(id);
 

@@ -1,15 +1,36 @@
 // Menus: title screen, multiplayer menu (create / join a room by code), and room lobby.
-import { DEFAULT_DIFFICULTY, DIFFICULTIES, GAME, MP, PLAYER_COLORS, TOWERS, VERSUS, detection, difficulty } from './config.js';
+import { DEFAULT_DIFFICULTY, DIFFICULTIES, EVENT_KEYS, GAME, MODE_KEYS, MP, PLAYER_COLORS, TOWERS, VERSUS, detection, difficulty } from './config.js';
 import { LoadoutScreen } from './loadout.js';
 import { audio } from './audio.js';
 import { profile } from './profile.js';
 import { abilityText, boostText, cannonText, damageText, detectText, dpsText, extrasText, gunText, rosterText, spawnerUnits, unitDps, unitName } from './stats.js';
 import { LocalSession, NetSession } from './session.js';
+import { DEFAULT_MAP, MAPS, mapDef, mapRating } from './sim/maps.js';
+import { enemyIcon } from './icons.js';
+import { setMap } from './sim/map.js';
 
 const $ = (id) => document.getElementById(id);
 const hex = (n) => '#' + n.toString(16).padStart(6, '0');
 const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
 const SCREENS = { title: 'menu', loadout: 'loadout-screen', mp: 'mp-menu', room: 'room-screen' };
+// Map cards run from the easiest map to the hardest (see MAP_RATINGS). An event's own map has no
+// card: it comes with its event (the event button, top right) and nothing else can play it.
+const MAP_ORDER = Object.keys(MAPS).filter((k) => !MAPS[k].event).sort((a, b) => mapRating(a).rank - mapRating(b).rank);
+const ALL_MAPS = [...MAP_ORDER, ...Object.keys(MAPS).filter((k) => MAPS[k].event)]; // every map with a picture
+// The map pictures are kept between visits (localStorage) for as long as the page itself is the
+// same; while developing they're drawn again every time, so they always show the maps as they are.
+const PICS_KEY = 'td.mapPics';
+const PICS_STAMP = import.meta.env?.DEV ? null : `1|${document.lastModified}`;
+/** Sets el's cards, but only when `sig` (what they depend on) changed: no flicker, and hover and pop-in animations aren't restarted. */
+function fill(el, sig, html) {
+  if (el.dataset.sig === sig) return;
+  el.dataset.sig = sig;
+  el.innerHTML = html();
+}
+/** Marks the card whose data-`attr` is `key` as picked. */
+function mark(el, attr, key) {
+  for (const c of el.querySelectorAll(`[data-${attr}]`)) c.classList.toggle('on', c.dataset[attr] === key);
+}
 const num = (n) => (n === Infinity ? '∞' : n.toLocaleString());
 
 export class Lobby {
@@ -25,15 +46,44 @@ export class Lobby {
     nameInput.addEventListener('input', () => localStorage.setItem('td.name', nameInput.value.trim()));
 
     // Difficulty (Solo picks it on the title screen; in a room the host picks it).
-    this.difficulty = DIFFICULTIES[localStorage.getItem('td.difficulty')] ? localStorage.getItem('td.difficulty') : DEFAULT_DIFFICULTY;
+    const saved = localStorage.getItem('td.difficulty');
+    this.difficulty = MODE_KEYS.includes(saved) && profile.modeOpen(saved) ? saved : DEFAULT_DIFFICULTY;
+    this.event = null; // the special event picked instead of a mode and a map (see pickEvent)
+    this.thumbs = {}; // map key -> its picture (a data URL), see loadThumbs
     $('difficulty-row').addEventListener('click', (e) => {
       const b = e.target.closest('[data-diff]');
       if (!b) return;
+      if (this.lockedToast(b.dataset.diff)) return;
       this.difficulty = b.dataset.diff;
       localStorage.setItem('td.difficulty', this.difficulty);
       this.renderDifficulty();
     });
+    // Pointing at a card shows what it is; moving off goes back to what's picked.
+    $('difficulty-row').addEventListener('mouseover', (e) => this.modeHint(e.target.closest('[data-diff]')?.dataset.diff));
+    $('difficulty-row').addEventListener('mouseleave', () => this.modeHint());
     this.renderDifficulty();
+
+    // Map (same deal: Solo picks on the title screen, the host picks in a room).
+    this.map = MAP_ORDER.includes(localStorage.getItem('td.map')) ? localStorage.getItem('td.map') : DEFAULT_MAP;
+    $('map-row').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-map]');
+      if (!b) return;
+      this.map = b.dataset.map;
+      localStorage.setItem('td.map', this.map);
+      this.renderMap();
+    });
+    $('map-row').addEventListener('mouseover', (e) => this.mapHint(e.target.closest('[data-map]')?.dataset.map));
+    $('map-row').addEventListener('mouseleave', () => this.mapHint());
+
+    // Special events (Halloween): a button in the top right picks the event's mode and map
+    // together, in place of the cards. Clicking it again goes back to the normal modes.
+    $('event-btns').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-event]');
+      if (b) this.pickEvent(this.event === b.dataset.event ? null : b.dataset.event);
+    });
+    $('event-back').onclick = () => this.pickEvent(null);
+    this.renderEvent();
+    this.renderMap();
 
     $('solo-btn').onclick = () => {
       audio.unlock();
@@ -63,7 +113,7 @@ export class Lobby {
     // host's browser by its code (see net.js).
     $('room-create').onclick = () => {
       this.setBusy('Creating room…');
-      net.send({ type: 'room.create', name: $('room-name').value, isPublic: false, difficulty: this.difficulty });
+      net.send({ type: 'room.create', name: $('room-name').value, isPublic: false, difficulty: this.playMode, map: this.map });
     };
     const join = () => {
       this.setBusy('Joining room…');
@@ -86,7 +136,18 @@ export class Lobby {
     });
     $('room-difficulty').addEventListener('click', (e) => {
       const b = e.target.closest('[data-diff]');
-      if (b) net.send({ type: 'room.difficulty', difficulty: b.dataset.diff });
+      if (b && this.room?.host === net.id && !this.lockedToast(b.dataset.diff)) net.send({ type: 'room.difficulty', difficulty: b.dataset.diff });
+    });
+    $('room-map').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-map]');
+      if (b && this.room?.host === net.id) net.send({ type: 'room.map', map: b.dataset.map });
+    });
+    // The host's event button: the room plays the event, or (clicked again) goes back to the mode
+    // the host has picked on the title screen.
+    $('room-event').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-event]');
+      if (!b || this.room?.host !== net.id) return;
+      net.send({ type: 'room.difficulty', difficulty: this.room.difficulty === b.dataset.event ? this.difficulty : b.dataset.event });
     });
     $('room-players').addEventListener('click', (e) => {
       const b = e.target.closest('[data-kick]');
@@ -126,7 +187,13 @@ export class Lobby {
 
   show(screen) {
     for (const [key, id] of Object.entries(SCREENS)) $(id).classList.toggle('hidden', key !== screen);
-    if (screen === 'title') this.renderInventory();
+    if (screen === 'title') {
+      this.renderInventory();
+      this.renderDifficulty(); // a mode just beaten gets its tick, Hardcore may have unlocked
+      this.renderEvent();
+      this.renderMap();
+      this.loadThumbs();
+    }
     if (screen === 'loadout') this.loadoutScreen.show();
     else this.loadoutScreen?.hide();
   }
@@ -171,15 +238,198 @@ export class Lobby {
   startSolo() {
     this.inGame = true;
     this.show(null);
-    this.client.start(new LocalSession(this.name, PLAYER_COLORS[0], this.difficulty, profile.evoLevels()));
+    this.client.start(new LocalSession(this.name, PLAYER_COLORS[0], this.playMode, profile.evoLevels(), this.map));
   }
 
-  /** Title screen difficulty buttons. */
+  /** A locked mode (Hardcore before every other mode is beaten): says what's missing. Returns true if locked. */
+  lockedToast(key) {
+    if (profile.modeOpen(key)) return false;
+    this.toast(`🔒 ${DIFFICULTIES[key].name} unlocks once you've beaten every mode. Still to beat: ${profile.modeMissing(key).join(', ')}`, 3500);
+    return true;
+  }
+
+  /** What Solo and a new room play: the event that's picked, otherwise the mode card that's picked. */
+  get playMode() {
+    return this.event ?? this.difficulty;
+  }
+
+  /** Picks special event `key` (null: back to the normal modes and maps). */
+  pickEvent(key) {
+    this.event = EVENT_KEYS.includes(key) ? key : null;
+    this.renderEvent();
+    this.renderMap();
+  }
+
+  /** An event's button (top right of the title screen and, for the host, of a room): its boss and its name. */
+  eventButton(key) {
+    const d = DIFFICULTIES[key];
+    return `<button class="event-btn" data-event="${key}" style="--c:${d.color}" title="${esc(d.desc)}">
+      <img src="${enemyIcon(d.boss)}" alt="" draggable="false">
+      <span class="ev-text"><small class="ev-off">★ Special event</small><small class="ev-on">◀ Back to modes</small><b>${esc(d.name)}</b></span>
+      ${profile.beaten.includes(key) ? '<span class="ev-won" title="You beat this event">✔</span>' : ''}
+    </button>`;
+  }
+  eventButtons() {
+    return EVENT_KEYS.map((key) => this.eventButton(key)).join('');
+  }
+  /** What the event buttons and banners depend on: which events are beaten (their ticks). */
+  get eventSig() {
+    return `events|${EVENT_KEYS.map((k) => +profile.beaten.includes(k)).join('')}`;
+  }
+
+  /** An event's banner, shown instead of the mode and map cards: its boss, what it is, and its own map. */
+  eventBanner(key) {
+    const d = DIFFICULTIES[key];
+    const m = mapDef(d.map);
+    return `<div class="event-banner" style="--c:${d.color}">
+      <img class="eb-boss" src="${enemyIcon(d.boss)}" alt="" draggable="false">
+      <div class="eb-text">
+        <h3>${d.icon} ${esc(d.name)}${profile.beaten.includes(key) ? ' <span class="ev-won" title="You beat this event">✔</span>' : ''}</h3>
+        <p>${esc(d.desc)}</p>
+      </div>
+      <div class="eb-map" data-map="${d.map}" title="${esc(`${m.name}: ${m.desc}`)}">
+        <span class="pc-art">${this.mapArt(d.map)}</span>
+        <span class="eb-map-name"><small>Event map</small>${esc(m.name)}</span>
+      </div>
+    </div>`;
+  }
+
+  /** Title screen: the event buttons, and the event's banner in place of the cards while one is picked. */
+  renderEvent() {
+    const btns = $('event-btns');
+    fill(btns, this.eventSig, () => this.eventButtons());
+    mark(btns, 'event', this.event);
+    $('pick-normal').classList.toggle('hidden', !!this.event);
+    $('event-panel').classList.toggle('hidden', !this.event);
+    if (this.event) fill($('event-banner'), `${this.event}|${this.eventSig}`, () => this.eventBanner(this.event));
+  }
+
+  /**
+   * A mode's card: a square in the mode's color with its final boss on it. Locked modes show the
+   * boss as a shadow behind a padlock; modes you've beaten get a tick.
+   */
+  modeCard(key, i = 0) {
+    const d = DIFFICULTIES[key];
+    const open = profile.modeOpen(key);
+    const tip = open ? d.desc : `Locked: beat ${profile.modeMissing(key).join(', ')} first`;
+    return `<button class="pick-card mode-card${open ? '' : ' locked'}" data-diff="${key}" style="--c:${d.color};--i:${i}" title="${esc(tip)}">
+      <img class="pc-boss" src="${enemyIcon(d.boss)}" alt="" draggable="false">
+      ${profile.beaten.includes(key) ? '<span class="pc-won" title="You beat this mode">✔</span>' : ''}
+      ${open ? '' : '<span class="pc-lock">🔒</span>'}
+      <span class="pc-name">${esc(d.name)}<small>${d.waves.length} waves</small></span>
+    </button>`;
+  }
+
+  /** Every mode's card. What they show depends on which modes are beaten (ticks, Hardcore's lock). */
+  modeCards() {
+    return MODE_KEYS.map((key, i) => this.modeCard(key, i)).join('');
+  }
+  get modeSig() {
+    return `modes|${profile.beaten.join()}|${MODE_KEYS.map((k) => +profile.modeOpen(k)).join('')}`;
+  }
+
+  /** The picture on a map's card: the map drawn from above once that's ready (loadThumbs), until then its icon on its sky and ground colors. */
+  mapArt(key) {
+    const m = mapDef(key);
+    return this.thumbs[key]
+      ? `<img class="pc-pic" src="${this.thumbs[key]}" alt="" draggable="false">`
+      : `<span class="pc-ph" style="background:linear-gradient(${hex(m.theme.sky)} 46%, ${m.theme.ground[0]} 46%)">${m.icon}</span>`;
+  }
+
+  /** A map's card: a square picture of the map, framed in the color of how hard the map is. */
+  mapCard(key, i = 0) {
+    const m = mapDef(key);
+    const r = mapRating(key);
+    return `<button class="pick-card map-card" data-map="${key}" style="--c:${r.color};--i:${i}" title="${esc(`${m.name} (${r.name}): ${m.desc}`)}">
+      <span class="pc-art">${this.mapArt(key)}</span>
+      <span class="pc-chip">${r.name}</span>
+      <span class="pc-name">${esc(m.name)}</span>
+    </button>`;
+  }
+  mapCards() {
+    return MAP_ORDER.map((key, i) => this.mapCard(key, i)).join('');
+  }
+
+  /**
+   * Gets a picture of every map for the cards. Saved ones are used if the game hasn't changed
+   * since; the rest are drawn by the game client behind the menu, one a frame (see
+   * GameClient.requestMapThumbs), and each card gets its picture as soon as it's ready.
+   */
+  loadThumbs() {
+    if (this.thumbsAsked || !this.client) return;
+    this.thumbsAsked = true;
+    const show = (key) => {
+      for (const art of document.querySelectorAll(`[data-map="${key}"] .pc-art`)) art.innerHTML = this.mapArt(key); // its card, or its event's banner
+    };
+    try {
+      const saved = PICS_STAMP && JSON.parse(localStorage.getItem(PICS_KEY) || 'null');
+      if (saved?.stamp === PICS_STAMP) for (const key of ALL_MAPS) if (typeof saved.pics?.[key] === 'string') this.thumbs[key] = saved.pics[key];
+    } catch {
+      /* no saved pictures: draw them */
+    }
+    ALL_MAPS.forEach(show);
+    const missing = ALL_MAPS.filter((key) => !this.thumbs[key]);
+    if (!missing.length) return;
+    this.client.requestMapThumbs(
+      missing,
+      (key, url) => {
+        if (!url) return;
+        this.thumbs[key] = url;
+        show(key);
+      },
+      () => {
+        // The client's world was rebuilt as each map in turn: back to the one the menu shows.
+        this.previewMap(this.backdrop);
+        if (!PICS_STAMP) return;
+        try {
+          localStorage.setItem(PICS_KEY, JSON.stringify({ stamp: PICS_STAMP, pics: this.thumbs }));
+        } catch {
+          /* storage full: they're drawn again next time */
+        }
+      },
+    );
+  }
+
+  /** Title screen mode cards. */
   renderDifficulty() {
-    $('difficulty-row').innerHTML = `<span>Difficulty:</span>${Object.entries(DIFFICULTIES)
-      .map(([key, d]) => `<button class="btn small ${key === this.difficulty ? 'blue on' : ''}" data-diff="${key}">${d.icon} ${esc(d.name)}</button>`)
-      .join('')}`;
-    $('difficulty-hint').textContent = difficulty(this.difficulty).desc;
+    if (!profile.modeOpen(this.difficulty)) this.difficulty = DEFAULT_DIFFICULTY;
+    const row = $('difficulty-row');
+    fill(row, this.modeSig, () => this.modeCards());
+    mark(row, 'diff', this.difficulty);
+    this.modeHint();
+  }
+
+  /** The line under the mode cards: about mode `key` (the one pointed at), or the one picked. */
+  modeHint(key = this.difficulty) {
+    const d = DIFFICULTIES[key];
+    if (!d) return;
+    const text = profile.modeOpen(key) ? d.desc : `Locked. Still to beat: ${profile.modeMissing(key).join(', ')}.`;
+    $('difficulty-hint').innerHTML = `<b class="pick-tag" style="background:${d.color}">${esc(d.name)}</b> ${esc(text)}`;
+  }
+
+  /** Shows map `key` behind the menus (only while no game is running). */
+  previewMap(key) {
+    this.backdrop = key;
+    if (this.inGame || this.client?.session) return;
+    setMap(key);
+    this.client?.syncMap();
+  }
+
+  /** Title screen map cards (picking a map also shows it behind the menu). */
+  renderMap() {
+    this.previewMap(difficulty(this.playMode).map ?? this.map); // a picked event shows its own map
+    const row = $('map-row');
+    fill(row, 'maps', () => this.mapCards());
+    mark(row, 'map', this.map);
+    this.mapHint();
+  }
+
+  /** The line under the map cards: about map `key` (the one pointed at), or the one picked. */
+  mapHint(key = this.map) {
+    if (!MAPS[key]) return;
+    const m = mapDef(key);
+    const r = mapRating(key);
+    $('map-hint').innerHTML = `<b class="pick-tag" style="background:${r.color}">${esc(m.name)} · ${r.name}</b> ${esc(m.desc)}`;
   }
 
   async openMultiplayer() {
@@ -243,6 +493,7 @@ export class Lobby {
   renderInventory() {
     $('menu-credits').textContent = num(profile.credits);
     $('menu-shards').textContent = num(profile.shards);
+    $('menu-gems').textContent = num(profile.gems);
   }
 
   /** Shop table columns after Lv/Upgrade/Cost/Total: headers and a row-cells function per level. */
@@ -297,6 +548,7 @@ export class Lobby {
   renderRoom() {
     const r = this.room;
     if (!r) return;
+    this.previewMap((r.mode !== 'versus' && difficulty(r.difficulty).map) || r.map);
     const me = this.net.id;
     const isHost = r.host === me;
     $('room-title').textContent = r.name;
@@ -317,15 +569,33 @@ export class Lobby {
          <button class="btn small ${versus ? 'red on' : ''}" data-mode="versus">⚔ Versus</button>`
       : `<span>Mode: <b>${versus ? '⚔ Versus' : '🤝 Co-op'}</b></span>`;
     const diff = difficulty(r.difficulty);
-    $('room-difficulty').classList.toggle('hidden', versus);
-    $('room-difficulty').innerHTML = isHost
-      ? `<span>Difficulty:</span>${Object.entries(DIFFICULTIES)
-        .map(([key, d]) => `<button class="btn small ${key === r.difficulty ? 'blue on' : ''}" data-diff="${key}">${d.icon} ${esc(d.name)}</button>`)
-        .join('')}`
-      : `<span>Difficulty: <b>${diff.icon} ${esc(diff.name)}</b></span>`;
+    // Everyone sees the same cards; only the host can pick.
+    const grid = (cards) => `<div class="card-grid small${isHost ? '' : ' static'}">${cards}</div>`;
+    const label = (what, tag, color) => `<div class="pick-label">${what}: <b class="pick-tag" style="background:${color}">${esc(tag)}</b></div>`;
+    // An event (co-op only) takes the place of both pickers: its mode and its map come together.
+    const event = !versus && diff.event ? r.difficulty : null;
+    const evEl = $('room-event');
+    evEl.classList.toggle('hidden', !isHost || versus);
+    fill(evEl, this.eventSig, () => this.eventButtons());
+    mark(evEl, 'event', event);
+    const bEl = $('room-event-banner');
+    bEl.classList.toggle('hidden', !event);
+    if (event) fill(bEl, `${event}|${this.eventSig}`, () => this.eventBanner(event));
+    const dEl = $('room-difficulty');
+    dEl.classList.toggle('hidden', versus || !!event);
+    fill(dEl, `${this.modeSig}|${isHost}`, () => `<div class="pick-label"></div>${grid(this.modeCards())}`);
+    dEl.firstElementChild.outerHTML = label('Difficulty', diff.name, diff.color);
+    mark(dEl, 'diff', r.difficulty);
+    const map = mapDef(r.map);
+    const rating = mapRating(r.map);
+    const mEl = $('room-map');
+    mEl.classList.toggle('hidden', !!event);
+    fill(mEl, `maps|${isHost}`, () => `<div class="pick-label"></div>${grid(this.mapCards())}`);
+    mEl.firstElementChild.outerHTML = label('Map', `${map.name} · ${rating.name}`, rating.color);
+    mark(mEl, 'map', r.map);
     $('room-mode-hint').textContent = versus
       ? 'Versus: everyone gets their own map, joined by bridges. Waves never stop — the last base standing wins! Spend cash to send zombies to an opponent. Anarchists work here.'
-      : `Co-op: everyone has their own cash and towers, and every kill pays the whole team. Enemies get tougher with more players. ${diff.desc}`;
+      : `Co-op: everyone has their own cash and towers, and all damage pays cash to the whole team. Enemies get tougher with more players. ${diff.desc}`;
     const meReady = r.members.find((m) => m.id === me)?.ready;
     const allReady = r.members.every((m) => m.id === r.host || m.ready);
     const tooFew = versus && r.members.length < VERSUS.minPlayers;

@@ -8,7 +8,8 @@
 // this class shifts z by the lane offset on the way out (snapshots, events) and back on the way in.
 import { ENEMIES, GAME, SPEEDS, PLAYER_COLORS, VERSUS, waveGroups } from '../config.js';
 import { Sim } from './sim.js';
-import { laneOz } from './map.js';
+import { laneOz, mapKey, setMap } from './map.js';
+import { pickableMap } from './maps.js';
 
 const MAX_STEP = 0.05;
 const ID_STRIDE = 1_000_000; // lane i's ids start at (i + 1) * ID_STRIDE
@@ -16,8 +17,10 @@ const r2 = (n) => Math.round(n * 100) / 100;
 
 export class VersusSim {
   /** @param {{id: string, name: string, color?: number, loadout?: string[]}[]} players */
-  constructor(players) {
+  constructor(players, map) {
     this.versus = true;
+    setMap(pickableMap(map), true); // every lane plays the same map (never an event's map)
+    this.map = mapKey;
     this.lanes = players.map((p, i) => ({
       id: p.id,
       i,
@@ -143,7 +146,8 @@ export class VersusSim {
       this.over = 1;
       this.wave.state = 'over';
       const places = Object.fromEntries(this.lanes.map((o) => [o.id, o.place]));
-      this.events.push({ k: 'end', versus: 1, winner: winner.id, places, wave: this.wave.index + 1 });
+      const bonus = winner.sim.winCredits(); // Oil Derrick US Military Budget
+      this.events.push({ k: 'end', versus: 1, winner: winner.id, places, wave: this.wave.index + 1, ...(bonus ? { bonus } : {}) });
     } else if (this.skipVotes.size && this.skipVotes.size >= this.votesNeeded) this.wave.countdown = 0;
   }
 
@@ -261,6 +265,7 @@ export class VersusSim {
     }
     return {
       vs: 1,
+      mk: this.map,
       L: this.lanes.length,
       w: [w.state, w.index, Math.round(w.countdown * 10) / 10, 0, w.votes, this.votesNeeded],
       b: 0,
