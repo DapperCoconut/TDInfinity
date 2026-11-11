@@ -5,8 +5,10 @@ GitHub Pages by `.github/workflows/deploy.yml` on every push to `main`, so **a p
 
 ## Working fast here
 
-- **Never read the big files whole.** `src/config.js` (790 KB), `src/models.js` (706 KB) and
-  `src/sim/sim.js` (426 KB) do not fit in context. Find the spot first, then read only that range.
+- **Find the spot first, then read only that range.** The tower tables, model builders and the Sim
+  are split into files of 10-80 KB (see below); `src/game.js` (177 KB) and `src/world.js` (120 KB)
+  are the big ones left. `config.js`, `models.js` and `sim/sim.js` are front doors: they re-export
+  everything, so other files import from them and never from the folders behind them.
 - **Find things with tokensave** (`.tokensave/` index exists): `tokensave_search` for a name,
   `literal: true` for exact text such as a tower key (`scout: {`, `case 'ability'`),
   `tokensave_context` for "how does X work". Run `tokensave sync` after large edits so line numbers
@@ -33,27 +35,38 @@ Gameplay data (plain objects, no three.js):
 | What | Where |
 | --- | --- |
 | Global tuning, Versus, cash rules | `GAME`, `VERSUS`, `MP` at the top of `src/config.js` |
-| Towers (stats, levels, abilities, units) | `TOWERS` in `src/config.js`; later batches are merged in from `src/crosstowers.js` (crosspath forms), `herotowers.js`, `tenthtowers.js`, `goldtowers.js` |
+| Towers (stats, levels, abilities, units) | One file per group in `src/towers/` (`gunners.js`, `heavy.js`, `spread.js`, `melee.js`, `spawners.js`, `support.js`, `paths.js`, `golden.js`, `event1.js`, `forms4.js`, `event2.js`, `evolved.js`, `wave6.js`, `golden6.js`, `wave7a.js`, `wave7b.js`; each lists its towers at the top). `TOWERS` in `src/config.js` joins them in that order, then the later batches: `src/crosstowers.js` (crosspath forms), `herotowers.js`, `tenthtowers.js`, `goldtowers.js` |
+| Units and abilities shared by towers | `src/towers/shared.js` (it also explains how a tower entry is written) |
 | Load-time passes over towers | `RANGE_BOOST` and `TOWER_TUNE` in `src/config.js` (they change the numbers after the table is read, so the table is not always what the game uses) |
-| Enemies | `ENEMIES` in `src/config.js`; Hardcore's in `src/hardcore.js`, Halloween's in `src/halloween.js` |
-| Waves | `EASY_WAVES` ... `VOID_WAVES` in `src/config.js`, `HARDCORE_WAVES`, `HALLOWEEN_WAVES` in their own files. Group = `[enemy, count, gap, delay, health/opts]` |
+| Enemies | `ENEMIES` in `src/enemies.js`; Hardcore's in `src/hardcore.js`, Halloween's in `src/halloween.js` |
+| Waves | `EASY_WAVES` ... `VOID_WAVES` in `src/waves.js`, `HARDCORE_WAVES`, `HALLOWEEN_WAVES` in their own files. Group = `[enemy, count, gap, delay, health/opts]` |
 | Modes | `DIFFICULTIES` in `src/config.js` (its comments explain every field) |
 | Maps | `MAPS` in `src/sim/maps.js`; placement rules and props in `src/sim/map.js`; path math in `src/sim/path.js` |
 
 Game logic (no three.js, no DOM; runs in the browser and in Node):
 
-- `src/sim/sim.js`: the whole simulation, class `Sim`. `tick(dt)` is the frame, `action(pid, m)` is every
-  player command (`place`, `upgrade`, `sell`, `ability`, `skip`...), `snapshot()` is what goes over the
-  network. A tower mechanic is usually a key on a tower level in `TOWERS` plus the code in `sim.js`
-  that reads that key: search for the key name.
+- `src/sim/sim.js`: class `Sim`, the whole simulation. This file keeps `tick(dt)` (the frame),
+  `action(pid, m)` (every player command: `place`, `upgrade`, `sell`, `ability`, `skip`...) and
+  `snapshot()` (what goes over the network). The rest of Sim's methods are in `src/sim/parts/`, and
+  `sim.js` puts them on the class, so `this.anyMethod()` works from every file:
+  `waves.js` (waves, spawning, money), `enemy-moves1.js` / `enemy-moves2.js` (what enemies and bosses
+  do), `tower-health.js`, `tower-update.js` (`updateTower`), `weapons1.js` ... `weapons4.js` (tower
+  weapons), `units.js` (summons), `abilities.js` (`useAbility`), `damage.js` (`damage`, targeting),
+  `shared.js` (constants, `ST_*` status names, `computeBuffs`, upgrade costs).
+  A tower mechanic is usually a key on a tower level in `TOWERS` plus the Sim code that reads that
+  key: search for the key name. A new Sim method goes in the part file that fits (or a new part
+  class added to the list at the bottom of `sim.js`).
 - `src/sim/versus.js`: PVP lanes, one `Sim` per player.
 - `src/hub.js` (rooms + one authoritative Sim), `src/net.js` (PeerJS), `src/session.js` (solo vs net),
   `server/index.js` (optional WebSocket host).
 
 Drawing (three.js):
 
-- `src/models.js`: older tower / enemy / unit builders and the `TOWER_MODELS` registry. Newer builders
-  are in `src/newmodels/a.js` ... `i.js`, `blitzup.js` (hero tower per-level looks), `hc.js` (Hardcore
+- `src/models.js`: the `TOWER_MODELS` registry. The older builders it lists are in `src/models/`:
+  `kit.js` (`boxGeo`, `part`, `makeHumanoid`), `bits.js` (small shared pieces), `towers01.js` ...
+  `towers12.js` (tower builders; each lists its towers at the top), `units.js` (`makeUnit`),
+  `enemy.js` (`makeEnemy`) with `enemies-*.js`, `declip.js`. Newer builders are in
+  `src/newmodels/a.js` ... `i.js`, `blitzup.js` (hero tower per-level looks), `hc.js` (Hardcore
   enemies), `halloween.js`. Every key in `TOWERS` needs a `TOWER_MODELS` entry (gold and crosspath
   forms get theirs automatically at the bottom of the registry).
 - Layers applied over builders: `src/visuals.js` (stances, holds, enemy shapes), `src/weapons.js`,
@@ -72,11 +85,11 @@ Sound: `src/audio.js`, music in `src/music/` (`tracks.js` recipes, `compose.js`,
 
 ## Recipes
 
-- **New tower:** entry in `TOWERS` (or the newest batch file) -> any new mechanic in `sim.js` -> a builder
-  registered in `TOWER_MODELS` -> stat lines in `src/stats.js` if it has a new kind of stat ->
+- **New tower:** entry in the newest batch file (or a group in `src/towers/`) -> any new mechanic in
+  `src/sim/parts/` -> a builder registered in `TOWER_MODELS` -> stat lines in `src/stats.js` if it has a new kind of stat ->
   `node tools/check.mjs towers models <key>`.
 - **New enemy:** entry in `ENEMIES` (a mode uses its own enemies, never an earlier mode's) -> its look
-  (`makeEnemy` in `models.js` reads the def; special bodies live in `newmodels/hc.js` and
+  (`makeEnemy` in `models/enemy.js` reads the def; special bodies live in `newmodels/hc.js` and
   `newmodels/halloween.js`) -> add it to a wave -> `node tools/check.mjs data modes <mode>`.
 - **New mode:** waves + enemies in their own file (like `src/hardcore.js`), an entry in `DIFFICULTIES`,
   a boss track in `src/music/tracks.js`.
