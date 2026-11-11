@@ -597,8 +597,8 @@ export const DIFFICULTIES = {
   // health doesn't grow with more players (the spec's numbers are for a full server). pot: so the
   // cash is a full server's too, shared between whoever plays: startCash and each wave's bonus are
   // what one of `pot` players gets (solo: 4x, two players: 2x each), and damage cash is split.
-  halloween: { name: 'Halloween Event', icon: '🎃', color: '#ef6c00', boss: 'hwJack', desc: '10 spooky waves on Lantern Hill Cemetery against JACK, the Pumpkin King, or 25 waves of Halloween Night 2 at the carnival against the RINGMASTER and JACK O\' BOT. A full server\'s cash is shared between the players: $22,000 to start solo, $5,500 each with four. 100 base health. 3x credits.',
-    waves: HALLOWEEN_WAVES, event: true, map: 'cemetery', maps: ['cemetery', 'carnival'], cash: 1, dmgCash: 1.5, pot: 4, credits: 3, shards: 3, baseHp: 100, startCash: 5500, groupBonus: 0, flatHp: true,
+  halloween: { name: 'Halloween Event', icon: '🎃', color: '#ef6c00', boss: 'hwJack', desc: '10 spooky waves on Lantern Hill Cemetery against JACK, the Pumpkin King, or 25 waves of Halloween Night 2 at the carnival against the RINGMASTER and JACK O\' BOT. Or try Halloween Night 3, a crater with two paths. A full server\'s cash is shared between the players: $22,000 to start solo, $5,500 each with four. 100 base health. 3x credits.',
+    waves: HALLOWEEN_WAVES, event: true, map: 'cemetery', maps: ['cemetery', 'carnival', 'nightmare'], cash: 1, dmgCash: 1.5, pot: 4, credits: 3, shards: 3, baseHp: 100, startCash: 5500, groupBonus: 0, flatHp: true,
     mpHp: [0, 0, 0, 0, 0], timers: HALLOWEEN_TIMERS,
     hpCurve: [[1, 1.3], [4, 1.3], [6, 0.9]], bossHp: 0.5,
     // mapModes: a map of the event that plays its own waves. These fields replace the mode's own

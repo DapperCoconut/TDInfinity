@@ -19,7 +19,7 @@ function freshen() {
   cacheMap = key;
   samples = [];
   path.routes.forEach((r, ri) => {
-    for (let d = 0; d <= r.length; d += SAMPLE) samples.push(path.at(d, { d }, ri));
+    for (let d = 0; d <= path.length; d += SAMPLE / r.k) samples.push(path.at(d, { d }, ri));
   });
   coverCache.clear();
   quietCache.clear();

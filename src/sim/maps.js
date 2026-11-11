@@ -1001,6 +1001,139 @@ function carnFixed() {
   return out;
 }
 
+/**
+ * Halloween Night 3 (Halloween Event): a sandy crater at dusk, from the user's 54 x 32 grid
+ * (columns A-BB, rows 1-32, north = top), 1 cell = 4 units. Column index c is 0 for A, 26 for AA;
+ * row r is the row number. Enemies leave the Nightmare Realm portal (A12-F22) at F16, the path
+ * splits at J16 into a north branch and a south branch, they merge again at AJ15/AK15 and run
+ * east to the corrupted supercomputer (the base, AX15-BB19). Four flat crossings: U16, X8, Y23,
+ * AB23. All corners square.
+ *
+ *                              AAAAAAAAAAAAAAAAAAAAAAAAAABB
+ *    ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZAB
+ *  1 ...............ooooooo................................
+ *  2 ...............o.....o....T.........%%%%..............
+ *  3 ...............o.....o........###...%%%%..............
+ *  4 ...............o.....o........#.#...%%%%..............
+ *  5 ...............o.....o.####...#.##..%%%%..............
+ *  6 ...............ooooooo.#..#...#..#..%%%%..............
+ *  7 ...........r...........#..#...#..##...................
+ *  8 ..............%%%%%%#######...#...#...................
+ *  9 ..............%%%%%%#..#....###...#.....r.............
+ * 10 ..............%%%%%%#..#....#.....###.................
+ * 11 .........#####%%%%%%#..#.####.......#.................
+ * 12 PPPPPP...#...#%%%%%%#..#.#..........#.................
+ * 13 PPPPPP...#...#......#..#.#..........#.................
+ * 14 PPPPPP...#...####...#..###..^^^^^...#.r...............
+ * 15 PPPPPP...#......#...#......^^^^^^^.#############BCCCCC
+ * 16 PPPPPS####......#########..^^^^^^^.#.............CCCCC
+ * 17 PPPPPP...#..........#...#..^^^^^^^.#.............CCCCC
+ * 18 PPPPPP...#.....####.#...#..r^^^^^..#.............CCCCC
+ * 19 PPPPPP...#.....#..#.#...#..........#.%%%......r..CCCCC
+ * 20 PPPPPP...#.....#..#.#...#..####....#.%%%..............
+ * 21 PPPPPP...#######..#.#..r#..#..#....#.%%%..............
+ * 22 PPPPPP............#.#...#..#..#....#.%%%..............
+ * 23 ..................###.#########...##.%%%..............
+ * 24 ...........r..........#.#..#......#..%%%..............
+ * 25 ..................r...#.#..#......#..%%%..............
+ * 26 ............ooooooooo.###..#####..#..%%%..............
+ * 27 ............o.......o..........####..%%%..............
+ * 28 ............o.......o................%%%..............
+ * 29 ............o.......o................%%%..............
+ * 30 ............o.......o................%%%..............
+ * 31 ............o.......o................%%%..............
+ * 32 ............ooooooooo.................................
+ */
+export const NM_CELL = 4;
+/** World [x, z] of grid cell (c, r) (fractions allowed). */
+export const nmCell = (c, r) => [(c - 26.5) * NM_CELL, (r - 16.5) * NM_CELL];
+const nxz = (c, r) => {
+  const [x, z] = nmCell(c, r);
+  return { x, z };
+};
+// The two routes as corner cells. Both start in the portal mouth and share the run to the split
+// (J16) and the run from AK15 to the computer, so those pieces are drawn once.
+const NM_NORTH = [
+  [4.5, 16], [9, 16], [9, 11], [13, 11], [13, 14], [16, 14], [16, 16], [24, 16], [24, 26], [22, 26], [22, 23],
+  [30, 23], [30, 20], [27, 20], [27, 26], [31, 26], [31, 27], [34, 27], [34, 23], [35, 23], [35, 15], [36, 15], [48.5, 15],
+];
+const NM_SOUTH = [
+  [4.5, 16], [9, 16], [9, 21], [15, 21], [15, 18], [18, 18], [18, 23], [20, 23], [20, 8], [26, 8], [26, 5], [23, 5],
+  [23, 14], [25, 14], [25, 11], [28, 11], [28, 9], [30, 9], [30, 3], [32, 3], [32, 5], [33, 5], [33, 7], [34, 7],
+  [34, 10], [36, 10], [36, 15], [48.5, 15],
+];
+const NM_ROUTES = [NM_NORTH, NM_SOUTH].map((r) => r.map(([c, row]) => nmCell(c, row)));
+
+function nmFixed() {
+  const out = [];
+  // `block` keeps towers off (radius), `bh` = height players can stand on, `box` = [hx, hz, h].
+  const solid = (c, r, block, extra) => out.push({ kind: 'nmBlock', ...nxz(c, r), block, ...extra });
+  // The Nightmare Realm portal (A12-F22), its mouth facing east at F16.
+  out.push({ kind: 'nmPortal', ...nxz(2.6, 16) });
+  for (const r of [12.6, 15.2, 16.8, 19.4]) solid(2.6, r, 4.6, { box: [3.6, 2.6, 16] });
+  // The corrupted supercomputer (AX15-BB19): the base.
+  out.push({ kind: 'nmComputer', ...nxz(51, 16) });
+  out.push({ kind: 'nmBlock', ...nxz(51, 16), box: [4.2, 7.2, 15] });
+  // The hexagonal hill (AB14-AH18): about 3 high, players can walk on it, no towers on it.
+  const hill = nxz(30, 16);
+  out.push({ kind: 'nmHill', ...hill });
+  for (let dx = -12; dx <= 12; dx += 3) {
+    for (let dz = -9; dz <= 9; dz += 3) {
+      if (Math.abs(dz) / 9 + Math.abs(dx) / 24 > 1.05) continue;
+      out.push({ kind: 'nmBlock', x: hill.x + dx, z: hill.z + dz, block: 2.4, bh: 3 });
+    }
+  }
+  // Two shallow ring craters: rims of low rock (no towers on the rim, the middle is open).
+  [[18, 3.5, 14], [16, 29, 18]].forEach(([c, r, rad], v) => {
+    const { x, z } = nxz(c, r);
+    out.push({ kind: 'nmRing', x, z, r: rad, v });
+    const n = Math.round((Math.PI * 2 * rad) / 3);
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      out.push({ kind: 'nmBlock', x: x + Math.cos(a) * rad, z: z + Math.sin(a) * rad, block: 1.6, bh: 1.6 });
+    }
+  });
+  // Pale gravel patches (flat, towers allowed): [c1, r1, c2, r2].
+  [[14, 8, 19, 12], [36, 2, 39, 6], [37, 19, 39, 31]].forEach(([c1, r1, c2, r2], v) => {
+    const [x1, z1] = nmCell(c1 - 0.5, r1 - 0.5);
+    const [x2, z2] = nmCell(c2 + 0.5, r2 + 0.5);
+    out.push({ kind: 'nmGravel', x: (x1 + x2) / 2, z: (z1 + z2) / 2, w: x2 - x1, d: z2 - z1, v });
+  });
+  // Boulders on the floor (2-6 across).
+  [[11, 7, 2.2], [40, 9, 2.6], [38, 14, 1.8], [46, 19, 2.4], [27, 18, 1.4], [23, 21, 1.6], [11, 24, 2], [18, 25, 1.5],
+    [44, 3, 2.8], [50, 6, 3], [52, 10, 2.4], [49, 25, 3], [52, 29, 2.6], [45, 30, 2], [6, 4, 2.4], [3, 28, 2.6]]
+    .forEach(([c, r, s], i) => out.push({ kind: 'nmRock', ...nxz(c, r), s, rot: i * 1.9, v: i, block: s + 0.4, bh: s * 1.1 }));
+  // The dead forked tree at AA2.
+  out.push({ kind: 'nmTree', ...nxz(26, 2), rot: 0.6, block: 1.2 });
+  // Loose planks and boards on the floor.
+  [[7, 9], [12, 18], [29, 28], [42, 12], [33, 1.5], [43, 23], [6, 26], [47, 1.5], [26, 31]]
+    .forEach(([c, r], i) => out.push({ kind: 'nmPlanks', ...nxz(c, r), rot: i * 2.1, v: i, block: 1.4, bh: 0.5 }));
+  // Small orange lamps on debris: the north-west top edge and east of the computer.
+  [[4, 1.2], [9, 0.8], [53, 22]].forEach(([c, r], i) => out.push({ kind: 'nmLamp', ...nxz(c, r), lit: i !== 1, block: 1.2, bh: 1 }));
+  // Off the grid, on the crater floor round it: burned houses, broken tracks, a truss, bones, a gate.
+  [[-96, -76, 0.3, 1], [-74, -82, -0.2, 0.9], [-112, -60, 1.3, 0.8], [82, -78, 0.1, 1], [104, -70, -0.5, 0.85], [8, -104, 0, 1.6]]
+    .forEach(([x, z, rot, s], v) => out.push({ kind: 'nmHouse', x, z, rot, s, v }));
+  out.push({ kind: 'nmTrack', x: -98, z: 74, rot: 0.4 });
+  out.push({ kind: 'nmTruss', x: -34, z: -94, rot: 0.15 });
+  for (let i = 0; i < 7; i++) out.push({ kind: 'nmBones', x: 34 + i * 5.5, z: 69 + (i % 3) * 2.5, rot: i * 1.3, v: i });
+  out.push({ kind: 'nmGate', x: -54, z: 71, rot: 0.3 });
+  // The crater wall: stacked sandstone slabs all round, higher further out, plus a rock spire
+  // with a dead tree on top to the north-east. The east floor rises in stacked plates past AN.
+  for (let i = 0; i < 56; i++) {
+    const a = (i / 56) * Math.PI * 2;
+    const k = Math.abs((Math.sin(i * 12.9898) * 43758.5453) % 1);
+    out.push({ kind: 'nmCliff', x: Math.round(Math.cos(a) * (136 + k * 10)), z: Math.round(Math.sin(a) * (92 + k * 8)), h: 30 + Math.round(k * 10), w: 22 + k * 10, rot: a + Math.PI / 2, v: i });
+  }
+  for (let i = 0; i < 14; i++) {
+    const k = Math.abs((Math.sin(i * 78.233) * 43758.5453) % 1);
+    const z = -60 + i * 9.2;
+    if (Math.abs(z + 6) < 14) continue; // keep clear of the computer
+    out.push({ kind: 'nmCliff', x: 112 + k * 6, z, h: 4 + k * 6, w: 10 + k * 6, rot: Math.PI / 2 + k, v: i + 60 });
+  }
+  out.push({ kind: 'nmSpire', x: 122, z: -84 });
+  return out;
+}
+
 // How hard a map is (MAPS[key].rating): its card in the menus is that color. Judged by eye from
 // the path (long and winding is easy; short, split or random is hard) and how much room there is to build.
 export const MAP_RATINGS = {
@@ -1241,6 +1374,31 @@ export const MAPS = {
       sky: 0x14101c, fog: 0x3a2e4a, fogNear: 80, fogFar: 200, night: true, purple: true,
       leaves: [0x2f3e2a, 0x2f3e2a, 0x2f3e2a], rock: 0x4a3f5e,
       cliff: [0x4a3f5e, 0x3a2a24, 0x4a3f5e], water: [0x38a3e8, 0x2585d0],
+    },
+  },
+  nightmare: {
+    name: 'Halloween Night 3',
+    event: 'halloween', // the Halloween Event's third map (see DIFFICULTIES.halloween.maps)
+    rating: 'hard',
+    icon: '🌀',
+    desc: 'A sandy crater at dusk. Enemies pour out of the Nightmare Realm portal, split into two twisting paths that cross each other four times, and meet again before the corrupted supercomputer.',
+    path: NM_ROUTES[0],
+    routes: NM_ROUTES, // north branch, south branch (the south one is longer: its enemies walk a bit faster)
+    spawn: { x: nmCell(44, 24)[0], z: nmCell(44, 24)[1] },
+    base: 'computer', // no castle: the supercomputer (nmComputer) is the base
+    baseAt: nmCell(51, 16),
+    baseR: 8,
+    portal: false, // the Nightmare Realm portal is a prop (nmPortal)
+    bounds: { minX: -108, maxX: 108, minZ: -64, maxZ: 64 },
+    cliffs: [],
+    pools: [],
+    trees: 0, tree: 'round', rocks: 0, border: 'none',
+    fixed: nmFixed(),
+    theme: {
+      ground: ['#c47a44', '#a85e32', '#c8804a', '#bc7340'], path: ['#5e4636', '#584132', '#634a3a', '#55402f'],
+      sky: 0xc88a3a, fog: 0xb07a40, fogNear: 100, fogFar: 250, dusk: true,
+      leaves: [0x6a4a2a, 0x6a4a2a, 0x6a4a2a], rock: 0xb8643a,
+      cliff: [0xb87848, 0x9a6038, 0xc88a58], water: [0x38a3e8, 0x2585d0],
     },
   },
   rig: {

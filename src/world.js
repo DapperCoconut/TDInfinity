@@ -13,6 +13,7 @@ import { buildBrook } from './brookworld.js';
 import { buildRig } from './rigworld.js';
 import { GRAVE_PROPS } from './graveworld.js';
 import { CARN_PROPS } from './carnivalworld.js';
+import { NM_PROPS } from './nightmareworld.js';
 import { TREES, lambert, placed, snowMat, themeMats, tileTexture } from './worldkit.js';
 import { buildNexus } from './nexusworld.js';
 import { buildCrossing } from './crossingworld.js';
@@ -70,7 +71,11 @@ export function buildWorld(parent, { oz = 0, versus = false } = {}) {
 
   // --- Path (one box per segment, extended to cover the corners) ---
   const dirtTex = tileTexture(theme.path[0], theme.path.slice(1), null, 64, 4);
-  path.segs.forEach((s, i) => {
+  // Every route (Halloween Night 3 splits in two); a piece another route already laid is skipped.
+  const laid = new Set();
+  const segKey = (s) => `${s.a.x.toFixed(2)},${s.a.z.toFixed(2)},${s.b.x.toFixed(2)},${s.b.z.toFixed(2)}`;
+  const allSegs = path.routes.flatMap((r) => r.segs).filter((s) => !laid.has(segKey(s)) && laid.add(segKey(s)));
+  allSegs.forEach((s, i) => {
     const len = s.len + PATH_WIDTH;
     const tex = dirtTex.clone();
     tex.needsUpdate = true;
@@ -84,7 +89,7 @@ export function buildWorld(parent, { oz = 0, versus = false } = {}) {
   });
 
   if (mapInfo.portal !== false) buildPortal(scene, path.start);
-  if (mapInfo.base !== 'car') buildCastle(scene, CASTLE);
+  if (!mapInfo.base) buildCastle(scene, CASTLE); // a map with its own `base` draws it as a prop
   const tree = TREES[mapInfo.tree] ?? TREES.round;
   for (const t of MAP.trees) tree(scene, t, m);
   const borderKind = mapInfo.border ?? mapInfo.tree;
@@ -100,7 +105,7 @@ export function buildWorld(parent, { oz = 0, versus = false } = {}) {
     rock.rotation.set(r.rx, r.ry, r.rz);
   }
   const animated = [];
-  for (const p of MAP.props) (PROPS[p.kind] ?? GRAVE_PROPS[p.kind] ?? CARN_PROPS[p.kind])?.(scene, p, m, animated);
+  for (const p of MAP.props) (PROPS[p.kind] ?? GRAVE_PROPS[p.kind] ?? CARN_PROPS[p.kind] ?? NM_PROPS[p.kind])?.(scene, p, m, animated);
   if (animated.length) scene.userData.tick = (t) => animated.forEach((f) => f(t));
   return scene;
 }

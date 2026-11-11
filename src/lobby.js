@@ -346,7 +346,7 @@ export class Lobby {
         <h3>${d.icon} ${esc(d.name)}${profile.beaten.includes(key) ? ' <span class="ev-won" title="You beat this event">✔</span>' : ''}</h3>
         <p>${esc(d.desc)}</p>
       </div>
-      <div class="eb-maps${maps.length > 1 ? ' pick' : ''}">${maps
+      <div class="eb-maps${maps.length > 1 ? ' pick' : ''}${maps.length > 2 ? ' three' : ''}">${maps
         .map((k) => {
           const m = mapDef(k);
           return `<div class="eb-map${k === on ? ' on' : ''}" data-map="${k}" title="${esc(`${m.name}: ${m.desc}`)}">

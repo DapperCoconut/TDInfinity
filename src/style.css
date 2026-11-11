@@ -2384,6 +2384,12 @@ input:focus {
 #room-event-banner .eb-maps.pick .eb-map {
   width: 130px;
 }
+.eb-maps.pick.three .eb-map {
+  width: 140px;
+}
+#room-event-banner .eb-maps.pick.three .eb-map {
+  width: 104px;
+}
 .eb-map-name {
   position: absolute;
   left: 0;

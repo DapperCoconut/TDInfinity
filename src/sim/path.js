@@ -10,8 +10,9 @@ export const BOUNDS = { ...DEFAULT_BOUNDS };
 // Where players appear on the current map (set by setMapPath).
 export const PLAYER_SPAWN = { x: 0, y: 0, z: 0 };
 
-// The current map's routes (see maps.js): every route runs from a spawn portal to the base and
-// they all have the same length. Most maps have one; `PATH_POINTS` is the first.
+// The current map's routes (see maps.js): every route runs from a spawn portal to the base. Most
+// maps have one; `PATH_POINTS` is the first. Routes of different lengths are stretched to the
+// shortest one: an enemy on a longer route walks it a bit faster, so all routes take the same time.
 let PATH_ROUTES = [mapDef(DEFAULT_MAP).path];
 let PATH_POINTS = PATH_ROUTES[0];
 
@@ -50,19 +51,21 @@ export class Path {
     this.setRoutes([pts]);
   }
 
-  /** Re-lays the path as several routes of (nearly) equal length; the first one is `points`/`segs`. */
+  /** Re-lays the path as several routes; the first one is `points`/`segs`. */
   setRoutes(list) {
     this.routes = list.map(layRoute);
     this.points = this.routes[0].points;
     this.segs = this.routes[0].segs;
     this.length = Math.min(...this.routes.map((r) => r.length));
+    for (const r of this.routes) r.k = r.length / this.length; // path distance d is d * k along this route
     this.multi = this.routes.length > 1;
   }
 
   /** Writes x, z, y (height) and direction dx, dz at distance d along route r into `out`. */
   at(d, out = {}, r = 0) {
-    const segs = (this.routes[r] ?? this.routes[0]).segs;
-    d = clamp(d, 0, this.length);
+    const route = this.routes[r] ?? this.routes[0];
+    const segs = route.segs;
+    d = clamp(d, 0, this.length) * route.k;
     let s = segs[segs.length - 1];
     for (const seg of segs) {
       if (d <= seg.start + seg.len) {
@@ -101,7 +104,7 @@ export class Path {
         const d = Math.hypot(x - (s.a.x + s.dx * t), z - (s.a.z + s.dz * t));
         if (d < best - 1e-6) {
           best = d;
-          at = Math.min(this.length, s.start + t);
+          at = Math.min(this.length, (s.start + t) / r.k);
           this.lastRoute = i;
         }
       }

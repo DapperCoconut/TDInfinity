@@ -37,7 +37,7 @@ import { GameTowers } from './game/towers.js';
 let CASTLE_COLLIDERS = [];
 let LANE_COLLIDERS = [];
 function buildColliders() {
-  CASTLE_COLLIDERS = mapInfo.nexus || mapInfo.base === 'cave' || mapInfo.court || mapInfo.ember || mapInfo.rampart || mapInfo.brook || mapInfo.rig ? [] : [ // Twilight Nexus has no castle; Sunset Crossing has a cave; Shattered Court's castle is off the tiles
+  CASTLE_COLLIDERS = mapInfo.nexus || mapInfo.base || mapInfo.court || mapInfo.ember || mapInfo.rampart || mapInfo.brook || mapInfo.rig ? [] : [ // Twilight Nexus has no castle; a map with its own `base` (cave, car, computer) has none; Shattered Court's castle is off the tiles
     { x: CASTLE.x, z: CASTLE.z, hx: 5, hz: 7, h: 10 }, // keep
     ...[-3, -1, 1, 3].flatMap((i) => [-4.4, 4.4].map((dx) => ({ x: CASTLE.x + dx, z: CASTLE.z + i * 2, hx: 0.6, hz: 0.8, h: 11.4 }))), // battlements
     ...[[-5, -7], [-5, 7], [5, -7], [5, 7]].flatMap(([dx, dz]) => [
@@ -415,6 +415,15 @@ export class GameClient {
       this.hemi.color.set(0x7a5aa8);
       this.hemi.groundColor.set(0x24162e);
       this.hemi.intensity = 0.95;
+    }
+    // Sandstorm dusk (Halloween Night 3): a low warm sun through orange haze, orange light everywhere.
+    if (t.dusk) {
+      this.sunOff = [-110, 55, 30];
+      this.sun.color.set(0xffa860);
+      this.sun.intensity = 0.75;
+      this.hemi.color.set(0xd89050);
+      this.hemi.groundColor.set(0x6a3a1a);
+      this.hemi.intensity = 1.1;
     }
     if (t.sunOff) this.sunOff = t.sunOff; // a map's own sun direction (Brook Hollow: from the east)
     this.root.fog.near = t.fogNear ?? 90; // drawn units
