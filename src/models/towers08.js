@@ -1,6 +1,6 @@
 // Tower models, file 8 of 12. Each makeX(level) builds one tower's look.
 // In here:
-// Ghost, Toxicnator, Saboteur, Paintballer. (Sentry, AA Turret and Tesla: machines1.js; Patrol Boat: machines3.js.)
+// Ghost, Toxicnator, Saboteur. (Paintballer: people1.js; Sentry, AA Turret and Tesla: machines1.js; Patrol Boat: machines3.js.)
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
 
 import * as THREE from 'three';
@@ -219,55 +219,5 @@ export function makeSaboteur(level) {
   part(gun, boxGeo(0.35, 0.6, 0.35), tox, 0, -0.9, 0.3);
   if (level >= 2) part(gun, boxGeo(0.7, 0.5, 0.7), M(0x546e7a), 0, -0.4, 0.15); // drum
   h.tracer = level >= 4 ? 0xea80fc : 0x9ccc3c;
-  return h;
-}
-
-/** Paintballer: a paintball player with a hopper-fed marker. Look changes per level (0-5). */
-export function makePaintballer(level) {
-  const pro = level >= 4;
-  const shirt = pro ? 0xd81b60 : level >= 2 ? 0x3949ab : 0x43a047;
-  const h = makeHumanoid({ skin: 0xf1c27d, shirt, pants: pro ? 0x212121 : 0x5d4037, arms: shirt, face: 'soldier' });
-  const { M } = h;
-  const dark = M(0x212121);
-  if (level >= 1) {
-    // Paintball Gear: full mask with a tinted visor
-    part(h.head, boxGeo(1.45, 0.6, 0.25), M(pro ? 0x111111 : 0x37474f), 0, 0.2, 0.7);
-    part(h.head, boxGeo(1.2, 0.35, 0.08), M(pro ? 0xffd600 : 0x4fc3f7), 0, 0.75, 0.78);
-    part(h.head, boxGeo(1.5, 0.2, 1.5), M(0x37474f), 0, 0.75, 0); // strap
-  } else {
-    part(h.head, boxGeo(1.45, 0.4, 1.45), M(0xf57f17), 0, 1.25, 0); // cap
-    part(h.head, boxGeo(1.2, 0.12, 0.6), M(0xf57f17), 0, 1.08, 0.85); // brim
-  }
-  if (level >= 2) {
-    // Shoulder Pads
-    for (const x of [-1.3, 1.3]) part(h.torso, boxGeo(0.9, 0.35, 1.2), dark, x, 1.0, 0);
-    part(h.torso, boxGeo(2.15, 1.2, 1.15), M(0x263238), 0, 0.4, 0); // chest protector
-  }
-  if (pro) {
-    // Competitive Gear: a harness of paint pods on the back
-    const pod = M(level >= 5 ? 0xffd600 : 0xeeeeee);
-    for (const x of [-0.6, 0, 0.6]) part(h.torso, boxGeo(0.35, 1.2, 0.35), pod, x, 0, -0.8);
-  }
-  if (level >= 5) {
-    // Paintball Champion: a gold belt and a splash of paint on the chest
-    part(h.torso, boxGeo(2.15, 0.35, 1.15), M(0xffc400), 0, -0.85, 0);
-    part(h.torso, boxGeo(0.7, 0.3, 0.1), glow(h, 0xffea00), 0, -0.85, 0.6);
-    part(h.torso, boxGeo(0.6, 0.6, 0.06), M(0x00e676), -0.4, 0.5, 0.6);
-  }
-  const len = pro ? 1.8 : 1.5;
-  const gun = holdLongGun(h, len, M(level >= 5 ? 0xffc400 : 0x546e7a));
-  // Hopper on top of the marker
-  part(gun, boxGeo(0.6, 0.6, 0.6), M(pro ? 0x212121 : 0xb0bec5), 0, -0.5, 0.5);
-  part(gun, boxGeo(0.45, 0.25, 0.45), M(0xff1744), 0, -0.5, 0.85);
-  part(gun, boxGeo(0.3, 0.8, 0.35), dark, 0, -0.35, -0.4); // air tank
-  if (level >= 3) {
-    // Double Barrel Gun: a second barrel beside the first
-    part(gun, boxGeo(0.28, len, 0.3), M(0x546e7a), 0.32, -len / 2, 0);
-    const m2 = new THREE.Object3D();
-    m2.position.set(0.32, -len, 0);
-    gun.add(m2);
-    h.muzzles.push(m2);
-  }
-  h.projectile = { color: [0xff1744, 0x2979ff, 0xffea00, 0x00e676, 0xd500f9][level % 5], size: 0.35, arc: 0.6 };
   return h;
 }

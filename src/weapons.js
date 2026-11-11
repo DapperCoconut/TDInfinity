@@ -51,6 +51,10 @@ const _hsl = { h: 0, s: 0, l: 0 };
 export function armWeapons(m, type, level) {
   const rig = m.rig;
   if (!rig || m.static || m.plane || rig.armsMoved) return;
+  if (m.ownGun != null) {
+    rig.rUp = m.ownGun; // a gun built in full by its model (models/people1.js): leave it as it is
+    return;
+  }
   const base = type.replace(/_\d\d$/, '');
   const def = TOWERS[type] ?? TOWERS[base];
   const words = `${base} ${def?.name ?? ''}`.toLowerCase();

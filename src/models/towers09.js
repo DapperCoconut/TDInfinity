@@ -9,7 +9,7 @@
 import * as THREE from 'three';
 import { boxGeo, makeHumanoid, part } from './kit.js';
 import { glow, goldify, helmet, holdLongGun, present, pumpkin, setMuzzle } from './bits.js';
-import { makeScout } from './towers01.js';
+import { makeScout } from './people1.js';
 import { makeShotgunner } from './towers02.js';
 import { makeCrookBoss } from './towers06.js';
 import { makeJuggernaut } from './towers07.js';

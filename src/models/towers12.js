@@ -1,7 +1,7 @@
 // Tower models, file 12 of 12. Each makeX(level) builds one tower's look.
 // In here:
-// Void Traitor, Psycho Slayer, Bubble Blower, Darter, Firecracker, Quarterer,
-// Penetrator. (MLRS: machines3.js.)
+// Void Traitor, Psycho Slayer, Bubble Blower, Firecracker, Quarterer,
+// Penetrator. (MLRS: machines3.js; Darter: people1.js.)
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
 
 import * as THREE from 'three';
@@ -178,52 +178,6 @@ export function makeBubbleBlower(level) {
   h.muzzles = [muzzle];
   h.tracer = 0xb3e5fc;
   h.tracerWidth = 0.3;
-  return h;
-}
-
-/**
- * Darter (free alternate Scout form): a kid in a hoodie throwing darts. Lv 1 dart quiver on the
- * hip, Lv 2 a headband, Lv 3 goggles and fire-tipped darts, Lv 4 a jacket with glowing blue
- * shock darts. A purple Dimension Shard emblem marks it as an alternate form.
- */
-export function makeDarter(level) {
-  const shock = level >= 4;
-  const fire = level >= 3;
-  const shirt = shock ? 0x1a237e : 0x00897b;
-  const h = makeHumanoid({ skin: 0xf1c27d, shirt, pants: 0x37474f, arms: shirt, face: 'soldier' });
-  const { M } = h;
-  const shard = glow(h, 0xb388ff);
-  part(h.torso, boxGeo(0.35, 0.35, 0.06), shard, 0.55, 0.45, 0.52);
-  part(h.torso, boxGeo(1.6, 0.6, 0.3), M(shock ? 0x283593 : 0x00796b), 0, 0.85, -0.6); // hood
-  const tip = shock ? glow(h, 0x40c4ff) : fire ? glow(h, 0xff7043) : M(0x9e9e9e);
-  if (level >= 1) {
-    // Dart quiver on the hip
-    part(h.torso, boxGeo(0.5, 1.0, 0.5), M(0x5d4037), -1.15, -0.6, 0);
-    for (const z of [-0.12, 0.12]) part(h.torso, boxGeo(0.08, 0.5, 0.08), tip, -1.15, 0.1, z);
-  }
-  if (level >= 2) part(h.head, boxGeo(1.28, 0.22, 1.28), M(0xc62828), 0, 1.0, 0); // headband
-  if (fire) {
-    part(h.head, boxGeo(1.25, 0.28, 0.2), M(0x263238), 0, 0.72, 0.68);
-    for (const x of [-0.27, 0.27]) part(h.head, boxGeo(0.34, 0.2, 0.05), shard, x, 0.72, 0.79);
-  }
-  if (shock) {
-    part(h.torso, boxGeo(2.15, 1.7, 1.15), M(0x0d1450), 0, 0.05, 0); // jacket
-    part(h.torso, boxGeo(0.12, 1.5, 0.05), glow(h, 0x40c4ff), 0, 0, 0.6); // glowing zip
-  }
-  // A dart held point-first in the raised right hand.
-  const hand = new THREE.Group();
-  hand.position.set(0, -2.1, 0);
-  h.rightArm.add(hand);
-  part(hand, boxGeo(0.12, 0.7, 0.12), M(0x8d6e63), 0, -0.2, 0); // shaft
-  part(hand, boxGeo(0.3, 0.25, 0.05), M(shock ? 0x40c4ff : 0xffeb3b), 0, 0.15, 0); // flights
-  part(hand, boxGeo(0.08, 0.3, 0.08), tip, 0, -0.65, 0); // point
-  setMuzzle(h, hand, 0, -0.6, 0);
-  h.rightArm.rotation.set(-2.8, 0, 0.2);
-  h.leftArm.rotation.set(-1.0, 0, -0.3);
-  h.pose = { right: -2.8, left: -1.0, leftRecoil: 0 };
-  h.swing = 1.9;
-  h.flight = { color: shock ? 0x40c4ff : fire ? 0xff7043 : 0xffeb3b, size: 0.25 };
-  h.tracer = h.flight.color;
   return h;
 }
 

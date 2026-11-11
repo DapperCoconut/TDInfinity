@@ -1,6 +1,6 @@
 // Tower models, file 3 of 12. Each makeX(level) builds one tower's look.
 // In here:
-// Commander, Gold Commander, Commander Classic, Cowboy, DJ, DJBooth, Anarchist.
+// Commander, Gold Commander, Commander Classic, DJ, DJBooth, Anarchist. (Cowboy: people1.js.)
 // (Armored Factory, Military Base, Barracks and Field Barracks moved to machines7.js.)
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
 
@@ -260,64 +260,6 @@ export function addRevolver(h, arm, gold) {
   gun.add(muzzle);
   gun.userData.muzzle = muzzle;
   return gun;
-}
-
-/**
- * Cowboy: hat, neckerchief and a revolver. Lv 2 a lucky horseshoe on the belt, Lv 3 a long duster
- * and a gold star, Lv 4 a second revolver and a bandolier, Lv 5 dressed all in black as an outlaw
- * with a red mask and gold six-shooters.
- */
-export function makeCowboy(level) {
-  const outlaw = level >= 5;
-  const h = makeHumanoid({ skin: 0xe0ac69, shirt: outlaw ? 0x212121 : 0xc0703a, pants: outlaw ? 0x263238 : 0x3f6aa8, arms: outlaw ? 0x212121 : 0xc0703a });
-  const { M } = h;
-  // Cowboy hat: wide brim, tall crown and a band.
-  const hat = M(outlaw ? 0x111111 : 0x8d5a2b);
-  part(h.head, boxGeo(2.2, 0.12, 2.0), hat, 0, 1.25, 0);
-  part(h.head, boxGeo(1.25, 0.65, 1.15), hat, 0, 1.6, 0);
-  part(h.head, boxGeo(1.28, 0.16, 1.18), M(outlaw ? 0xc62828 : 0x3e2723), 0, 1.35, 0);
-  // Boots and belt.
-  for (const leg of [h.rightLeg, h.leftLeg]) part(leg, boxGeo(1.05, 0.7, 1.15), M(0x4e342e), 0, -1.7, 0.05);
-  part(h.torso, boxGeo(2.05, 0.3, 1.05), M(0x3e2723), 0, -0.85, 0);
-  part(h.torso, boxGeo(0.45, 0.35, 0.1), M(0xffd54f), 0, -0.85, 0.53); // buckle
-  // Neckerchief (a mask over the face when outlawed).
-  const red = M(0xd32f2f);
-  if (outlaw) part(h.head, boxGeo(1.24, 0.5, 1.24), red, 0, 0.3, 0.01);
-  else if (level >= 1) part(h.torso, boxGeo(1.1, 0.4, 0.15), red, 0, 0.85, 0.55);
-  if (level >= 2) {
-    // Lucky Shot: a horseshoe hanging from the belt
-    const shoe = M(0xb0bec5);
-    part(h.torso, boxGeo(0.12, 0.45, 0.08), shoe, 0.55, -1.15, 0.55);
-    part(h.torso, boxGeo(0.12, 0.45, 0.08), shoe, 0.85, -1.15, 0.55);
-    part(h.torso, boxGeo(0.42, 0.12, 0.08), shoe, 0.7, -1.35, 0.55);
-  }
-  if (level >= 3) {
-    // Deadly Precision: a long duster and a gold star
-    const coat = M(outlaw ? 0x1b1b1b : 0x795548);
-    part(h.torso, boxGeo(2.15, 2.6, 0.2), coat, 0, -0.35, -0.6);
-    for (const x of [-0.95, 0.95]) part(h.torso, boxGeo(0.25, 2.6, 1.1), coat, x, -0.35, 0);
-    part(h.torso, boxGeo(0.3, 0.3, 0.06), glow(h, 0xffd54f), -0.55, 0.45, 0.53);
-  }
-  if (level >= 4) {
-    // Double Tap: a bandolier across the chest
-    const band = part(h.torso, boxGeo(0.3, 2.6, 1.08), M(0x5d4037), 0, 0, 0);
-    band.rotation.z = 0.7;
-    for (let i = -2; i <= 2; i++) part(band, boxGeo(0.34, 0.14, 0.1), M(0xffc107), 0, i * 0.4, 0.55);
-  }
-  const guns = [addRevolver(h, h.rightArm, outlaw)];
-  h.rightArm.rotation.set(-Math.PI / 2, 0, 0.05);
-  if (level >= 4) {
-    guns.push(addRevolver(h, h.leftArm, outlaw));
-    h.leftArm.rotation.set(-Math.PI / 2, 0, -0.05);
-    h.pose = { right: -Math.PI / 2, left: -Math.PI / 2, leftRecoil: 0.35 };
-  } else {
-    h.leftArm.rotation.set(-0.15, 0, -0.15); // thumb in the belt
-    h.pose = { right: -Math.PI / 2, left: -0.15, leftRecoil: 0 };
-  }
-  h.muzzles = guns.map((g) => g.userData.muzzle);
-  h.twirl = guns;
-  h.tracer = outlaw ? 0xffc107 : 0xffe066;
-  return h;
 }
 
 /** DJ: behind a turntable booth with speakers that grow each level. Neon party lights at Lv 5. */
