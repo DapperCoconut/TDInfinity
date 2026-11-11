@@ -78,6 +78,7 @@ export class UI {
       scoreboard: $('scoreboard'),
       chatLog: $('chat-log'),
       chatInput: $('chat-input'),
+      wheel: $('wheel'),
       end: $('end'),
       send: $('send-panel'),
       sendList: $('send-list'),
@@ -406,6 +407,40 @@ export class UI {
     t.classList.add('show');
     clearTimeout(this.toastTimer);
     this.toastTimer = setTimeout(() => t.classList.remove('show'), ms);
+  }
+
+  // ---- the order wheel (right-click; see game/wheel.js)
+  get wheelOpen() {
+    return !this.el.wheel.classList.contains('hidden');
+  }
+  /** Shows `items` ([{ key, label, icon, hint }]) in a ring around screen point (cx, cy); onPick(key) when one is clicked. */
+  showWheel(cx, cy, items, onPick) {
+    const w = this.el.wheel;
+    const r = 84;
+    w.innerHTML =
+      '<div class="wheel-back"></div><div class="wheel-dot"></div>' +
+      items
+        .map((it, i) => {
+          const a = -Math.PI / 2 + (i / items.length) * Math.PI * 2;
+          return `<button class="wheel-item" data-key="${it.key}" style="left:${Math.round(Math.cos(a) * r)}px;top:${Math.round(Math.sin(a) * r)}px"><span class="wi-icon">${it.icon}</span>${esc(it.label)}${it.hint ? ` <small>${it.hint}</small>` : ''}</button>`;
+        })
+        .join('');
+    w.style.left = `${cx}px`;
+    w.style.top = `${cy}px`;
+    w.classList.remove('hidden');
+    w.onclick = (e) => {
+      const b = e.target.closest('[data-key]');
+      if (b) onPick(b.dataset.key);
+      else this.hideWheel();
+    };
+    w.oncontextmenu = (e) => {
+      e.preventDefault();
+      this.hideWheel();
+    };
+  }
+  hideWheel() {
+    this.el.wheel.classList.add('hidden');
+    this.el.wheel.innerHTML = '';
   }
 
   // ---- chat

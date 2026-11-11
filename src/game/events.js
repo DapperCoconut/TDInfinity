@@ -12,6 +12,9 @@ import { BOUNDS, path } from '../sim/path.js';
 import { CASTLE, laneOf, laneOz } from '../sim/map.js';
 import { ICE_NADE, ORDINAL } from './shared.js';
 
+// What an order from the wheel says on the map (the hub puts the same words in chat).
+const ORDER_WORDS = { upgrade: 'Upgrade!', sell: 'Sell!', move: 'Move here!', build: 'Build here!', defend: 'Defense!', farm: 'Farm up!', save: 'Save cash!', look: 'Look!' };
+
 export class GameEvents {
 
   handleEvents(evs) {
@@ -283,6 +286,15 @@ export class GameEvents {
           if (ev.owner === myId) audio.upgrade();
           this.effects.text(new THREE.Vector3(ev.x, 8 * MODEL_SCALE, ev.z), ev.name, '#e1bee7', 2.6);
           break;
+        case 'order': {
+          // A player's order from the wheel (see wheel.js): a ring and its words where it points.
+          if (ev.x == null) break;
+          const color = ev.color ?? 0xffffff;
+          const at = new THREE.Vector3(ev.x, 0.3, ev.z);
+          this.effects.pulse(at, 5, 0.9, color);
+          this.effects.text(at.clone().setY(6 * MODEL_SCALE), `📣 ${ORDER_WORDS[ev.cmd] ?? ev.cmd}`, '#' + color.toString(16).padStart(6, '0'), 3);
+          break;
+        }
         case 'drop': {
           const v = this.towerViews.get(ev.t);
           if (v) this.effects.bomb(v.bayPosition(new THREE.Vector3()), new THREE.Vector3(ev.x, 0.3, ev.z), ev.d);

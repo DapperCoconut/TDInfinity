@@ -8,6 +8,8 @@
 //   models  builds every tower model at every level, every enemy and every summoned unit
 //   towers  places every tower in the real Sim, walks both upgrade paths, fires every ability
 //   modes   plays every mode start to finish with an unkillable base and a handful of maxed towers
+//   bots    three bots play the first minutes of every mode (and Versus) through the room hub, with a
+//           player ordering them around from the wheel: they must build, walk, answer and not crash
 // Exit code 1 when anything failed; each failure is one line that names the tower / enemy / mode.
 import { build } from 'esbuild';
 import { availableParallelism } from 'node:os';
@@ -16,7 +18,7 @@ import { Worker } from 'node:worker_threads';
 import { fakeCanvas, where } from './check-worker.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
-const SECTIONS = ['build', 'data', 'towers', 'modes', 'models'];
+const SECTIONS = ['build', 'data', 'towers', 'modes', 'bots', 'models'];
 const args = process.argv.slice(2);
 const want = args.filter((a) => SECTIONS.includes(a));
 const filter = args.filter((a) => !SECTIONS.includes(a));
@@ -300,6 +302,62 @@ await section('modes', () => {
       out.push(`${mode} ${sim.waves.length}w ${kinds.size}e ${Date.now() - t0}ms`);
     } catch (err) {
       fail('modes', `${mode} wave ${sim ? sim.wave.index + 1 : '?'}`, err);
+    }
+  }
+  return out.join(', ');
+});
+
+// ---------------------------------------------------------------- bots
+
+await section('bots', async () => {
+  if (!cfg) return 'skipped';
+  const { createHub } = await import('../src/hub.js');
+  const out = [];
+  const games = [...Object.keys(DIFFICULTIES).map((d) => ['coop', d]), ['versus', 'easy']];
+  for (const [mode, diff] of games) {
+    const key = mode === 'versus' ? 'versus' : diff;
+    if (!picked(key)) continue;
+    const t0 = Date.now();
+    const errors = [];
+    const oldError = console.error;
+    console.error = (...a) => errors.push(a.map((x) => (x instanceof Error ? where(x) : String(x))).join(' '));
+    try {
+      // The hub with timers we drive by hand: one tick per call.
+      const timers = [];
+      const hub = createHub({ setInterval: (fn) => timers.push(fn), clearInterval: (id) => (timers[id - 1] = null) });
+      let snap = null;
+      let room = null;
+      const chat = [];
+      const me = hub.connect((m) => {
+        if (m.type === 'room') room = m.room;
+        else if (m.type === 'error') errors.push(`hub error: ${m.msg}`);
+        else if (m.type === 'chat') chat.push(m);
+        if (m.s) snap = m.s;
+      });
+      me.receive({ type: 'hello', name: 'check' });
+      me.receive({ type: 'room.create', name: 'check', mode, difficulty: diff, map: 'meadow', seats: 4, bots: 3 });
+      me.receive({ type: 'room.start' });
+      if (room?.state !== 'game') throw new Error(`the game did not start (room state ${room?.state})`);
+      const botTowers = () => (snap?.t ?? []).filter((r) => String(r[1]).startsWith('bot'));
+      const secs = 75;
+      for (let i = 0; i < secs * 20; i++) {
+        for (const fn of timers) fn?.();
+        if (i === 20 * 40) me.receive({ type: 'game.command', cmd: 'build', x: 20, z: 10 });
+        if (i === 20 * 50) {
+          const t = botTowers()[0];
+          if (t) me.receive({ type: 'game.command', cmd: 'upgrade', id: t[0], x: t[4], z: t[5] });
+        }
+      }
+      const owners = new Set(botTowers().map((r) => r[1]));
+      if (owners.size < 3) fail('bots', `${key}: only ${owners.size} of 3 bots built anything in ${secs}s`);
+      const replies = chat.filter((m) => String(m.id).startsWith('bot')).length;
+      if (mode !== 'versus' && !replies) fail('bots', `${key}: no bot answered an order`);
+      for (const e of errors) fail('bots', `${key}`, e);
+      out.push(`${key} ${botTowers().length}t ${Date.now() - t0}ms`);
+    } catch (err) {
+      fail('bots', key, err);
+    } finally {
+      console.error = oldError;
     }
   }
   return out.join(', ');

@@ -472,6 +472,79 @@ details.more[open] > summary {
 #toast.show {
   opacity: 1;
 }
+/* The order wheel (right-click): buttons in a ring around the mouse, over a see-through backdrop. */
+#wheel {
+  position: absolute;
+  width: 0;
+  height: 0;
+  z-index: 30;
+}
+#wheel .wheel-back {
+  position: fixed;
+  inset: 0;
+}
+#wheel .wheel-dot {
+  position: absolute;
+  left: -7px;
+  top: -7px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid rgba(0, 0, 0, 0.6);
+}
+#wheel .wheel-item {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  font: 700 15px 'Segoe UI', Arial, sans-serif;
+  color: #fff;
+  background: rgba(20, 24, 40, 0.92);
+  border: 3px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  padding: 7px 14px;
+  cursor: pointer;
+  animation: wheel-pop 0.14s ease-out;
+}
+#wheel .wheel-item:hover {
+  background: #1e88e5;
+  border-color: #fff;
+}
+#wheel .wheel-item small {
+  opacity: 0.6;
+}
+#wheel .wi-icon {
+  margin-right: 5px;
+}
+@keyframes wheel-pop {
+  from {
+    transform: translate(-50%, -50%) scale(0.4);
+    opacity: 0;
+  }
+}
+/* Quick Play card (multiplayer menu) */
+.quick-card {
+  margin-bottom: 14px;
+}
+.quick-row {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+.quick-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+}
+.quick-pick b {
+  min-width: 18px;
+  text-align: center;
+  font-size: 18px;
+}
+.tag.bot {
+  background: #5c6bc0;
+}
 #help {
   position: absolute;
   left: 12px;

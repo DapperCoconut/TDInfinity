@@ -36,6 +36,7 @@ export class LocalSession {
   }
 
   sendPos() {}
+  command() {} // no teammates to order around
   dispose() {}
 }
 
@@ -72,6 +73,7 @@ export class NetSession {
         if (m.s) this.applySnapshot(m.s);
       }),
       net.on('pos', (m) => this.remotePos.set(m.id, m)),
+      net.on('order', (m) => this.pending.push({ k: 'order', ...m })), // a player's order from the wheel: shown like a sim event
       net.on('room', (m) => {
         if (m.room) this.isHost = m.room.host === this.myId;
       }),
@@ -194,6 +196,11 @@ export class NetSession {
 
   sendPos(p) {
     this.net.send({ type: 'game.pos', ...p });
+  }
+
+  /** An order from the wheel for the bots (and everyone's chat): { cmd, id, x, z }. */
+  command(o) {
+    this.net.send({ type: 'game.command', ...o });
   }
 
   dispose() {

@@ -12,6 +12,10 @@ import { createHub, makeCode } from './hub.js';
 
 const PEER_PREFIX = 'tdinf-';
 const JOIN_TIMEOUT = 12000;
+// Quick Play (no room code): rooms for a mode sit at well-known codes, QEASY1, QEASY2... A player
+// looking for a game tries each in turn: the first open one takes them in; when a code has no host
+// at all, their own browser hosts a new game there and waits for others. No server needed.
+const QUICK_SLOTS = 8;
 // Heartbeats: host and guests ping each other every PING_MS. WebRTC can take half a minute to
 // notice a closed tab, so a link that's been silent for SILENT_MS counts as gone.
 const PING_MS = 2000;
@@ -96,9 +100,10 @@ export class Net {
     if (!this.link) {
       if (msg.type === 'room.create') this.host(msg);
       else if (msg.type === 'room.join') this.join(msg.code);
+      else if (msg.type === 'room.quick') this.quick(msg);
       return;
     }
-    if (msg.type === 'room.create' || msg.type === 'room.join') return this.emit({ type: 'error', msg: 'You are already in a room' });
+    if (msg.type === 'room.create' || msg.type === 'room.join' || msg.type === 'room.quick') return this.emit({ type: 'error', msg: 'You are already in a room' });
     if (this.link.ready) this.link.send(msg);
   }
 
@@ -151,9 +156,22 @@ export class Net {
 
   // ---------------------------------------------------------------- hosting
 
-  /** Create a room: become a PeerJS peer named after a fresh room code and run the hub here. */
-  host(createMsg, attempt = 0) {
-    const code = makeCode();
+  /**
+   * Quick Play: looks for an open game of `msg.difficulty` (or Versus) at the well-known codes,
+   * slot by slot, and hosts one when a slot is empty. msg: { mode, difficulty, map, seats, bots, name }.
+   */
+  quick(msg, slot = 1) {
+    if (slot > QUICK_SLOTS) return this.fail('Every game is full right now. Try again in a moment!');
+    const key = String(msg.mode === 'versus' ? 'versus' : msg.difficulty).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 9);
+    this.emit({ type: 'quick', text: slot === 1 ? 'Looking for a game…' : `Looking for a game… (${slot})` });
+    this.join(`Q${key}${slot}`, { ...msg, slot });
+  }
+
+  /**
+   * Create a room: become a PeerJS peer named after a fresh room code (or `code`) and run the hub
+   * here. A Quick Play host (createMsg.quick) that finds its code taken joins that game instead.
+   */
+  host(createMsg, attempt = 0, code = makeCode()) {
     const peer = new Peer(PEER_PREFIX + code);
     const timers = workerTimers();
     const hub = createHub(timers);
@@ -209,9 +227,11 @@ export class Net {
 
     peer.on('error', (err) => {
       if (this.link !== link) return;
-      // Someone already has that code: try another one.
+      // Someone already has that code: try another one (Quick Play: someone just opened a game
+      // at this slot, so join it).
       if (err.type === 'unavailable-id' && !link.inRoom && attempt < 4) {
         this.teardown();
+        if (createMsg.quick) return this.quick(createMsg.quick, createMsg.quick.slot);
         return this.host(createMsg, attempt + 1);
       }
       // One guest's connection failing doesn't end the room.
@@ -232,13 +252,17 @@ export class Net {
 
   // ---------------------------------------------------------------- joining
 
-  /** Join a room by code: connect straight to the host's browser. */
-  join(rawCode) {
+  /**
+   * Join a room by code: connect straight to the host's browser. `quick` (Quick Play): the
+   * settings to host with when nobody's at this code, and the next code is tried when this room
+   * is full or already playing.
+   */
+  join(rawCode, quick = null) {
     const code = String(rawCode ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-    if (code.length !== 5) return this.emit({ type: 'error', msg: 'Room codes are 5 letters and numbers' });
+    if (code.length < 5 || code.length > 12) return this.emit({ type: 'error', msg: 'Room codes are 5 letters and numbers' });
     const peer = new Peer();
     const timers = workerTimers();
-    const link = { kind: 'guest', peer, timers, conn: null, ready: false, inRoom: false, heard: Date.now() };
+    const link = { kind: 'guest', peer, timers, conn: null, ready: false, inRoom: false, heard: Date.now(), quick };
     this.link = link;
     // Ping the host, and give up if the host has gone quiet (closed the tab, lost internet).
     link.beat = timers.setInterval(() => {
@@ -269,8 +293,12 @@ export class Net {
         link.heard = Date.now();
         if (m?.type === 'ping') return;
         if (m?.type === 'bye') return this.teardown(true);
+        // Turned away (room full, already playing...) before getting in: hang up (Quick Play: try the next slot).
+        if (m?.type === 'error' && !link.inRoom && quick) {
+          this.teardown();
+          return this.quick(quick, quick.slot + 1);
+        }
         this.emit(m);
-        // Turned away (room full, already playing...) before getting in: hang up.
         if (m.type === 'error' && !link.inRoom) this.teardown();
       });
       conn.on('close', () => {
@@ -285,6 +313,12 @@ export class Net {
       if (link.inRoom) {
         if (err.type === 'network' || err.type === 'disconnected') return; // the direct link may still work
         return this.teardown(true);
+      }
+      // Quick Play: nobody's hosting at this code, so host the game here and wait for others.
+      if (quick && err.type === 'peer-unavailable') {
+        this.teardown();
+        this.emit({ type: 'quick', text: 'No open game found: starting one. Waiting for players…' });
+        return this.host({ type: 'room.create', name: quick.name, isPublic: true, quick, mode: quick.mode, difficulty: quick.difficulty, map: quick.map, seats: quick.seats, bots: quick.bots }, 0, code);
       }
       this.fail(peerError(err.type));
     });

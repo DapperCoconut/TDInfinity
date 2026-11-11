@@ -55,6 +55,7 @@
       </div>
 
       <div id="ability-bar" class="interactive hidden"></div>
+      <div id="wheel" class="interactive hidden"></div>
       <div id="panel" class="interactive hidden"></div>
       <div id="toast"></div>
       <div id="help">
@@ -153,10 +154,21 @@
           <h2>Multiplayer</h2>
           <span id="mp-me"></span>
         </div>
+        <div class="card quick-card">
+          <h3>⚡ Quick Play</h3>
+          <p class="hint">Jump into a game with other players, no code needed. It plays the mode and map picked on the title screen. Seats nobody takes can go to bot teammates.</p>
+          <div class="row quick-row">
+            <span class="quick-pick" id="quick-mode"><button class="btn small pick on" data-qmode="coop">🤝 Co-op</button><button class="btn small pick" data-qmode="versus">⚔ Versus</button></span>
+            <span class="quick-pick">Seats <button class="btn small" data-qseat="-1">−</button><b id="quick-seats">4</b><button class="btn small" data-qseat="1">+</button></span>
+            <span class="quick-pick">🤖 Bots <button class="btn small" data-qbot="-1">−</button><b id="quick-bots">0</b><button class="btn small" data-qbot="1">+</button></span>
+            <button id="quick-go" class="btn green">Find a Game ▶</button>
+          </div>
+          <div id="quick-sub" class="hint"></div>
+        </div>
         <div class="mp-cols">
           <div class="card grow">
             <h3>Host a room</h3>
-            <p class="hint">Your browser hosts the game. Share the room code with up to 3 friends so they can join. Keep this tab open while you play: if the host leaves, the room closes.</p>
+            <p class="hint">Your browser hosts the game. Share the room code with up to 3 friends so they can join, and add bots for the seats they don't fill. Keep this tab open while you play: if the host leaves, the room closes.</p>
             <div class="row">
               <input id="room-name" placeholder="Room name (optional)" maxlength="24" />
               <button id="room-create" class="btn green">Create Room</button>
@@ -164,9 +176,9 @@
           </div>
           <div class="card grow">
             <h3>Join a friend</h3>
-            <p class="hint">Type the 5-character code from your friend's room.</p>
+            <p class="hint">Type the code from your friend's room.</p>
             <div class="row">
-              <input id="room-code" placeholder="Room code" maxlength="5" autocomplete="off" />
+              <input id="room-code" placeholder="Room code" maxlength="12" autocomplete="off" />
               <button id="room-join" class="btn blue">Join by Code</button>
             </div>
           </div>
@@ -191,6 +203,7 @@
         <div class="room-cols">
           <div class="room-left">
             <div id="room-mode" class="mode-row"></div>
+            <div id="room-seats" class="mode-row"></div>
             <div class="pick-pair">
               <div id="room-difficulty" class="pick-block"></div>
               <div id="room-map" class="pick-block"></div>

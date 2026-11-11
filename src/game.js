@@ -27,6 +27,7 @@ import {
 } from './sim/map.js';
 import { baseKey } from './sim/maps.js';
 import { GameEvents } from './game/events.js';
+import { GameWheel } from './game/wheel.js';
 import { GameView } from './game/view.js';
 import { GameInput } from './game/input.js';
 import { GameTowers } from './game/towers.js';
@@ -78,6 +79,7 @@ export class GameClient {
     this.dying = [];
     this.placing = null;
     this.aiming = null; // { id, key, radius } while picking an Airstrike spot; Hologram Tower also { ab, src, type, cost, ghost }
+    this.ordering = null; // { cmd, id } while an order from the wheel waits for a spot on the ground (see wheel.js)
     this.placeRot = 0; // extra turn (R key) on the tower being placed, added to the camera's facing
     this.fps = null; // Gatling Gun FPS Mode: { id, yaw, pitch, fire, sendT, age }
     this.ghost = null;
@@ -641,7 +643,7 @@ export class GameClient {
 
 // GameClient's methods are kept in several files (see the list at the top). This puts them all on
 // GameClient, just as if they were written inside the class.
-for (const part of [GameEvents, GameView, GameInput, GameTowers]) {
+for (const part of [GameEvents, GameView, GameInput, GameTowers, GameWheel]) {
   const props = Object.getOwnPropertyDescriptors(part.prototype);
   delete props.constructor;
   Object.defineProperties(GameClient.prototype, props);

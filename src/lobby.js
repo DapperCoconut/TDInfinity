@@ -122,6 +122,36 @@ export class Lobby {
     $('room-join').onclick = join;
     $('room-code').addEventListener('keydown', (e) => e.key === 'Enter' && !this.busy && join());
 
+    // Quick Play: find (or open) a game of the picked mode at the well-known codes (see net.js).
+    // Seats: players and bots together; bots fill the seats nobody takes when the host starts.
+    let quick = {};
+    try {
+      quick = JSON.parse(localStorage.getItem('td.quick') || '{}');
+    } catch {
+      quick = {};
+    }
+    this.quick = { mode: quick.mode === 'versus' ? 'versus' : 'coop', seats: Math.min(4, Math.max(1, quick.seats || 4)), bots: Math.max(0, quick.bots ?? 1) };
+    const quickChange = (fn) => {
+      fn();
+      localStorage.setItem('td.quick', JSON.stringify(this.quick));
+      this.renderQuick();
+    };
+    $('quick-mode').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-qmode]');
+      if (b) quickChange(() => (this.quick.mode = b.dataset.qmode));
+    });
+    $('mp-menu').addEventListener('click', (e) => {
+      const seat = e.target.closest('[data-qseat]');
+      const bot = e.target.closest('[data-qbot]');
+      if (seat) quickChange(() => (this.quick.seats += Number(seat.dataset.qseat)));
+      if (bot) quickChange(() => (this.quick.bots += Number(bot.dataset.qbot)));
+    });
+    $('quick-go').onclick = () => {
+      this.setBusy('Looking for a game…');
+      net.send({ type: 'room.quick', mode: this.quick.mode, difficulty: this.playMode, map: this.map, seats: this.quick.seats, bots: this.quick.bots, name: `${this.name}'s game` });
+    };
+    net.on('quick', (m) => this.setBusy(m.text));
+
     // Room screen
     $('room-sub').addEventListener('click', (e) => {
       const b = e.target.closest('[data-copy]');
@@ -152,6 +182,15 @@ export class Lobby {
     $('room-players').addEventListener('click', (e) => {
       const b = e.target.closest('[data-kick]');
       if (b) net.send({ type: 'room.kick', id: b.dataset.kick });
+      if (e.target.closest('[data-unbot]') && this.room) net.send({ type: 'room.bots', n: this.room.bots - 1 });
+    });
+    // The host sets the room's seats and how many bots take them.
+    $('room-seats').addEventListener('click', (e) => {
+      const seat = e.target.closest('[data-seats]');
+      const bot = e.target.closest('[data-bots]');
+      if (!this.room || this.room.host !== net.id) return;
+      if (seat) net.send({ type: 'room.seats', n: this.room.seats + Number(seat.dataset.seats) });
+      if (bot) net.send({ type: 'room.bots', n: this.room.bots + Number(bot.dataset.bots) });
     });
     $('room-chat-input').addEventListener('keydown', (e) => {
       if (e.key !== 'Enter') return;
@@ -436,6 +475,7 @@ export class Lobby {
     await this.net.connect(this.name);
     this.net.send({ type: 'loadout', towers: profile.battleLoadout(), evo: profile.evoLevels() });
     $('mp-me').textContent = `Playing as ${this.net.name}`;
+    this.renderQuick();
     this.show(this.room ? 'room' : 'mp');
   }
 
@@ -444,7 +484,27 @@ export class Lobby {
     this.busy = !!text;
     $('room-create').disabled = this.busy;
     $('room-join').disabled = this.busy;
+    $('quick-go').disabled = this.busy;
     $('mp-status').textContent = text || '';
+  }
+
+  /** How many seats a Quick Play game of the picked mode can have (Hardcore holds more). */
+  get quickMax() {
+    return (this.quick.mode !== 'versus' && DIFFICULTIES[this.playMode]?.maxPlayers) || MP.maxRoomPlayers;
+  }
+
+  /** The Quick Play card: what it would play, and the seat and bot counters (kept in range). */
+  renderQuick() {
+    const q = this.quick;
+    q.seats = Math.max(q.mode === 'versus' ? VERSUS.minPlayers : 1, Math.min(this.quickMax, q.seats));
+    q.bots = Math.max(0, Math.min(q.seats - 1, q.bots));
+    mark($('quick-mode'), 'qmode', q.mode);
+    $('quick-seats').textContent = q.seats;
+    $('quick-bots').textContent = q.bots;
+    const d = difficulty(this.playMode);
+    const m = mapDef(d.map ?? this.map);
+    const humans = q.seats - q.bots;
+    $('quick-sub').innerHTML = `${q.mode === 'versus' ? '⚔ Versus' : `${d.icon} ${esc(d.name)}`} · ${esc(m.name)} · <b>${q.seats}</b> seat${q.seats === 1 ? '' : 's'}: up to ${humans} player${humans === 1 ? '' : 's'}${q.bots ? ` + ${q.bots} bot${q.bots === 1 ? '' : 's'}` : ''}${q.mode === 'versus' && q.bots ? ' (bots fight for their own base)' : ''}`;
   }
 
   startNetGame(msg) {
@@ -551,17 +611,23 @@ export class Lobby {
     this.previewMap((r.mode !== 'versus' && difficulty(r.difficulty).map) || r.map);
     const me = this.net.id;
     const isHost = r.host === me;
-    $('room-title').textContent = r.name;
-    $('room-sub').innerHTML = `Room code <b class="room-code">${esc(r.code)}</b> <button class="btn small" data-copy="${esc(r.code)}">Copy</button> · ${r.members.length}/${r.max} players${isHost ? ' · You are hosting: keep this tab open' : ''}`;
+    $('room-title').textContent = r.quick ? `⚡ ${r.name}` : r.name;
+    const humans = r.members.filter((m) => !m.bot).length;
+    $('room-sub').innerHTML = `Room code <b class="room-code">${esc(r.code)}</b> <button class="btn small" data-copy="${esc(r.code)}">Copy</button> · ${humans}/${r.seats - r.bots} players${r.bots ? ` + ${r.bots} bot${r.bots === 1 ? '' : 's'}` : ''}${r.quick ? ' · Quick Play: others can join until the game starts' : ''}${isHost ? ' · You are hosting: keep this tab open' : ''}`;
     $('room-players').innerHTML = r.members
       .map(
         (m) => `<div class="member">
           <span><span class="dot" style="background:${hex(m.color)}"></span>${m.id === r.host ? '<span class="crown">★</span> ' : ''}${esc(m.name)}${m.id === me ? ' <small>(you)</small>' : ''}</span>
-          <span>${m.id === r.host ? '<span class="tag host">Host</span>' : m.ready ? '<span class="tag ready">Ready</span>' : '<span class="tag">Not ready</span>'}
-          ${isHost && m.id !== me ? `<button class="btn small red" data-kick="${m.id}">✕</button>` : ''}</span>
+          <span>${m.bot ? '<span class="tag bot">Bot</span>' : m.id === r.host ? '<span class="tag host">Host</span>' : m.ready ? '<span class="tag ready">Ready</span>' : '<span class="tag">Not ready</span>'}
+          ${isHost && m.id !== me ? `<button class="btn small red" ${m.bot ? 'data-unbot="1"' : `data-kick="${m.id}"`} title="${m.bot ? 'Remove this bot' : 'Kick'}">✕</button>` : ''}</span>
         </div>`,
       )
       .join('');
+    // Seats (players and bots together) and how many bots take them: the host picks.
+    const seatBtn = (attr, d) => `<button class="btn small" data-${attr}="${d}">${d < 0 ? '−' : '+'}</button>`;
+    $('room-seats').innerHTML = isHost
+      ? `<span>Seats: ${seatBtn('seats', -1)} <b>${r.seats}</b> ${seatBtn('seats', 1)}</span> <span>🤖 Bots: ${seatBtn('bots', -1)} <b>${r.bots}</b> ${seatBtn('bots', 1)}</span> <span class="hint">Bots take the seats nobody fills.</span>`
+      : `<span>Seats: <b>${r.seats}</b> · 🤖 Bots: <b>${r.bots}</b></span>`;
     const versus = r.mode === 'versus';
     $('room-mode').innerHTML = isHost
       ? `<span>Mode:</span>

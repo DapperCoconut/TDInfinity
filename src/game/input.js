@@ -43,6 +43,12 @@ export class GameInput {
       const type = slot && this.loadout[Number(slot[1]) - 1];
       if (type) this.placing === type ? this.cancelPlace() : this.beginPlace(type);
       if (e.code === 'Escape' || e.code === 'KeyQ') {
+        this.ui.hideWheel();
+        if (this.ordering) {
+          this.ordering = null;
+          this.ring.visible = false;
+          return;
+        }
         if (this.aiming) {
           this.stopAim(); // just stop aiming, keep the tower selected
           return;
@@ -73,12 +79,16 @@ export class GameInput {
     window.addEventListener('blur', () => this.keys.clear());
 
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    let rightDown = null;
     canvas.addEventListener('mousedown', (e) => {
       if (this.fps) {
         if (e.button === 0) this.setFpsFire(true);
         return;
       }
-      if (e.button === 2) rotating = true;
+      if (e.button === 2) {
+        rotating = true;
+        rightDown = { x: e.clientX, y: e.clientY };
+      }
       if (e.button === 0) leftDown = { x: e.clientX, y: e.clientY };
     });
     window.addEventListener('mouseup', (e) => {
@@ -87,7 +97,12 @@ export class GameInput {
         leftDown = null;
         return;
       }
-      if (e.button === 2) rotating = false;
+      if (e.button === 2) {
+        rotating = false;
+        // A right-click without dragging (dragging turns the camera) opens the order wheel.
+        if (rightDown && Math.hypot(e.clientX - rightDown.x, e.clientY - rightDown.y) < 6) this.openWheel(e.clientX, e.clientY);
+        rightDown = null;
+      }
       if (e.button === 0 && leftDown) {
         const moved = Math.hypot(e.clientX - leftDown.x, e.clientY - leftDown.y);
         leftDown = null;
@@ -156,6 +171,7 @@ export class GameInput {
     // Beholder time bombs: clicking one defuses it (even while placing or aiming).
     const bomb = this.pickBomb();
     if (bomb != null) return this.session.send({ a: 'defuse', id: bomb });
+    if (this.ordering) return this.tryOrder();
     if (this.placing) return this.tryPlace();
     if (this.aiming) return this.tryAim();
     const hit = this.pickAny();
@@ -351,6 +367,13 @@ export class GameInput {
   }
 
   updateGhost() {
+    if (this.ordering) {
+      // "Move it…": a blue ring follows the mouse until the spot is clicked.
+      this.pickGround();
+      if (this.hasGround) this.showRing(this.groundHit.x, this.groundHit.z, 4, 0x29b6f6);
+      else this.ring.visible = false;
+      return;
+    }
     const a = this.aiming;
     if (a?.key === 'clone') {
       // Hologram Tower: nothing to show until a tower is picked, then a see-through cyan copy.
