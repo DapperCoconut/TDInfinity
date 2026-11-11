@@ -583,5 +583,5 @@ export function setOpacity(h, opacity) {
 
 /** Tints every material (0 = back to normal: glowing parts keep their glow). */
 export function setEmissive(h, hex) {
-  for (const m of h.mats) m.emissive.setHex(hex || m.userData.glow || 0);
+  for (const m of h.mats) m.emissive?.setHex(hex || m.userData.glow || 0); // golden mist and stars have no glow colour to set
 }
