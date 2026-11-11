@@ -273,7 +273,15 @@ export class Net {
     link.send = (msg) => {
       if (link.conn?.open) link.conn.send(msg);
     };
-    link.timer = setTimeout(() => this.link === link && this.fail(peerError('peer-unavailable')), JOIN_TIMEOUT);
+    link.timer = setTimeout(() => {
+      if (this.link !== link) return;
+      // Quick Play: a host we can't reach (a firewall, a tab that just closed) isn't the end: try the next slot.
+      if (quick) {
+        this.teardown();
+        return this.quick(quick, quick.slot + 1);
+      }
+      this.fail(peerError('peer-unavailable'));
+    }, JOIN_TIMEOUT);
 
     peer.on('open', () => {
       if (this.link !== link) return;

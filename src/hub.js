@@ -283,8 +283,8 @@ export function createHub(timers = {}) {
       if (c.room) return error(c, 'You are already in a room');
       if (r.state !== 'lobby') return error(c, 'That room is already playing');
       if (r.members.length + r.bots.length >= roomSeats(r)) return error(c, 'That room is full');
-      addToRoom(r, c);
       if (r.quick) r.ready.add(c.id); // Quick Play: no readying up, the host starts when they like
+      addToRoom(r, c);
       broadcastRoom(r, { type: 'chat', system: true, text: `${c.name} joined` });
     },
     /** The host sets how many bots play (they take the room's spare seats). */
