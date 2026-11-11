@@ -18,6 +18,7 @@ GitHub Pages by `.github/workflows/deploy.yml` on every push to `main`, so **a p
   - `data` waves name real enemies, modes name real bosses / unlocks / maps, no NaN in the tables
   - `towers` places all ~715 tower types in the real Sim, walks both upgrade paths, fires every ability
   - `modes` plays every mode to its last wave with an unkillable base
+  - `bots` three bots play the first minutes of every mode and Versus through the hub, taking orders
   - `models` builds every tower model at every level, every enemy, every summoned unit
   - Narrow it while iterating: `node tools/check.mjs towers scout` (0.2 s), `node tools/check.mjs modes void`,
     `node tools/check.mjs models data` (sections and/or a key filter).
@@ -27,6 +28,8 @@ GitHub Pages by `.github/workflows/deploy.yml` on every push to `main`, so **a p
   `visuals-3-vfx-menu`), so take one only when the look is the point of the change.
 - **Balance:** `node tools/balance/bench.mjs [tower]` (measured DPS per level), `play.mjs <mode>` (one
   bot game), `sweep.mjs`, `table.mjs` (money per wave). Music: `node tools/music/check.mjs`.
+- **Bots:** `node tools/balance/bots.mjs <mode> bots=3 v=1` plays a game with the real bot teammates
+  (`src/bot/`), headless, and prints what they built and how far they got.
 
 ## Where things live
 
@@ -57,8 +60,13 @@ Game logic (no three.js, no DOM; runs in the browser and in Node):
   key: search for the key name. A new Sim method goes in the part file that fits (or a new part
   class added to the list at the bottom of `sim.js`).
 - `src/sim/versus.js`: PVP lanes, one `Sim` per player.
-- `src/hub.js` (rooms + one authoritative Sim), `src/net.js` (PeerJS), `src/session.js` (solo vs net),
-  `server/index.js` (optional WebSocket host).
+- `src/hub.js` (rooms with seats and bot slots + one authoritative Sim; bots play through it),
+  `src/net.js` (PeerJS; Quick Play finds or opens a game at the well-known codes `QEASY1`,
+  `QEASY2`... with no server), `src/session.js` (solo vs net), `server/index.js` (optional WebSocket host).
+- `src/bot/`: bot teammates. `bot.js` (the brain: walks to where it builds, buys what sees the
+  most track, support where it boosts most, farms away from the track, abilities, skips, orders
+  from the wheel), `loadouts.js` (six towers per mode and role), `value.js` (tower DPS, what the
+  next waves bring), `spots.js` (where to build, where a bot may walk).
 
 Drawing (three.js):
 
@@ -81,7 +89,7 @@ Drawing (three.js):
 
 Screens and UI: `src/game.js` (class `GameClient`: start / stop, the frame loop; its other methods are
 in `src/game/`, put on the class the same way as Sim's: `events.js` has `handleEvents`, one `case` per
-sim event, `view.js` the HUD and camera, `input.js` mouse, keys and placing, `towers.js` the selected
+sim event, `view.js` the HUD and camera, `input.js` mouse, keys and placing, `wheel.js` the right-click order wheel (orders bots obey), `towers.js` the selected
 tower, abilities and first-person mode), `src/ui.js` (HUD), `src/stats.js` /
 `src/substats.js` / `src/text.js` (stat and description text), `src/lobby.js` (menus), `src/loadout.js`
 (shop), `src/icons.js` (portraits), `src/profile.js` (saved progress), `src/style.css`, `index.html`.
