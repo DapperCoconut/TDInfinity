@@ -1,14 +1,14 @@
 // Tower models, file 9 of 12. Each makeX(level) builds one tower's look.
 // In here:
-// Elf, Hallowboomer, Graveyard, Sleeter, Snowballer, Huntsman, Archer, Knifer, Stunner,
+// Elf, Hallowboomer, Sleeter, Snowballer, Huntsman, Archer, Knifer, Stunner,
 // Harpoon Hunter, Operator, Breacher, Kingpin, Titan, Gladiator, Event Commando, Slasher,
 // Frost Blaster, Flame Trooper, Goo Gunner, Cryo Blaster, Cryo Mortar, Bowmaster, Swarmer,
-// Toxic Gunner, Sledger, Executioner.
+// Toxic Gunner, Sledger, Executioner. (Graveyard: machines3.js.)
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
 
 import * as THREE from 'three';
 import { boxGeo, makeHumanoid, part } from './kit.js';
-import { glow, goldify, helmet, holdLongGun, makeThing, present, pumpkin, setMuzzle } from './bits.js';
+import { glow, goldify, helmet, holdLongGun, present, pumpkin, setMuzzle } from './bits.js';
 import { makeScout } from './towers01.js';
 import { makeShotgunner } from './towers02.js';
 import { makeCrookBoss } from './towers06.js';
@@ -116,58 +116,6 @@ export function makeHallowboomer(level) {
   h.swing = 1.9;
   h.projectile = { color: spooky ? 0x76ff03 : 0xef6c00, size: level >= 2 ? 0.7 : 0.55, arc: 5, glowing: true };
   return h;
-}
-
-/**
- * Graveyard (event spawner): a fenced patch of graves. Lv 2 more gravestones, Lv 3 a giant
- * cracked tomb, Lv 4 a crypt with glowing windows, Lv 5 a dead tree and Jack's throne-tomb.
- */
-export function makeGraveyard(level) {
-  const u = makeThing();
-  const { M } = u;
-  const dirt = M(0x4e342e);
-  const stone = M(level >= 4 ? 0x455a64 : 0x9e9e9e);
-  const iron = M(0x212121);
-  part(u.body, boxGeo(4.4, 0.3, 4.4), dirt, 0, 0.15, 0);
-  // Iron fence posts around the edge, with a gap at the front
-  for (let i = -2; i <= 2; i++) {
-    for (const [x, z] of [[i, -2.1], [-2.1, i], [2.1, i]]) part(u.body, boxGeo(0.12, 1.2, 0.12), iron, x, 0.9, z);
-    if (Math.abs(i) === 2) part(u.body, boxGeo(0.12, 1.2, 0.12), iron, i, 0.9, 2.1);
-  }
-  for (const [x, z, w, d] of [[0, -2.1, 4.2, 0.08], [-2.1, 0, 0.08, 4.2], [2.1, 0, 0.08, 4.2]]) part(u.body, boxGeo(w, 0.08, d), iron, x, 1.3, z);
-  const stones = [[-1.0, 0.6], [1.0, 0.6]];
-  if (level >= 1) stones.push([-1.0, -0.6], [1.0, -0.6]);
-  for (const [x, z] of stones) {
-    part(u.body, boxGeo(0.8, 1.1, 0.25), stone, x, 0.85, z);
-    part(u.body, boxGeo(0.8, 0.1, 1.1), M(0x3e2723), x, 0.32, z + 0.6); // mound
-  }
-  if (level >= 2) {
-    // Giant Skeleton: a big cracked tomb in the middle
-    part(u.body, boxGeo(1.4, 0.8, 2.2), stone, 0, 0.7, 0.2);
-    part(u.body, boxGeo(0.1, 0.82, 1.4), iron, 0.2, 0.71, 0.3).rotation.y = 0.4; // crack
-    part(u.body, boxGeo(0.3, 1.3, 0.3), M(0xe8e4d0), -0.3, 1.2, 1.0).rotation.z = 0.5; // bony hand
-  }
-  if (level >= 3) {
-    // Fallen Warriors: a small crypt at the back with glowing windows and a sword in the ground
-    part(u.body, boxGeo(2.4, 2.0, 1.2), stone, 0, 1.3, -1.4);
-    part(u.body, boxGeo(2.7, 0.4, 1.5), M(0x37474f), 0, 2.5, -1.4);
-    for (const x of [-0.6, 0.6]) part(u.body, boxGeo(0.35, 0.6, 0.05), glow(u, 0x76ff03), x, 1.5, -0.78);
-    part(u.body, boxGeo(0.15, 1.6, 0.08), M(0xb0bec5), 1.6, 1.0, 1.6);
-    part(u.body, boxGeo(0.6, 0.12, 0.1), M(0x5d4037), 1.6, 1.4, 1.6);
-  }
-  if (level >= 4) {
-    // Return of the King: a dead tree and a crowned skull above the crypt
-    const bark = M(0x3e2723);
-    part(u.body, boxGeo(0.4, 3.8, 0.4), bark, -1.6, 2.2, 1.4);
-    part(u.body, boxGeo(1.4, 0.25, 0.25), bark, -1.1, 3.5, 1.4).rotation.z = 0.5;
-    part(u.body, boxGeo(0.25, 1.2, 0.25), bark, -2.0, 3.6, 1.4).rotation.z = 0.6;
-    part(u.body, boxGeo(0.9, 0.9, 0.9), M(0xe8e4d0), 0, 3.2, -1.4);
-    for (const x of [-0.2, 0.2]) part(u.body, boxGeo(0.2, 0.2, 0.05), glow(u, 0x76ff03), x, 3.25, -0.94);
-    const gold = M(0xffc107);
-    part(u.body, boxGeo(1.0, 0.25, 1.0), gold, 0, 3.75, -1.4);
-    for (const x of [-0.35, 0, 0.35]) part(u.body, boxGeo(0.18, 0.35, 0.18), gold, x, 4.0, -1.0);
-  }
-  return u;
 }
 
 /** A glowing ice gun for the Sleeter (len long). */

@@ -1,12 +1,11 @@
 // Tower models, file 8 of 12. Each makeX(level) builds one tower's look.
 // In here:
-// Patrol Boat, Ghost, Toxicnator, Saboteur, Paintballer. (Sentry, AA Turret and Tesla: machines1.js.)
+// Ghost, Toxicnator, Saboteur, Paintballer. (Sentry, AA Turret and Tesla: machines1.js; Patrol Boat: machines3.js.)
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
 
 import * as THREE from 'three';
-import { TOWERS } from '../config.js';
 import { boxGeo, makeHumanoid, part } from './kit.js';
-import { glow, glowThing, gunMuzzle, holdLongGun, makeThing } from './bits.js';
+import { glow, holdLongGun } from './bits.js';
 
 /** Spinning minigun barrels along +Z inside `parent`; returns the spinning group. */
 export function miniBarrels(u, parent, x, y, z, len, n, r, mat) {
@@ -25,99 +24,6 @@ export function miniBarrels(u, parent, x, y, z, len, n, r, mat) {
 }
 
 
-
-/**
- * Patrol Boat: a grey gunboat floating on the water, facing +Z. Top path: Lv 1 an ammo box,
- * Lv 2 a RHIB with orange inflatable sides, Lv 3 the bigger Attack Boat with an explosive cannon,
- * Lv 4 twin cannons, Lv 5 Hellfire missile pods on the cabin. Bottom path: Lv 1 a scoped Smart Gun,
- * Lv 2 cooling jackets on the barrel, Lv 3 a flamethrower with a fuel tank, Lv 4 the armored
- * Monitor, Lv 5 twin flame nozzles fed by big glowing Flame Tanks.
- */
-export function makePatrolBoat(level, bottom = false) {
-  const u = makeThing();
-  const { M } = u;
-  const top = !bottom;
-  const big = level >= 3; // Attack Boat / Flamethrower and up have a bigger hull
-  const monitor = bottom && level >= 4;
-  const hullC = M(monitor ? 0x37474f : top && level >= 3 ? 0x546e7a : 0x78909c);
-  const deck = M(monitor ? 0x455a64 : 0x9e9e9e);
-  const dark = M(0x212121);
-  const white = M(0xeceff1);
-  const L = big ? 5 : 4.2; // hull length
-  const W = big ? 2.5 : 2.1;
-  // Hull: a long box with a pointed bow (two angled boxes) and a dark waterline stripe.
-  part(u.body, boxGeo(W, 0.8, L), hullC, 0, 0.1, -0.3);
-  part(u.body, boxGeo(W + 0.04, 0.18, L + 0.02), dark, 0, -0.2, -0.3);
-  for (const side of [-1, 1]) {
-    const b = part(u.body, boxGeo(W * 0.72, 0.8, 1.3), hullC, side * W * 0.18, 0.1, L / 2 + 0.2);
-    b.rotation.y = side * 0.5;
-  }
-  part(u.body, boxGeo(W - 0.3, 0.1, L - 0.4), deck, 0, 0.55, -0.3);
-  // RHIB+: orange inflatable tubes along both sides.
-  if (top && level === 2) for (const side of [-1, 1]) part(u.body, boxGeo(0.45, 0.45, L - 0.4), M(0xff7043), side * (W / 2 + 0.15), 0.3, -0.3);
-  // Monitor: armor plates along the sides.
-  if (monitor) for (const side of [-1, 1]) part(u.body, boxGeo(0.25, 0.7, L - 0.8), M(0x263238), side * (W / 2 + 0.1), 0.4, -0.3);
-  // Cabin at the back with windows.
-  const cabH = big ? 1.3 : 1.0;
-  part(u.body, boxGeo(W - 0.6, cabH, 1.6), monitor ? M(0x455a64) : white, 0, 0.6 + cabH / 2, -L / 2 + 0.6);
-  part(u.body, boxGeo(W - 0.5, 0.3, 0.08), M(0x4fc3f7), 0, 0.6 + cabH * 0.7, -L / 2 + 1.42);
-  part(u.body, boxGeo(0.1, 0.9, 0.1), dark, 0, 0.6 + cabH + 0.45, -L / 2 + 0.4); // radio mast
-  // Gun mount on the bow, on a turret group that holds the weapons.
-  const head = new THREE.Group();
-  head.position.set(0, 0.6, big ? 1.1 : 0.9);
-  u.body.add(head);
-  part(head, boxGeo(1.0, 0.35, 1.0), dark, 0, 0.18, 0);
-  const flames = bottom && level >= 3;
-  if (flames) {
-    // Flamethrower: nozzles on the bow fed by fuel tanks behind them.
-    const tanks = level >= 5;
-    const tankMat = tanks ? glowThing(u, 0xff6d00) : M(0xc62828);
-    const nozzles = tanks ? [-0.4, 0.4] : [0];
-    for (const x of nozzles) {
-      part(head, boxGeo(0.35, 0.35, 1.6), M(0x424242), x, 0.55, 0.7);
-      part(head, boxGeo(0.5, 0.5, 0.3), dark, x, 0.55, 1.55);
-      gunMuzzle(u, head, x, 0.55, 1.75);
-    }
-    const tankXs = tanks ? [-0.7, 0.7] : [0];
-    for (const x of tankXs) {
-      const r = tanks ? 0.55 : 0.4;
-      const t = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 1.4, 10), tankMat);
-      t.rotation.x = Math.PI / 2;
-      t.position.set(x, 0.6 + r, -1.0);
-      t.castShadow = true;
-      head.add(t);
-    }
-    u.tracer = 0xff7043;
-  } else {
-    const cannon = top && level >= 3;
-    const xs = top && level >= 4 ? [-0.35, 0.35] : [0];
-    const bw = cannon ? 0.3 : 0.18;
-    const len = cannon ? 2.0 : 1.6;
-    part(head, boxGeo(xs.length > 1 ? 1.2 : 0.7, 0.55, 0.8), M(0x37474f), 0, 0.6, 0); // gun housing
-    for (const x of xs) {
-      part(head, boxGeo(bw, bw, len), dark, x, 0.65, 0.4 + len / 2);
-      // Cooling Barrels: ribbed jackets along the barrel.
-      if (bottom && level >= 2) for (let i = 0; i < 3; i++) part(head, boxGeo(bw + 0.14, bw + 0.14, 0.18), M(0x90a4ae), x, 0.65, 0.7 + i * 0.4);
-      gunMuzzle(u, head, x, 0.65, 0.5 + len);
-    }
-    if (bottom && level >= 1) part(head, boxGeo(0.16, 0.2, 0.7), dark, 0, 1.0, 0.3); // Smart Gun scope
-    if (top && level >= 1) part(head, boxGeo(0.6, 0.45, 0.5), M(0x556b2f), -0.7, 0.4, -0.2); // ammo box
-    u.tracer = cannon ? 0xffab40 : 0xffe082;
-    u.projectile = { color: 0xeceff1, size: 0.45 };
-  }
-  // Hellfire Missiles: a missile pod on each side of the cabin.
-  if (top && level >= 5) {
-    for (const side of [-1, 1]) {
-      const pod = part(u.body, boxGeo(0.6, 0.6, 1.4), M(0x37474f), side * (W / 2 - 0.1), 0.6 + cabH + 0.1, -L / 2 + 0.7);
-      pod.rotation.x = -0.25;
-      for (const y of [-0.13, 0.13]) part(u.body, boxGeo(0.18, 0.18, 0.1), M(0xe53935), side * (W / 2 - 0.1), 0.6 + cabH + 0.1 + y, -L / 2 + 1.45);
-    }
-  }
-  u.static = true;
-  u.bob = 0.08; // rocks gently on the water
-  return u;
-}
-export const makePatrolBoatBottom = (level) => makePatrolBoat(level, true);
 
 /**
  * Ghost: a stealth operative in dark gear with a compact SMG. Top path: Lv 1 green eye-sensor

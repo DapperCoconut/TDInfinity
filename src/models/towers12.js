@@ -1,7 +1,7 @@
 // Tower models, file 12 of 12. Each makeX(level) builds one tower's look.
 // In here:
-// Void Traitor, MLRS, Psycho Slayer, Bubble Blower, Scarecrow, Darter, Firecracker, Quarterer,
-// Penetrator.
+// Void Traitor, Psycho Slayer, Bubble Blower, Scarecrow, Darter, Firecracker, Quarterer,
+// Penetrator. (MLRS: machines3.js.)
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
 
 import * as THREE from 'three';
@@ -61,54 +61,6 @@ export function makeVoidTraitor(level) {
 }
 
 // ---------------------------------------------------------------- event towers (wave 5)
-
-/**
- * MLRS (event): a six-wheeled rocket truck with a launcher box on the back that tilts up. Lv 1 a
- * second pod (12 tubes), Lv 2 a radar dish, Lv 3 red-tipped Heavy Missiles, Lv 4 a second radar,
- * Lv 5 Freedom Time: navy paint with red and white stripes and a star.
- */
-export function makeMLRS(level) {
-  const u = makeThing();
-  const { M } = u;
-  const free = level >= 5;
-  const paint = M(free ? 0x1a237e : 0x556b2f);
-  const dark = M(0x212121);
-  const steel = M(0x37474f);
-  part(u.body, boxGeo(3.0, 0.7, 7.4), steel, 0, 1.2, 0); // chassis
-  for (const z of [-2.4, -0.6, 2.4]) for (const x of [-1.55, 1.55]) part(u.body, boxGeo(0.6, 1.3, 1.3), dark, x, 0.65, z); // wheels
-  part(u.body, boxGeo(2.9, 2.0, 2.0), paint, 0, 2.5, 2.6); // cab
-  part(u.body, boxGeo(2.6, 0.8, 0.08), M(0x90caf9), 0, 2.9, 3.62); // windshield
-  for (const x of [-0.9, 0.9]) part(u.body, boxGeo(0.4, 0.25, 0.08), glow(u, 0xfff59d), x, 1.9, 3.62); // headlights
-  // The launcher: a box of tubes on a turntable, tilted up toward the sky.
-  const pod = new THREE.Group();
-  pod.position.set(0, 2.0, -1.4);
-  pod.rotation.x = -0.6;
-  u.body.add(pod);
-  const pods = level >= 1 ? [-0.75, 0.75] : [0];
-  const tip = level >= 3 ? glow(u, 0xff3d00) : M(0x111111);
-  for (const x of pods) {
-    part(pod, boxGeo(1.4, 1.1, 3.6), paint, x, 0.6, 0);
-    for (let c = 0; c < 3; c++) for (let r = 0; r < 2; r++) part(pod, boxGeo(0.32, 0.32, 0.1), tip, x - 0.4 + c * 0.4, 0.35 + r * 0.5, 1.82);
-  }
-  if (free) {
-    // Freedom Time: red and white stripes down the pods and a white star.
-    for (const x of pods) for (let i = 0; i < 3; i++) part(pod, boxGeo(1.42, 0.12, 3.62), M(i % 2 ? 0xffffff : 0xd50000), x, 0.85 + i * 0.13, 0);
-    part(u.body, boxGeo(0.7, 0.7, 0.08), M(0xffffff), 0, 3.0, 1.58);
-  }
-  const radar = (x) => {
-    part(u.body, boxGeo(0.15, 1.4, 0.15), steel, x, 4.2, 2.2);
-    const dish = part(u.body, boxGeo(1.1, 1.1, 0.12), M(0xcfd8dc), x, 5.0, 2.2);
-    dish.rotation.x = -0.5;
-    part(u.body, boxGeo(0.2, 0.2, 0.2), glow(u, 0xff1744), x, 5.0, 2.32);
-  };
-  if (level >= 2) radar(level >= 4 ? -0.8 : 0);
-  if (level >= 4) radar(0.8);
-  setMuzzle(u, pod, 0, 0.6, 2.0);
-  u.height = level >= 2 ? 5.5 : 4;
-  u.projectile = { color: free ? 0xff1744 : 0xeceff1, size: level >= 3 ? 0.55 : 0.4, arc: 8 };
-  u.tracer = 0xff7043;
-  return u;
-}
 
 /**
  * Psycho Slayer (alternate event Commando form): a huge armored warrior with a Bolter gun and a

@@ -1,12 +1,14 @@
 // Tower models, file 6 of 12. Each makeX(level) builds one tower's look.
 // In here:
-// Crook Boss, Minigunner, Ranger, Helicopter, Cryo Heli, Mobster, Mortar Classic.
-// (Pursuit, the helicopter makeHeli, the factories and Merc Base moved to machines2.js.)
+// Crook Boss, Minigunner, Ranger, Helicopter, Mobster, Mortar Classic.
+// (Pursuit, the helicopter makeHeli, the factories and Merc Base moved to machines2.js; Cryo Heli to machines3.js.)
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
 
 import * as THREE from 'three';
 import { boxGeo, makeHumanoid, part } from './kit.js';
-import { addPistol, addTommyGun, fedora, glow, glowThing, gunMuzzle, helmet, holdLongGun, makeThing, setMuzzle, suit } from './bits.js';
+import {
+  addPistol, addTommyGun, fedora, glow, glowThing, helmet, holdLongGun, makeThing, setMuzzle, suit,
+} from './bits.js';
 import { makeHeli } from './machines2.js';
 
 /**
@@ -223,36 +225,6 @@ export function makeHelicopterModel(level, bottom) {
 }
 export const makeHelicopter = (level) => makeHelicopterModel(level, false);
 
-/**
- * Cryo Helicopter (event): a frosty helipad with an ice tank, plus a white-and-blue helicopter.
- * Lv 3 Cryo Missile pods (from makeHeli), Lv 4 a sensor ball and more pods, Lv 5 the big Mi-Ice
- * Hind with four rotor blades and glowing ice-blue trim.
- */
-export function makeCryoHeli(level) {
-  const u = makeThing();
-  const { M } = u;
-  const ice = 0x80d8ff;
-  part(u.body, boxGeo(4.4, 0.3, 4.4), M(0xcfd8dc), 0, 0.15, 0); // frosted pad
-  part(u.body, boxGeo(3.6, 0.04, 3.6), M(0xe1f5fe), 0, 0.31, 0);
-  const blue = M(0x0288d1);
-  part(u.body, boxGeo(0.35, 0.05, 2.0), blue, -0.6, 0.34, 0); // the "H"
-  part(u.body, boxGeo(0.35, 0.05, 2.0), blue, 0.6, 0.34, 0);
-  part(u.body, boxGeo(0.9, 0.05, 0.35), blue, 0, 0.34, 0);
-  for (const [x, z] of [[-2, -2], [2, -2], [-2, 2], [2, 2]]) part(u.body, boxGeo(0.25, 0.25, 0.25), glowThing(u, ice), x, 0.45, z);
-  part(u.body, boxGeo(0.9, 1.6, 0.9), M(0xb0bec5), 1.8, 1.1, -1.8); // coolant tank
-  part(u.body, boxGeo(0.6, 1.0, 0.1), glowThing(u, ice), 1.8, 1.1, -1.33);
-  if (level >= 3) for (const z of [1.3, 1.9]) part(u.body, boxGeo(1.0, 0.45, 0.5), M(0x90a4ae), -1.7, 0.5, z); // missile crates
-  const big = level >= 5;
-  const { heli, muzzles } = makeHeli(u, level, true, { color: big ? 0x01579b : 0xeceff1, trim: big ? 0x40c4ff : 0x0288d1 });
-  u.plane = heli;
-  u.heli = true;
-  u.muzzles = muzzles;
-  u.spin = u.spin ?? null;
-  u.flyHeight = 13;
-  u.tracer = ice;
-  u.tracerWidth = 0.35;
-  return u;
-}
 export const makeHelicopterBottom = (level) => makeHelicopterModel(level, true);
 
 /**

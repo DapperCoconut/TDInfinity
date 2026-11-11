@@ -1,134 +1,13 @@
 // Tower models, file 10 of 12. Each makeX(level) builds one tower's look.
 // In here:
-// Elf Camp, Relic, Jester, Cryomancer, Hallow Punk, Harvester, Snowballer Frost, Elementalist,
-// Firework Tech, Biologist, Warlock, Spotlight Tech, Star Cannon, Artillery, Shock Trooper,
-// Ice Breaker.
+// Jester, Cryomancer, Hallow Punk, Harvester, Snowballer Frost, Elementalist, Firework Tech,
+// Biologist, Warlock, Spotlight Tech, Artillery, Shock Trooper, Ice Breaker.
+// (Elf Camp, Relic and Star Cannon: machines3.js.)
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
 
 import * as THREE from 'three';
 import { boxGeo, makeHumanoid, part } from './kit.js';
-import { boxRow, glow, gunMuzzle, helmet, holdLongGun, inHand, makeThing, present, pumpkin, setMuzzle } from './bits.js';
-
-/**
- * Elf Camp (event). Lv 1 a striped tent; Lv 2 a snow fort and a snowman; Lv 3 a log workshop with
- * a toy cannon; Lv 4 a gingerbread cookie factory with a smoking chimney and a lookout; Lv 5 a red
- * and gold toy fortress with towers, a present mountain, lights and a giant star.
- */
-export function makeElfCamp(level) {
-  const u = makeThing();
-  const { M } = u;
-  const snow = M(0xf5f9ff);
-  const red = M(0xc62828);
-  const green = M(0x2e7d32);
-  const gold = M(0xffc107);
-  part(u.body, boxGeo(4.6, 0.3, 4.6), level >= 4 ? M(0xe3f2fd) : snow, 0, 0.15, 0);
-  if (level === 0) {
-    // A striped tent
-    for (const side of [-1, 1]) {
-      const wall = part(u.body, boxGeo(0.15, 2.4, 2.6), side < 0 ? red : green, side * 0.75, 1.2, -0.4);
-      wall.rotation.z = side * 0.55;
-    }
-    part(u.body, boxGeo(0.25, 0.25, 2.8), gold, 0, 2.25, -0.4);
-    part(u.body, boxGeo(0.8, 1.0, 0.1), M(0x4e342e), 0, 0.7, 0.85);
-  } else if (level <= 2) {
-    // Log cabin (Lv 3: a workshop with a red roof)
-    const wood = M(level >= 2 ? 0x8d5524 : 0xa1887f);
-    part(u.body, boxGeo(2.6, 1.8, 2.0), wood, 0, 1.2, -0.6);
-    for (const side of [-1, 1]) part(u.body, boxGeo(1.6, 0.25, 2.3), level >= 2 ? red : snow, side * 0.65, 2.4, -0.6).rotation.z = side * -0.6;
-    part(u.body, boxGeo(0.7, 1.1, 0.1), M(0x4e342e), 0, 0.85, 0.42);
-    part(u.body, boxGeo(0.5, 0.4, 0.08), glow(u, 0xffe082), 0.85, 1.4, 0.42);
-  } else {
-    // Lv 4: a gingerbread factory. Lv 5: a red and gold toy fortress.
-    const fort = level >= 4;
-    const wall = M(fort ? 0xb71c1c : 0xa0522d);
-    const trim = fort ? gold : snow;
-    part(u.body, boxGeo(3.4, 2.6, 2.4), wall, 0, 1.6, -0.8);
-    part(u.body, boxGeo(3.6, 0.3, 2.6), trim, 0, 3.0, -0.8);
-    boxRow(u.body, 5, 0.75, boxGeo(0.35, 0.4, 0.35), trim, 3.3, 0.35); // battlements / icing
-    part(u.body, boxGeo(1.0, 1.4, 0.1), M(0x4e342e), 0, 0.9, 0.42);
-    for (const x of [-1.1, 1.1]) part(u.body, boxGeo(0.6, 0.6, 0.08), glow(u, 0xffe082), x, 1.8, 0.42);
-    part(u.body, boxGeo(0.7, 1.6, 0.7), M(0x5d4037), 1.1, 3.8, -1.4); // chimney
-    part(u.body, boxGeo(0.5, 0.3, 0.5), glow(u, 0xff9100), 1.1, 4.7, -1.4); // oven glow
-    if (fort) {
-      for (const x of [-1.9, 1.9]) {
-        part(u.body, boxGeo(1.0, 4.4, 1.0), red, x, 2.2, -1.6); // towers
-        part(u.body, boxGeo(1.2, 0.3, 1.2), gold, x, 4.5, -1.6);
-        part(u.body, boxGeo(0.5, 0.9, 0.5), green, x, 5.1, -1.6);
-      }
-      part(u.body, boxGeo(0.2, 2.0, 0.2), gold, 0, 4.3, -0.8); // flagpole with a star
-      part(u.body, boxGeo(1.0, 1.0, 0.25), glow(u, 0xffea00), 0, 5.5, -0.8).rotation.z = Math.PI / 4;
-    } else {
-      part(u.body, boxGeo(0.25, 3.0, 0.25), M(0x8d5524), -1.9, 1.5, 1.6); // lookout post
-      part(u.body, boxGeo(1.0, 0.2, 1.0), M(0x8d5524), -1.9, 3.0, 1.6);
-    }
-  }
-  if (level >= 1) {
-    // Snow fort wall and a snowman
-    if (level < 4) boxRow(u.body, 4, 0.6, boxGeo(0.55, 0.55, 0.55), snow, 0.55, 1.9);
-    part(u.body, boxGeo(0.9, 0.9, 0.9), snow, 1.8, 0.75, 1.0);
-    part(u.body, boxGeo(0.6, 0.6, 0.6), snow, 1.8, 1.5, 1.0);
-    part(u.body, boxGeo(0.12, 0.12, 0.35), M(0xff7043), 1.8, 1.5, 1.4);
-    part(u.body, boxGeo(0.5, 0.4, 0.5), M(0x212121), 1.8, 1.95, 1.0);
-  }
-  if (level >= 2) {
-    // A toy cannon (Lv 4+: two)
-    for (const x of level >= 3 ? [-1.8, -0.9] : [-1.8]) {
-      part(u.body, boxGeo(0.7, 0.4, 0.7), M(0x5d4037), x, 0.5, 1.0);
-      part(u.body, boxGeo(0.35, 0.35, 1.1), M(level >= 3 ? 0xffc107 : 0x37474f), x, 0.85, 1.35).rotation.x = -0.3;
-    }
-  }
-  if (level >= 4) {
-    // A mountain of presents and Christmas lights
-    for (const [x, y, z, c, r, s] of [[-1.4, 0.65, 0.1, 0x1e88e5, 0xffeb3b, 0.9], [1.6, 0.6, 0.4, 0x43a047, 0xfafafa, 0.8], [-1.6, 1.4, 0.2, 0xd500f9, 0xffd54f, 0.6], [1.4, 1.25, 0.5, 0xffd54f, 0xc62828, 0.6]]) {
-      present(u, u.body, c, r, s).position.set(x, y, z);
-    }
-    for (let i = 0; i < 8; i++) part(u.body, boxGeo(0.18, 0.18, 0.18), glow(u, [0xff1744, 0x00e676, 0xffea00, 0x2979ff][i % 4]), -1.6 + i * 0.46, 2.75, 0.45);
-  }
-  gunMuzzle(u, u.body, 0, 1.0, 0.6);
-  u.tracer = 0xffffff;
-  return u;
-}
-
-/**
- * Relic (event). An ancient stone shrine with a floating relic crystal: Lv 1 a cracked altar,
- * Lv 2 armor plates, Lv 3 banners and pillars, Lv 4 a warden statue, Lv 5 a golden temple, and
- * Lv 6 a blazing sanctum with a huge orange crystal and a ring of fire runes.
- */
-export function makeRelic(level) {
-  const u = makeThing();
-  const { M } = u;
-  const stone = M(level >= 4 ? 0xd7ccc8 : 0x9e9e8e);
-  const dark = M(0x5d5a48);
-  const gold = M(0xffc107);
-  part(u.body, boxGeo(4.4, 0.5, 4.4), dark, 0, 0.25, 0);
-  part(u.body, boxGeo(2.6, 1.6, 2.6), stone, 0, 1.3, 0); // altar
-  if (level >= 1) for (const x of [-1.35, 1.35]) part(u.body, boxGeo(0.15, 1.2, 2.2), M(0x78909c), x, 1.3, 0); // armor plates
-  if (level >= 2) {
-    for (const [x, z] of [[-1.8, -1.8], [1.8, -1.8], [-1.8, 1.8], [1.8, 1.8]]) {
-      part(u.body, boxGeo(0.6, 3.2, 0.6), stone, x, 2.1, z); // pillars
-      if (level >= 4) part(u.body, boxGeo(0.8, 0.3, 0.8), gold, x, 3.8, z);
-    }
-    for (const x of [-1.8, 1.8]) part(u.body, boxGeo(0.08, 1.4, 0.9), M(0xc62828), x, 2.6, 1.3); // banners
-  }
-  if (level >= 3) {
-    // A small warden statue behind the altar
-    part(u.body, boxGeo(0.9, 2.0, 0.6), dark, 0, 3.1, -1.6);
-    part(u.body, boxGeo(0.6, 0.6, 0.6), dark, 0, 4.4, -1.6);
-    part(u.body, boxGeo(0.15, 2.6, 0.1), M(0x90a4ae), 0.7, 3.3, -1.4);
-  }
-  if (level >= 4) part(u.body, boxGeo(4.4, 0.3, 4.4), gold, 0, 4.1, 0); // temple roof ring
-  const color = level >= 5 ? 0xff6d00 : level >= 4 ? 0xffd740 : 0x40c4ff;
-  const size = 0.9 + level * 0.15;
-  const crystal = part(u.body, boxGeo(size, size * 1.6, size), glow(u, color), 0, 3.0 + level * 0.1, 0);
-  crystal.rotation.y = Math.PI / 4;
-  if (level >= 5) for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2;
-    part(u.body, boxGeo(0.4, 0.1, 0.4), glow(u, 0xff9100), Math.cos(a) * 2.6, 0.55, Math.sin(a) * 2.6); // fire runes
-  }
-  gunMuzzle(u, u.body, 0, 3.0, 0);
-  u.tracer = color;
-  return u;
-}
+import { boxRow, glow, helmet, holdLongGun, inHand, pumpkin, setMuzzle } from './bits.js';
 
 /**
  * Jester (event). Lv 1 purple and gold with a two-point hat; Lv 2 juggling balls and curled shoes;
@@ -685,60 +564,6 @@ export function makeSpotlightTech(level) {
   h.pose = { right: -1.4, left: -0.3, leftRecoil: 0 };
   h.spot = [0xfff8e1, 0xffe0b2, 0xffcc80, 0xffb74d, 0xffd740][level];
   return h;
-}
-
-/**
- * Star Cannon (event, cliff). Lv 1 a steel cannon on a turntable; Lv 2 solar battery packs and
- * panels; Lv 3 the Eclipsed Crew: a dark barrel with a sun-dish; Lv 4 Lunar Charges: deep blue with a
- * crescent moon and violet rings; Lv 5 Shot of the Century: a colossal gold barrel with capacitors
- * and a crown of stars.
- */
-export function makeStarCannon(level) {
-  const u = makeThing();
-  const { M } = u;
-  const steel = M([0x78909c, 0x607d8b, 0x263238, 0x1a237e, 0x0d0d2b][level]);
-  const gold = M(0xffc107);
-  const starC = [0xffd740, 0xffab00, 0xff6d00, 0xb388ff, 0xffffff][level];
-  const star = glow(u, starC);
-  part(u.body, boxGeo(4.6, 0.6, 4.6), M(0x37474f), 0, 0.3, 0);
-  part(u.body, boxGeo(3.2 + level * 0.2, 1.0, 3.2 + level * 0.2), steel, 0, 1.1, 0);
-  const len = 4 + level * 0.9;
-  const w = 1.4 + level * 0.25;
-  part(u.body, boxGeo(w, w, len), level >= 4 ? gold : steel, 0, 2.6, len / 2 - 1);
-  const rings = 2 + level;
-  for (let i = 0; i < rings; i++) part(u.body, boxGeo(w + 0.4, w + 0.4, 0.3), i === rings - 1 || i % 2 ? star : gold, 0, 2.6, 0.2 + i * (len / rings));
-  part(u.body, boxGeo(2.2, 0.4, 0.4), star, 0, 4.0, -0.8); // star emblem
-  part(u.body, boxGeo(0.4, 2.2, 0.4), star, 0, 4.0, -0.8);
-  if (level >= 1) {
-    for (const side of [-1, 1]) {
-      part(u.body, boxGeo(0.8, 1.2, 1.4), M(0x33691e), side * 1.9, 1.2, -1.2); // battery packs
-      part(u.body, boxGeo(0.82, 0.3, 1.42), glow(u, 0x76ff03), side * 1.9, 1.6, -1.2);
-    }
-    part(u.body, boxGeo(2.4, 0.1, 1.4), M(0x1a237e), 0, 3.0, -1.6).rotation.x = -0.6; // solar panel
-  }
-  if (level >= 2) {
-    const dish = part(u.body, boxGeo(2.6, 2.6, 0.2), M(0x212121), 0, 4.6, -2.0);
-    part(dish, boxGeo(1.6, 1.6, 0.1), glow(u, 0xff6d00), 0, 0, 0.12); // eclipse glow
-    part(dish, boxGeo(1.3, 1.3, 0.12), M(0x111111), 0, 0, 0.18);
-  }
-  if (level >= 3) {
-    // Crescent moon
-    for (let i = 0; i < 5; i++) {
-      const ang = -Math.PI / 2 + (i / 4) * Math.PI;
-      part(u.body, boxGeo(0.5, 0.5, 0.3), glow(u, 0xe1f5fe), Math.cos(ang) * 1.2 + 0.4, 6.2 + Math.sin(ang) * 1.2, -2.0);
-    }
-  }
-  if (level >= 4) {
-    for (const side of [-1, 1]) {
-      part(u.body, boxGeo(0.8, 3.2, 2.6), gold, side * 2.0, 2.6, -0.2); // capacitors
-      boxRow(u.body, 3, 0.8, boxGeo(0.2, 0.2, 0.2), star, 4.3, -0.2);
-    }
-    for (let i = 0; i < 5; i++) part(u.body, boxGeo(0.45, 0.45, 0.45), star, (i - 2) * 0.7, 3.3 + w / 2 + (i % 2) * 0.4, 0.4); // crown of stars
-  }
-  gunMuzzle(u, u.body, 0, 2.6, len - 0.9);
-  u.tracer = starC;
-  u.tracerWidth = 0.9 + level * 0.3;
-  return u;
 }
 
 /**
