@@ -149,14 +149,15 @@ export {
   makeWarlock,
 } from './models/towers10.js';
 import {
-  makeCombatDrone, makeCombatDroneBottom, makeCombatMedic, makeCombatMedicBottom, makeJetTrooper,
-  makeJetTrooperBottom, makeNoobTuber, makeOilDerrick, makeOilDerrickBottom, makeRefractor, makeRefractorBottom,
-  makeScoutHeli, makeShieldTower, makeShieldTowerBottom, makeStinger,
+  makeCombatMedic, makeCombatMedicBottom, makeJetTrooper, makeJetTrooperBottom, makeNoobTuber, makeRefractor,
+  makeRefractorBottom, makeStinger,
 } from './models/towers11.js';
-export {
-  makeCombatDrone, makeCombatMedic, makeJetTrooper, makeNoobTuber, makeOilDerrick, makeRefractor, makeScoutHeli,
-  makeShieldTower, makeStinger,
-} from './models/towers11.js';
+export { makeCombatMedic, makeJetTrooper, makeNoobTuber, makeRefractor, makeStinger } from './models/towers11.js';
+import {
+  makeCombatDrone, makeCombatDroneBottom, makeDuckyNest, makeFocus, makeOilDerrick, makeOilDerrickBottom,
+  makePlantation, makeScoutHeli, makeShieldTower, makeShieldTowerBottom, makeTrawler,
+} from './models/machines4.js';
+export { makeCombatDrone, makeOilDerrick, makeScoutHeli, makeShieldTower } from './models/machines4.js';
 import {
   makeBubbleBlower, makeDarter, makeFirecracker, makePenetrator, makePsychoSlayer, makeQuarterer,
   makeScarecrow, makeVoidTraitor,
@@ -388,6 +389,10 @@ export const TOWER_MODELS = {
   eventCommandoPsycho: makePsychoSlayer,
   cryomancerBubble: makeBubbleBlower,
   scarecrow: makeScarecrow,
+  plantation: makePlantation,
+  focus: makeFocus,
+  duckyNest: makeDuckyNest,
+  trawler: makeTrawler,
   ...TOWER_MODELS_A,
   ...TOWER_MODELS_B,
   ...TOWER_MODELS_C,

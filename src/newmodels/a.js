@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { boxGeo, part, makeHumanoid, makeThing, glow, glowThing, helmet, setMuzzle, gunMuzzle, addRevolver, turret } from '../models.js';
+import { boxGeo, part, makeHumanoid, makeThing, glow, helmet, setMuzzle, gunMuzzle, addRevolver, turret } from '../models.js';
 import { wheel } from '../vehicles.js';
 
 // New towers and units (set A). Characters face +Z; see makeHumanoid in models.js for proportions.
@@ -206,95 +206,6 @@ function makeSamurai(level) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Plantation
-// ---------------------------------------------------------------------------------------------
-
-/** Plantation (0-5): crop rows grow, Lv2 a barn and silo, Lv3 a big plantation house, Lv4 hay and a water tower, Lv5 golden fields. */
-function makePlantation(level) {
-  const u = makeThing();
-  const { M } = u;
-  const golden = level >= 5;
-  part(u.body, boxGeo(4.4, 0.3, 4.4), M(0x6d4c41), 0, 0.15, 0); // soil
-  // Crop rows in front
-  const rows = [2, 3, 3, 4, 4, 4][level];
-  const ph = 0.5 + level * 0.14;
-  const stem = golden ? M(0xc9a227) : M([0x7cb342, 0x689f38, 0x689f38, 0x558b2f, 0x558b2f][level]);
-  const top = golden ? glowThing(u, 0xffc400) : level >= 3 ? M(0xfafafa) : level >= 1 ? M(0x9ccc65) : null; // cotton bolls
-  const furrow = M(0x4e342e);
-  for (let i = 0; i < rows; i++) {
-    const z = 1.85 - i * 0.5;
-    part(u.body, boxGeo(4.0, 0.1, 0.25), furrow, 0, 0.32, z);
-    for (let j = 0; j < 5; j++) {
-      const x = -1.6 + j * 0.8;
-      part(u.body, boxGeo(0.4, ph, 0.35), stem, x, 0.3 + ph / 2, z);
-      if (top) part(u.body, boxGeo(0.3, 0.25, 0.3), top, x, 0.35 + ph, z);
-    }
-  }
-  const wood = M(0x8d6e63);
-  const roofM = M(golden ? 0x5d4037 : 0x4e342e);
-  if (level < 2) {
-    // Little tool shed
-    part(u.body, boxGeo(1.4, 1.2, 1.2), wood, -1.3, 0.9, -1.4);
-    part(u.body, boxGeo(1.6, 0.2, 1.4), roofM, -1.3, 1.6, -1.4);
-    part(u.body, boxGeo(0.5, 0.8, 0.05), M(0x4e342e), -1.3, 0.7, -0.78);
-    // Fence posts along the front
-    if (level >= 1) {
-      for (const x of [-2, -1, 0, 1, 2]) part(u.body, boxGeo(0.15, 0.7, 0.15), wood, x, 0.6, 2.1);
-      part(u.body, boxGeo(4.1, 0.12, 0.08), wood, 0, 0.75, 2.1);
-    }
-  } else if (level === 2) {
-    // Red barn
-    const barnM = M(0xc62828);
-    part(u.body, boxGeo(2.2, 2.0, 1.8), barnM, -0.9, 1.3, -1.2);
-    for (const s of [-1, 1]) {
-      const r = part(u.body, boxGeo(1.4, 0.2, 2.0), roofM, -0.9 + s * 0.55, 2.6, -1.2);
-      r.rotation.z = -s * 0.6;
-    }
-    part(u.body, boxGeo(0.9, 1.2, 0.1), M(0xfafafa), -0.9, 0.9, -0.28);
-  } else {
-    // Big white plantation house with a columned porch
-    const white = M(golden ? 0xfff8e1 : 0xf5f5f5);
-    const hx = -0.6;
-    part(u.body, boxGeo(2.8, 2.6, 1.5), white, hx, 1.6, -1.35);
-    for (const s of [-1, 1]) {
-      const r = part(u.body, boxGeo(1.75, 0.25, 1.8), roofM, hx + s * 0.72, 3.2, -1.35);
-      r.rotation.z = -s * 0.45;
-    }
-    part(u.body, boxGeo(3.0, 0.15, 0.8), wood, hx, 0.38, -0.25); // porch floor
-    part(u.body, boxGeo(3.1, 0.2, 0.9), golden ? glowThing(u, 0xffc400) : white, hx, 2.85, -0.25); // porch roof
-    for (const x of [-1.3, -0.45, 0.45, 1.3]) part(u.body, boxGeo(0.22, 2.4, 0.22), white, hx + x, 1.65, 0.05);
-    const win = golden ? glowThing(u, 0xffe082) : M(0x37474f);
-    for (const x of [-0.9, 0.9]) for (const y of [1.2, 2.3]) part(u.body, boxGeo(0.45, 0.55, 0.05), win, hx + x, y, -0.58);
-    part(u.body, boxGeo(0.6, 1.1, 0.05), M(0x5d4037), hx, 0.95, -0.58); // door
-    part(u.body, boxGeo(0.4, 0.9, 0.4), M(0x8d6e63), hx + 1.0, 3.3, -1.6); // chimney
-    // Silo at the side (a water tower at Lv4+)
-    if (level >= 4) {
-      for (const x of [1.2, 2.0]) for (const z of [-1.9, -1.1]) part(u.body, boxGeo(0.15, 2.4, 0.15), wood, x, 1.5, z);
-      part(u.body, boxGeo(1.3, 1.1, 1.3), M(golden ? 0xc9a227 : 0x8d6e63), 1.6, 3.2, -1.5);
-      part(u.body, boxGeo(1.4, 0.2, 1.4), roofM, 1.6, 3.85, -1.5);
-      // Hay bales
-      const hay = M(golden ? 0xffd54f : 0xe6c35c);
-      part(u.body, boxGeo(0.7, 0.5, 0.5), hay, 1.6, 0.55, -0.35);
-      part(u.body, boxGeo(0.7, 0.5, 0.5), hay, 1.6, 1.05, -0.35);
-    } else {
-      part(u.body, boxGeo(1.1, 3.4, 1.1), M(0xb0bec5), 1.6, 2.0, -1.4);
-      part(u.body, boxGeo(1.2, 0.5, 1.2), M(0x78909c), 1.6, 3.9, -1.4);
-    }
-  }
-  if (level === 2) {
-    part(u.body, boxGeo(1.1, 3.4, 1.1), M(0xb0bec5), 1.4, 2.0, -1.3);
-    part(u.body, boxGeo(1.2, 0.5, 1.2), M(0x78909c), 1.4, 3.9, -1.3);
-  }
-  if (golden) {
-    // Gold trim and a golden weathervane
-    part(u.body, boxGeo(4.5, 0.12, 4.5), glowThing(u, 0xffb300), 0, 0.32, 0);
-    part(u.body, boxGeo(0.1, 1.0, 0.1), glowThing(u, 0xffc400), -0.6, 3.9, -1.35);
-    part(u.body, boxGeo(0.7, 0.25, 0.08), glowThing(u, 0xffc400), -0.6, 4.3, -1.35);
-  }
-  return u;
-}
-
-// ---------------------------------------------------------------------------------------------
 // Hired Gun
 // ---------------------------------------------------------------------------------------------
 
@@ -354,69 +265,7 @@ function makeHiredGun(level) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Focus: rapid-fire energy turret
-// ---------------------------------------------------------------------------------------------
-
-/** Focus (0-5): an energy turret on a stand; more barrels, fins and glow per level; white-hot at Lv5. */
-function makeFocus(level) {
-  const u = makeThing();
-  const { M } = u;
-  const hot = level >= 5;
-  const coreColor = hot ? 0xf0fffc : [0x00e676, 0x1de9b6, 0x1de9b6, 0x00e5ff, 0x18ffff][level];
-  const core = glowThing(u, coreColor);
-  core.emissiveIntensity = 0.6 + level * 0.1;
-  const metal = M(hot ? 0xcfd8dc : 0x546e7a);
-  const dark = M(0x263238);
-  // Pad and stand
-  part(u.body, boxGeo(4.0, 0.5, 4.0), M(0x9e9e9e), 0, 0.25, 0);
-  part(u.body, boxGeo(2.4, 0.4, 2.4), dark, 0, 0.7, 0);
-  part(u.body, boxGeo(0.9, 1.6, 0.9), metal, 0, 1.6, 0);
-  if (level >= 2) for (const s of [-1, 1]) part(u.body, boxGeo(0.25, 1.4, 1.6), dark, s * 0.55, 1.4, 0); // struts
-  const head = new THREE.Group();
-  head.position.set(0, 2.4, 0);
-  u.body.add(head);
-  const hw = 1.8 + Math.min(level, 4) * 0.15;
-  part(head, boxGeo(hw, 1.3, 2.0), metal, 0, 0.6, -0.2);
-  part(head, boxGeo(hw * 0.6, 0.35, 1.0), core, 0, 1.3, -0.4); // core window on top
-  // Cooling fins: thin plates sticking out both sides
-  const fins = 2 + level;
-  for (let i = 0; i < fins; i++) {
-    const z = -1.0 + (1.6 * i) / Math.max(1, fins - 1);
-    part(head, boxGeo(hw + 0.8 + level * 0.1, 1.0, 0.08), hot ? M(0xeceff1) : dark, 0, 0.6, z);
-  }
-  // Barrels
-  const n = [1, 1, 2, 2, 3, 3][level];
-  const xs = n === 1 ? [0] : n === 2 ? [-0.45, 0.45] : [-0.65, 0, 0.65];
-  const len = 2.2 + level * 0.2;
-  for (const x of xs) {
-    part(head, boxGeo(0.55, 0.55, 0.5), dark, x, 0.6, 0.95);
-    part(head, boxGeo(0.28, 0.28, len), metal, x, 0.6, 1.2 + len / 2);
-    for (let i = 0; i < 2 + Math.floor(level / 2); i++) part(head, boxGeo(0.4, 0.4, 0.12), core, x, 0.6, 1.5 + i * 0.45);
-    part(head, boxGeo(0.42, 0.42, 0.2), core, x, 0.6, 1.2 + len); // emitter tip
-    gunMuzzle(u, head, x, 0.6, 1.35 + len);
-  }
-  if (level >= 3) {
-    // Coolant tanks at the back
-    for (const s of [-1, 1]) part(head, boxGeo(0.5, 0.9, 0.5), M(0x37474f), s * 0.5, 0.6, -1.45);
-    part(head, boxGeo(1.4, 0.15, 0.15), core, 0, 1.1, -1.45);
-  }
-  if (hot) {
-    // White-hot: a heat shimmer halo around the head
-    const halo = glowThing(u, 0xfffde7);
-    halo.transparent = true;
-    halo.opacity = 0.3;
-    halo.depthWrite = false;
-    halo.userData.keepOpacity = 0.3;
-    part(head, boxGeo(hw + 1.2, 1.8, 2.6), halo, 0, 0.6, -0.2);
-  }
-  u.static = true;
-  u.tracer = hot ? 0xe0f7fa : 0x1de9b6;
-  u.tracerWidth = 0.12 + level * 0.02;
-  return u;
-}
-
-// ---------------------------------------------------------------------------------------------
-// Ducks (shared by the Ducky Nest building and the duck units)
+// Ducks (the duck units; the Ducky Nest building is in models/machines4.js)
 // ---------------------------------------------------------------------------------------------
 
 /**
@@ -455,81 +304,6 @@ function duckShape(parent, M, { body = 0xffd600, wing = 0xfbc02d, beak = 0xff8f0
     leftLeg = leg(0.4);
   }
   return { g, head, leftLeg, rightLeg };
-}
-
-/** Ducky Nest (0-5): a nest bunker. Lv1 flag, Lv2 radar, Lv3 rail gun, Lv4 trojan duck statue, Lv5 engineer crane. */
-function makeDuckyNest(level) {
-  const u = makeThing();
-  const { M } = u;
-  part(u.body, boxGeo(4.4, 0.3, 4.4), M(0x7cb342), 0, 0.15, 0); // grass
-  // Nest: a ring of twig bundles
-  const twig = M(0x8d6e63);
-  const twig2 = M(0x6d4c41);
-  for (let i = 0; i < 10; i++) {
-    const a = (i / 10) * Math.PI * 2;
-    const b = part(u.body, boxGeo(1.4, 0.7, 0.5), i % 2 ? twig : twig2, Math.cos(a) * 1.75, 0.6, Math.sin(a) * 1.75);
-    b.rotation.y = -a + Math.PI / 2;
-  }
-  // Bunker: concrete with yellow duck paint
-  const concrete = M(0x9e9e9e);
-  const yellow = M(0xffd600);
-  part(u.body, boxGeo(2.4, 1.4, 2.0), concrete, 0, 1.0, -0.1);
-  part(u.body, boxGeo(2.45, 0.3, 2.05), yellow, 0, 1.3, -0.1);
-  part(u.body, boxGeo(2.6, 0.25, 2.2), M(0x757575), 0, 1.8, -0.1); // roof slab
-  part(u.body, boxGeo(1.4, 0.25, 0.08), M(0x111111), 0, 1.0, 0.92); // gun slit
-  // Duck head peeking from the roof
-  const head = new THREE.Group();
-  head.position.set(-0.5, 1.9, 0.4);
-  u.body.add(head);
-  part(head, boxGeo(1.0, 1.0, 1.0), yellow, 0, 0.5, 0);
-  part(head, boxGeo(0.65, 0.22, 0.55), M(0xff8f00), 0, 0.35, 0.75);
-  for (const x of [-0.27, 0.27]) part(head, boxGeo(0.14, 0.18, 0.05), M(0x111111), x, 0.7, 0.51);
-  if (level >= 1) part(head, boxGeo(1.05, 0.3, 1.05), M(0x556b2f), 0, 1.1, 0); // army cap
-  // Eggs in the nest
-  const egg = M(0xfafafa);
-  const eggs = Math.min(4, 1 + level);
-  for (let i = 0; i < eggs; i++) part(u.body, boxGeo(0.45, 0.6, 0.45), egg, -1.3 + i * 0.85, 0.55, 1.4);
-  if (level >= 1) {
-    // Flag on a pole
-    part(u.body, boxGeo(0.12, 3.6, 0.12), M(0xbdbdbd), -1.8, 2.1, -1.8);
-    part(u.body, boxGeo(0.05, 0.8, 1.2), yellow, -1.8, 3.4, -1.2);
-    part(u.body, boxGeo(0.07, 0.25, 0.25), M(0xff8f00), -1.8, 3.45, -1.0);
-  }
-  if (level >= 2) {
-    // Radar dish
-    part(u.body, boxGeo(0.15, 2.0, 0.15), M(0x424242), 1.8, 1.3, -1.6);
-    const dish = part(u.body, boxGeo(1.3, 0.9, 0.12), M(0xcfd8dc), 1.8, 2.5, -1.6);
-    dish.rotation.x = -0.4;
-    part(u.body, boxGeo(0.2, 0.2, 0.2), glowThing(u, 0xff1744), 1.8, 2.5, -1.45);
-  }
-  if (level >= 3) {
-    // Rail gun on the roof
-    const cyan = glowThing(u, 0x18ffff);
-    part(u.body, boxGeo(0.8, 0.5, 0.9), M(0x37474f), 0.6, 2.15, -0.3);
-    part(u.body, boxGeo(0.3, 0.3, 2.6), M(0x263238), 0.6, 2.3, 0.9);
-    for (const x of [0.42, 0.78]) part(u.body, boxGeo(0.08, 0.08, 2.2), cyan, x, 2.3, 0.9);
-    part(u.body, boxGeo(0.4, 0.4, 0.15), cyan, 0.6, 2.3, 2.2);
-  }
-  if (level >= 4) {
-    // Trojan duck statue on a little cart
-    const wood = 0xa1887f;
-    part(u.body, boxGeo(1.2, 0.2, 1.4), M(0x5d4037), 1.5, 0.4, 1.4);
-    duckShape(u.body, M, { body: wood, wing: 0x8d6e63, beak: 0x795548, legs: false }, 0.45).g.position.set(1.5, -0.1, 1.4);
-  }
-  if (level >= 5) {
-    // Engineer crane: a lattice tower with a jib and hook over the bunker
-    const cr = M(0xffb300);
-    part(u.body, boxGeo(0.5, 5.2, 0.5), cr, -1.2, 2.9, -1.0);
-    for (let y = 1; y < 5; y++) part(u.body, boxGeo(0.6, 0.08, 0.6), M(0x424242), -1.2, y + 0.3, -1.0);
-    part(u.body, boxGeo(0.5, 0.4, 3.6), cr, -1.2, 5.3, 0.0); // jib
-    part(u.body, boxGeo(0.7, 0.6, 0.8), M(0x424242), -1.2, 5.3, -1.9); // counterweight
-    part(u.body, boxGeo(0.6, 0.5, 0.6), M(0xfafafa), -1.2, 4.7, -1.0); // cab
-    part(u.body, boxGeo(0.05, 1.6, 0.05), M(0x212121), -1.2, 4.3, 1.5); // cable
-    part(u.body, boxGeo(0.4, 0.3, 0.2), M(0x616161), -1.2, 3.4, 1.5); // hook
-    part(u.body, boxGeo(0.25, 0.25, 0.25), glowThing(u, 0xff6d00), -1.2, 5.65, 1.6); // beacon
-  }
-  u.static = true;
-  return u;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -896,10 +670,7 @@ function ducksentry() {
 export const TOWER_MODELS_A = {
   rockety: makeRockety,
   samurai: makeSamurai,
-  plantation: makePlantation,
   hiredGun: makeHiredGun,
-  focus: makeFocus,
-  duckyNest: makeDuckyNest,
   outlaw: makeOutlaw,
   liberator: makeLiberator,
   ruptor: makeRuptor,

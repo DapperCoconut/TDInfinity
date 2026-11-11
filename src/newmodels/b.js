@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { boxGeo, part, makeHumanoid, makeThing, glow, glowThing, helmet, holdLongGun, setMuzzle, gunMuzzle, cylPart } from '../models.js';
 
-// New towers and units (batch B): Trawler, Spark, Raider, Plunder, Spectre, Buccaneer, Broadcaster,
-// Stasis, Glow Up; Cutlass and Corsair pirate squads. Only call imported helpers inside functions
+// New towers and units (batch B): Spark, Raider, Plunder, Spectre, Buccaneer, Broadcaster,
+// Stasis, Glow Up (Trawler: models/machines4.js); Cutlass and Corsair pirate squads. Only call imported helpers inside functions
 // (models.js imports this file).
 
 const lv = (level, max = 5) => Math.max(0, Math.min(max, level | 0));
@@ -25,112 +25,6 @@ function hull(u, L, W, hh, hullM, stripeM, deckM) {
   const dy = hh - 0.4;
   part(u.body, boxGeo(W - 0.3, 0.1, L - 0.3), deckM, 0, dy + 0.05, -0.3);
   return dy + 0.1;
-}
-
-// ---------------------------------------------------------------- Trawler
-
-/**
- * Trawler (water): a fishing boat with a wheelhouse forward and a net crane aft. Longer hull and
- * more nets each level, Lv 4 a weather radar dome, Lv 5 a big industrial trawler with a gantry.
- */
-function trawler(level) {
-  level = lv(level);
-  const u = makeThing();
-  const { M } = u;
-  const ind = level >= 5;
-  const L = [4.4, 5.0, 5.6, 6.2, 6.8, 8.0][level];
-  const W = [2.0, 2.2, 2.4, 2.6, 2.8, 3.3][level];
-  const hh = [0.9, 1.0, 1.1, 1.2, 1.3, 1.6][level];
-  const hullM = M(ind ? 0x1a3a5c : level >= 3 ? 0x1565c0 : 0xc62828);
-  const white = M(0xeceff1);
-  const dark = M(0x212121);
-  const orange = M(0xff6d00);
-  const dy = hull(u, L, W, hh, hullM, ind ? orange : white, M(0x8d6e63));
-  // Bulwark rail along the top edge.
-  for (const side of [-1, 1]) part(u.body, boxGeo(0.12, 0.35, L - 0.6), ind ? orange : white, side * (W / 2 - 0.08), dy + 0.15, -0.3);
-  // Wheelhouse forward.
-  const whH = [1.0, 1.1, 1.2, 1.3, 1.4, 1.9][level];
-  const wz = L * 0.18;
-  part(u.body, boxGeo(W * 0.62, whH, 1.5), white, 0, dy + whH / 2, wz);
-  part(u.body, boxGeo(W * 0.66, 0.15, 1.7), hullM, 0, dy + whH + 0.07, wz);
-  part(u.body, boxGeo(W * 0.55, 0.3, 0.06), M(0x4fc3f7), 0, dy + whH * 0.72, wz + 0.76);
-  for (const side of [-1, 1]) part(u.body, boxGeo(0.06, 0.3, 0.9), M(0x4fc3f7), side * W * 0.31, dy + whH * 0.72, wz);
-  const roof = dy + whH + 0.15;
-  part(u.body, boxGeo(0.1, 1.0, 0.1), dark, 0.3, roof + 0.5, wz - 0.3); // radio whip
-  part(u.body, boxGeo(0.25, 0.25, 0.25), glowThing(u, 0xffee58), -0.4, roof + 0.13, wz + 0.5); // work light
-  if (level >= 2) part(u.body, boxGeo(0.9, 0.08, 0.2), dark, 0, roof + 0.55, wz - 0.3); // radar bar
-  if (level >= 4) {
-    // Weather radar dome on a little stand.
-    part(u.body, boxGeo(0.3, 0.6, 0.3), M(0x9e9e9e), -0.4, roof + 0.3, wz - 0.2);
-    cylPart(u.body, 0.55, 0.65, 0.5, white, -0.4, roof + 0.85, wz - 0.2, 12);
-    cylPart(u.body, 0.3, 0.55, 0.3, white, -0.4, roof + 1.25, wz - 0.2, 12);
-  }
-  if (level >= 3) part(u.body, boxGeo(W * 0.25, 0.9, 0.6), M(ind ? 0x263238 : 0x37474f), W * 0.2, roof + 0.45, wz - 0.6); // funnel
-
-  // Nets: piles of green net on the aft deck.
-  const netM = M(0x2e7d32);
-  const netDark = M(0x1b5e20);
-  const floatM = M(0xff9800);
-  const piles = [1, 1, 2, 2, 3, 4][level];
-  for (let i = 0; i < piles; i++) {
-    const x = (i % 2 ? 1 : -1) * W * 0.2 * (piles > 1 ? 1 : 0);
-    const z = -L * 0.08 - Math.floor(i / 2) * 1.0;
-    part(u.body, boxGeo(0.9, 0.45, 0.8), i % 2 ? netDark : netM, x, dy + 0.22, z);
-    part(u.body, boxGeo(0.2, 0.2, 0.2), floatM, x + 0.3, dy + 0.5, z + 0.2);
-  }
-  // Net drum at the stern.
-  const drumZ = -L / 2 + 0.9;
-  cylPart(u.body, 0.45, 0.45, W * 0.6, netM, 0, dy + 0.55, drumZ).rotation.z = Math.PI / 2;
-  for (const side of [-1, 1]) part(u.body, boxGeo(0.12, 0.9, 0.6), dark, side * W * 0.32, dy + 0.45, drumZ);
-
-  // Crane boom (or Lv 5 gantry) over the stern with a net hanging off it.
-  const crane = new THREE.Group();
-  crane.position.set(0, dy, -L / 2 + 0.4);
-  u.body.add(crane);
-  const craneM = ind ? orange : M(0xfbc02d);
-  const hang = seeThrough(u, 0x43a047, 0.75);
-  if (ind) {
-    // Industrial A-frame gantry spanning the stern, with two nets.
-    for (const side of [-1, 1]) {
-      const leg = part(crane, boxGeo(0.3, 3.2, 0.3), craneM, side * (W / 2 - 0.3), 1.5, -0.2);
-      leg.rotation.x = -0.25;
-    }
-    part(crane, boxGeo(W - 0.2, 0.35, 0.35), craneM, 0, 3.0, -0.6);
-    for (const x of [-0.7, 0.7]) {
-      part(crane, boxGeo(0.06, 1.0, 0.06), dark, x, 2.4, -0.6);
-      part(crane, boxGeo(0.9, 1.2, 0.5), hang, x, 1.4, -0.65);
-      for (const y of [1.0, 1.5]) part(crane, boxGeo(0.94, 0.06, 0.54), netDark, x, y, -0.65);
-      gunMuzzle(u, crane, x, 1.4, -0.7);
-    }
-    // A second boom on the wheelhouse for good measure, and spot lights.
-    for (const x of [-1, 1]) part(u.body, boxGeo(0.3, 0.3, 0.15), glowThing(u, 0xfff59d), x * W * 0.3, roof + 0.2, wz + 0.7);
-    part(u.body, boxGeo(0.15, 2.4, 0.15), craneM, W * 0.3, dy + 1.2, -L * 0.25);
-    part(u.body, boxGeo(0.12, 0.12, 2.0), craneM, W * 0.3, dy + 2.3, -L * 0.25 - 0.9).rotation.x = 0.4;
-  } else {
-    const ch = [1.8, 2.0, 2.2, 2.4, 2.6][level];
-    part(crane, boxGeo(0.25, ch, 0.25), craneM, 0, ch / 2, 0.3);
-    const boom = part(crane, boxGeo(0.2, 0.2, 1.8), craneM, 0, ch, -0.4);
-    boom.rotation.x = 0.35;
-    part(crane, boxGeo(0.05, 0.8, 0.05), dark, 0, ch - 0.35, -1.1);
-    const nw = level >= 2 ? 1.0 : 0.75;
-    part(crane, boxGeo(nw, 0.9, 0.4), hang, 0, ch - 1.15, -1.15);
-    part(crane, boxGeo(nw + 0.04, 0.06, 0.44), netDark, 0, ch - 0.9, -1.15);
-    for (const x of [-nw / 2, nw / 2]) part(crane, boxGeo(0.15, 0.15, 0.15), floatM, x, ch - 0.7, -1.15);
-    gunMuzzle(u, crane, 0, ch - 1.15, -1.2);
-    // Side outrigger poles from Lv 1 (more nets out on the water).
-    if (level >= 1) for (const side of level >= 3 ? [-1, 1] : [1]) {
-      const pole = part(u.body, boxGeo(0.12, 0.12, 2.4), dark, side * (W / 2 + 0.35), dy + 1.2, -L * 0.15);
-      pole.rotation.y = side * 0.1;
-      part(u.body, boxGeo(0.1, 1.6, 0.1), dark, side * (W / 2), dy + 0.8, -L * 0.15).rotation.z = side * -0.9;
-      part(u.body, boxGeo(0.5, 0.6, 1.8), hang, side * (W / 2 + 0.4), dy + 0.6, -L * 0.15);
-    }
-  }
-  if (level >= 5) u.body.position.z = 0.6;
-  u.tracer = 0x66bb6a;
-  u.projectile = { color: 0x43a047, size: 0.6 };
-  u.static = true;
-  u.bob = 0.08;
-  return u;
 }
 
 // ---------------------------------------------------------------- Spark
@@ -945,5 +839,5 @@ const corsair = (count = 1) => {
   return u;
 };
 
-export const TOWER_MODELS_B = { trawler, spark, raider, plunder, spectre, buccaneer, broadcaster, stasis, glowup };
+export const TOWER_MODELS_B = { spark, raider, plunder, spectre, buccaneer, broadcaster, stasis, glowup };
 export const UNIT_MODELS_B = { cutlass, corsair };

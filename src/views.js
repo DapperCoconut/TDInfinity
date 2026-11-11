@@ -439,12 +439,13 @@ export class TowerView {
     hp.z += vz;
     p.position.set(hp.x / K, this.model.flyHeight + Math.sin(this.breath * 1.6) * 0.3, hp.z / K); // the group is scaled by K
     p.rotation.y = lerpAngle(p.rotation.y, t.hyaw ?? 0, Math.min(1, dt * 6));
-    const { bank, prop, tail } = p.userData;
+    const { bank, prop, tail, rotors } = p.userData;
     // Nose dips while it's moving.
     const speed = dt > 0 ? Math.hypot(vx, vz) / dt : 0;
     bank.rotation.x = lerpAngle(bank.rotation.x, Math.min(0.3, speed * 0.025), Math.min(1, dt * 4));
     if (prop) prop.rotation.y += dt * 28;
     if (tail) tail.rotation.x += dt * 36;
+    if (rotors) for (const r of rotors) r.rotation.y += dt * 40; // drone and tilt-rotor props
   }
 
   /** Phaser: draw the beam to the locked enemy, thicker as it charges. */

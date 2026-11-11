@@ -20,7 +20,7 @@ const SANDBAG = 0xb59a72;
 // ------------------------------------------------------------------ small shared pieces
 
 /** A flag on a pole standing on y0: a ball on top and a cloth in three waving strips along +z. */
-function flagPole(k, x, y0, z, h, col, emblem = null) {
+export function flagPole(k, x, y0, z, h, col, emblem = null) {
   k.cyl(0.2, 0.14, DARK, x, y0 + 0.07, z, { seg: 10 });
   k.cyl(0.07, h, 0xcfd8dc, x, y0 + h / 2, z, { r2: 0.05, seg: 8 });
   k.ball(0.11, 0xc9a227, x, y0 + h + 0.06, z, { seg: 8, rows: 5 });
@@ -42,7 +42,7 @@ function rollerDoor(k, w, h, x, y, z, col) {
 }
 
 /** A steel drum with two ribs, a lid and a bung; `mark` paints a band round it. */
-function drum(k, x, y, z, col, mark = null) {
+export function drum(k, x, y, z, col, mark = null) {
   k.cyl(0.3, 0.9, col, x, y + 0.45, z, { seg: 14 });
   for (const f of [0.3, 0.62]) k.torus(0.3, 0.03, tone(col, 0.75), x, y + f, z, { rx: PI / 2, seg: 14 });
   k.cyl(0.27, 0.03, tone(col, 0.82), x, y + 0.91, z, { seg: 14 });
@@ -51,12 +51,12 @@ function drum(k, x, y, z, col, mark = null) {
 }
 
 /** A sandbag: a soft rounded block. */
-function bag(k, w, d, x, y, z, col = SANDBAG, ry = 0) {
+export function bag(k, w, d, x, y, z, col = SANDBAG, ry = 0) {
   k.box(w, 0.32, d, col, x, y + 0.16, z, { r: 0.13, ry });
 }
 
 /** A plain window facing +z (or -z with dir -1): frame, glass, cross bar and sill. */
-function windowAt(k, x, y, z, w, h, frame = 0xeceff1, dir = 1) {
+export function windowAt(k, x, y, z, w, h, frame = 0xeceff1, dir = 1) {
   k.box(w + 0.14, h + 0.14, 0.06, frame, x, y, z);
   k.box(w, h, 0.04, GLASS, x, y, z + dir * 0.02);
   k.box(0.05, h, 0.05, frame, x, y, z + dir * 0.04);
@@ -92,7 +92,7 @@ function tent(k, x, z, s, col) {
 }
 
 /** A wooden post-and-rail fence from a to b ([x, z]), posts every ~0.9. */
-function fence(k, a, b, y, h, col = WOOD, wire = false) {
+export function fence(k, a, b, y, h, col = WOOD, wire = false) {
   const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
   const n = Math.max(1, Math.round(len / 0.9));
   for (let i = 0; i <= n; i++) {

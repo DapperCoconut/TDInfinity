@@ -31,7 +31,7 @@ const scalePts = (pts, sx, sz = sx) => pts.map(([x, z]) => [x * sx, z * sz]);
  * A boat hull from y0 (keel) up to the deck at y1, centred on z: a narrow bottom, a waterline
  * stripe, the flared sides, a deck, a rub rail and stanchions with a rail round the deck edge.
  */
-function hull(k, L, W, y0, y1, col, o) {
+export function hull(k, L, W, y0, y1, col, o) {
   const z = o.z ?? 0;
   const pts = hullPts(L, W, o.bow);
   k.plan(scalePts(pts, 0.78, 0.95), 0.35, tone(col, 0.7), 0, y0, z, { bevel: 0.1 });
