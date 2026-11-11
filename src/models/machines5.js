@@ -17,12 +17,12 @@ const CONCRETE = 0x9e9e9e;
 const HAZARD = 0xf2c12e;
 const IRON = 0x212121;
 
-const lv = (level, max = 5) => Math.max(0, Math.min(max, level | 0));
+export const lv = (level, max = 5) => Math.max(0, Math.min(max, level | 0));
 
 // ------------------------------------------------------------------ small shared pieces
 
 /** A regular outline with `n` corners and radius r, as [[x, z], ...]. */
-function poly(n, r, turn = PI / n) {
+export function poly(n, r, turn = PI / n) {
   const out = [];
   for (let i = 0; i < n; i++) {
     const a = (i / n) * PI * 2 + turn;
@@ -58,7 +58,7 @@ function stadium(w, len) {
 }
 
 /** A see-through material that stays see-through when the tower fades (fields, domes). */
-function seeThrough(u, color, opacity, lit = false) {
+export function seeThrough(u, color, opacity, lit = false) {
   const m = lit ? glowMat(u, color) : u.M(color);
   m.transparent = true;
   m.opacity = opacity;
@@ -68,7 +68,7 @@ function seeThrough(u, color, opacity, lit = false) {
 }
 
 /** A spinning group at (x, y, z) on `parent` whose spin axis is `axis` ('y', 'x' or 'z'). Spins with u.spin. */
-function spinner(u, parent, x, y, z, axis = 'y') {
+export function spinner(u, parent, x, y, z, axis = 'y') {
   const mount = new THREE.Group();
   mount.position.set(x, y, z);
   if (axis === 'x') mount.rotation.z = -PI / 2;
@@ -84,7 +84,7 @@ function spinner(u, parent, x, y, z, axis = 'y') {
  * A crystal standing on (x, y, z): two six-sided cones point to point, `h` tall. It leans by
  * `lean` toward the direction `dir` (an angle round y; 0 = +x).
  */
-function crystal(k, x, y, z, r, h, col, lean = 0, dir = 0) {
+export function crystal(k, x, y, z, r, h, col, lean = 0, dir = 0) {
   const dx = Math.sin(lean) * Math.cos(dir);
   const dy = Math.cos(lean);
   const dz = Math.sin(lean) * Math.sin(dir);
@@ -94,7 +94,7 @@ function crystal(k, x, y, z, r, h, col, lean = 0, dir = 0) {
 }
 
 /** A straight round bar from a to b ([x, y, z]): struts, braces, guy wires. */
-const strut = (k, a, b, r, col) => k.tube([a, b], r, col, { sides: 5, seg: 1 });
+export const strut = (k, a, b, r, col) => k.tube([a, b], r, col, { sides: 5, seg: 1 });
 
 /** A wooden powder keg standing on y: bulging staves and two iron hoops. */
 function keg(k, x, y, z, s = 1, col = 0x8d6e63) {

@@ -162,6 +162,9 @@ import {
   makeBroadcaster, makeBuccaneer, makeEnforcementBase, makeGlacier, makeGlowup, makeMarauder, makeStasis, makeSubmerge,
 } from './models/machines5.js';
 import {
+  makeBorealis, makeEldritch, makeLemonade, makeOrbit, makeSplash, makeSquadron, makeValkyr, makeVoidPort,
+} from './models/machines6.js';
+import {
   makeBubbleBlower, makeDarter, makeFirecracker, makePenetrator, makePsychoSlayer, makeQuarterer,
   makeScarecrow, makeVoidTraitor,
 } from './models/towers12.js';
@@ -404,6 +407,14 @@ export const TOWER_MODELS = {
   enforcementBase: makeEnforcementBase,
   submerge: makeSubmerge,
   marauder: makeMarauder,
+  orbit: makeOrbit,
+  voidPort: makeVoidPort,
+  eldritch: makeEldritch,
+  valkyr: makeValkyr,
+  squadron: makeSquadron,
+  borealis: makeBorealis,
+  splash: makeSplash,
+  farmLemonade: makeLemonade,
   ...TOWER_MODELS_A,
   ...TOWER_MODELS_B,
   ...TOWER_MODELS_C,

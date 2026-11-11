@@ -267,41 +267,6 @@ function enforcerChef(level) {
   return h;
 }
 
-/** The Lemonade Cat: grey-and-white cat in a yellow shirt, sleepy eyes, holding a lemon slice. */
-function lemonCat(u, parent, x, y, z, s = 1) {
-  const { M } = u;
-  const g = grp(parent, x, y, z);
-  g.scale.setScalar(s);
-  const grey = M(0x9e9e9e);
-  const white = M(0xfafafa);
-  const yellow = M(0xfdd835);
-  const pink = M(0xf48fb1);
-  part(g, boxGeo(1.0, 1.0, 0.8), yellow, 0, 0.5, 0); // body (shirt)
-  part(g, boxGeo(0.5, 0.55, 0.05), white, 0, 0.55, 0.42); // chest fur
-  for (const sx of [-0.25, 0.25]) part(g, boxGeo(0.32, 0.2, 0.4), white, sx, 0.1, 0.35); // paws
-  part(g, boxGeo(1.1, 0.9, 0.9), grey, 0, 1.45, 0); // head
-  part(g, boxGeo(1.12, 0.25, 0.6), M(0x757575), 0, 1.8, -0.1); // darker stripe on top
-  part(g, boxGeo(0.6, 0.35, 0.1), white, 0, 1.28, 0.47); // muzzle
-  part(g, boxGeo(0.14, 0.09, 0.05), pink, 0, 1.43, 0.53); // nose
-  const eye = M(0x212121);
-  for (const sx of [-0.26, 0.26]) {
-    part(g, boxGeo(0.26, 0.06, 0.05), eye, sx, 1.6, 0.46); // sleepy eyes
-    part(g, boxGeo(0.3, 0.08, 0.05), M(0x757575), sx, 1.66, 0.46); // heavy lids
-    const ear = part(g, boxGeo(0.32, 0.38, 0.22), grey, sx * 1.35, 2.0, 0);
-    ear.rotation.z = -Math.sign(sx) * 0.3;
-    part(ear, boxGeo(0.16, 0.2, 0.05), pink, 0, -0.02, 0.11);
-  }
-  // Tail curling up behind
-  part(g, boxGeo(0.2, 0.9, 0.2), grey, 0.45, 0.55, -0.55).rotation.x = -0.5;
-  part(g, boxGeo(0.2, 0.3, 0.2), white, 0.45, 1.0, -0.82);
-  // Arm holding a lemon slice
-  part(g, boxGeo(0.26, 0.6, 0.26), yellow, -0.62, 0.8, 0.2).rotation.x = -0.8;
-  const slice = part(g, boxGeo(0.55, 0.55, 0.08), M(0xfbc02d), -0.66, 1.05, 0.55);
-  slice.rotation.z = Math.PI / 4;
-  part(slice, boxGeo(0.42, 0.42, 0.06), M(0xfff59d), 0, 0, 0.03);
-  return g;
-}
-
 /** A striped awning (alternating yellow / white strips) of width w. */
 function awning(u, parent, w, d, x, y, z, tilt = 0.3) {
   const a = grp(parent, x, y, z, tilt);
@@ -321,99 +286,6 @@ function jug(u, parent, x, y, z, s = 1) {
   part(g, boxGeo(0.12, 0.5, 0.15), u.M(0xfafafa), 0.36, 0.45, 0);
   part(g, boxGeo(0.25, 0.25, 0.05), u.M(0xfbc02d), 0, 0.45, 0.31); // lemon label
   return g;
-}
-
-/** A big lemon (sign / ornament) with end nubs and a leaf. */
-function bigLemon(u, parent, x, y, z, s = 1, glowing = false) {
-  const g = grp(parent, x, y, z);
-  g.scale.setScalar(s);
-  const lemon = glowing ? glowThing(u, 0xffee58) : u.M(0xffeb3b);
-  part(g, boxGeo(1.8, 1.15, 1.0), lemon, 0, 0, 0);
-  part(g, boxGeo(1.4, 1.35, 0.8), lemon, 0, 0, 0);
-  for (const s2 of [-1, 1]) part(g, boxGeo(0.35, 0.4, 0.4), lemon, s2 * 1.05, 0, 0);
-  part(g, boxGeo(0.7, 0.1, 0.35), u.M(0x43a047), 0.35, 0.75, 0).rotation.z = 0.4;
-  return g;
-}
-
-/**
- * Lemonade Cat (income): the cat sells lemonade. Lv 0 on a crate with a jug, Lv 1 a striped stand,
- * Lv 2 a yellow kiosk, Lv 3 a bigger shop with a lemon sign, Lv 4 a tall lemon tower topped by a
- * giant glowing lemon that slowly turns (spin / idleSpin).
- */
-function farmLemonade(level) {
-  const u = makeThing();
-  const { M } = u;
-  part(u.body, boxGeo(4.4, 0.3, 4.4), M(0x7cb342), 0, 0.15, 0); // grass
-  const wood = M(0x8d6e63);
-  const woodDark = M(0x6d4c41);
-  if (level === 0) {
-    part(u.body, boxGeo(1.4, 0.9, 1.2), wood, 0, 0.75, 0);
-    for (const y of [0.5, 1.0]) part(u.body, boxGeo(1.42, 0.08, 1.22), woodDark, 0, y, 0);
-    lemonCat(u, u.body, 0, 1.2, 0, 1);
-    jug(u, u.body, 1.3, 0.3, 0.6);
-    part(u.body, boxGeo(0.9, 0.7, 0.08), M(0xd7ccc8), -1.3, 0.75, 0.9).rotation.x = -0.25; // cardboard sign
-    part(u.body, boxGeo(0.35, 0.35, 0.05), M(0xfbc02d), -1.3, 0.78, 0.96).rotation.x = -0.25;
-    return u;
-  }
-  if (level === 1) {
-    // A small lemonade stand with a striped awning
-    part(u.body, boxGeo(3.0, 1.2, 0.9), M(0xfafafa), 0, 0.9, 0.8);
-    for (let i = 0; i < 5; i++) part(u.body, boxGeo(0.3, 1.2, 0.04), M(0xfdd835), -1.2 + i * 0.6, 0.9, 1.26);
-    part(u.body, boxGeo(3.2, 0.12, 1.1), wood, 0, 1.55, 0.8); // counter top
-    for (const x of [-1.45, 1.45]) for (const z of [0.4, 1.2]) part(u.body, boxGeo(0.15, 2.6, 0.15), wood, x, 1.6, z);
-    awning(u, u.body, 3.3, 1.4, 0, 3.0, 0.85, 0.25);
-    part(u.body, boxGeo(0.8, 0.5, 0.8), woodDark, 0, 0.55, -0.4); // stool
-    lemonCat(u, u.body, 0, 0.8, -0.4, 1);
-    jug(u, u.body, 1.0, 1.6, 0.8, 0.9);
-    for (const x of [-1.0, -0.65]) part(u.body, boxGeo(0.22, 0.3, 0.22), M(0xfff59d), x, 1.76, 0.9); // cups
-    return u;
-  }
-  // Kiosk / shop / tower: a lemon-yellow building with a serving window and the cat on the ledge.
-  const big = level >= 3;
-  const W = big ? 4.0 : 3.4;
-  const H = big ? 3.4 : 2.8;
-  const D = big ? 3.0 : 2.6;
-  const wallZ = big ? -0.5 : -0.4;
-  const front = wallZ + D / 2;
-  const wall = M(0xfff176);
-  part(u.body, boxGeo(W, H, D), wall, 0, 0.3 + H / 2, wallZ);
-  part(u.body, boxGeo(W + 0.05, 0.3, D + 0.05), M(0xfafafa), 0, 0.45, wallZ); // white base trim
-  part(u.body, boxGeo(W * 0.6, 1.3, 0.05), M(0x3e2723), 0, 0.3 + H * 0.6, front + 0.01); // dark window
-  part(u.body, boxGeo(W * 0.7, 0.2, 0.9), wood, 0, 0.3 + H * 0.6 - 0.75, front + 0.4); // serving ledge
-  awning(u, u.body, W * 0.8, 1.2, 0, 0.3 + H * 0.6 + 0.95, front + 0.55, 0.3);
-  part(u.body, boxGeo(W + 0.4, 0.3, D + 0.4), M(0xfbc02d), 0, 0.45 + H, wallZ); // roof slab
-  const ledge = 0.3 + H * 0.6 - 0.65;
-  lemonCat(u, u.body, -0.3, ledge, front + 0.4, big ? 0.85 : 0.75);
-  jug(u, u.body, W * 0.25, ledge, front + 0.45, 0.75);
-  // A lemon emblem on the wall
-  part(u.body, boxGeo(0.6, 0.45, 0.06), M(0xfbc02d), W * 0.36, 0.3 + H * 0.25, front + 0.02);
-  if (level === 2) {
-    // A small lemon on the roof
-    bigLemon(u, u.body, 0, 1.0 + H, wallZ, 0.5);
-    return u;
-  }
-  // Crate of lemons beside the shop
-  part(u.body, boxGeo(1.0, 0.6, 0.8), wood, -1.6, 0.6, front + 0.6);
-  for (const x of [-1.85, -1.6, -1.35]) part(u.body, boxGeo(0.25, 0.22, 0.25), M(0xffeb3b), x, 1.0, front + 0.6);
-  if (level === 3) {
-    // Big lemon sign on posts
-    for (const x of [-0.6, 0.6]) part(u.body, boxGeo(0.15, 0.8, 0.15), wood, x, 1.0 + H, wallZ);
-    bigLemon(u, u.body, 0, 2.0 + H, wallZ, 1.0, true);
-    return u;
-  }
-  // Lv 4: a tall striped lemon tower on the roof with glowing windows and a giant turning lemon
-  const T = 4.6;
-  const base = 0.6 + H;
-  part(u.body, boxGeo(2.2, T, 2.2), wall, 0, base + T / 2, wallZ);
-  for (let i = 0; i < 3; i++) part(u.body, boxGeo(2.3, 0.25, 2.3), M(0xfafafa), 0, base + 0.9 + i * 1.4, wallZ);
-  for (let i = 0; i < 3; i++) part(u.body, boxGeo(0.6, 0.6, 0.06), glowThing(u, 0xffe082), 0, base + 1.5 + i * 1.4, wallZ + 1.12);
-  part(u.body, boxGeo(2.6, 0.3, 2.6), M(0xfbc02d), 0, base + T + 0.15, wallZ);
-  const top = grp(u.body, 0, base + T + 1.3, wallZ);
-  bigLemon(u, top, 0, 0, 0, 1.3, true);
-  sparkles(u, u.body, [0xfff176, 0xffffff], 5, 2.4, base + 1, base + T + 2, 0.18);
-  u.spin = [top];
-  u.idleSpin = 0.8;
-  return u;
 }
 
 /**
@@ -1329,7 +1201,6 @@ function voltPoint() {
 export const TOWER_MODELS_F = {
   scoutWizard,
   enforcerChef,
-  farmLemonade,
   kniferYasuke,
   toxicnatorMaitake,
   sparkBranch,
