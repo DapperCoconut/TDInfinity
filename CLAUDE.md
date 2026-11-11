@@ -6,9 +6,9 @@ GitHub Pages by `.github/workflows/deploy.yml` on every push to `main`, so **a p
 ## Working fast here
 
 - **Find the spot first, then read only that range.** The tower tables, model builders and the Sim
-  are split into files of 10-80 KB (see below); `src/game.js` (177 KB) and `src/world.js` (120 KB)
-  are the big ones left. `config.js`, `models.js` and `sim/sim.js` are front doors: they re-export
-  everything, so other files import from them and never from the folders behind them.
+  are split into files of 10-80 KB (see below); `src/game/events.js` (100 KB, one method) is the
+  big one left. `config.js`, `models.js`, `sim/sim.js` and `game.js` are front doors: other files
+  import from them and never from the folders behind them.
 - **Find things with tokensave** (`.tokensave/` index exists): `tokensave_search` for a name,
   `literal: true` for exact text such as a tower key (`scout: {`, `case 'ability'`),
   `tokensave_context` for "how does X work". Run `tokensave sync` after large edits so line numbers
@@ -75,10 +75,14 @@ Drawing (three.js):
   `vehicleunits.js`, `tankunits.js`, `mechunits.js`, `airunits.js`, `botunits.js`, `trainunits.js`,
   `moreunits.js`. This kit's level of detail is the standard for new models.
 - `src/views.js` (a view per sim object), `src/effects.js` + `src/particles.js` (VFX), `src/world.js`
-  (map renderer) with one file per special map: `brookworld.js`, `rampartworld.js`, `rigworld.js`,
-  `graveworld.js`.
+  (`buildWorld` and the plain maps) with one file per special map: `nexusworld.js`,
+  `crossingworld.js`, `courtworld.js`, `emberworld.js`, `brookworld.js`, `rampartworld.js`,
+  `rigworld.js`, `graveworld.js`; shared map pieces (materials, textures, `TREES`) in `worldkit.js`.
 
-Screens and UI: `src/game.js` (in-game client and input), `src/ui.js` (HUD), `src/stats.js` /
+Screens and UI: `src/game.js` (class `GameClient`: start / stop, the frame loop; its other methods are
+in `src/game/`, put on the class the same way as Sim's: `events.js` has `handleEvents`, one `case` per
+sim event, `view.js` the HUD and camera, `input.js` mouse, keys and placing, `towers.js` the selected
+tower, abilities and first-person mode), `src/ui.js` (HUD), `src/stats.js` /
 `src/substats.js` / `src/text.js` (stat and description text), `src/lobby.js` (menus), `src/loadout.js`
 (shop), `src/icons.js` (portraits), `src/profile.js` (saved progress), `src/style.css`, `index.html`.
 Sound: `src/audio.js`, music in `src/music/` (`tracks.js` recipes, `compose.js`, `engine.js`).
