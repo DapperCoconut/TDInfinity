@@ -18,7 +18,7 @@ const CONCRETE = 0x9e9e9e;
 const HAZARD = 0xf2c12e;
 
 /** A concrete pad with bevelled top edges, anchor bolts in the corners and hazard stripes along the front. */
-function pad(k, w, h, col, stripes = true) {
+export function pad(k, w, h, col, stripes = true) {
   k.slab(w, h, w, col, 0, h / 2, 0, { tw: 1 - 0.18 / w, td: 1 - 0.18 / w });
   k.box(w - 0.5, 0.03, 0.05, tone(col, 0.8), 0, h + 0.005, w / 4); // expansion joints
   k.box(0.05, 0.03, w - 0.5, tone(col, 0.8), w / 4, h + 0.005, 0);
@@ -36,7 +36,7 @@ function pad(k, w, h, col, stripes = true) {
 }
 
 /** A swivel ring: a dark drum with a steel race and bolts round it. */
-function ring(k, r, y, h) {
+export function ring(k, r, y, h) {
   k.cyl(r, h, DARK, 0, y, 0, { seg: 22 });
   k.torus(r - 0.04, 0.07, STEEL, 0, y + h / 2, 0, { rx: PI / 2, seg: 22 });
   for (let i = 0; i < 10; i++) {
@@ -49,7 +49,7 @@ function ring(k, r, y, h) {
  * Spinning minigun barrels along +Z from (x, y, z): `n` barrels on a circle of radius `r`, with
  * clamps and a spindle. Spins while firing (u.spin). `col` is a colour or a glow material.
  */
-function spinBarrels(u, parent, key, x, y, z, len, n, r, col = GUN, glow = null) {
+export function spinBarrels(u, parent, key, x, y, z, len, n, r, col = GUN, glow = null) {
   const mount = new THREE.Group();
   mount.position.set(x, y, z);
   mount.rotation.x = PI / 2;
@@ -72,7 +72,7 @@ function spinBarrels(u, parent, key, x, y, z, len, n, r, col = GUN, glow = null)
 }
 
 /** A belt of brass rounds hanging from (x, y, z), curving down and back. */
-function ammoBelt(k, x, y, z, n, s = 1) {
+export function ammoBelt(k, x, y, z, n, s = 1) {
   const pts = [];
   for (let i = 0; i < n; i++) {
     const py = y - i * 0.17 * s;
@@ -85,7 +85,7 @@ function ammoBelt(k, x, y, z, n, s = 1) {
 }
 
 /** A radar dish on top of `parent` at (x, y, z), tipped back to look up and forward. */
-function dish(u, parent, key, x, y, z, r, col, light) {
+export function dish(u, parent, key, x, y, z, r, col, light) {
   const g = new THREE.Group();
   g.position.set(x, y, z);
   g.rotation.x = 0.85;

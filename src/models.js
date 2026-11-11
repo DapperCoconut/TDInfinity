@@ -55,13 +55,13 @@ export {
 } from './models/towers02.js';
 import {
   goldShine, makeAnarchist, makeArmoredFactory, makeArmoredFactoryBottom, makeBarracks, makeCommander,
-  makeCommanderClassic, makeCowboy, makeDJ, makeDJBooth, makeFarm, makeFieldBarracks, makeFieldBarracksBottom,
-  makeGoldCommander, makeMilitaryBase, makePatrol, makeZed,
+  makeCommanderClassic, makeCowboy, makeDJ, makeDJBooth, makeFieldBarracks, makeFieldBarracksBottom,
+  makeGoldCommander, makeMilitaryBase,
 } from './models/towers03.js';
 export {
   addRevolver, goldShine, makeAnarchist, makeArmoredFactory, makeArmoredFactoryBottom, makeArmoredFactoryWith,
-  makeBarracks, makeCommander, makeCommanderClassic, makeCowboy, makeDJ, makeDJBooth, makeFarm, makeFieldBarracks,
-  makeFieldBarracksBottom, makeFieldBarracksWith, makeGoldCommander, makeMilitaryBase, makePatrol, makeZed,
+  makeBarracks, makeCommander, makeCommanderClassic, makeCowboy, makeDJ, makeDJBooth, makeFieldBarracks,
+  makeFieldBarracksBottom, makeFieldBarracksWith, makeGoldCommander, makeMilitaryBase,
 } from './models/towers03.js';
 import {
   makeAssassin, makeBoomerang, makeBrawler, makeFrostFreezer, makeFrostRanger, makeFrostRangerBottom, makeHunter,
@@ -84,16 +84,21 @@ export {
   makeMineLayer, makePyromancer, makeRocketeerMissile, makeRocketeerTrooper, makeRocketeerTrooperBottom, makeTrapper,
 } from './models/towers05.js';
 import {
-  makeBehemothFactory, makeBehemothFactoryBottom, makeCrookBoss, makeCryoHeli, makeHelicopter,
-  makeHelicopterBottom, makeMercBase, makeMinigunner, makeMobster, makeMobsterBottom, makeMortarClassic, makePursuit,
-  makePursuitBottom, makeRanger, makeWarMachineFactory, makeWarMachineFactoryBottom,
+  makeCrookBoss, makeCryoHeli, makeHelicopter, makeHelicopterBottom, makeMinigunner, makeMobster, makeMobsterBottom,
+  makeMortarClassic, makeRanger,
 } from './models/towers06.js';
 export {
-  makeBehemothFactory, makeBehemothFactoryBottom, makeCrookBoss, makeCryoHeli, makeHeavyFactory,
-  makeHeli, makeHelicopter, makeHelicopterBottom, makeHelicopterModel, makeMercBase, makeMinigunner, makeMobster,
-  makeMobsterBottom, makeMobsterModel, makeMortarClassic, makePursuit, makePursuitBottom, makePursuitModel,
-  makeRanger, makeWarMachineFactory, makeWarMachineFactoryBottom,
+  makeCrookBoss, makeCryoHeli, makeHelicopter, makeHelicopterBottom, makeHelicopterModel, makeMinigunner, makeMobster,
+  makeMobsterBottom, makeMobsterModel, makeMortarClassic, makeRanger,
 } from './models/towers06.js';
+import {
+  makeBehemothFactory, makeBehemothFactoryBottom, makeFarm, makeMercBase, makePatrol, makePursuit, makePursuitBottom,
+  makeWarMachineFactory, makeWarMachineFactoryBottom, makeZed,
+} from './models/machines2.js';
+export {
+  makeBehemothFactory, makeBehemothFactoryBottom, makeFarm, makeHeavyFactory, makeHeli, makeMercBase, makePatrol,
+  makePursuit, makePursuitBottom, makePursuitModel, makeWarMachineFactory, makeWarMachineFactoryBottom, makeZed,
+} from './models/machines2.js';
 import {
   makeAccelerator, makeEngineer, makeHacker, makeHackerBottom, makeJohn, makeJohnBottom, makeJuggernaut,
   makeJuggernautBottom, makeLaserRailgunner, makeLaserRailgunnerBottom, makeNecromancer, makeSlammer,

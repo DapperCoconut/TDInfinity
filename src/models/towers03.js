@@ -1,7 +1,7 @@
 // Tower models, file 3 of 12. Each makeX(level) builds one tower's look.
 // In here:
-// Patrol, Armored Factory, Military Base, Barracks, Field Barracks, Zed, Farm, Commander,
-// Gold Commander, Commander Classic, Cowboy, DJ, DJBooth, Anarchist.
+// Armored Factory, Military Base, Barracks, Field Barracks, Commander, Gold Commander,
+// Commander Classic, Cowboy, DJ, DJBooth, Anarchist.
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
 
 import * as THREE from 'three';
@@ -10,45 +10,7 @@ import { GOLD_SHEEN, glow, holdLongGun, hsl, makeThing, setMuzzle } from './bits
 import { makeUnit } from './units.js';
 
 // ------------------------------------------------------------------ spawner, income and support towers
-
-/** Patrol: a garage with a flag and its current vehicle parked out front. */
-export function makePatrol(level) {
-  const u = makeThing();
-  const { M } = u;
-  part(u.body, boxGeo(4, 0.3, 4), M(0x9e9e9e), 0, 0.15, 0); // concrete
-  part(u.body, boxGeo(3.6, 3.0, 2.0), M(0x8d6e63), 0, 1.8, -1.0); // garage
-  part(u.body, boxGeo(3.9, 0.3, 2.3), M(0x5d4037), 0, 3.4, -1.0); // roof
-  part(u.body, boxGeo(2.6, 2.2, 0.1), M(0x616161), 0, 1.4, 0.02); // door
-  for (let i = 0; i < 4; i++) part(u.body, boxGeo(2.6, 0.08, 0.12), M(0x424242), 0, 0.6 + i * 0.5, 0.05);
-  part(u.body, boxGeo(0.15, 3.5, 0.15), M(0xbdbdbd), 1.7, 4.8, -1.8); // flag pole
-  part(u.body, boxGeo(0.05, 0.9, 1.4), M(0x1e88e5), 1.7, 6.0, -1.1);
-  const car = makeUnit(level >= 4 ? 'tank' : level >= 3 ? 'gunjeep' : 'jeep');
-  car.root.scale.setScalar(0.42);
-  car.root.position.set(0, 0.3, 1.2);
-  car.root.rotation.y = Math.PI / 2;
-  u.body.add(car.root);
-  u.mats.push(...car.mats);
-  if (level >= 1) {
-    // Spiked Bumper: a spiked barrier and a big bumper bolted above the door
-    const spikeM = M(0xbdbdbd);
-    part(u.body, boxGeo(3.6, 0.35, 0.3), M(0x424242), 0, 2.75, 0.2);
-    for (const x of [-1.4, -0.7, 0, 0.7, 1.4]) part(u.body, boxGeo(0.18, 0.18, 0.6), spikeM, x, 2.75, 0.55);
-    part(u.body, boxGeo(0.3, 0.3, 0.9), spikeM, 1.7, 0.45, 1.6).rotation.y = 0.6;
-    part(u.body, boxGeo(0.3, 0.3, 0.9), spikeM, 1.7, 0.45, 1.6).rotation.y = -0.6;
-  }
-  if (level >= 2) {
-    // Suicide Mission: explosive drums and hazard stripes on the door
-    for (const [x, z] of [[-1.6, 1.4], [-1.6, 0.7], [-1.0, 1.6]]) part(u.body, boxGeo(0.6, 0.9, 0.6), M(0xc62828), x, 0.75, z);
-    for (let i = 0; i < 4; i++) part(u.body, boxGeo(0.5, 2.2, 0.05), M(0xfdd835), -0.95 + i * 0.65, 1.4, 0.1);
-  }
-  if (level >= 3) {
-    // Mounted Gunner: a sandbagged machine-gun nest on the roof
-    const bag = M(0xa1887f);
-    for (const x of [-1.2, 0, 1.2]) part(u.body, boxGeo(1.1, 0.5, 0.6), bag, x, 3.8, -0.3);
-    part(u.body, boxGeo(0.35, 0.35, 1.6), M(0x212121), 0, 4.2, 0.2);
-  }
-  return u;
-}
+// (Patrol, Zed and Farm moved to machines2.js)
 
 /**
  * Military Base (alternate Patrol form): a concrete compound with a hangar and its current
@@ -244,67 +206,7 @@ export function makeFieldBarracksWith(level, bottom) {
 export const makeFieldBarracks = (level) => makeFieldBarracksWith(level, false);
 export const makeFieldBarracksBottom = (level) => makeFieldBarracksWith(level, true);
 
-/** Zed: a hangar with its vehicle (M1, then mechs) standing guard. */
-export function makeZed(level) {
-  const u = makeThing();
-  const { M } = u;
-  part(u.body, boxGeo(4.2, 0.3, 4.2), M(0x616161), 0, 0.15, 0);
-  for (const x of [-1.95, 1.95]) part(u.body, boxGeo(0.3, 3.6, 3.6), M(0x455a64), x, 1.8, -0.2);
-  part(u.body, boxGeo(4.2, 0.4, 3.6), M(0x37474f), 0, 3.7, -0.2);
-  part(u.body, boxGeo(3.0, 0.3, 0.1), glow(u, 0xffc400), 0, 3.5, 1.6);
-  if (level >= 1) {
-    // Spiked Tracks: spiked rails along the hangar floor
-    const spikeM = M(0xbdbdbd);
-    for (const x of [-1.5, 1.5]) {
-      part(u.body, boxGeo(0.3, 0.3, 3.4), M(0x424242), x, 0.45, 0.1);
-      for (const z of [-1.2, -0.4, 0.4, 1.2]) part(u.body, boxGeo(0.3, 0.8, 0.3), spikeM, x, 1.0, z);
-    }
-  }
-  if (level >= 2) {
-    // Arm Cannon: a cannon turret mounted on the hangar roof
-    part(u.body, boxGeo(1.4, 0.8, 1.4), M(0x546e7a), 0, 4.3, -0.4);
-    part(u.body, boxGeo(0.4, 0.4, 2.2), M(0x263238), 0, 4.4, 0.9);
-    part(u.body, boxGeo(0.5, 0.5, 0.15), glow(u, 0xff6d00), 0, 4.4, 2.0);
-  }
-  const v = makeUnit(['m1', 'm1', 'm1', 'm2', 'm11'][level]);
-  v.root.scale.setScalar(level >= 4 ? 0.42 : level >= 3 ? 0.5 : 0.6);
-  v.root.position.set(0, 0.3, 0.2);
-  u.body.add(v.root);
-  u.mats.push(...v.mats);
-  return u;
-}
 
-/** Farm: crop rows and a barn; more crops, a silo, an orchard, then glowing fruit. */
-export function makeFarm(level) {
-  const u = makeThing();
-  const { M } = u;
-  part(u.body, boxGeo(4.2, 0.3, 4.2), M(0x6d4c41), 0, 0.15, 0); // soil
-  const barnM = M(0xc62828);
-  part(u.body, boxGeo(2.2, 2.0, 1.8), barnM, -0.9, 1.3, -1.1);
-  const roof = M(0x4e342e);
-  const r1 = part(u.body, boxGeo(1.4, 0.2, 2.0), roof, -1.45, 2.6, -1.1);
-  r1.rotation.z = 0.6;
-  const r2 = part(u.body, boxGeo(1.4, 0.2, 2.0), roof, -0.35, 2.6, -1.1);
-  r2.rotation.z = -0.6;
-  part(u.body, boxGeo(0.9, 1.2, 0.1), M(0xfafafa), -0.9, 0.9, -0.18);
-  const crop = M(level >= 4 ? 0xffeb3b : level >= 2 ? 0x8bc34a : 0x689f38);
-  const rows = Math.min(4, 2 + level);
-  for (let i = 0; i < rows; i++) for (let j = 0; j < 3; j++) part(u.body, boxGeo(0.45, 0.6 + level * 0.1, 0.45), crop, -1.6 + j * 0.8, 0.6, 0.3 + i * 0.5);
-  if (level >= 2) {
-    // Plantation: a silo
-    part(u.body, boxGeo(1.1, 3.6, 1.1), M(0xb0bec5), 1.4, 2.1, -1.3);
-    part(u.body, boxGeo(1.2, 0.5, 1.2), M(0x78909c), 1.4, 4.1, -1.3);
-  }
-  if (level >= 3) {
-    // Orchard: little fruit trees
-    for (const z of [0.4, 1.5]) {
-      part(u.body, boxGeo(0.25, 1.0, 0.25), M(0x5d4037), 1.5, 0.8, z);
-      part(u.body, boxGeo(0.9, 0.9, 0.9), M(0x388e3c), 1.5, 1.7, z);
-      part(u.body, boxGeo(0.2, 0.2, 0.2), level >= 4 ? glow(u, 0x00e5ff) : M(0xff5252), 1.5, 1.6, z + 0.5);
-    }
-  }
-  return u;
-}
 
 /** Commander: officer with a cap and pistol. Medals at Lv 2, megaphone at Lv 3, radio at Lv 4, gold at Lv 5. */
 export function makeCommander(level) {

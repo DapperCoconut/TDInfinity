@@ -1,13 +1,13 @@
 // Tower models, file 6 of 12. Each makeX(level) builds one tower's look.
 // In here:
-// Crook Boss, Minigunner, Ranger, Heli, Pursuit, Helicopter, Cryo Heli, Mobster, Heavy Factory,
-// Behemoth Factory, War Machine Factory, Mortar Classic, Merc Base.
+// Crook Boss, Minigunner, Ranger, Helicopter, Cryo Heli, Mobster, Mortar Classic.
+// (Pursuit, the helicopter makeHeli, the factories and Merc Base moved to machines2.js.)
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
 
 import * as THREE from 'three';
 import { boxGeo, makeHumanoid, part } from './kit.js';
 import { addPistol, addTommyGun, fedora, glow, glowThing, gunMuzzle, helmet, holdLongGun, makeThing, setMuzzle, suit } from './bits.js';
-import { makeUnit } from './units.js';
+import { makeHeli } from './machines2.js';
 
 /**
  * Crook Boss: a gangster in a pinstripe suit and fedora. Lv 2 adds shades and a gold watch,
@@ -183,155 +183,7 @@ export function makeRanger(level) {
   return h;
 }
 
-// ------------------------------------------------------------------ Pursuit & Gatling Gun
-
-/**
- * The Pursuit's helicopter (faces +Z). `bank` tilts, `prop` (main rotor) and `tail` (tail
- * rotor) spin. Lv 2 AP ammo, Lv 3 a radar dome, Lv 4 missile pods. Top path: a grey gunship
- * with a chin minigun (Lv 5) and a huge black-and-red Leviathan (Lv 6). Bottom path: a desert
- * gunship with a sensor ball and big pods (Lv 5), and a dark Demolition Gunship (Lv 6).
- */
-export function makeHeli(h, level, bottom, look = null) {
-  const { M } = h;
-  const heli = new THREE.Group();
-  const bank = new THREE.Group();
-  heli.add(bank);
-  const muzzles = [];
-  const missiles = [];
-  const point = (x, y, z, list) => {
-    const m = new THREE.Object3D();
-    m.position.set(x, y, z);
-    bank.add(m);
-    list.push(m);
-  };
-  const top = level >= 4 && !bottom;
-  const bot = level >= 4 && bottom;
-  const big = level >= 5;
-  // look: { color, trim } overrides the paint (Helicopter, the alternate Pursuit).
-  const color = look?.color ?? (top ? (big ? 0x1c1c1c : 0x607d8b) : bot ? (big ? 0x263238 : 0xc2a46b) : 0x556b2f);
-  const trimC = look?.trim ?? (top && big ? 0xd50000 : bot && big ? 0xff6d00 : 0x37474f);
-  const body = M(color);
-  const trim = big ? glow(h, trimC) : M(trimC);
-  const dark = M(0x212121);
-  if (big) bank.scale.setScalar(1.25);
-
-  part(bank, boxGeo(2.2, 2.0, 4.2), body, 0, 0, 0.3); // cabin
-  part(bank, boxGeo(1.8, 1.3, 1.2), body, 0, -0.2, 2.8); // nose
-  part(bank, boxGeo(1.7, 0.9, 1.0), M(0x81d4fa), 0, 0.45, 2.4); // windscreen
-  part(bank, boxGeo(0.7, 0.7, 4.5), body, 0, 0.4, -3.8); // tail boom
-  part(bank, boxGeo(0.15, 1.6, 1.0), body, 0, 1.1, -5.9); // tail fin
-  part(bank, boxGeo(1.8, 0.12, 0.6), body, 0, 0.4, -5.4); // tail wings
-  part(bank, boxGeo(2.3, 0.15, 0.5), trim, 0, -0.4, 0.3); // stripe
-  for (const x of [-0.9, 0.9]) part(bank, boxGeo(0.15, 0.15, 3.6), dark, x, -1.35, 0.4); // skids
-  for (const x of [-0.9, 0.9]) for (const z of [-0.6, 1.4]) part(bank, boxGeo(0.12, 0.4, 0.12), dark, x, -1.1, z);
-
-  // Main rotor on a mast, tail rotor on the fin.
-  part(bank, boxGeo(0.4, 0.6, 0.4), dark, 0, 1.3, 0.3);
-  const prop = new THREE.Group();
-  prop.position.set(0, 1.65, 0.3);
-  bank.add(prop);
-  const bladeM = M(0x2b2b2b);
-  for (let i = 0; i < (big ? 4 : 2); i++) part(prop, boxGeo(0.35, 0.08, 9), bladeM, 0, 0, 0).rotation.y = (i * Math.PI) / (big ? 4 : 2);
-  const tail = new THREE.Group();
-  tail.position.set(0.15, 1.1, -5.9);
-  bank.add(tail);
-  part(tail, boxGeo(0.08, 2.0, 0.25), bladeM, 0, 0, 0);
-  part(tail, boxGeo(0.08, 0.25, 2.0), bladeM, 0, 0, 0);
-
-  // Nose gun(s)
-  const guns = top ? 2 : 1;
-  const spin = [];
-  for (let g = 0; g < guns; g++) {
-    const x = guns > 1 ? (g ? 1.25 : -1.25) : 0;
-    const y = guns > 1 ? -0.7 : -1.0;
-    const gun = new THREE.Group();
-    gun.position.set(x, y, 2.6);
-    bank.add(gun);
-    part(gun, boxGeo(0.5, 0.5, 0.7), dark, 0, 0, 0);
-    if (top) {
-      // Sky Shredder: spinning minigun barrels
-      const barrels = new THREE.Group();
-      barrels.position.set(0, 0, 0.4);
-      barrels.rotation.x = Math.PI / 2;
-      gun.add(barrels);
-      for (let i = 0; i < 6; i++) {
-        const a = (i / 6) * Math.PI * 2;
-        part(barrels, boxGeo(0.09, 1.6, 0.09), big ? trim : dark, Math.cos(a) * 0.17, 0.8, Math.sin(a) * 0.17);
-      }
-      spin.push(barrels);
-    } else part(gun, boxGeo(0.18, 0.18, 1.4), dark, 0, 0, 0.9);
-    point(x, y, 3.9, muzzles);
-  }
-  h.spin = spin.length ? spin : null;
-
-  if (level >= 1) {
-    // AP Rounds: an ammo box and a belt feeding the gun
-    part(bank, boxGeo(0.8, 0.6, 0.8), M(0x4e5b31), 1.2, -0.7, 1.6);
-    part(bank, boxGeo(0.4, 0.15, 0.6), M(0xc9a227), 0.75, -0.9, 2.1);
-  }
-  if (level >= 2) {
-    // Enhanced Radar: a radar dome over the cockpit and an antenna
-    part(bank, boxGeo(1.0, 0.5, 1.0), M(0xeceff1), 0, 1.3, 1.6);
-    part(bank, boxGeo(0.08, 1.2, 0.08), dark, -0.8, 1.5, -0.8);
-    part(bank, boxGeo(0.25, 0.15, 0.08), glow(h, 0x76ff03), -0.8, 2.1, -0.8);
-  }
-  if (level >= 3) {
-    // Air to Ground Missiles: stub wings with missile pods (more pods on the Bottom path)
-    const pods = bot ? (big ? 3 : 2) : 1;
-    for (const side of [-1, 1]) {
-      part(bank, boxGeo(1.6 + pods * 0.4, 0.15, 0.9), body, side * (1.7 + pods * 0.2), -0.2, 0.2);
-      for (let k = 0; k < pods; k++) {
-        const x = side * (1.9 + k * 0.6);
-        part(bank, boxGeo(0.45, 0.45, 1.6), M(bot ? 0x5d4037 : 0x37474f), x, -0.55, 0.3);
-        part(bank, boxGeo(0.3, 0.3, 0.1), glow(h, 0xff3d00), x, -0.55, 1.12);
-        point(x, -0.55, 1.2, missiles);
-      }
-    }
-  }
-  if (bot) {
-    // Modified Payload: a sensor ball under the nose (hidden detection)
-    part(bank, boxGeo(0.8, 0.8, 0.8), dark, 0, -1.1, 3.1);
-    part(bank, boxGeo(0.4, 0.4, 0.1), glow(h, 0x00e5ff), 0, -1.1, 3.52);
-  }
-  const bay = new THREE.Object3D();
-  bay.position.set(0, -1.2, 0.3);
-  bank.add(bay);
-  heli.userData = { bank, prop, tail, bay, missiles };
-  return { heli, muzzles };
-}
-
-/** Pursuit tower: a helipad with a little control hut, plus the helicopter the view flies around. */
-export function makePursuitModel(level, bottom) {
-  const u = makeThing();
-  const { M } = u;
-  part(u.body, boxGeo(4, 0.3, 4), M(0x757575), 0, 0.15, 0); // concrete pad
-  const yellow = M(0xfdd835);
-  part(u.body, boxGeo(0.35, 0.05, 2.0), yellow, -0.6, 0.32, 0); // the "H"
-  part(u.body, boxGeo(0.35, 0.05, 2.0), yellow, 0.6, 0.32, 0);
-  part(u.body, boxGeo(0.9, 0.05, 0.35), yellow, 0, 0.32, 0);
-  for (const [x, z] of [[-1.8, -1.8], [1.8, -1.8], [-1.8, 1.8], [1.8, 1.8]]) part(u.body, boxGeo(0.25, 0.25, 0.25), glowThing(u, 0xff9100), x, 0.45, z);
-  part(u.body, boxGeo(0.12, 2.6, 0.12), M(0xbdbdbd), 1.7, 1.6, -1.7); // windsock pole
-  part(u.body, boxGeo(0.4, 0.4, 1.0), M(0xff6d00), 1.7, 2.7, -1.25);
-  if (level >= 2) {
-    // Radar: a dish beside the pad
-    part(u.body, boxGeo(0.2, 1.2, 0.2), M(0x616161), -1.7, 0.9, -1.7);
-    part(u.body, boxGeo(1.1, 0.8, 0.12), M(0xeceff1), -1.7, 1.7, -1.7).rotation.y = 0.7;
-  }
-  if (level >= 3) {
-    // Missile rack
-    for (const z of [1.2, 1.6]) part(u.body, boxGeo(1.2, 0.25, 0.25), M(0x37474f), -1.4, 0.5, z);
-  }
-  if (level >= 4) part(u.body, boxGeo(0.06, 0.8, 1.2), M(bottom ? 0xff6d00 : 0xd50000), 1.7, 2.2, -1.1); // path flag
-  const { heli, muzzles } = makeHeli(u, level, bottom);
-  u.plane = heli;
-  u.heli = true;
-  u.muzzles = muzzles;
-  u.spin = u.spin ?? null;
-  u.flyHeight = 13;
-  u.tracer = level >= 5 && !bottom ? 0xff5252 : 0xffd740;
-  return u;
-}
-export const makePursuit = (level) => makePursuitModel(level, false);
+// ------------------------------------------------------------------ Helicopter and Cryo Heli (they fly makeHeli)
 
 /**
  * Helicopter (alternate Pursuit form): a dark helipad with a fuel tank and hangar, plus the
@@ -466,39 +318,6 @@ export function makeMobsterModel(level, bottom) {
 export const makeMobster = (level) => makeMobsterModel(level, false);
 export const makeMobsterBottom = (level) => makeMobsterModel(level, true);
 
-/**
- * Behemoth Factory / War Machine Factory: a big steel hangar with warning stripes and the
- * factory's current unit parked out front. `kind` is 'behemoth' or 'war'.
- */
-export function makeHeavyFactory(level, bottom, kind) {
-  const u = makeThing();
-  const { M } = u;
-  const war = kind === 'war';
-  part(u.body, boxGeo(4.6, 0.3, 4.6), M(0x616161), 0, 0.15, 0);
-  const wall = M(war ? 0x37474f : 0x4e5b31);
-  for (const x of [-2.1, 2.1]) part(u.body, boxGeo(0.4, war ? 4.6 : 3.8, 3.6), wall, x, war ? 2.3 : 1.9, -0.4);
-  part(u.body, boxGeo(4.6, 0.5, 3.8), M(0x263238), 0, war ? 4.8 : 4.0, -0.4); // roof
-  part(u.body, boxGeo(4.0, 0.3, 0.1), glow(u, war ? 0xff6d00 : 0xffc400), 0, war ? 4.45 : 3.65, 1.5);
-  for (let i = 0; i < 5; i++) part(u.body, boxGeo(0.4, 0.3, 0.12), M(i % 2 ? 0x212121 : 0xfdd835), -1.6 + i * 0.8, 0.45, 2.2); // warning stripes
-  part(u.body, boxGeo(0.7, 1.6, 0.7), M(0x455a64), 1.7, (war ? 5.0 : 4.2) + 0.8, -1.6); // smokestack
-  if (level >= 1) part(u.body, boxGeo(0.06, 0.9, 1.3), M(bottom ? 0x1e88e5 : 0xd50000), -1.8, (war ? 5.6 : 4.8), -1.4); // path flag
-  if (level >= 3) part(u.body, boxGeo(1.6, 0.6, 1.6), M(0x37474f), 0, (war ? 5.35 : 4.55), -0.6); // roof crane housing
-  const model = war
-    ? bottom && level >= 3 ? ['warmachine', 'warmachine2', 'warmachine3'][level - 3] : `walker${level >= 2 && !bottom ? level : ''}`
-    : bottom && level >= 3 ? ['laserbehemoth', 'laserbehemoth2', 'laserbehemoth3'][level - 3] : ['behemoth', 'behemoth', 'behemoth2', 'behemoth3', 'behemoth4', 'mammoth'][bottom ? 0 : level];
-  const v = makeUnit(model);
-  const fit = 3.9 / Math.max(v.height, 3);
-  v.root.scale.setScalar(Math.min(war ? 0.55 : model === 'mammoth' ? 0.3 : 0.4, fit));
-  v.root.position.set(0, 0.3, 0.4);
-  u.body.add(v.root);
-  u.mats.push(...v.mats);
-  return u;
-}
-export const makeBehemothFactory = (level) => makeHeavyFactory(level, false, 'behemoth');
-export const makeBehemothFactoryBottom = (level) => makeHeavyFactory(level, true, 'behemoth');
-export const makeWarMachineFactory = (level) => makeHeavyFactory(level, false, 'war');
-export const makeWarMachineFactoryBottom = (level) => makeHeavyFactory(level, true, 'war');
-export const makePursuitBottom = (level) => makePursuitModel(level, true);
 
 
 
@@ -560,60 +379,3 @@ export function makeMortarClassic(level) {
   return h;
 }
 
-/**
- * Mercenary Base: a fenced compound with a tent and a flag. Lv 2 crates of grenades, Lv 3 a
- * second tent, Lv 4 a watchtower, Lv 5 riot shields on a rack, Lv 6 a helipad, Lv 7 armored walls.
- */
-export function makeMercBase(level) {
-  const u = makeThing();
-  const { M } = u;
-  const armored = level >= 6;
-  part(u.body, boxGeo(4.6, 0.25, 4.6), M(0x8d7b5a), 0, 0.12, 0); // dirt yard
-  // Fence posts (concrete walls at max level)
-  const post = M(armored ? 0x607d8b : 0x5d4037);
-  if (armored) {
-    for (const side of [-1, 1]) part(u.body, boxGeo(0.4, 1.4, 4.4), post, side * 2.1, 0.8, 0);
-    part(u.body, boxGeo(4.4, 1.4, 0.4), post, 0, 0.8, -2.1);
-  } else {
-    for (const x of [-2.1, 2.1]) for (const z of [-2.1, -0.7, 0.7, 2.1]) part(u.body, boxGeo(0.2, 1.0, 0.2), post, x, 0.6, z);
-    for (const x of [-2.1, 2.1]) part(u.body, boxGeo(0.08, 0.1, 4.2), post, x, 0.9, 0);
-  }
-  // Tent
-  const canvas = M(level >= 3 ? 0x3e4a2a : 0x6b7d3a);
-  const tent = (x, z, s) => {
-    const l = part(u.body, boxGeo(0.2, 2.6 * s, 2.6 * s), canvas, x - 0.75 * s, 1.1 * s, z);
-    l.rotation.z = -0.6;
-    const r = part(u.body, boxGeo(0.2, 2.6 * s, 2.6 * s), canvas, x + 0.75 * s, 1.1 * s, z);
-    r.rotation.z = 0.6;
-    part(u.body, boxGeo(0.9 * s, 1.6 * s, 0.1), M(0x212121), x, 0.8 * s, z + 1.25 * s);
-  };
-  tent(-0.6, -0.7, 1);
-  if (level >= 2) tent(1.2, -0.9, 0.7);
-  if (level >= 1) {
-    // Explosive Experts: a crate of grenades
-    part(u.body, boxGeo(0.9, 0.6, 0.7), M(0x4e5b31), 1.4, 0.55, 1.3);
-    for (const x of [1.15, 1.4, 1.65]) part(u.body, boxGeo(0.2, 0.2, 0.2), M(0x33691e), x, 0.95, 1.3);
-  }
-  if (level >= 3) {
-    // Improved Training: a watchtower with a gold star banner (the damage boost)
-    for (const x of [-1.9, -1.1]) for (const z of [1.1, 1.9]) part(u.body, boxGeo(0.15, 3.2, 0.15), M(0x6d4c41), x, 1.6, z);
-    part(u.body, boxGeo(1.2, 0.2, 1.2), M(0x795548), -1.5, 3.2, 1.5);
-    part(u.body, boxGeo(0.6, 0.6, 0.05), glowThing(u, 0xffc400), -1.5, 3.8, 2.1);
-  }
-  if (level >= 4) {
-    // Riot Control: riot shields leaning on a rack
-    part(u.body, boxGeo(1.6, 0.12, 0.15), M(0x3e2723), 0.4, 1.2, 1.9);
-    for (const x of [-0.1, 0.4, 0.9]) part(u.body, boxGeo(0.45, 1.0, 0.08), M(0x90a4ae), x, 0.75, 2.0).rotation.x = -0.15;
-  }
-  if (level >= 5) {
-    // Air Transport: a helipad marking
-    part(u.body, boxGeo(1.8, 0.05, 1.8), M(0x424242), 1.2, 0.28, 0.2);
-    part(u.body, boxGeo(0.2, 0.06, 1.0), M(0xfafafa), 0.9, 0.3, 0.2);
-    part(u.body, boxGeo(0.2, 0.06, 1.0), M(0xfafafa), 1.5, 0.3, 0.2);
-    part(u.body, boxGeo(0.6, 0.06, 0.2), M(0xfafafa), 1.2, 0.3, 0.2);
-  }
-  // Flag
-  part(u.body, boxGeo(0.15, 3.2, 0.15), M(0xbdbdbd), 1.9, 1.7, -1.9);
-  part(u.body, boxGeo(0.05, 0.8, 1.2), M(armored ? 0xffc400 : 0xc62828), 1.9, 2.9, -1.3);
-  return u;
-}
