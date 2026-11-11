@@ -65,6 +65,7 @@ export const TRACKS = {
   'map:brook': t('calm', 100, 'D', 'major', [0, 5, 3, 4], [3, 0, 4, 5], { C: [0, 3, 0, 4], mel: PENTA_MAJOR, arp: ['pluck', 'alberti', 2], name: 'Brook Hollow' }),
   'map:crossing': t('anthem', 116, 'A', 'mixo', [0, 6, 3, 0], [3, 6, 0, 0], { C: [0, 3, 6, 3], kit: 'rock', name: 'Sunset Crossing' }),
   'map:cemetery': t('spooky', 138, 'C', 'harmonic', [0, 0, 3, 4], [5, 3, 4, 4, 5, 3, 4, 0], { C: [0, 5, 3, 4], name: 'Lantern Hill Cemetery' }),
+  'map:carnival': t('spooky', 150, 'A', 'harmonic', [0, 3, 0, 4], [5, 4, 3, 4, 5, 3, 4, 0], { C: [0, 3, 4, 0], arp: ['pluck', 'alberti', 2], name: 'Halloween Night 2' }),
   'map:rig': t('industrial', 126, 'G', 'minor', [0, 6, 5, 6], [3, 5, 6, 0], { C: [0, 0, 5, 6], name: 'Rig Point' }),
 
   // ---------------------------------------------------------------- bosses: first game, Easy, Medium

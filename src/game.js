@@ -407,6 +407,15 @@ export class GameClient {
       this.hemi.groundColor.set(0x4a2a14);
       this.hemi.intensity = 1.05;
     }
+    // Purple night maps (Halloween Night 2): a very dark purple glow everywhere, lamps do the rest.
+    if (t.purple) {
+      this.sunOff = [-40, 120, -60];
+      this.sun.color.set(0xa898d8);
+      this.sun.intensity = 0.4;
+      this.hemi.color.set(0x7a5aa8);
+      this.hemi.groundColor.set(0x24162e);
+      this.hemi.intensity = 0.95;
+    }
     if (t.sunOff) this.sunOff = t.sunOff; // a map's own sun direction (Brook Hollow: from the east)
     this.root.fog.near = t.fogNear ?? 90; // drawn units
     this.root.fog.far = t.fogFar ?? 200;

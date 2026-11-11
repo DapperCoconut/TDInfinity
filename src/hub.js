@@ -6,11 +6,11 @@
 //   const client = hub.connect((msg) => deliver(msg));   // one per player
 //   client.receive(msg);                                  // a message from that player
 //   client.close();                                       // that player disconnected
-import { DEFAULT_DIFFICULTY, DIFFICULTIES, GAME, MP, PLAYER_COLORS, TOWERS, VERSUS } from './config.js';
+import { DEFAULT_DIFFICULTY, DIFFICULTIES, GAME, eventMap, MP, PLAYER_COLORS, TOWERS, VERSUS } from './config.js';
 import { Sim } from './sim/sim.js';
 import { VersusSim } from './sim/versus.js';
 import { setMap } from './sim/map.js';
-import { MAPS, pickableMap } from './sim/maps.js';
+import { DEFAULT_MAP, MAPS, pickableMap } from './sim/maps.js';
 import { Bot } from './bot/bot.js';
 import { BOT_NAMES, botRoles } from './bot/loadouts.js';
 
@@ -257,7 +257,7 @@ export function createHub(timers = {}) {
         quick: !!m.quick,
         mode: m.mode === 'versus' ? 'versus' : 'coop',
         difficulty: DIFFICULTIES[m.difficulty] ? m.difficulty : DEFAULT_DIFFICULTY,
-        map: pickableMap(m.map),
+        map: eventMap(m.difficulty, m.map) === m.map ? m.map : pickableMap(m.map), // an event's own map only with that event
         seats: 0,
         bots: [],
         members: [],
@@ -348,6 +348,7 @@ export function createHub(timers = {}) {
       if (!DIFFICULTIES[m.difficulty] || m.difficulty === r.difficulty) return;
       if (r.members.length > roomMax({ ...r, difficulty: m.difficulty })) return error(c, `${DIFFICULTIES[m.difficulty].name} holds at most ${roomMax({ ...r, difficulty: m.difficulty })} players`);
       r.difficulty = m.difficulty;
+      if (MAPS[r.map]?.event && eventMap(r.difficulty, r.map) !== r.map) r.map = DEFAULT_MAP; // left the event: back to a normal map
       setBots(r, r.bots.length); // the room may hold fewer now
       r.ready.clear(); // everyone confirms again
       broadcastRoom(r, { type: 'chat', system: true, text: `Difficulty: ${DIFFICULTIES[r.difficulty].name}` });
@@ -358,7 +359,8 @@ export function createHub(timers = {}) {
       const r = rooms.get(c.room);
       if (!r || r.state !== 'lobby') return;
       if (r.host !== c.id) return error(c, 'Only the host can change the map');
-      if (!MAPS[m.map] || MAPS[m.map].event || m.map === r.map) return; // an event's map comes with the event only
+      if (!MAPS[m.map] || m.map === r.map) return;
+      if (MAPS[m.map].event && eventMap(r.difficulty, m.map) !== m.map) return; // an event's map only while the room plays that event
       r.map = m.map;
       r.ready.clear(); // everyone confirms again
       broadcastRoom(r, { type: 'chat', system: true, text: `Map: ${MAPS[r.map].name}` });

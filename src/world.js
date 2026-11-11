@@ -12,6 +12,7 @@ import { buildRampart } from './rampartworld.js';
 import { buildBrook } from './brookworld.js';
 import { buildRig } from './rigworld.js';
 import { GRAVE_PROPS } from './graveworld.js';
+import { CARN_PROPS } from './carnivalworld.js';
 import { TREES, lambert, placed, snowMat, themeMats, tileTexture } from './worldkit.js';
 import { buildNexus } from './nexusworld.js';
 import { buildCrossing } from './crossingworld.js';
@@ -82,8 +83,8 @@ export function buildWorld(parent, { oz = 0, versus = false } = {}) {
     scene.add(mesh);
   });
 
-  buildPortal(scene, path.start);
-  buildCastle(scene, CASTLE);
+  if (mapInfo.portal !== false) buildPortal(scene, path.start);
+  if (mapInfo.base !== 'car') buildCastle(scene, CASTLE);
   const tree = TREES[mapInfo.tree] ?? TREES.round;
   for (const t of MAP.trees) tree(scene, t, m);
   const borderKind = mapInfo.border ?? mapInfo.tree;
@@ -99,7 +100,7 @@ export function buildWorld(parent, { oz = 0, versus = false } = {}) {
     rock.rotation.set(r.rx, r.ry, r.rz);
   }
   const animated = [];
-  for (const p of MAP.props) (PROPS[p.kind] ?? GRAVE_PROPS[p.kind])?.(scene, p, m, animated);
+  for (const p of MAP.props) (PROPS[p.kind] ?? GRAVE_PROPS[p.kind] ?? CARN_PROPS[p.kind])?.(scene, p, m, animated);
   if (animated.length) scene.userData.tick = (t) => animated.forEach((f) => f(t));
   return scene;
 }

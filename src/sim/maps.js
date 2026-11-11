@@ -877,6 +877,130 @@ function graveFixed() {
   return out;
 }
 
+/**
+ * Halloween Night 2 (Halloween Event): a carnival at night, from the user's 28 x 20 grid
+ * (columns A-AB, rows 1-20, north = top), 1 cell = 4 units. Column index c is 0 for A; row r is
+ * the row number. Spawn B10 (the big tent's door), base Z9 (a blue car). One path with smooth
+ * bends and a clockwise loop that crosses its own start at I10-J10 (flat, no bridge).
+ *
+ *    ABCDEFGHIJKLMNOPQRSTUVWXYZAB
+ *  1 TT.........................T
+ *  2 ............................
+ *  3 PPPP.............L......T...
+ *  4 PPPP.........#####..........
+ *  5 PPPP........##...##.........
+ *  6 PPPP.......##.....##..D.....
+ *  7 ........s.##....s..#........
+ *  8 XXX.......#........##.......
+ *  9 XXX......##..L......#####BC.
+ * 10 XS#########...........L.....
+ * 11 XXX.s..##.##...k...k........
+ * 12 XXX....#...###..............
+ * 13 .....L##.....#......T.......
+ * 14 ......#...T..#..............
+ * 15 ..OOO.##.h.h.#..............
+ * 16 ..OOO..#....##..............
+ * 17 ..OOO..###.##...............
+ * 18 ....WW...###................
+ * 19 ....WW.....L..............TT
+ * 20 T.........................TT
+ */
+export const CARN_CELL = 4;
+/** World [x, z] of grid cell (c, r) (fractions allowed). */
+export const carnCell = (c, r) => [(c - 13.5) * CARN_CELL, (r - 10.5) * CARN_CELL];
+const cxz = (c, r) => {
+  const [x, z] = carnCell(c, r);
+  return { x, z };
+};
+/** Control points (cells) of the route; carnRoute() rounds them into smooth bends. */
+const CARN_POINTS = [
+  [0.6, 10], [4, 10], [7, 10], [9.2, 10], // out of the tent, east along row 10
+  [10.4, 10.5], [11.4, 11.3], [12.3, 12.1], [13, 13], // bend south-east
+  [13.2, 14.2], [13.2, 15.4], [12.8, 16.4], [12, 17.2], [11, 17.8], [10, 18], // down column N, round the bottom
+  [9, 17.8], [8, 17.2], [7.2, 16.3], [6.6, 15.2], [6.4, 14], [6.7, 12.8], [7.4, 11.8], [8.2, 10.9], // up column G/H
+  [8.9, 10], [9.6, 9], [10.1, 8], [10.6, 7], [11.4, 6], [12.4, 5], [13.5, 4.2], // over the start, north-east
+  [14.6, 4], [16, 4], [17.2, 4.3], [18.2, 5.2], [19, 6.3], [19.5, 7.4], [20.2, 8.4], [21.2, 9], // the crest, bend south-east
+  [23, 9], [24.7, 9], // east along row 9 to the car
+];
+/** Catmull-Rom through CARN_POINTS, cut into short straight pieces about 2 units long. */
+function carnRoute() {
+  const P = CARN_POINTS.map(([c, r]) => carnCell(c, r));
+  const out = [P[0]];
+  for (let i = 0; i < P.length - 1; i++) {
+    const p0 = P[Math.max(0, i - 1)];
+    const p1 = P[i];
+    const p2 = P[i + 1];
+    const p3 = P[Math.min(P.length - 1, i + 2)];
+    const n = Math.max(1, Math.round(Math.hypot(p2[0] - p1[0], p2[1] - p1[1]) / 2));
+    for (let k = 1; k <= n; k++) {
+      const t = k / n;
+      const t2 = t * t;
+      const t3 = t2 * t;
+      const f = (a, b, c, d) => 0.5 * (2 * b + (c - a) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (3 * b - a - 3 * c + d) * t3);
+      out.push([f(p0[0], p1[0], p2[0], p3[0]), f(p0[1], p1[1], p2[1], p3[1])]);
+    }
+  }
+  return out;
+}
+const CARN_ROUTE = carnRoute();
+/** Where the path crosses itself (I10-J10): the dirt rims leave a gap here. */
+export const CARN_CROSS = carnCell(8.95, 10);
+
+function carnFixed() {
+  const out = [];
+  // `block` keeps towers off (radius), `box` = [hx, hz, h] what players bump into.
+  const solid = (c, r, block, box) => out.push({ kind: 'carnBlock', ...cxz(c, r), block, ...(box ? { box } : {}) });
+  // The big red/white tent (A8-C12), its glowing door facing the path to the east.
+  out.push({ kind: 'carnBigTent', ...cxz(1, 10) });
+  for (const r of [8.3, 10, 11.7]) solid(1, r, 7, [6.4, 3.6, 20]);
+  // The purple/black tent (A3-D6).
+  out.push({ kind: 'carnPurpleTent', ...cxz(1.5, 4.5) });
+  solid(1.5, 4.5, 8.5, [7.5, 7.5, 14]);
+  // Rides: the Ferris wheel (C15-E17), the chair swing (E18-F19), the drop tower (W6).
+  out.push({ kind: 'carnFerris', ...cxz(3, 16), block: 6.2, box: [5.5, 2.5, 22] });
+  out.push({ kind: 'carnSwing', ...cxz(4.6, 18.6), block: 5, box: [1, 1, 12] });
+  out.push({ kind: 'carnDrop', ...cxz(22, 6), block: 3.4, box: [2, 2, 32] });
+  // Game stalls with balloons (E11, I7, Q7).
+  [[4, 11.3, Math.PI / 2], [8, 7, 0], [16, 7, Math.PI]].forEach(([c, r, rot], i) => out.push({ kind: 'carnStall', ...cxz(c, r), rot, v: i, block: 2.4, box: [1.7, 1.7, 4] }));
+  // Black lamp posts with warm lanterns along the path (every other one sheds real light).
+  [[5, 13], [13, 9], [17, 3], [22, 10], [11, 19], [6, 8.8], [2.6, 7.2], [14.8, 6.2], [20.5, 4.6], [24.4, 10.8], [15.2, 15.5], [9.8, 3.6]]
+    .forEach(([c, r], i) => out.push({ kind: 'carnLamp', ...cxz(c, r), lit: i % 2 === 0, block: 0.7 }));
+  // Pennant strings on short posts: [c1, r1, c2, r2]. Some cross the path, high enough to walk under.
+  [[3.2, 9.15, 7.6, 9.15], [21.9, 8.2, 21.9, 9.8], [14.3, 3.2, 17.2, 3.2], [11.3, 13.4, 14.9, 13.4], [5.6, 11, 5.6, 13]].forEach(([c1, r1, c2, r2]) => {
+    const [x1, z1] = carnCell(c1, r1);
+    const [x2, z2] = carnCell(c2, r2);
+    out.push({ kind: 'carnPennants', x: x1, z: z1, x2, z2 });
+    out.push({ kind: 'carnBlock', x: x1, z: z1, block: 0.6 }, { kind: 'carnBlock', x: x2, z: z2, block: 0.6 });
+  });
+  // Hay bales with pumpkins: the loop centre (J15, L15) and along the east run (P11, T11).
+  [[9, 15.2, 0], [11.1, 15.4, 1], [15, 11.2, 2], [19, 11.1, 3], [7.6, 3.4, 4]].forEach(([c, r, v]) => out.push({ kind: 'carnHay', ...cxz(c, r), v, rot: v * 1.7, block: 1.8, bh: 1.6 }));
+  // Low fences at the path edges near the loop: [c, r, rot (0 = along x), length].
+  [[5.4, 14.2, Math.PI / 2, 8], [8.6, 19.15, 0, 7], [14.3, 15, Math.PI / 2, 8]].forEach(([c, r, rot, len], i) => {
+    const { x, z } = cxz(c, r);
+    out.push({ kind: 'carnFence', x, z, rot, len, metal: i === 1 });
+    const along = rot ? [0, 1] : [1, 0];
+    for (let d = -len / 2 + 1; d <= len / 2 - 1; d += 2) out.push({ kind: 'carnBlock', x: x + along[0] * d, z: z + along[1] * d, block: 0.7, box: [rot ? 0.2 : 1.1, rot ? 1.1 : 0.2, 1.2] });
+  });
+  // Trees on the playfield: the pine in the loop (K14) and the ones round the edges.
+  [[10, 13.8, 'pine'], [0, 1, 'pine'], [1, 1, 'autumn'], [27, 1, 'pine'], [24, 3, 'autumn'], [20, 13, 'pine'], [26, 19, 'autumn'], [27, 19, 'pine'], [26, 20, 'pine'], [27, 20, 'autumn'], [0, 20, 'pine']]
+    .forEach(([c, r, kind], i) => out.push({ kind: 'carnTree', ...cxz(c, r), pine: kind === 'pine', s: 0.9 + (i % 3) * 0.15, rot: i * 2.3, block: 1.6 }));
+  // Dark woods beyond the edges, then purple-grey mountains on the horizon.
+  for (let i = 0; i < 64; i++) {
+    const a = (i / 64) * Math.PI * 2;
+    const k = Math.abs((Math.sin(i * 12.9898) * 43758.5453) % 1);
+    out.push({ kind: 'carnTree', x: Math.round(Math.cos(a) * (64 + k * 14)), z: Math.round(Math.sin(a) * (50 + k * 12)), pine: i % 3 !== 1, s: 1.1 + k * 0.6, rot: k * 6 });
+  }
+  for (let i = 0; i < 26; i++) {
+    const a = (i / 26) * Math.PI * 2 + 0.1;
+    const k = Math.abs((Math.sin(i * 78.233) * 43758.5453) % 1);
+    out.push({ kind: 'carnMountain', x: Math.round(Math.cos(a) * 150), z: Math.round(Math.sin(a) * 120), r: 26 + Math.round(k * 16), h: 26 + Math.round(k * 22) });
+  }
+  // The base: the blue car at the path end (Z9).
+  out.push({ kind: 'carnCar', ...cxz(25.7, 9), rot: 0 });
+  out.push({ kind: 'carnRims' });
+  return out;
+}
+
 // How hard a map is (MAPS[key].rating): its card in the menus is that color. Judged by eye from
 // the path (long and winding is easy; short, split or random is hard) and how much room there is to build.
 export const MAP_RATINGS = {
@@ -1095,6 +1219,28 @@ export const MAPS = {
       sky: 0x0a0a0c, fog: 0x1a1814, fogNear: 70, fogFar: 190, night: true, lamps: true,
       leaves: [0x1e2216, 0x242a1a, 0x1a1e12], rock: 0x6e5a40,
       cliff: [0x6e5a40, 0x5a4934, 0x7a6650], water: [0x38a3e8, 0x2585d0],
+    },
+  },
+  carnival: {
+    name: 'Halloween Night 2',
+    event: 'halloween', // the Halloween Event's second map (see DIFFICULTIES.halloween.maps)
+    rating: 'medium',
+    icon: '🎡',
+    desc: 'A spooky carnival at night. Enemies come out of the big circus tent, loop round past the Ferris wheel, cross their own path and run to a blue car.',
+    path: CARN_ROUTE,
+    spawn: { x: carnCell(17, 12.5)[0], z: carnCell(17, 12.5)[1] },
+    base: 'car', // no castle: the blue car at the path end is the base (drawn by carnCar)
+    portal: false, // no portal: enemies come out of the big tent's door
+    bounds: { minX: -56, maxX: 56, minZ: -40, maxZ: 40 },
+    cliffs: [],
+    pools: [],
+    trees: 0, tree: 'round', rocks: 0, border: 'none',
+    fixed: carnFixed(),
+    theme: {
+      ground: ['#3e4a2e', '#3a462b', '#424e31', '#37432a'], path: ['#5a3530', '#55322d', '#5e3833', '#52302b'],
+      sky: 0x14101c, fog: 0x3a2e4a, fogNear: 80, fogFar: 200, night: true, purple: true,
+      leaves: [0x2f3e2a, 0x2f3e2a, 0x2f3e2a], rock: 0x4a3f5e,
+      cliff: [0x4a3f5e, 0x3a2a24, 0x4a3f5e], water: [0x38a3e8, 0x2585d0],
     },
   },
   rig: {

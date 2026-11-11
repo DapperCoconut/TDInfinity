@@ -16,7 +16,7 @@
 // the same from every file. Everything sim.js exported before is still exported from here.
 import {
   DIFFICULTIES, ENEMIES, GAME, PERKS, PLAYER_COLORS, SPEEDS, TARGET_MODES, TOWERS, WAVES, abilityCost, canHit,
-  choiceOptions, choicesOf, difficulty, facesCone, pickOptions, rootType, towerCost, towerLimit, towerMaxHp,
+  choiceOptions, choicesOf, difficulty, eventMap, facesCone, pickOptions, rootType, towerCost, towerLimit, towerMaxHp,
 } from '../config.js';
 import { canPlace, laneOf, laneOz, mapKey, placeFail, setMap } from './map.js';
 import { pickableMap } from './maps.js';
@@ -59,7 +59,7 @@ export class Sim {
     // Difficulty: which scripted waves this game plays (Versus always plays the zombie waves).
     this.mode = this.vs ? 'zombies' : DIFFICULTIES[opts.mode] ? opts.mode : 'easy';
     // Versus lanes: the VersusSim already picked the map. Event modes always play their own map.
-    if (!this.vs) setMap(difficulty(this.mode).map ?? pickableMap(opts.map), true); // an event plays its own map, and only an event does
+    if (!this.vs) setMap(eventMap(this.mode, opts.map) ?? pickableMap(opts.map), true); // an event plays one of its own maps, and only an event does
     this.map = mapKey;
     this.waves = this.vs ? WAVES : difficulty(this.mode).waves;
     this.cashMult = this.vs ? 1 : difficulty(this.mode).cash; // harder modes pay more in-game cash

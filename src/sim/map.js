@@ -713,7 +713,7 @@ function generate(def) {
   if (def.brook) return brookGenerate();
   if (def.rig) return rigGenerate();
   const rand = mulberry32(1337 + def.path.length * 101 + Math.round(def.path[0][1]));
-  const obstacles = def.nexus ? [] : [{ x: CASTLE.x, z: CASTLE.z, r: 9 }]; // circles blocking towers & players (no h = too tall to stand on)
+  const obstacles = def.nexus ? [] : [{ x: CASTLE.x, z: CASTLE.z, r: def.base === 'car' ? 4.5 : 9 }]; // circles blocking towers & players (no h = too tall to stand on)
   const colliders = []; // what players bump into (and can stand on, with h), beyond trees and rocks
   const trees = [];
   const rocks = [];
@@ -856,7 +856,8 @@ export function setMap(key, reroll = false) {
     const i = CROSS_GRID.findIndex((l) => l.includes('B'));
     const [x, z] = crossCell(CROSS_GRID[i].indexOf('B'), i + 1);
     Object.assign(CASTLE, { x, z });
-  } else if (def.court) Object.assign(CASTLE, { x: 0, z: courtCell(19, 41)[1] + 14 }); // on its own island south of T41
+  } else if (def.base === 'car') Object.assign(CASTLE, { x: path.end.x + 4, z: path.end.z }); // Halloween Night 2's blue car
+  else if (def.court) Object.assign(CASTLE, { x: 0, z: courtCell(19, 41)[1] + 14 }); // on its own island south of T41
   else if (def.ember || def.rampart || def.brook || def.rig) Object.assign(CASTLE, { x: path.end.x, z: path.end.z }); // Ember Keep's base gate at K21, Midnight Rampart's tunnel at X28
   else Object.assign(CASTLE, def.nexus ? { x: 0, z: 0 } : { x: path.end.x + 7, z: path.end.z });
   CLIFFS.length = 0;

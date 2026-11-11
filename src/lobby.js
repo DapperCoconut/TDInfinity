@@ -1,5 +1,5 @@
 // Menus: title screen, multiplayer menu (create / join a room by code), and room lobby.
-import { DEFAULT_DIFFICULTY, DIFFICULTIES, EVENT_KEYS, GAME, MODE_KEYS, MP, PLAYER_COLORS, TOWERS, VERSUS, detection, difficulty } from './config.js';
+import { DEFAULT_DIFFICULTY, DIFFICULTIES, EVENT_KEYS, GAME, eventMap, MODE_KEYS, MP, PLAYER_COLORS, TOWERS, VERSUS, detection, difficulty } from './config.js';
 import { LoadoutScreen } from './loadout.js';
 import { audio } from './audio.js';
 import { profile } from './profile.js';
@@ -82,6 +82,20 @@ export class Lobby {
       if (b) this.pickEvent(this.event === b.dataset.event ? null : b.dataset.event);
     });
     $('event-back').onclick = () => this.pickEvent(null);
+    // An event with more than one map: its banner shows them all, click one to play it.
+    this.eventMap = localStorage.getItem('td.eventMap');
+    $('event-banner').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-map]');
+      if (!b || !this.event) return;
+      this.eventMap = b.dataset.map;
+      localStorage.setItem('td.eventMap', this.eventMap);
+      this.renderEvent();
+      this.renderMap();
+    });
+    $('room-event-banner').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-map]');
+      if (b && this.room?.host === net.id) net.send({ type: 'room.map', map: b.dataset.map });
+    });
     this.renderEvent();
     this.renderMap();
 
@@ -113,7 +127,7 @@ export class Lobby {
     // host's browser by its code (see net.js).
     $('room-create').onclick = () => {
       this.setBusy('Creating room…');
-      net.send({ type: 'room.create', name: $('room-name').value, isPublic: false, difficulty: this.playMode, map: this.map });
+      net.send({ type: 'room.create', name: $('room-name').value, isPublic: false, difficulty: this.playMode, map: this.playMap });
     };
     const join = () => {
       this.setBusy('Joining room…');
@@ -148,7 +162,7 @@ export class Lobby {
     });
     $('quick-go').onclick = () => {
       this.setBusy('Looking for a game…');
-      net.send({ type: 'room.quick', mode: this.quick.mode, difficulty: this.playMode, map: this.map, seats: this.quick.seats, bots: this.quick.bots, name: `${this.name}'s game` });
+      net.send({ type: 'room.quick', mode: this.quick.mode, difficulty: this.playMode, map: this.playMap, seats: this.quick.seats, bots: this.quick.bots, name: `${this.name}'s game` });
     };
     net.on('quick', (m) => this.setBusy(m.text));
 
@@ -277,7 +291,7 @@ export class Lobby {
   startSolo() {
     this.inGame = true;
     this.show(null);
-    this.client.start(new LocalSession(this.name, PLAYER_COLORS[0], this.playMode, profile.evoLevels(), this.map));
+    this.client.start(new LocalSession(this.name, PLAYER_COLORS[0], this.playMode, profile.evoLevels(), this.playMap));
   }
 
   /** A locked mode (Hardcore before every other mode is beaten): says what's missing. Returns true if locked. */
@@ -290,6 +304,11 @@ export class Lobby {
   /** What Solo and a new room play: the event that's picked, otherwise the mode card that's picked. */
   get playMode() {
     return this.event ?? this.difficulty;
+  }
+
+  /** What Solo and a new room play on: the picked event's picked map, otherwise the picked map card. */
+  get playMap() {
+    return eventMap(this.playMode, this.eventMap) ?? this.map;
   }
 
   /** Picks special event `key` (null: back to the normal modes and maps). */
@@ -317,19 +336,25 @@ export class Lobby {
   }
 
   /** An event's banner, shown instead of the mode and map cards: its boss, what it is, and its own map. */
-  eventBanner(key) {
+  eventBanner(key, picked) {
     const d = DIFFICULTIES[key];
-    const m = mapDef(d.map);
+    const maps = d.maps ?? [d.map];
+    const on = eventMap(key, picked);
     return `<div class="event-banner" style="--c:${d.color}">
       <img class="eb-boss" src="${enemyIcon(d.boss)}" alt="" draggable="false">
       <div class="eb-text">
         <h3>${d.icon} ${esc(d.name)}${profile.beaten.includes(key) ? ' <span class="ev-won" title="You beat this event">✔</span>' : ''}</h3>
         <p>${esc(d.desc)}</p>
       </div>
-      <div class="eb-map" data-map="${d.map}" title="${esc(`${m.name}: ${m.desc}`)}">
-        <span class="pc-art">${this.mapArt(d.map)}</span>
-        <span class="eb-map-name"><small>Event map</small>${esc(m.name)}</span>
-      </div>
+      <div class="eb-maps${maps.length > 1 ? ' pick' : ''}">${maps
+        .map((k) => {
+          const m = mapDef(k);
+          return `<div class="eb-map${k === on ? ' on' : ''}" data-map="${k}" title="${esc(`${m.name}: ${m.desc}`)}">
+          <span class="pc-art">${this.mapArt(k)}</span>
+          <span class="eb-map-name"><small>${maps.length > 1 ? (k === on ? '✔ Playing' : 'Click to play') : 'Event map'}</small>${esc(m.name)}</span>
+        </div>`;
+        })
+        .join('')}</div>
     </div>`;
   }
 
@@ -340,7 +365,7 @@ export class Lobby {
     mark(btns, 'event', this.event);
     $('pick-normal').classList.toggle('hidden', !!this.event);
     $('event-panel').classList.toggle('hidden', !this.event);
-    if (this.event) fill($('event-banner'), `${this.event}|${this.eventSig}`, () => this.eventBanner(this.event));
+    if (this.event) fill($('event-banner'), `${this.event}|${this.eventSig}|${this.playMap}`, () => this.eventBanner(this.event, this.eventMap));
   }
 
   /**
@@ -456,7 +481,7 @@ export class Lobby {
 
   /** Title screen map cards (picking a map also shows it behind the menu). */
   renderMap() {
-    this.previewMap(difficulty(this.playMode).map ?? this.map); // a picked event shows its own map
+    this.previewMap(this.playMap); // a picked event shows its own map
     const row = $('map-row');
     fill(row, 'maps', () => this.mapCards());
     mark(row, 'map', this.map);
@@ -502,7 +527,7 @@ export class Lobby {
     $('quick-seats').textContent = q.seats;
     $('quick-bots').textContent = q.bots;
     const d = difficulty(this.playMode);
-    const m = mapDef(d.map ?? this.map);
+    const m = mapDef(this.playMap);
     const humans = q.seats - q.bots;
     $('quick-sub').innerHTML = `${q.mode === 'versus' ? '⚔ Versus' : `${d.icon} ${esc(d.name)}`} · ${esc(m.name)} · <b>${q.seats}</b> seat${q.seats === 1 ? '' : 's'}: up to ${humans} player${humans === 1 ? '' : 's'}${q.bots ? ` + ${q.bots} bot${q.bots === 1 ? '' : 's'}` : ''}${q.mode === 'versus' && q.bots ? ' (bots fight for their own base)' : ''}`;
   }
@@ -608,7 +633,7 @@ export class Lobby {
   renderRoom() {
     const r = this.room;
     if (!r) return;
-    this.previewMap((r.mode !== 'versus' && difficulty(r.difficulty).map) || r.map);
+    this.previewMap((r.mode !== 'versus' && eventMap(r.difficulty, r.map)) || r.map);
     const me = this.net.id;
     const isHost = r.host === me;
     $('room-title').textContent = r.quick ? `⚡ ${r.name}` : r.name;
@@ -646,7 +671,7 @@ export class Lobby {
     mark(evEl, 'event', event);
     const bEl = $('room-event-banner');
     bEl.classList.toggle('hidden', !event);
-    if (event) fill(bEl, `${event}|${this.eventSig}`, () => this.eventBanner(event));
+    if (event) fill(bEl, `${event}|${this.eventSig}|${r.map}|${isHost}`, () => this.eventBanner(event, r.map));
     const dEl = $('room-difficulty');
     dEl.classList.toggle('hidden', versus || !!event);
     fill(dEl, `${this.modeSig}|${isHost}`, () => `<div class="pick-label"></div>${grid(this.modeCards())}`);

@@ -589,14 +589,15 @@ export const DIFFICULTIES = {
     hpCurve: [[1, 0.4], [10, 0.45], [25, 0.5]], bossHp: 0.3,
     mimic: { type: 'thWicky', chance: 1 / 1700, from: 10 } },
   // Halloween Event (2026-11-10 spec, see halloween.js). `event`: not one of the mode cards, it has
-  // its own button in the top right of the menus. `map`: an event and its map are one thing, the
-  // event always plays that map and no other mode can (the map says so too: MAPS[map].event).
+  // its own button in the top right of the menus. `maps`: the event's own maps (the player picks one
+  // on the event banner; `map` is the one picked first). No other mode can play them (the maps say
+  // so too: MAPS[map].event).
   // Open to everyone. Each wave pays its own `bonus` (instead of GAME.waveBonus). mpHp all 0: enemy
   // health doesn't grow with more players (the spec's numbers are for a full server). pot: so the
   // cash is a full server's too, shared between whoever plays: startCash and each wave's bonus are
   // what one of `pot` players gets (solo: 4x, two players: 2x each), and damage cash is split.
-  halloween: { name: 'Halloween Event', icon: '🎃', color: '#ef6c00', boss: 'hwJack', desc: '10 spooky waves on Lantern Hill Cemetery. Survive the Reaper, the Demon and JACK, the Pumpkin King. A full server\'s cash is shared between the players: $22,000 to start solo, $5,500 each with four. 100 base health. 3x credits.',
-    waves: HALLOWEEN_WAVES, event: true, map: 'cemetery', cash: 1, dmgCash: 1.5, pot: 4, credits: 3, shards: 3, baseHp: 100, startCash: 5500, groupBonus: 0, flatHp: true,
+  halloween: { name: 'Halloween Event', icon: '🎃', color: '#ef6c00', boss: 'hwJack', desc: '10 spooky waves on Lantern Hill Cemetery or Halloween Night 2. Survive the Reaper, the Demon and JACK, the Pumpkin King. A full server\'s cash is shared between the players: $22,000 to start solo, $5,500 each with four. 100 base health. 3x credits.',
+    waves: HALLOWEEN_WAVES, event: true, map: 'cemetery', maps: ['cemetery', 'carnival'], cash: 1, dmgCash: 1.5, pot: 4, credits: 3, shards: 3, baseHp: 100, startCash: 5500, groupBonus: 0, flatHp: true,
     mpHp: [0, 0, 0, 0, 0], timers: HALLOWEEN_TIMERS,
     hpCurve: [[1, 1.3], [4, 1.3], [6, 0.9]], bossHp: 0.5 },
 };
@@ -604,6 +605,13 @@ export const DEFAULT_DIFFICULTY = 'easy';
 /** The modes on the mode cards, and the special events (each has its own button and its own map). */
 export const MODE_KEYS = Object.keys(DIFFICULTIES).filter((k) => !DIFFICULTIES[k].event);
 export const EVENT_KEYS = Object.keys(DIFFICULTIES).filter((k) => DIFFICULTIES[k].event);
+/** The map mode `key` plays when `map` is picked: an event plays one of its own maps (its first when `map` isn't one), other modes get null (they play the picked map). */
+export function eventMap(key, map) {
+  const d = DIFFICULTIES[key];
+  if (!d?.map) return null;
+  const base = typeof map === 'string' ? map.split(':')[0] : map;
+  return (d.maps ?? [d.map]).includes(base) ? base : d.map;
+}
 export const difficulty = (key) => DIFFICULTIES[key] ?? DIFFICULTIES[DEFAULT_DIFFICULTY];
 /**
  * The balance curve: how much a mode's enemy health is multiplied by on wave `index` (0 = wave 1).

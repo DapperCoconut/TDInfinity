@@ -2361,6 +2361,29 @@ input:focus {
   border-radius: 10px;
   background: #000;
 }
+.eb-maps {
+  display: flex;
+  flex: none;
+  gap: 10px;
+}
+.eb-maps.pick .eb-map {
+  width: 170px;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.15s, transform 0.15s;
+}
+.eb-maps.pick .eb-map:hover {
+  opacity: 1;
+  transform: translateY(-2px);
+}
+.eb-maps.pick .eb-map.on {
+  opacity: 1;
+  border-color: #ffe082;
+  box-shadow: 0 0 10px 2px rgba(255, 224, 130, 0.6);
+}
+#room-event-banner .eb-maps.pick .eb-map {
+  width: 130px;
+}
 .eb-map-name {
   position: absolute;
   left: 0;
