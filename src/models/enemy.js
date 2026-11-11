@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { HC_CREATURES, hcParts } from '../newmodels/hc.js';
 import { hwParts } from '../newmodels/halloween.js';
+import { H2_CREATURES, hw2Parts } from '../newmodels/halloween2.js';
 import { rigify } from '../rig.js';
 import { gaitFor, shapeEnemy } from '../visuals.js';
 import { boxGeo, makeHumanoid, part, setOpacity } from './kit.js';
@@ -67,7 +68,7 @@ export function makeZombie(def) {
       h.wings.push(w);
     }
   }
-  if (def.boss && !def.look && !def.crystal && !def.insane && !def.vlook && !def.mlook && !def.flook && !def.xlook && !def.ilook && !def.blook && !def.hk) {
+  if (def.boss && !def.look && !def.crystal && !def.insane && !def.vlook && !def.mlook && !def.flook && !def.xlook && !def.ilook && !def.blook && !def.hk && !def.hw2) {
     const spikeM = M(0xb0bec5);
     part(h.torso, boxGeo(0.7, 0.5, 0.9), spikeM, -1.5, 1.2, 0);
     part(h.torso, boxGeo(0.7, 0.5, 0.9), spikeM, 1.5, 1.2, 0);
@@ -88,6 +89,7 @@ export function makeZombie(def) {
   h.rightArm.rotation.x = -Math.PI / 2;
   h.leftArm.rotation.x = -Math.PI / 2;
   if (def.hw) hwParts(h, def); // Halloween Event looks (they may pose themselves with h.anim)
+  if (def.hw2) hw2Parts(h, def); // Halloween Night 2 looks (newmodels/halloween2.js)
   if (!h.anim && rigify(h)) {
     // Elbows, knees and a round head, and its own way of walking (visuals.js, anim.js).
     h.gait = gaitFor(def, h);
@@ -129,6 +131,7 @@ const CREATURES = {
   timeCrystal: makeTimeCrystalModel,
   timeFragment: makeTimeFragmentModel,
   ...HC_CREATURES, // Hardcore creatures (newmodels/hc.js)
+  ...H2_CREATURES, // Halloween Night 2 creatures (newmodels/halloween2b.js)
 };
 
 /** Builds the model for an enemy definition (Easy mode creatures, or a zombie). */

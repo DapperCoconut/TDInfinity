@@ -15,6 +15,7 @@ export class SimTowerHealth {
       if (o) this.hurtTower(o, a.tdmg, true);
     }
     if (a.dmg) this.hurtTowers(a.x, a.z, a.r, a.dmg, true);
+    if (a.bleed) for (const t of this.towers.values()) if (t.hp > 0 && (t.x - a.x) ** 2 + (t.z - a.z) ** 2 <= Math.max(a.r || 0, 0.5) ** 2) this.cutTower(t, a.bleed); // Psycho knives
     if (a.puddle) this.puddles.push({ x: a.x, z: a.z, r: a.r, dps: a.puddle.dps, left: a.puddle.life, slow: a.puddle.slow ?? 0, weak: a.puddle.weak ?? 0, silence: !!a.puddle.silence });
     if (a.slow) this.slowTowers(a.x, a.z, Math.max(a.r, 0.5), a.slow.amt, a.slow.time, true); // Time Parasite
     if (a.lock) {

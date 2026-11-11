@@ -432,6 +432,8 @@ export class SimDamage {
       if (lr) dmg *= 1 - lr;
     } else if (kind === 'explosive' && e.explosiveResist) dmg *= 1 - e.explosiveResist; // Chained
     else if (kind === 'golden' && e.goldResist && !this.ignoresGoldResist(t)) dmg *= 1 - e.goldResist; // Warpers, the Beholder
+    const mr = ENEMIES[e.type].meleeResist; // Halloween Night 2 Executioner: melee towers barely hurt it
+    if (mr && t && !this.dot && (TOWERS[t.type]?.melee || ts0?.melee)) dmg *= 1 - mr;
     // Armor tops out at 90%, except Hard mode Corpses (100%: only defense piercing gets through).
     const cap = e.armor >= 1 ? 1 : 0.9;
     let armor = Math.min(cap, e.armor + (e.gear || 0) + (e.auraArmor || 0) + (e.blessed || 0) + (e.vShield > 0 ? this.voidArmor.armor : 0)); // Mechanics bolt extra armor on; VOID's aura; Jester Blessed; void armor
@@ -649,6 +651,7 @@ export class SimDamage {
       this.events.push({ k: 'trail', x: r2(e.x), z: r2(e.z), r: z.radius, life: z.life, c: z.color });
     }
     if (def.necroBurst) this.necroBurst(e, def.necroBurst);
+    if (def.deathBlast) this.carnivalBlast(e, def.deathBlast); // Halloween Night 2 Jack O' Lanterns
     if (def.deathHaste) {
       // Overcharged: the enemies around it get a big burst of speed.
       const h = def.deathHaste;

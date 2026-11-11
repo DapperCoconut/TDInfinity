@@ -12,6 +12,7 @@ import { TENTH_TOWERS } from './tenthtowers.js';
 import { GOLD_TOWERS } from './goldtowers.js';
 import { HARDCORE_WAVES } from './hardcore.js';
 import { HALLOWEEN_TIMERS, HALLOWEEN_WAVES } from './halloween.js';
+import { HALLOWEEN2_TIMERS, HALLOWEEN2_WAVES } from './halloween2.js';
 export { BOSS_KNOCK, KNOCK_STUDS, abilityCost, arrowModes, arrowName, timedAbility } from './towers/shared.js';
 import { TOWERS_GUNNERS } from './towers/gunners.js';
 import { TOWERS_HEAVY } from './towers/heavy.js';
@@ -596,10 +597,13 @@ export const DIFFICULTIES = {
   // health doesn't grow with more players (the spec's numbers are for a full server). pot: so the
   // cash is a full server's too, shared between whoever plays: startCash and each wave's bonus are
   // what one of `pot` players gets (solo: 4x, two players: 2x each), and damage cash is split.
-  halloween: { name: 'Halloween Event', icon: '🎃', color: '#ef6c00', boss: 'hwJack', desc: '10 spooky waves on Lantern Hill Cemetery or Halloween Night 2. Survive the Reaper, the Demon and JACK, the Pumpkin King. A full server\'s cash is shared between the players: $22,000 to start solo, $5,500 each with four. 100 base health. 3x credits.',
+  halloween: { name: 'Halloween Event', icon: '🎃', color: '#ef6c00', boss: 'hwJack', desc: '10 spooky waves on Lantern Hill Cemetery against JACK, the Pumpkin King, or 25 waves of Halloween Night 2 at the carnival against the RINGMASTER and JACK O\' BOT. A full server\'s cash is shared between the players: $22,000 to start solo, $5,500 each with four. 100 base health. 3x credits.',
     waves: HALLOWEEN_WAVES, event: true, map: 'cemetery', maps: ['cemetery', 'carnival'], cash: 1, dmgCash: 1.5, pot: 4, credits: 3, shards: 3, baseHp: 100, startCash: 5500, groupBonus: 0, flatHp: true,
     mpHp: [0, 0, 0, 0, 0], timers: HALLOWEEN_TIMERS,
-    hpCurve: [[1, 1.3], [4, 1.3], [6, 0.9]], bossHp: 0.5 },
+    hpCurve: [[1, 1.3], [4, 1.3], [6, 0.9]], bossHp: 0.5,
+    // mapModes: a map of the event that plays its own waves. These fields replace the mode's own
+    // there (modeFor). Halloween Night 2 (see halloween2.js).
+    mapModes: { carnival: { waves: HALLOWEEN2_WAVES, timers: HALLOWEEN2_TIMERS, boss: 'h2Ringmaster', hpCurve: null, bossHp: 1 } } },
 };
 export const DEFAULT_DIFFICULTY = 'easy';
 /** The modes on the mode cards, and the special events (each has its own button and its own map). */
@@ -613,6 +617,12 @@ export function eventMap(key, map) {
   return (d.maps ?? [d.map]).includes(base) ? base : d.map;
 }
 export const difficulty = (key) => DIFFICULTIES[key] ?? DIFFICULTIES[DEFAULT_DIFFICULTY];
+/** Mode `key` as it plays on `map`: an event map with its own waves (`mapModes`) swaps them in. */
+export function modeFor(key, map) {
+  const d = difficulty(key);
+  const m = d.mapModes?.[eventMap(key, map)];
+  return m ? { ...d, ...m } : d;
+}
 /**
  * The balance curve: how much a mode's enemy health is multiplied by on wave `index` (0 = wave 1).
  * `hpCurve` is a list of [wave, multiplier] points; between two points it slides evenly, before

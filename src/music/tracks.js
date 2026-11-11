@@ -122,6 +122,10 @@ export const TRACKS = {
   'boss:hwReaper': t('night', 100, 'E', 'harmonic', [0, 3, 0, 4], [5, 3, 4, 0], { kit: 'half', lead: 'organ' }),
   'boss:hwDemon': t('heavy', 180, 'G', 'phrygian', [0, 1, 0, 6], [5, 6, 0, 0], { kit: 'double' }),
   'boss:hwJack': t('spooky', 88, 'A', 'harmonic', [0], [3, 0, 4, 0], { C: [5, 3, 4, 4], form: 'big', meter: 16, kit: 'four', bass: ['sawBass', 'root8'], arp: ['organ', 'stab'], tune: { A: { lead: JACK_BELL, bass: JACK_BASS } } }),
+  // Halloween Night 2 (the Ringmaster's track goes on when Jack O' Bot walks out)
+  'boss:h2Ringmaster': t('spooky', 132, 'D', 'harmonic', [0, 4, 0, 4], [5, 4, 3, 0], { C: [0, 3, 4, 4], form: 'big', kit: 'four', lead: 'organ', arp: ['bell', 'updown', 1] }),
+  'boss:h2Predator': t('heavy', 150, 'C', 'phrygian', [0, 1, 0, 5], [6, 5, 1, 0], { kit: 'double' }),
+  'boss:h2Heretic': t('night', 84, 'F', 'harmonic', [0, 5, 0, 1], [3, 4, 5, 0], { kit: 'half', lead: 'organ' }),
 };
 
 // A boss's other shapes share its track: Hardcore's copies (hcFKing = fKing), second phases

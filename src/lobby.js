@@ -1,5 +1,5 @@
 // Menus: title screen, multiplayer menu (create / join a room by code), and room lobby.
-import { DEFAULT_DIFFICULTY, DIFFICULTIES, EVENT_KEYS, GAME, eventMap, MODE_KEYS, MP, PLAYER_COLORS, TOWERS, VERSUS, detection, difficulty } from './config.js';
+import { DEFAULT_DIFFICULTY, DIFFICULTIES, EVENT_KEYS, GAME, eventMap, MODE_KEYS, MP, PLAYER_COLORS, TOWERS, VERSUS, detection, difficulty, modeFor } from './config.js';
 import { LoadoutScreen } from './loadout.js';
 import { audio } from './audio.js';
 import { profile } from './profile.js';
@@ -341,7 +341,7 @@ export class Lobby {
     const maps = d.maps ?? [d.map];
     const on = eventMap(key, picked);
     return `<div class="event-banner" style="--c:${d.color}">
-      <img class="eb-boss" src="${enemyIcon(d.boss)}" alt="" draggable="false">
+      <img class="eb-boss" src="${enemyIcon(modeFor(key, on).boss)}" alt="" draggable="false">
       <div class="eb-text">
         <h3>${d.icon} ${esc(d.name)}${profile.beaten.includes(key) ? ' <span class="ev-won" title="You beat this event">✔</span>' : ''}</h3>
         <p>${esc(d.desc)}</p>

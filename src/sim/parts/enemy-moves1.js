@@ -139,11 +139,13 @@ export class SimEnemyMoves1 {
         }
       }
       // Shadow Master: a flurry of `n` shurikens at random towers.
+      // Psycho: the knife goes at the nearest tower.
+      const near = s.nearest ? list.reduce((a, b) => ((b.x - e.x) ** 2 + (b.z - e.z) ** 2 < (a.x - e.x) ** 2 + (a.z - e.z) ** 2 ? b : a)) : null;
       for (let k = 0; k < (s.n || 1); k++) {
-        const t = list[Math.floor(Math.random() * list.length)];
+        const t = near ?? list[Math.floor(Math.random() * list.length)];
         const fl = (s.flight || 0) + k * 0.08;
         this.events.push({ k: 'eShot', e: e.id, kind: s.kind, fx: r2(e.x), fz: r2(e.z), x: r2(t.x), z: r2(t.z), d: fl, air: e.airT > 0 ? 1 : 0 });
-        const hit = { x: t.x, z: t.z, left: fl, r: s.radius, stun: s.stun || 0, dmg: s.dmg, kind: s.kind, puddle: s.puddle, slow: s.slow, shrink: s.shrink, weak: s.weak, lock: s.lock };
+        const hit = { x: t.x, z: t.z, left: fl, r: s.radius, stun: s.stun || 0, dmg: s.dmg, kind: s.kind, puddle: s.puddle, slow: s.slow, shrink: s.shrink, weak: s.weak, lock: s.lock, bleed: s.bleed };
         if (s.drain && e.hp < e.maxHp) e.hp = Math.min(e.maxHp, e.hp + e.maxHp * s.drain); // Time Parasite heals off its beam
         if (fl) this.axes.push(hit);
         else this.landShot(hit);

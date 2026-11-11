@@ -121,7 +121,12 @@ await section('data', async () => {
     if (!(def.speed >= 0)) fail('data', `ENEMIES.${key}.speed is ${def.speed}`);
   }
   let waves = 0;
-  for (const [mode, d] of Object.entries(DIFFICULTIES)) {
+  // (An event map with its own waves, `mapModes`, is checked as a mode of its own: "halloween:carnival".)
+  const modeList = Object.entries(DIFFICULTIES).flatMap(([k, d]) => [[k, d], ...Object.entries(d.mapModes ?? {}).map(([m, v]) => {
+    if (!MAPS[m]) fail('data', `mode ${k}: mapModes names map "${m}", which is not in MAPS`);
+    return [`${k}:${m}`, { ...d, ...v }];
+  })]);
+  for (const [mode, d] of modeList) {
     if (!Array.isArray(d.waves) || !d.waves.length) {
       fail('data', `mode ${mode} has no waves`);
       continue;
@@ -255,11 +260,13 @@ await section('modes', () => {
   if (!simMods) return 'skipped';
   const out = [];
   const LOADOUT = ['operator', 'plasma', 'sentry', 'turret', 'marksman'];
-  for (const mode of Object.keys(DIFFICULTIES)) {
-    if (!picked(mode)) continue;
+  // (An event map with its own waves is played too, as "halloween:carnival".)
+  const plays = Object.entries(DIFFICULTIES).flatMap(([k, d]) => [[k, 'meadow', k], ...Object.keys(d.mapModes ?? {}).map((m) => [k, m, `${k}:${m}`])]);
+  for (const [mode, map, label] of plays) {
+    if (!picked(mode) && !picked(label)) continue;
     let sim = null;
     try {
-      sim = new Sim([{ id: 'c', name: 'check' }], { mode, map: 'meadow' });
+      sim = new Sim([{ id: 'c', name: 'check' }], { mode, map });
       const me = sim.players.get('c');
       me.cash = 1e12;
       // A handful of maxed towers, so zombies die (rewards, on-death tricks) and fight back at something.
@@ -298,10 +305,10 @@ await section('modes', () => {
         }
       }
       JSON.stringify(sim.snapshot());
-      if (!sim.over && allOut == null) fail('modes', `${mode} is stuck on wave ${sim.wave.index + 1}/${sim.waves.length} after ${Math.round(simT / 60)} game minutes with ${sim.enemies.size} enemies left`);
-      out.push(`${mode} ${sim.waves.length}w ${kinds.size}e ${Date.now() - t0}ms`);
+      if (!sim.over && allOut == null) fail('modes', `${label} is stuck on wave ${sim.wave.index + 1}/${sim.waves.length} after ${Math.round(simT / 60)} game minutes with ${sim.enemies.size} enemies left`);
+      out.push(`${label} ${sim.waves.length}w ${kinds.size}e ${Date.now() - t0}ms`);
     } catch (err) {
-      fail('modes', `${mode} wave ${sim ? sim.wave.index + 1 : '?'}`, err);
+      fail('modes', `${label} wave ${sim ? sim.wave.index + 1 : '?'}`, err);
     }
   }
   return out.join(', ');

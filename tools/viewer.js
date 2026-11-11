@@ -151,6 +151,7 @@ function frame(now) {
         for (const sp of it.m.spin ?? []) sp.o.rotation[sp.axis] = t * sp.rate;
         if (it.m.turret && P.get('turn')) it.m.turret.rotation.y = +P.get('turn');
       } else if (kind === 'tower') anim.poseTower?.(it.m, it.state, { t: t + (freeze != null ? 0 : it.phase), dt: freeze != null ? 0 : dt, recoil: fire ?? Math.max(0, 1 - ((t + it.phase) % 1.4) * 5), shots: Math.floor((t + it.phase) / 1.4), snap: aim });
+      else if (it.m.anim) it.m.anim((freeze ?? now / 1000) * 5 + it.phase, t); // creatures and posed looks move themselves
       else anim.poseEnemy?.(it.m, it.state, { phase: (freeze ?? now / 1000) * 5 + it.phase, t, dt, atk: -1, fly: !!it.m.wings });
     } catch (e) {
       if (!it.err) { it.err = 1; errors.push(`${it.k} anim: ${e.message}`); console.error(it.k, e); }

@@ -16,7 +16,7 @@
 // the same from every file. Everything sim.js exported before is still exported from here.
 import {
   DIFFICULTIES, ENEMIES, GAME, PERKS, PLAYER_COLORS, SPEEDS, TARGET_MODES, TOWERS, WAVES, abilityCost, canHit,
-  choiceOptions, choicesOf, difficulty, eventMap, facesCone, pickOptions, rootType, towerCost, towerLimit, towerMaxHp,
+  choiceOptions, choicesOf, difficulty, eventMap, modeFor, facesCone, pickOptions, rootType, towerCost, towerLimit, towerMaxHp,
 } from '../config.js';
 import { canPlace, laneOf, laneOz, mapKey, placeFail, setMap } from './map.js';
 import { pickableMap } from './maps.js';
@@ -46,6 +46,7 @@ import { SimUnits } from './parts/units.js';
 import { SimAbilities } from './parts/abilities.js';
 import { SimDamage } from './parts/damage.js';
 import { SimWeapons4 } from './parts/weapons4.js';
+import { H2_FX, SimCarnival } from './parts/carnival.js';
 
 export class Sim {
   /**
@@ -61,9 +62,9 @@ export class Sim {
     // Versus lanes: the VersusSim already picked the map. Event modes always play their own map.
     if (!this.vs) setMap(eventMap(this.mode, opts.map) ?? pickableMap(opts.map), true); // an event plays one of its own maps, and only an event does
     this.map = mapKey;
-    this.waves = this.vs ? WAVES : difficulty(this.mode).waves;
-    this.cashMult = this.vs ? 1 : difficulty(this.mode).cash; // harder modes pay more in-game cash
-    const dm = this.vs ? {} : difficulty(this.mode);
+    const dm = this.vs ? {} : modeFor(this.mode, mapKey); // (an event map may bring its own waves)
+    this.waves = this.vs ? WAVES : dm.waves;
+    this.cashMult = this.vs ? 1 : dm.cash; // harder modes pay more in-game cash
     // Cash for damage (see GAME.dmgCash): every point of health damage pays every player this
     // much. 0 (Versus): enemies pay their `reward` when they die instead.
     this.dmgCash = this.vs ? 0 : dm.dmgCash ?? GAME.dmgCash;
@@ -294,6 +295,7 @@ export class Sim {
         e.speed *= def.sprint.speed;
       }
       if (HC_FX.has(e.type) && this.hcAttacks(e, def, dt) === 'gone') continue; // Hardcore (a Drop Pod may burst open)
+      if (H2_FX.has(e.type)) this.carnivalMoves(e, def, dt); // Halloween Night 2
       e.st = (e.stopKind === 'ice' ? ST_FROZEN : e.stopKind === 'stun' ? ST_STUNNED : e.stopKind === 'dance' ? ST_DANCE : e.stopKind === 'float' ? ST_FLOAT : 0) | (e.burn || e.taints?.has('burn') ? ST_BURNING : 0)
         | (e.slime ? ST_SLIMED : 0) | (e.chill ? ST_CHILLED : 0) | (e.hackEv || e.fraud ? ST_HACKED : 0) | (e.gas?.size || e.poison || e.taints?.has('radioactive') ? ST_GASSED : 0) | (e.confT > 0 ? ST_CONFUSED : 0)
         | (e.shockT > 0 ? ST_SHOCKED : 0) | (e.taints?.has('biohazard') ? ST_BIOHAZARD : 0)
@@ -315,8 +317,10 @@ export class Sim {
             if (alive >= sm.max) return;
           }
           const cnt = Array.isArray(sm.n) ? sm.n[0] + Math.floor(Math.random() * (sm.n[1] - sm.n[0] + 1)) : sm.n; // MK11-Device: 2-3
-          for (let j = 0; j < cnt; j++) this.reborn.push({ route: e.route, type: sm.type, dist: Math.max(0, sm.here ? e.dist : e.dist - 1.5 - j), lateral: sm.here ? e.lateral : 0, hpScale: 1, owner: e.id, noCash: !!sm.noCash });
-          this.events.push({ k: 'summon', e: e.id, type: sm.type });
+          // Goodie Bag, Clown Car: a random one of `types` each time.
+          const type = sm.types ? sm.types[Math.floor(Math.random() * sm.types.length)] : sm.type;
+          for (let j = 0; j < cnt; j++) this.reborn.push({ route: e.route, type, dist: Math.max(0, sm.here ? e.dist : e.dist - 1.5 - j), lateral: sm.here ? e.lateral : 0, hpScale: 1, owner: e.id, noCash: !!sm.noCash });
+          this.events.push({ k: 'summon', e: e.id, type });
         });
       }
       // Amplifiers float along next to the enemy that summoned them.
@@ -358,7 +362,7 @@ export class Sim {
       }
       if (e.dist >= path.length) {
         this.enemies.delete(e.id);
-        const dmg = ENEMIES[e.type].damage;
+        const dmg = def.leakHp ? Math.ceil(e.hp * def.leakHp) : def.damage; // Mr. Saw: double the health he has left
         this.baseHp = Math.max(0, this.baseHp - dmg);
         this.events.push({ k: 'leak', e: e.id, d: dmg });
         if (this.baseHp <= 0) return this.end(false);
@@ -371,6 +375,7 @@ export class Sim {
 
     this.spies = spyCircles(this.towers.values());
     this.buffs = computeBuffs(this.towers.values());
+    this.carnivalTowers(dt); // Halloween Night 2: Spotlight boosts, bleeding towers
     // Golden Byte: zombies in its range that are stunned or slowed take more damage (see damage()).
     this.slowVulns = [];
     // Oil Derrick Cash Back: each player's bonus on cash from damage (see cashBack). Derricks that
@@ -839,7 +844,7 @@ export class Sim {
 
 // Sim's methods are kept in several files (see the list at the top). This puts them all on Sim,
 // just as if they were written inside the class.
-for (const part of [SimEnemyMoves1, SimEnemyMoves2, SimTowerHealth, SimWaves, SimTowerUpdate, SimWeapons1, SimWeapons2, SimWeapons3, SimUnits, SimAbilities, SimDamage, SimWeapons4]) {
+for (const part of [SimEnemyMoves1, SimEnemyMoves2, SimTowerHealth, SimWaves, SimTowerUpdate, SimWeapons1, SimWeapons2, SimWeapons3, SimUnits, SimAbilities, SimDamage, SimWeapons4, SimCarnival]) {
   const props = Object.getOwnPropertyDescriptors(part.prototype);
   delete props.constructor;
   Object.defineProperties(Sim.prototype, props);

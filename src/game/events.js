@@ -767,6 +767,10 @@ export class GameEvents {
               this.effects.lob(from, to, ev.d, { color: 0xff6d00, size: 1.2, arc: 9, glowing: true });
               audio.lob('paint');
               break;
+            case 'knife': // Halloween Night 2 Psycho
+              this.effects.toss(from, aim, ev.d, { color: 0xcfd8dc, size: 0.7, arc: 1.2, long: true });
+              audio.lob('paintballer');
+              break;
             case 'bolt':
               this.effects.toss(from, aim, ev.d, { color: 0x5d4037, size: 0.9, arc: 0.3, long: true });
               audio.lob('paintballer');
@@ -1616,7 +1620,7 @@ export class GameEvents {
             this.ui.toast(`Wave ${ev.i + 1}${ev.bonus ? ` · +$${ev.bonus}` : ''}${scripted && !scripted.startsWith('Final') ? ` — ${scripted}` : ''}`, scripted ? 3000 : 1600);
             break;
           }
-          const note = difficulty(st.mode).waves[ev.i]?.note;
+          const note = ev.note ?? difficulty(st.mode).waves[ev.i]?.note;
           audio.waveStart();
           this.ui.toast(note ? `Wave ${ev.i + 1}: ${note}` : `Wave ${ev.i + 1}`, note ? 3200 : 1500);
           break;

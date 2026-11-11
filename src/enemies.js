@@ -2,6 +2,7 @@
 // Hardcore and Halloween add their own at the bottom (see hardcore.js and halloween.js).
 import { addHardcoreEnemies } from './hardcore.js';
 import { addHalloweenEnemies } from './halloween.js';
+import { addHalloween2Enemies } from './halloween2.js';
 
 // Insane mode (2026-11-09 spec) guesses: kill reward and base damage from an enemy's health.
 const iR = (hp) => Math.max(2, Math.round(1.5 * hp ** 0.55));
@@ -674,3 +675,4 @@ for (const k of ['fastZombiePlus', 'heavyZombiePlus', 'revivedBoss1', 'nuclearZo
 // Hardcore mode's enemies (see hardcore.js): its own copies of earlier modes' enemies, plus new ones.
 addHardcoreEnemies(ENEMIES);
 addHalloweenEnemies(ENEMIES); // the Halloween Event's own enemies (see halloween.js)
+addHalloween2Enemies(ENEMIES); // and Halloween Night 2's (see halloween2.js)

@@ -67,7 +67,7 @@ export class SimWaves {
     this.loadCrates();
     this.skipVotes.clear();
     w.votes = 0;
-    this.events.push({ k: 'waveStart', i: w.index });
+    this.events.push({ k: 'waveStart', i: w.index, ...(this.waves[w.index]?.note ? { note: this.waves[w.index].note } : {}) });
   }
 
   /** Versus: zombies another player sent here, `n` of them `gap` seconds apart. */
@@ -287,6 +287,12 @@ export class SimWaves {
     if (def.healPulse) e.healT = def.healPulse.every * rand(0.4, 1);
     if (def.taunt) e.tauntT = def.taunt.time; // Overlord Taunt: stands still and barely takes damage
     // Hardcore: "+ shield" pools (TDX, Tower Blitz Ranked Up), Drop Pods that can't be hit until they open.
+    if (def.roll) {
+      // Halloween Night 2 Villagers: each one rolls its own health and explosive resistance.
+      const r = def.roll;
+      if (r.hp && at?.hp == null) e.hp = e.maxHp = Math.max(1, Math.round(maxHp * rand(...r.hp) / def.hp));
+      if (r.explosiveResist) e.explosiveResist = rand(...r.explosiveResist);
+    }
     if (def.osh) e.osh = e.oshMax = Math.max(1, Math.round(def.osh * (def.fixedHp ? 1 : mp)));
     if (def.pod) {
       e.podT = def.pod.open;

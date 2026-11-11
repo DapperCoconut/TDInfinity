@@ -411,6 +411,7 @@ export class SimUnits {
         if (e.flying) continue; // flyers pass overhead
         if (e.route !== u.route) continue; // another lane
         if (ENEMIES[e.type].noCollide) continue; // Halloween Ghosts float right through units
+        if (ENEMIES[e.type].tankPass && /tank/i.test(d.model ?? '')) continue; // Halloween Night 2 Witches fly through tanks
         // Touching, or they swapped sides since the last tick (a fast zombie and a unit can jump
         // past each other in one step without ever being within CONTACT).
         const gap = e.dist - u.dist;
