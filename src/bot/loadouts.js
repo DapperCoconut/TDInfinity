@@ -85,6 +85,7 @@ export function botLoadout(mode, role, rnd = Math.random, spotsFor = () => true)
   const allowed = POOL.filter((k) => {
     const d = TOWERS[k];
     if (towerCost(d) > rules.maxCost) return false;
+    if (d.ground === false) return false; // air-only (AA Turret): most waves walk
     if (!rules.event && isEvent(k)) return false;
     if (!rules.special && isSpecial(k)) return false;
     if (d.placement && d.placement !== 'ground' && d.placement !== 'any' && !spotsFor(d.placement)) return false;

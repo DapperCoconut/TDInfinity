@@ -447,10 +447,12 @@ export class SimEnemyMoves2 {
     setTimeWorld(true);
     const e = this.spawn(sh.into ?? 'beholderTime', { dist: 0 });
     e.maxHp = boss.maxHp;
+    e.curve = boss.curve; // pays like the form it came from
     e.hp = sh.heal ? e.maxHp : Math.max(boss.hp, boss.maxHp * sh.at * 0.5); // a lucky overkill still leaves a fight
-    if (sh.heal) e.shutT = 8; // (Expert enemies don't use the Insane speed rules that read waitT)
-    else e.waitT = 8;
-    this.events.push({ k: 'timeShift', e: e.id, wait: 8, into: sh.into ?? 'beholderTime' });
+    const wait = sh.wait ?? 8; // seconds to rebuild before it moves
+    if (sh.heal) e.shutT = wait; // (Expert enemies don't use the Insane speed rules that read waitT)
+    else e.waitT = wait;
+    this.events.push({ k: 'timeShift', e: e.id, wait, into: sh.into ?? 'beholderTime' });
   }
 
   /**

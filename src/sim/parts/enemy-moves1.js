@@ -158,10 +158,13 @@ export class SimEnemyMoves1 {
    */
   mediumAttacks(e, def, dt) {
     const rg = def.rage;
-    if (rg && !e.raged && e.hp <= rg.at) {
+    // rage.at and rage.heal are for its listed health: they scale with its real max health
+    // (multiplayer, the mode's balance curve).
+    const k = e.maxHp / def.hp;
+    if (rg && !e.raged && e.hp <= rg.at * k) {
       e.raged = true;
       e.shutT = rg.shut;
-      e.hp = Math.min(e.maxHp, e.hp + rg.heal);
+      e.hp = Math.min(e.maxHp, e.hp + rg.heal * k);
       e.baseSpeed = rg.speed;
       for (const o of this.towers.values()) o.immuneT = Math.max(o.immuneT || 0, rg.immune); // a short stun immunity
       this.events.push({ k: 'mRage', e: e.id });

@@ -112,7 +112,7 @@ const NEW = {
     hk: { skull: 1, horns: 0x111111, cape: 0x6a1b9a, armor: 0x263238, eyes: 0xd500f9, flameHead: 0x80d8ff, bigSword: 0xd500f9, swordGlow: 1 },
     sprint: { every: 6, time: 1, speed: 6, stun: { range: 9, time: 2.5 } } }),
   thDarkSkeleton: E('Dark Skeleton', 28000, 2.7, { scale: 2.2, skin: 0x37474f, shirt: 0x37474f, pants: 0x37474f, face: 'fallenSkull', hk: { skull: 1 },
-    intro: '🦴 Dark Skeletons: tall, slow, 28,000 health.' }),
+    intro: '🦴 Dark Skeletons: tall, slow and very tough.' }),
   // Seers and Overseers stun towers anywhere on the map.
   thSeer: E('Seer', 700 * th, 13.5, { model: 'hcEye', h: 3.6, skin: 0x111111, iris: 0x9c27b0, veins: 0xaa00ff,
     moves: { first: 2, every: 4, list: [{ key: 'gaze', n: 1, stun: 1.5 }] },
@@ -124,7 +124,7 @@ const NEW = {
   thCrackedSentry: E('Void Sentry (Cracked)', 1100 * th, 3, { model: 'hcSentry', h: 3, scale: 1.2, skin: 0x9e9e9e, cracked: 1 }),
   thBigGolem: E('Big Dark Golem', 3000 * th, 3.6, { model: 'hcGolem', h: 5.5, scale: 1.1, skin: 0x1a2238, eyeC: 0xaa00ff }),
   thGiantGolem: E('Giant Dark Golem', 10000 * th, 2.7, { model: 'hcGolem', h: 5.5, scale: 1.6, skin: 0x141a2e, eyeC: 0xd500f9, spiky: 1,
-    intro: '🪨 Giant Dark Golems: 21,000 health each.' }),
+    intro: '🪨 Giant Dark Golems: huge and very tough.' }),
   thWingedReaper: E('Winged Reaper', 2000 * th, 12, { model: 'hcReaper', h: 4, skin: 0x4a148c, cloak: 0x4a148c, hoodC: 0x2a0a3c, eyeC: 0xff80ab, wingC: 0x2a0a3c, hidden: true,
     intro: '🦇 Winged Reapers: fast and hidden.' }),
   thDevilReaper: E('Devil Reaper', 5000 * th, 7.5, { model: 'hcReaper', h: 4, scale: 1.15, skin: 0xb71c1c, cloak: 0x8b1a1a, hoodC: 0x4a0d0d, eyeC: 0xff1744, wingC: 0x4a0d0d, hornC: 0xe0d6c0, hidden: true }),
@@ -141,7 +141,7 @@ const NEW = {
   thWorm4: E('Skeleworm', 1600 * th, 3, { model: 'hcWorm', h: 2.6, scale: 1.2, skin: 0xfdd835, rib: 0xfff59d, phase2: 'thWorm5' }),
   thWorm5: E('Skeleworm', 1800 * th, 3, { model: 'hcWorm', h: 2.6, scale: 1.2, skin: 0xfdd835, rib: 0xfff59d }),
   thBigWorm1: E('Big Skeleworm', 4000 * th, 3, { model: 'hcWorm', h: 2.6, scale: 1.7, skin: 0x6d4c41, seg: 'head', rib: 0xf8bbd0, eyeC: 0xaa00ff, phase2: 'thBigWorm2',
-    intro: '🐛 A Big Skeleworm: 6 parts, over 56,000 health in all!' }),
+    intro: '🐛 A Big Skeleworm: 6 parts, and a huge amount of health in all!' }),
   thBigWorm2: E('Big Skeleworm', 4200 * th, 3, { model: 'hcWorm', h: 2.6, scale: 1.7, skin: 0x6d4c41, rib: 0xf8bbd0, phase2: 'thBigWorm3' }),
   thBigWorm3: E('Big Skeleworm', 4400 * th, 3, { model: 'hcWorm', h: 2.6, scale: 1.7, skin: 0x6d4c41, rib: 0xf8bbd0, phase2: 'thBigWorm4' }),
   thBigWorm4: E('Big Skeleworm', 4600 * th, 3, { model: 'hcWorm', h: 2.6, scale: 1.7, skin: 0x6d4c41, rib: 0xf8bbd0, phase2: 'thBigWorm5' }),
@@ -163,7 +163,7 @@ const NEW = {
 
   // ------------------------------------------------------------------ Tower Battles: the Hidden Wave (Wave 0000000)
   tbIssue: E('Issue', 13500, 15, { scale: 1.05, skin: 0x0d1b4a, shirt: 0x2979ff, pants: 0x1565c0, face: 'blank', hk: { glowShirt: 0x2979ff, sparks: 0x82b1ff },
-    intro: '⚠️ <ERROR> Issues, Errors and Viruses from the Tower Battles hidden wave: fast, with 13,500-16,900 health!' }),
+    intro: '⚠️ <ERROR> Issues, Errors and Viruses from the Tower Battles hidden wave: fast, with lots of health!' }),
   tbError: E('Error', 16900, 15, { scale: 1.05, skin: 0x0a0a0a, shirt: 0xff1744, pants: 0xd50000, face: 'blank', hk: { glowShirt: 0xff1744, sparks: 0xff8a80 } }),
   tbVirus: E('Virus', 16900, 15, { scale: 1.05, skin: 0xc2185b, shirt: 0xff4081, pants: 0xf50057, face: 'blank', hk: { glowShirt: 0xff4081, sparks: 0xff80ab } }),
   tbJ: E('J', 1000, 15, { skin: 0x9ccc65, shirt: 0xf5f5f5, pants: 0xc62828, face: 'zombie', hk: { mask: 0x80cbc4, coat: 0xf5f5f5 } }),
@@ -252,7 +252,7 @@ const NEW = {
     shots: [{ kind: 'vioOrb', range: 22, radius: 1, dmg: 0, stun: 3, every: 4.5, flight: 0.6 }] }),
   vcHeavyVoidling: E('Heavy Voidling', 40000, 19.5, { scale: 1.8, skin: 0x6a1b9a, shirt: 0x6a1b9a, pants: 0x4a148c, face: 'blank', hk: { armless: 1, cape: 0x111111, crystals: 0xff4081, eyes: 0xff4081 },
     mAttacks: [{ slam: { range: 10, stun: 2.5, unitDmg: 150, color: 0xff4081 }, first: 4, every: 12, name: 'Stomp' }],
-    intro: '🦶 Heavy Voidlings: fast, 40,000 health, and they stomp towers.' }),
+    intro: '🦶 Heavy Voidlings: fast, very tough, and they stomp towers.' }),
   vcKnight: E('Void Knight', 90000, 7.5, { scale: 2, skin: 0x111111, shirt: 0x4a148c, pants: 0x311b92, face: 'helm', stunImmune: true, freezeImmune: true,
     hk: { armor: 0x4a148c, trim: 0xffc400, spikes: 0xffc400, plume: 0xaa00ff, bigSword: 0xaa00ff, swordGlow: 1 },
     mAttacks: [{ slam: { range: 11, stun: 5, unitDmg: 132, color: 0xaa00ff }, first: 5, every: 12, name: 'Void Knight Sword' }],
@@ -472,7 +472,7 @@ const NEW = {
       { key: 'concLightning', w: 2, range: 24, stun: 3.5 },
       { key: 'callUnits', w: 1, list: ['ruEye', 'ruTranquil'], n: 3, name: 'Summoning' },
       { key: 'telekinesis', w: 2, n: 4, radius: 6, stun: 3, dmg: 0, flight: 1.6 }] },
-    intro: '⏳ FINAL BOSS 4 of 6: CHRONOS! He laughs off almost everything at first. Under 200,000 health two Amplifiers heal him back up: destroy them, and he despairs.' },
+    intro: '⏳ FINAL BOSS 4 of 6: CHRONOS! He laughs off almost everything at first. Once he is badly hurt, two Amplifiers heal him back up: destroy them, and he despairs.' },
   ruChronosAmp: { name: 'Chronos Amplifier', model: 'amplifier', h: 5, hp: 40000, osh: 10000, speed: 0, reward: hR(50000), damage: 0, scale: 2.4, skin: 0x8e0000, shard: 0xff1744,
     defense: 10, freezeImmune: true, shockImmune: true, amp: { speed: 0, heal: 0.012 } },
 };

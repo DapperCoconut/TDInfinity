@@ -4,7 +4,7 @@
 // far: how hard the wave leans on your wallet (about 0.1 is comfortable, 1 is a wall).
 // With a mode it prints every wave, without one a summary line per mode. The figures are a solo
 // player's (in a `pot` mode like Halloween that is also what a whole team gets between them).
-import { DIFFICULTIES, ENEMIES, GAME } from '../../src/config.js';
+import { DIFFICULTIES, ENEMIES, GAME, hpCurve } from '../../src/config.js';
 
 const args = process.argv.slice(2);
 const only = args.find((s) => !s.includes('='));
@@ -32,10 +32,10 @@ for (const [key, d] of Object.entries(DIFFICULTIES)) {
     let pays = 0;
     for (const [type, count, , , x] of w.groups) {
       const e = ENEMIES[type];
-      const h = (typeof x === 'number' ? x : e.hp * scale) * count;
+      const h = (typeof x === 'number' ? x : e.hp * scale) * count * hpCurve(d, i, e.boss || x?.boss);
       hp += h;
       kills += e.reward * GAME.earnMult * count;
-      if (e.reward !== 0 || e.boss) pays += h * rate * (e.cash ?? 1);
+      if (e.reward !== 0 || e.boss) pays += (h / hpCurve(d, i, e.boss || x?.boss)) * rate * (e.cash ?? 1); // the curve doesn't change pay
     }
     const base = w.bonus ?? GAME.waveBonus(i + 1);
     rows.push({ wave: i + 1, hp, oldCum, newCum, oldPress: hp / oldCum, newPress: hp / newCum });

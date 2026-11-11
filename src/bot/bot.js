@@ -58,6 +58,7 @@ export class Bot {
    * @param id    its player id in that sim
    * @param opts  { role, mode, seed, say(text), top (the VersusSim, for skips and sends), lane, loose }
    *   loose: a less structured build (with three or more bots they don't all follow the plan)
+   *   best: brings the strongest loadout for its role instead of a random one (balance tools)
    */
   constructor(sim, id, opts = {}) {
     this.sim = sim;
@@ -69,7 +70,7 @@ export class Bot {
     this.loose = !!opts.loose;
     this.rnd = seeded(opts.seed ?? Math.floor(Math.random() * 1e9));
     this.sayFn = opts.say ?? (() => {});
-    const lo = botLoadout(this.mode, this.role, this.rnd, hasSpots);
+    const lo = botLoadout(this.mode, this.role, opts.best ? () => 0 : this.rnd, hasSpots); // best: always the top pick (balance tools)
     this.loadout = lo.towers;
     this.phase = lo.phase;
     this.margin = (MARGIN[this.mode] ?? 1.5) * (this.role === 'dps' ? 1.15 : 1);
@@ -270,7 +271,26 @@ export class Bot {
     this.useAbilities();
     if (this.sim.vs) this.versusSends();
     this.maybeSkip();
+    if (this.sacrifice()) return;
     this.buy();
+  }
+
+  /**
+   * Expert Rebirther's Blood Sacrifice: once it sits in its blood bowl only selling towers hurts
+   * it, so the bot sells its own towers into it (the one that best fits the health left first),
+   * like a player who read the wave note. Builds again once it's gone.
+   */
+  sacrifice() {
+    const sim = this.sim;
+    let boss = null;
+    for (const e of sim.enemies.values()) if (e.sacrificing && (!boss || e.hp > boss.hp)) boss = e;
+    if (!boss) return false;
+    const mine = [...sim.towers.values()].filter((t) => t.owner === this.id && t.spent > 0);
+    if (!mine.length) return true;
+    const fit = mine.filter((t) => t.spent <= boss.hp).sort((x, y) => y.spent - x.spent)[0];
+    const t = fit ?? mine.sort((x, y) => x.spent - y.spent)[0];
+    sim.action(this.id, { a: 'sell', id: t.id });
+    return true;
   }
 
   /**

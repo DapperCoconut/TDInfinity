@@ -74,6 +74,7 @@ export class Sim {
     this.potShare = dm.pot ? dm.pot / Math.max(1, players.length) : 1;
     this.dmgShare = dm.pot ? 1 / Math.max(1, players.length) : 0; // 0: not a pot mode (see payDamage)
     this.flatHp = !!dm.flatHp; // Medium: enemy health doesn't grow per wave
+    this.dm = dm; // its DIFFICULTIES entry (hpCurve reads it)
     this.timers = dm.timers ?? null; // Medium: waves that start the next one after a while anyway
     this.maxBaseHp = dm.baseHp ?? GAME.baseHp;
     this.mpHp = dm.mpHp ?? null; // Hard: enemy health bonus per number of extra players

@@ -548,7 +548,8 @@ export const PERK_NAMES = { bliss: "Recon Base's Bliss of Finality upgrade" };
 
 export const DIFFICULTIES = {
   easy: { name: 'Easy', icon: '🟢', color: '#43a047', boss: 'kingSlime', desc: '25 waves. Beat the King Slime to unlock Slime King Patrol.', unlock: 'patrolSlime', waves: EASY_WAVES,
-    cash: 1, dmgCash: 1, credits: 1, shards: 1 },
+    cash: 1, dmgCash: 1, credits: 1, shards: 1,
+    hpCurve: [[1, 1.6], [12, 1.6], [18, 1.2], [21, 1]], bossHp: 0.6 },
   // cash: multiplies the end-of-wave bonus. dmgCash: cash for each point of damage (GAME.dmgCash);
   // the tougher the mode's zombies, the lower its rate, so it's never more than you need.
   // baseHp / startCash: this mode's base health and starting cash (instead of GAME's). groupBonus:
@@ -558,20 +559,25 @@ export const DIFFICULTIES = {
   // skipped (null: wait until it's cleared).
   medium: { name: 'Medium', icon: '🟠', color: '#fb8c00', boss: 'mEradicator', desc: '32 waves. Beat the Eradicator to unlock John. 2x credits.',
     unlock: 'john', waves: MEDIUM_WAVES, cash: 1.3, dmgCash: 0.6, credits: 2, shards: 2, baseHp: 300, startCash: 725, groupBonus: 125, flatHp: true, firstIntermission: 14,
-    timers: [...Array(18).fill(59), ...Array(10).fill(null), 449, 59, 59, null] },
+    timers: [...Array(18).fill(59), ...Array(10).fill(null), 449, 59, 59, null],
+    hpCurve: [[1, 0.7], [5, 0.7], [8, 1.1], [20, 1.1], [24, 0.75], [27, 0.6]], bossHp: 0.2 },
   // mpHp[n-1]: enemy health bonus with n extra players (instead of GAME.mpHpScale).
   hard: { name: 'Hard', icon: '🔴', color: '#e53935', boss: 'fKing', desc: '40 waves. Beat the Fallen King to unlock the laser Commando. 3x credits.',
-    unlock: 'eventCommando', waves: HARD_WAVES, cash: 1.6, dmgCash: 0.4, credits: 3, shards: 3, baseHp: 200, startCash: 500, groupBonus: 100, flatHp: true, mpHp: [0.15, 0.25, 0.4] },
+    unlock: 'eventCommando', waves: HARD_WAVES, cash: 1.6, dmgCash: 0.4, credits: 3, shards: 3, baseHp: 200, startCash: 500, groupBonus: 100, flatHp: true, mpHp: [0.15, 0.25, 0.4],
+    hpCurve: [[1, 1.4], [6, 1.4], [10, 1], [12, 0.5], [20, 0.55], [28, 0.5]], bossHp: 0.25 },
   // mpPerEnemy: each enemy's own mpTop / mpPow sets its multiplayer health (none: no bonus).
   expert: { name: 'Expert', icon: '💎', color: '#00acc1', boss: 'xBeholder', desc: '30 waves. Beat the Beholder to unlock the Planeswalker. 4x credits.',
-    unlock: 'planeswalker', waves: EXPERT_WAVES, cash: 1.9, dmgCash: 0.6, credits: 4, shards: 4, baseHp: 200, startCash: 600, groupBonus: 100, flatHp: true, mpPerEnemy: true },
+    unlock: 'planeswalker', waves: EXPERT_WAVES, cash: 1.9, dmgCash: 0.6, credits: 4, shards: 4, baseHp: 200, startCash: 600, groupBonus: 100, flatHp: true, mpPerEnemy: true,
+    hpCurve: [[1, 1.2], [5, 1], [8, 0.7], [16, 0.6], [24, 0.5]], bossHp: 0.2 },
   insane: { name: 'Insane', icon: '⏳', color: '#ec407a', boss: 'iOverlord', desc: '50 waves. Beat the Overlord to unlock Bliss of Finality. 5x credits.',
-    perk: 'bliss', waves: INSANE_WAVES, cash: 2.2, dmgCash: 0.25, credits: 5, shards: 5, baseHp: 200, startCash: 600, groupBonus: 100, flatHp: true, mpHp: [0.15, 0.25, 0.4] },
+    perk: 'bliss', waves: INSANE_WAVES, cash: 2.2, dmgCash: 0.25, credits: 5, shards: 5, baseHp: 200, startCash: 600, groupBonus: 100, flatHp: true, mpHp: [0.4, 0.8, 1.2],
+    hpCurve: [[1, 1.5], [5, 2.6], [30, 2.6], [34, 1.1], [38, 0.6], [46, 0.5], [49, 0.35]], bossHp: 0.22 },
   // voidArmor: the Void mutation (see Sim.armorUp). shield: extra shield = that share of max health;
   // armor: extra armor while it's up; slow: walks that much slower; tendril: { range, every, n, mult,
   // min, max } lashes up to n towers in range for mult x sqrt(max health) (kept between min and max).
   void: { name: 'Void', icon: '🟣', color: '#7e57c2', boss: 'vVoid', desc: '50 waves. Beat VOID to unlock the Void Traitor. 6x credits.',
-    waves: VOID_WAVES, cash: 2.5, dmgCash: 0.4, credits: 6, shards: 6, unlock: 'traitor', baseHp: 200, startCash: 650, flatHp: true, mpHp: [0.15, 0.25, 0.4],
+    waves: VOID_WAVES, cash: 2.5, dmgCash: 0.4, credits: 6, shards: 6, unlock: 'traitor', baseHp: 200, startCash: 650, flatHp: true, mpHp: [0.4, 0.8, 1.2],
+    hpCurve: [[1, 1.5], [5, 2.6], [28, 2.6], [33, 1.1], [36, 0.75], [50, 0.65]], bossHp: 0.35,
     voidArmor: { shield: 0.5, armor: 0.3, slow: 0.25, tendril: { range: 9, every: 2.5, n: 2, mult: 0.6, min: 4, max: 200 } } },
   // Hardcore (2026-11-09 spec, see hardcore.js): locked until every mode in `needs` is beaten. Pays
   // Gems (GAME.gems) on top of credits. maxPlayers: co-op rooms hold up to this many. mpHp has an
@@ -579,7 +585,8 @@ export const DIFFICULTIES = {
   // mimic: each wave from `from` on has a `chance` of a rare golden `type` (Wicky).
   hardcore: { name: 'Hardcore', icon: '💀', color: '#37474f', boss: 'txEmperor', desc: '50 brutal waves from seven games, ending with all six final bosses. Pays Gems. Up to 6 players. 7x credits.',
     waves: HARDCORE_WAVES, cash: 3.5, dmgCash: 0.2, credits: 7, shards: 7, gems: true, needs: HARDCORE_NEEDS, maxPlayers: 6,
-    baseHp: 200, startCash: 700, groupBonus: 100, flatHp: true, mpPerEnemy: true, mpHp: [0.15, 0.25, 0.4, 0.55, 0.7],
+    baseHp: 600, startCash: 700, groupBonus: 100, flatHp: true, mpPerEnemy: true, mpHp: [0.15, 0.25, 0.4, 0.55, 0.7],
+    hpCurve: [[1, 0.4], [10, 0.45], [25, 0.5]], bossHp: 0.3,
     mimic: { type: 'thWicky', chance: 1 / 1700, from: 10 } },
   // Halloween Event (2026-11-10 spec, see halloween.js). `event`: not one of the mode cards, it has
   // its own button in the top right of the menus. `map`: an event and its map are one thing, the
@@ -590,13 +597,36 @@ export const DIFFICULTIES = {
   // what one of `pot` players gets (solo: 4x, two players: 2x each), and damage cash is split.
   halloween: { name: 'Halloween Event', icon: '🎃', color: '#ef6c00', boss: 'hwJack', desc: '10 spooky waves on Lantern Hill Cemetery. Survive the Reaper, the Demon and JACK, the Pumpkin King. A full server\'s cash is shared between the players: $22,000 to start solo, $5,500 each with four. 100 base health. 3x credits.',
     waves: HALLOWEEN_WAVES, event: true, map: 'cemetery', cash: 1, dmgCash: 1.5, pot: 4, credits: 3, shards: 3, baseHp: 100, startCash: 5500, groupBonus: 0, flatHp: true,
-    mpHp: [0, 0, 0, 0, 0], timers: HALLOWEEN_TIMERS },
+    mpHp: [0, 0, 0, 0, 0], timers: HALLOWEEN_TIMERS,
+    hpCurve: [[1, 1.3], [4, 1.3], [6, 0.9]], bossHp: 0.5 },
 };
 export const DEFAULT_DIFFICULTY = 'easy';
 /** The modes on the mode cards, and the special events (each has its own button and its own map). */
 export const MODE_KEYS = Object.keys(DIFFICULTIES).filter((k) => !DIFFICULTIES[k].event);
 export const EVENT_KEYS = Object.keys(DIFFICULTIES).filter((k) => DIFFICULTIES[k].event);
 export const difficulty = (key) => DIFFICULTIES[key] ?? DIFFICULTIES[DEFAULT_DIFFICULTY];
+/**
+ * The balance curve: how much a mode's enemy health is multiplied by on wave `index` (0 = wave 1).
+ * `hpCurve` is a list of [wave, multiplier] points; between two points it slides evenly, before
+ * the first and after the last it stays flat. No curve: x1. It makes easy stretches tougher and
+ * walls softer without rewriting the waves. `bossHp` multiplies bosses' health on top (`boss`:
+ * the enemy is one).
+ */
+export function hpCurve(dm, index, boss = false) {
+  const b = boss ? dm?.bossHp ?? 1 : 1;
+  const c = dm?.hpCurve;
+  if (!c?.length) return b;
+  const w = index + 1;
+  if (w <= c[0][0]) return c[0][1] * b;
+  for (let i = 1; i < c.length; i++) {
+    const [w1, m1] = c[i];
+    if (w <= w1) {
+      const [w0, m0] = c[i - 1];
+      return (m0 + ((m1 - m0) * (w - w0)) / (w1 - w0)) * b;
+    }
+  }
+  return c[c.length - 1][1] * b;
+}
 
 /**
  * Spawn groups for wave `index` (0-based) of `waves`. Past the scripted waves (Versus is endless) it

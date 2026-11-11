@@ -1,6 +1,6 @@
 // How a bot judges towers and zombies: rough damage per second of a tower level, what the next
 // waves bring, and how much of that a tower can hit. Plain math, no three.js, no DOM.
-import { ENEMIES, GAME, TOWERS, canHit, detection, waveGroups } from '../config.js';
+import { ENEMIES, GAME, TOWERS, canHit, detection, hpCurve, waveGroups } from '../config.js';
 import { dpsValue, spawnerUnits, unitDps } from '../stats.js';
 
 const num = (v) => (Number.isFinite(v) && v > 0 ? v : 0);
@@ -58,7 +58,7 @@ export function waveLoad(sim, index) {
   let hp = 0;
   for (const [type, count, , , x] of waveGroups(index, sim.waves)) {
     const def = ENEMIES[type];
-    if (def) hp += (typeof x === 'number' ? x : x?.hp ?? def.hp) * count;
+    if (def) hp += (typeof x === 'number' ? x : x?.hp ?? def.hp) * count * hpCurve(sim.dm, index, def.boss || x?.boss);
   }
   const players = Math.max(1, sim.players.size);
   const mp = sim.mpHp ? 1 + (sim.mpHp[players - 2] ?? sim.mpHp[sim.mpHp.length - 1] ?? 0) : 1 + GAME.mpHpScale * (players - 1);

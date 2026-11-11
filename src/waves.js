@@ -265,7 +265,7 @@ export const INSANE_WAVES = [
   { groups: [['iCorruption', 18, 0.8, 0], ['iTranquil', 3, 4, 5], ['iVessel', 1, 0, 12]], note: 'Corruptions (7 Defense) and Tranquils (huge, can\'t be shocked)!' },
   { groups: [['iCorruption', 13, 0.6, 0], ['iTranquil', 4, 3, 3], ['iNull', 6, 0.8, 6], ['iDivine', 3, 5, 9], ['iVengeful', 1, 0, 12], ['iCorruption', 13, 0.6, 14],
     ['iTranquil', 4, 3, 17], ['iNull', 6, 0.8, 20], ['iCorrupted', 1, 0, 24]],
-    note: 'BOSS WAVE: The Corrupted! 30 Defense, a huge shield, and it never stops summoning Nulls.' },
+    note: 'BOSS WAVE: The Corrupted! 20 Defense, a huge shield, and it never stops summoning Nulls.' },
   { groups: [['iHardLight', 10, 0.5, 0], ['iBolt', 10, 0.6, 2], ['iMage', 8, 0.8, 4], ['iLightningKing', 8, 0.8, 6], ['iLightspeed', 8, 0.8, 8], ['iUnstable', 20, 0.3, 10],
     ['iRavagerEnergy', 10, 0.5, 12], ['iReactor', 8, 0.8, 14], ['iApparition', 8, 1.0, 16], ['iHellspeed', 8, 0.8, 18], ['iHellflame', 6, 1.0, 20], ['iPrompter', 8, 1.0, 22],
     ['iVengefulSpeed', 8, 0.8, 24], ['iMothership', 3, 3, 26], ['iCarrier', 4, 2.5, 28], ['iKugelblitz', 6, 2, 30], ['iSpirit', 10, 0.8, 32], ['iCorruption', 16, 0.6, 34],

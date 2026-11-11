@@ -388,7 +388,8 @@ export class SimDamage {
     if (e.noCash || dealt <= 0) return;
     const def = ENEMIES[e.type];
     if (def.reward === 0 && !e.boss) return; // summoned minions (final bosses are `reward: 0` too, but they pay)
-    const rate = this.dmgCash * (def.cash ?? 1) * (this.dmgShare || 1 / this.mpHpMult(def));
+    // e.curve: the mode's balance curve changed its health, not what it's worth (it pays the same).
+    const rate = (this.dmgCash * (def.cash ?? 1) * (this.dmgShare || 1 / this.mpHpMult(def))) / (e.curve || 1);
     let v = Math.min(dealt * rate, e.maxHp * rate - e.paid);
     if (v <= 0) return;
     e.paid += v;

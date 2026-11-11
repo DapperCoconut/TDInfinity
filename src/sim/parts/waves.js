@@ -1,7 +1,7 @@
 // Waves and money: starting and skipping waves, spawning enemies (spawn), wave pay, farms and crates.
 // These are methods of Sim: sim.js puts them on the Sim class, so "this" is the game.
 
-import { ENEMIES, GAME, TOWERS, VERSUS, choicesOf, detection, difficulty, rootType, waveGroups } from '../../config.js';
+import { ENEMIES, GAME, TOWERS, VERSUS, choicesOf, detection, difficulty, hpCurve, rootType, waveGroups } from '../../config.js';
 import { path } from '../path.js';
 import { r2, rand } from './shared.js';
 
@@ -118,9 +118,10 @@ export class SimWaves {
   spawn(type, at = null) {
     const def = ENEMIES[type];
     const mp = this.mpHpMult(def);
-    const hpMult = def.fixedHp ? 1 : this.vs ? VERSUS.hpMult(this.wave.index) : (this.flatHp ? 1 : 1 + this.wave.index * GAME.hpScalePerWave) * mp;
+    const curve = this.vs || def.fixedHp ? 1 : hpCurve(this.dm, this.wave.index, def.boss || at?.boss); // the mode's balance curve
+    const hpMult = def.fixedHp ? 1 : this.vs ? VERSUS.hpMult(this.wave.index) : (this.flatHp ? 1 : 1 + this.wave.index * GAME.hpScalePerWave) * mp * curve;
     const maxHp = at?.hp != null
-      ? Math.max(1, Math.round(at.hp * mp))
+      ? Math.max(1, Math.round(at.hp * mp * curve))
       : Math.max(1, Math.round(def.hp * hpMult * (at?.hpScale ?? 1)));
     // Engineer teleporters: fresh enemies come out of the one furthest down the path.
     let dist = at?.dist ?? 0;
@@ -147,6 +148,7 @@ export class SimWaves {
       speed: 0,
       baseSpeed: def.speed * (0.94 + Math.random() * 0.12) * (at?.speedMult ?? 1), // Multiplier copies are faster
       noCash: !!at?.noCash, // Grenadier spawns, Multiplier copies: no kill cash
+      curve, // the mode's balance curve on its health (it still pays what it would have without it)
       paid: 0, // damage cash it has paid so far, before bonuses (it never pays for more than its max health)
       earned: 0, // ... and what each player got from it, bonuses included (shown when it dies)
       copy: !!at?.copy, // a Multiplier copy (never copied again)

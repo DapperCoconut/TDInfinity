@@ -102,7 +102,7 @@ export const ENEMIES = {
     intro: '👊 A Smasher! Its smash stuns every tower near it for 3s.' },
   shocker: { name: 'Shocker', hp: 325, speed: 9.6, reward: 25, damage: 25, scale: 1.1, skin: 0xb5c99a, shirt: 0x161616, pants: 0x161616, mlook: 'shocker',
     blast: { radius: 20, dmg: 0, stun: 5, color: 0x40c4ff }, intro: '⚡ Shockers! When one dies, its shockwave stuns towers for 5s.' },
-  mPredator: { name: 'Predator', hp: 35000, speed: 7.8, reward: 1500, damage: 300, scale: 2.3, skin: 0x9ccc65, shirt: 0x1c1c1c, pants: 0x1a237e, mlook: 'predator',
+  mPredator: { name: 'Predator', hp: 35000, speed: 7.8, reward: 1500, damage: 150, scale: 2.3, skin: 0x9ccc65, shirt: 0x1c1c1c, pants: 0x1a237e, mlook: 'predator',
     boss: true, stunImmune: true, collisionResist: 0.3,
     mAttacks: [
       { shot: { range: 15, pick: 'strongest', offensive: true, n: 1, dmg: 600, pct: 0.04, kind: 'laser', flight: 0 }, first: 11, every: 15, name: 'Decimation' },
@@ -177,7 +177,7 @@ export const ENEMIES = {
     armor: 0.35, deathSpawn: { list: ['breaker3'], n: 3 }, intro: '📄 Breaker4s split into 3 Breaker3s, which split again!' },
   breaker3: { name: 'Breaker3', hp: 160, speed: 12, reward: 8, damage: 6, scale: 1.1, skin: 0xff7043, shirt: 0xff7043, pants: 0xff7043, face: 'paper', flook: 'paper', figure: 0x43a047,
     armor: 0.2, deathSpawn: { list: ['breaker2'], n: 1 } },
-  fRusher: { name: 'Fallen Rusher', hp: 800, speed: 36, reward: 40, damage: 25, scale: 1.2, skin: 0x161616, shirt: 0x37474f, pants: 0x263238, face: 'fallen', flook: 'rusher',
+  fRusher: { name: 'Fallen Rusher', hp: 800, speed: 36, reward: 40, damage: 15, scale: 1.2, skin: 0x161616, shirt: 0x37474f, pants: 0x263238, face: 'fallen', flook: 'rusher',
     armor: 0.8, shield: true, phase2: 'fRusherBroken', intro: '💨 Fallen Rushers: VERY fast with 80% defense until their shield breaks.' },
   fRusherBroken: { name: 'Fallen Rusher', hp: 900, speed: 18, reward: 40, damage: 25, scale: 1.2, skin: 0x161616, shirt: 0x37474f, pants: 0x263238, face: 'fallen', flook: 'rusherBroken' },
   fHero: { name: 'Fallen Hero', hp: 3500, speed: 13.5, reward: 150, damage: 50, scale: 1.3, skin: 0x161616, shirt: 0x607d8b, pants: 0x455a64, face: 'fallen', flook: 'hero',
@@ -185,7 +185,7 @@ export const ENEMIES = {
   fShield: { name: 'Fallen Shield', hp: 5000, speed: 4.5, reward: 300, damage: 150, scale: 2.4, skin: 0x161616, shirt: 0x26535a, pants: 0x1c3c42, face: 'fallen', flook: 'shieldKnight',
     armor: 0.5, stunImmune: true, bossFirst: true, shield: true, phase2: 'fShieldBroken',
     intro: '🛡️ Boss: the Fallen Shield! When its shield breaks, it charges!' },
-  fShieldBroken: { name: 'Fallen Shield', hp: 15000, speed: 4.5, reward: 700, damage: 150, scale: 2.4, skin: 0x161616, shirt: 0x26535a, pants: 0x1c3c42, face: 'fallen', flook: 'shieldBroken',
+  fShieldBroken: { name: 'Fallen Shield', hp: 10000, speed: 4.5, reward: 700, damage: 100, scale: 2.4, skin: 0x161616, shirt: 0x26535a, pants: 0x1c3c42, face: 'fallen', flook: 'shieldBroken',
     armor: 0.5, stunImmune: true, charge: { speed: 18, time: 4 } },
   fSummoner: { name: 'Fallen Summoner', hp: 12500, speed: 4.5, reward: 600, damage: 150, scale: 1.7, skin: 0x161616, shirt: 0x111111, pants: 0x111111, face: 'fallen', flook: 'summoner',
     stunImmune: true, summon: { type: 'fNecrotic', n: 3, every: 20 }, hideAt: 0.5,
@@ -323,7 +323,7 @@ export const ENEMIES = {
       { key: 'timeSnap', w: 2, range: 18, dmg: 40, stun: 3 },
       { key: 'realityTear', w: 2, n: 8, radius: 4, dmg: 35, flight: 1.5 },
       { key: 'timeParadox', w: 2, n: 3, gap: 3 }] },
-    shift: { at: 0.15, into: 'xBeholderField', heal: true, refund: 1 },
+    shift: { at: 0.15, into: 'xBeholderField', heal: true, refund: 1, wait: 20 },
     intro: '👁️ FINAL BOSS: the Beholder, time itself! Its Time Paradox turns your towers into other towers.' },
   // In the Beholder's Field: back at full health, with Time Crystals and Time Shards at its side.
   xBeholderField: { name: 'Beholder (Beholder\'s Field)', h: 5.2, hp: 250000, speed: 4.3, reward: 0, damage: 100000, scale: 3.8, skin: 0x050505, shirt: 0x9e9e9e, pants: 0x616161, face: 'beholder', xlook: 'beholder',
@@ -333,7 +333,7 @@ export const ENEMIES = {
       { key: 'realityTear', w: 2, n: 8, radius: 4, dmg: 35, flight: 1.5 },
       { key: 'timeParadox', w: 2, n: 3, gap: 3 }] },
     summon: [{ type: 'xTimeCrystal', n: 1, every: 30 }, { type: 'xTimeShard', n: 3, every: 15 }],
-    shiftIntro: '🌌 The Beholder WARPED you to the Beholder\'s Field! It healed fully, and your towers were refunded. Rebuild fast, it moves in 8 seconds!' },
+    shiftIntro: '🌌 The Beholder WARPED you to the Beholder\'s Field! It healed fully, and your towers were refunded. Rebuild fast, it moves in 20 seconds!' },
   // ---------------------------------------------------------------- Insane mode enemies
   // Insane from the user's 2026-11-09 spec: soldiers, robots, the XCF and beings of light and
   // corruption, 50 waves ending with the Overlord. Health is exact (DIFFICULTIES.insane.flatHp);
@@ -494,14 +494,14 @@ export const ENEMIES = {
   iNull: { name: 'Null', hp: 4500, speed: 21, reward: iR(4500), damage: iD(4500), scale: 1.05, skin: 0x0d0d0d, shirt: 0x0d0d0d, pants: 0x0d0d0d, face: 'blank', ilook: 'null', glowC: 0xaa00ff,
     defense: 5, intro: '🟣 Nulls are fast, with 5 Defense.' },
   iCorrupted: { name: 'The Corrupted', hp: 150000, speed: 3.3, reward: iR(150000), damage: 1e5, scale: 3.4, skin: 0x111111, shirt: 0x6a1b9a, pants: 0x1c1c1c, face: 'blank', ilook: 'corrupted', glowC: 0xd500f9,
-    boss: true, defense: 30, freezeImmune: true, shockImmune: true, shield: true, phase2: 'iCorruptedBare',
+    boss: true, defense: 20, freezeImmune: true, shockImmune: true, shield: true, phase2: 'iCorruptedBare',
     summon: { type: 'iNull', n: 1, every: 10 },
     moves: { first: 6, every: 11, list: [
       { key: 'eyeLaser', w: 1, radius: 9, stun: 4, flight: 2.5, defense: 15, maxHit: 200 },
       { key: 'callUnits', w: 1, list: ['iNull'], n: 3, name: 'Eyeficated Summon' }] },
-    intro: '👁️ BOSS: The Corrupted! 30 Defense. Its eye laser stuns towers around its target (and lowers its Defense for good). It keeps summoning Nulls.' },
+    intro: '👁️ BOSS: The Corrupted! 20 Defense. Its eye laser stuns towers around its target (and lowers its Defense for good). It keeps summoning Nulls.' },
   iCorruptedBare: { name: 'The Corrupted', hp: 100000, speed: 3.3, reward: iR(100000), damage: 1e5, scale: 3.4, skin: 0x111111, shirt: 0x6a1b9a, pants: 0x1c1c1c, face: 'blank', ilook: 'corrupted', glowC: 0xd500f9,
-    boss: true, defense: 30, maxHit: 600, freezeImmune: true, shockImmune: true, summon: { type: 'iNull', n: 1, every: 10 },
+    boss: true, defense: 20, maxHit: 600, freezeImmune: true, shockImmune: true, summon: { type: 'iNull', n: 1, every: 10 },
     moves: { first: 4, every: 11, list: [
       { key: 'eyeLaser', w: 1, radius: 9, stun: 4, flight: 2.5, defense: 15, maxHit: 200 },
       { key: 'callUnits', w: 1, list: ['iNull'], n: 3, name: 'Eyeficated Summon' }] } },
