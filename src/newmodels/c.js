@@ -13,7 +13,6 @@ import {
   gunMuzzle,
   cylPart,
   cylGeo,
-  cylGeoX,
   clearMat,
   addPistol,
   turret,
@@ -76,156 +75,6 @@ function parkUnit(u, unit, s, x, y, z, yaw = 0) {
 // ================================================================== towers
 
 /**
- * Glacier (cliff): a frost-crystal ice cannon on a block of glacier ice. More crystals every
- * level; Lv 2 twin barrels, Lv 3 a frost core and crystal shoulder spikes, Lv 4 a triple cannon
- * under a crown of glowing crystals.
- */
-function glacier(level) {
-  const u = makeThing();
-  const { M } = u;
-  const ice = M(0xb3e5fc);
-  const deep = M(0x4fc3f7);
-  const frost = glowThing(u, level >= 4 ? 0x84ffff : 0x80deea);
-  frost.emissiveIntensity = 0.6;
-  const steel = M(level >= 3 ? 0x546e7a : 0x78909c);
-  // Glacier block base
-  part(u.body, boxGeo(3.6, 1.2, 3.6), M(0xe1f5fe), 0, 0.6, 0);
-  part(u.body, boxGeo(3.0, 0.6, 3.0), ice, 0, 1.5, 0);
-  // Ring of crystals around the base, more each level
-  const n = 3 + level * 2;
-  for (let i = 0; i < n; i++) {
-    const a = (i / n) * Math.PI * 2 + 0.3;
-    const hgt = 0.9 + ((i * 7) % 5) * 0.25 + level * 0.1;
-    crystal(u.body, i % 3 === 0 ? deep : i % 3 === 1 ? ice : frost, Math.cos(a) * 1.6, 1.0, Math.sin(a) * 1.6, hgt, 0.45, 0.35, -a + Math.PI / 2);
-  }
-  // Turret: a rounded housing with the barrels pointing +Z
-  const t = new THREE.Group();
-  t.position.set(0, 1.8, 0);
-  u.body.add(t);
-  part(t, boxGeo(2.0, 0.4, 2.0), steel, 0, 0.2, 0);
-  part(t, boxGeo(1.8, 1.4, 2.2), M(0x90a4ae), 0, 1.1, -0.1);
-  part(t, boxGeo(1.9, 0.3, 2.3), ice, 0, 1.9, -0.1); // frosted roof
-  part(t, boxGeo(0.9, 0.5, 0.1), frost, 0, 1.2, 1.01); // frost window
-  // Coolant tank on the back
-  part(t, cylGeo(0.5, 0.5, 1.4, 10), deep, 0, 1.1, -1.5).rotation.x = Math.PI / 2;
-  const xs = level >= 4 ? [-0.55, 0, 0.55] : level >= 2 ? [-0.35, 0.35] : [0];
-  const len = 2.2 + level * 0.3;
-  const bw = level >= 4 ? 0.42 : 0.5;
-  for (const x of xs) {
-    part(t, boxGeo(bw, bw, len), steel, x, 1.0, 1.0 + len / 2);
-    for (let i = 0; i < 2 + (level >= 3 ? 1 : 0); i++) part(t, boxGeo(bw + 0.15, bw + 0.15, 0.2), ice, x, 1.0, 1.4 + i * (len / 3)); // frost rings
-    part(t, boxGeo(bw + 0.1, bw + 0.1, 0.3), frost, x, 1.0, 1.0 + len); // icy muzzle
-    addMuzzle(u, t, x, 1.0, 1.3 + len);
-  }
-  if (level >= 1) {
-    // Icicles hanging off the housing
-    for (const x of [-0.7, -0.2, 0.3, 0.75]) part(t, boxGeo(0.15, 0.5, 0.15), ice, x, 0.5, 1.0);
-  }
-  if (level >= 3) {
-    // Frost core + crystal spikes on the shoulders
-    part(t, boxGeo(0.7, 0.7, 0.7), frost, 0, 2.4, -0.4).rotation.set(0.6, 0.6, 0);
-    for (const side of [-1, 1]) crystal(t, deep, side * 1.0, 1.6, -0.3, 1.2, 0.35, 0.5, side * Math.PI / 2);
-  }
-  if (level >= 4) {
-    // Crown of big glowing crystals behind the turret
-    for (const [x, hgt] of [[-1.1, 2.0], [0, 2.8], [1.1, 2.0]]) crystal(u.body, frost, x, 1.8, -1.3, hgt, 0.55, 0.15, x > 0 ? Math.PI / 2 : x < 0 ? -Math.PI / 2 : 0);
-    const halo = part(u.body, cylGeo(2.3, 2.3, 0.06, 20), clearMat(u, 0x84ffff, 0.25), 0, 1.25, 0);
-    halo.castShadow = false;
-  }
-  u.static = true;
-  u.bob = 0;
-  u.tracer = 0x84ffff;
-  u.projectile = { color: 0xe1f5fe, size: level >= 4 ? 0.8 : 0.6 };
-  u.flight = { color: 0xb3e5fc, size: level >= 4 ? 0.9 : 0.7, arc: 0.3 }; // ice cubes
-  return u;
-}
-
-/**
- * Enforcement Base: a security HQ with a light bar and a garage. Lv 1 radio mast and flag, Lv 2
- * barricades, Lv 3 a watchtower with a searchlight, Lv 4 a truck bay with an armored truck,
- * Lv 5 a robot hangar with a patrol mech.
- */
-function enforcementBase(level) {
-  const u = makeThing();
-  const { M } = u;
-  const navy = M(0x283593);
-  const white = M(0xeceff1);
-  const dark = M(0x263238);
-  const red = glowThing(u, 0xff1744);
-  const blue = glowThing(u, 0x2979ff);
-  const x0 = level >= 4 ? -0.8 : 0; // make room for the side bays
-  part(u.body, boxGeo(level >= 4 ? 5.2 : 4.2, 0.3, 4.2), M(0x9e9e9e), x0 * 0.6, 0.15, 0); // concrete
-  // HQ building at the back
-  part(u.body, boxGeo(3.4, 3.0, 2.0), navy, x0, 1.8, -1.0);
-  part(u.body, boxGeo(3.5, 0.35, 2.1), white, x0, 2.4, -1.0); // white stripe
-  part(u.body, boxGeo(3.7, 0.3, 2.3), dark, x0, 3.45, -1.0); // roof
-  part(u.body, boxGeo(0.9, 1.5, 0.1), M(0x90caf9), x0 + 1.0, 1.1, 0.02); // glass door
-  part(u.body, boxGeo(1.4, 0.4, 0.1), M(0xfdd835), x0 + 1.0, 2.0, 0.03); // badge sign
-  // Garage door
-  part(u.body, boxGeo(1.7, 1.8, 0.1), M(0x616161), x0 - 0.7, 1.2, 0.02);
-  for (let i = 0; i < 4; i++) part(u.body, boxGeo(1.7, 0.06, 0.12), dark, x0 - 0.7, 0.5 + i * 0.45, 0.05);
-  // Light bar on the roof
-  part(u.body, boxGeo(1.6, 0.2, 0.5), dark, x0, 3.7, -0.6);
-  part(u.body, boxGeo(0.7, 0.3, 0.45), red, x0 - 0.4, 3.9, -0.6);
-  part(u.body, boxGeo(0.7, 0.3, 0.45), blue, x0 + 0.4, 3.9, -0.6);
-  // A patrol car out front
-  const car = new THREE.Group();
-  car.position.set(x0 - 0.3, 0.3, 1.3);
-  car.rotation.y = Math.PI / 2;
-  u.body.add(car);
-  part(car, boxGeo(2.2, 0.5, 1.1), white, 0, 0.45, 0);
-  part(car, boxGeo(1.2, 0.45, 1.0), navy, -0.1, 0.9, 0);
-  part(car, boxGeo(0.5, 0.15, 0.3), red, -0.1, 1.2, -0.2);
-  part(car, boxGeo(0.5, 0.15, 0.3), blue, -0.1, 1.2, 0.2);
-  for (const x of [-0.7, 0.7]) for (const z of [-0.55, 0.55]) part(car, boxGeo(0.45, 0.45, 0.15), M(0x111111), x, 0.22, z);
-  if (level >= 1) {
-    // Radio mast + flag
-    part(u.body, boxGeo(0.12, 2.6, 0.12), M(0xbdbdbd), x0 - 1.4, 4.9, -1.6);
-    part(u.body, boxGeo(0.6, 0.06, 0.06), M(0xbdbdbd), x0 - 1.4, 5.6, -1.6);
-    part(u.body, boxGeo(0.05, 0.7, 1.1), navy, x0 + 1.5, 4.5, -1.5);
-    part(u.body, boxGeo(0.1, 2.0, 0.1), M(0xbdbdbd), x0 + 1.5, 4.4, -2.0);
-  }
-  if (level >= 2) {
-    // Striped barricades along the front
-    for (const x of [-1.6, 1.6]) {
-      part(u.body, boxGeo(1.0, 0.5, 0.2), white, x0 * 0.6 + x, 0.75, 1.9);
-      for (const k of [-0.3, 0.1]) part(u.body, boxGeo(0.2, 0.52, 0.22), M(0xff6f00), x0 * 0.6 + x + k, 0.75, 1.9);
-      for (const k of [-0.4, 0.4]) part(u.body, boxGeo(0.1, 0.6, 0.1), dark, x0 * 0.6 + x + k, 0.4, 1.9);
-    }
-  }
-  if (level >= 3) {
-    // Watchtower with a searchlight
-    const wx = x0 + 1.4;
-    for (const dx of [-0.35, 0.35]) for (const dz of [-0.35, 0.35]) part(u.body, boxGeo(0.12, 2.0, 0.12), dark, wx + dx, 4.6, -1.5 + dz);
-    part(u.body, boxGeo(1.1, 0.15, 1.1), dark, wx, 5.6, -1.5);
-    part(u.body, boxGeo(1.1, 0.4, 0.08), navy, wx, 5.85, -0.95);
-    part(u.body, boxGeo(0.5, 0.5, 0.6), M(0x424242), wx, 6.0, -1.5).rotation.x = -0.4;
-    part(u.body, boxGeo(0.4, 0.4, 0.05), glowThing(u, 0xfff9c4), wx, 6.13, -1.18).rotation.x = -0.4;
-  }
-  if (level >= 4) {
-    // Truck bay on the right side, armored truck inside
-    const bx = 1.9;
-    part(u.body, boxGeo(0.15, 2.4, 3.6), navy, bx + 1.0, 1.5, -0.2);
-    part(u.body, boxGeo(0.15, 2.4, 3.6), navy, bx - 1.0, 1.5, -0.2);
-    part(u.body, boxGeo(2.3, 0.25, 3.8), dark, bx, 2.8, -0.2);
-    part(u.body, boxGeo(2.0, 0.3, 0.12), M(0xfdd835), bx, 2.55, 1.6);
-    parkUnit(u, veh('ebtruck'), 0.32, bx, 0.3, -0.1);
-  }
-  if (level >= 5) {
-    // Robot hangar behind: a tall dark shed with a glowing door frame and a mech peeking out
-    part(u.body, boxGeo(4.0, 0.3, 1.6), M(0x9e9e9e), 0, 0.15, -2.8);
-    part(u.body, boxGeo(3.6, 4.2, 0.2), M(0x1a237e), 0, 2.4, -3.5);
-    for (const x of [-1.8, 1.8]) part(u.body, boxGeo(0.25, 4.2, 1.4), M(0x1a237e), x, 2.4, -2.8);
-    part(u.body, boxGeo(3.85, 0.3, 1.6), dark, 0, 4.6, -2.8);
-    for (const x of [-1.6, 1.6]) part(u.body, boxGeo(0.1, 4.0, 0.1), blue, x, 2.3, -2.08);
-    part(u.body, boxGeo(3.2, 0.1, 0.1), blue, 0, 4.35, -2.08);
-    parkUnit(u, veh('ebapm'), 0.5, 0, 0.3, -2.7);
-  }
-  u.static = true;
-  return u;
-}
-
-/**
  * Planeswalker (cliff sniper): a hooded wanderer in a long cloak with a very long scoped rifle and
  * mystic purple accents. Lv 1 a scarf and rune scope, Lv 2 glowing rune bands, Lv 3 shoulder
  * plates and floating rune shards, Lv 4 glowing eyes under the hood (hidden detection).
@@ -279,77 +128,6 @@ function planeswalker(level) {
   h.tracer = seer ? 0xe040fb : 0xce93d8;
   h.tracerWidth = level >= 3 ? 0.3 : undefined;
   return h;
-}
-
-/**
- * Submerge (water): a submarine with a missile hatch deck. Bigger every level; Lv 1 dive planes,
- * Lv 2 more hatches, Lv 3 a periscope and a striped nuke silo, Lv 4 a sonar hump and more cells,
- * Lv 5 a big dark sub with a huge glowing missile raised out of the silo.
- */
-function submerge(level) {
-  const u = makeThing();
-  const { M } = u;
-  const dark5 = level >= 5;
-  const L = [5.0, 5.4, 5.9, 6.4, 7.0, 8.2][level];
-  const R = [0.85, 0.9, 1.0, 1.05, 1.15, 1.35][level];
-  const hullC = M(dark5 ? 0x1a1a1a : level >= 3 ? 0x37474f : 0x455a64);
-  const deck = M(dark5 ? 0x263238 : 0x546e7a);
-  const black = M(0x111111);
-  const hatchM = M(0x78909c);
-  // Hull: a long cylinder along Z with tapered nose and tail, sitting low in the water
-  const y = 0.2;
-  part(u.body, cylGeoX(R, R, L, 12), hullC, 0, y, 0);
-  part(u.body, cylGeoX(R * 0.25, R, 1.4, 12), hullC, 0, y, L / 2 + 0.7); // nose
-  part(u.body, cylGeoX(R, R * 0.3, 1.6, 12), hullC, 0, y, -L / 2 - 0.8); // tail
-  part(u.body, boxGeo(R * 1.4, 0.15, L * 0.9), deck, 0, y + R * 0.95, 0); // flat deck
-  // Tail fins + propeller
-  part(u.body, boxGeo(0.12, R * 1.8, 0.7), hullC, 0, y, -L / 2 - 1.3);
-  part(u.body, boxGeo(R * 1.8, 0.12, 0.7), hullC, 0, y, -L / 2 - 1.3);
-  part(u.body, boxGeo(1.0, 0.18, 0.12), black, 0, y, -L / 2 - 1.75).rotation.z = 0.6;
-  // Conning tower (sail)
-  const sz = L * 0.18;
-  const sh = 1.2 + level * 0.12;
-  part(u.body, boxGeo(0.8, sh, 1.8), hullC, 0, y + R + sh / 2, sz);
-  part(u.body, boxGeo(0.82, 0.12, 0.6), M(0x4fc3f7), 0, y + R + sh - 0.25, sz + 0.65); // bridge windows
-  if (level >= 1) for (const side of [-1, 1]) part(u.body, boxGeo(0.9, 0.1, 0.5), hullC, side * 0.8, y + R + sh * 0.6, sz); // dive planes
-  // Missile hatch deck: rows of hatches behind the sail, a muzzle on each
-  const cells = [2, 3, 4, 4, 5, 6][level];
-  for (let i = 0; i < cells; i++) {
-    for (const x of [-0.35, 0.35]) {
-      const z = sz - 1.4 - i * 0.65;
-      part(u.body, boxGeo(0.5, 0.12, 0.5), hatchM, x, y + R + 0.08, z);
-      part(u.body, boxGeo(0.22, 0.04, 0.22), M(dark5 ? 0xff1744 : 0xe53935), x, y + R + 0.15, z);
-      addMuzzle(u, u.body, x, y + R + 0.4, z);
-    }
-  }
-  if (level >= 3) {
-    // Periscope + nuke silo in front of the sail
-    part(u.body, boxGeo(0.12, 1.4, 0.12), black, 0.15, y + R + sh + 0.7, sz - 0.3);
-    part(u.body, boxGeo(0.14, 0.18, 0.4), black, 0.15, y + R + sh + 1.4, sz - 0.18);
-    const siloZ = sz + 1.7;
-    part(u.body, cylGeo(0.55, 0.6, 0.35, 12), M(0xfdd835), 0, y + R + 0.15, siloZ);
-    for (let k = 0; k < 4; k++) part(u.body, boxGeo(0.14, 0.37, 1.1), black, -0.35 + k * 0.23, y + R + 0.15, siloZ).rotation.y = 0.7;
-    part(u.body, cylGeo(0.4, 0.4, 0.38, 12), M(0x212121), 0, y + R + 0.17, siloZ);
-    if (!dark5) part(u.body, boxGeo(0.25, 0.04, 0.25), glowThing(u, 0xff6d00), 0, y + R + 0.37, siloZ);
-  }
-  if (level >= 4) part(u.body, boxGeo(R * 1.2, 0.5, 1.2), deck, 0, y + R + 0.2, L / 2 - 0.4); // sonar hump
-  if (dark5) {
-    // The huge missile, raised out of the silo
-    const siloZ = sz + 1.7;
-    const red = glowThing(u, 0xff1744);
-    part(u.body, cylGeo(0.32, 0.32, 3.0, 10), M(0xeceff1), 0, y + R + 1.8, siloZ);
-    part(u.body, cylGeo(0.02, 0.32, 0.9, 10), red, 0, y + R + 3.75, siloZ);
-    part(u.body, boxGeo(0.34, 0.25, 0.34), black, 0, y + R + 2.5, siloZ);
-    for (const r of [0, Math.PI / 2]) part(u.body, boxGeo(1.0, 0.6, 0.06), M(0x424242), 0, y + R + 0.6, siloZ).rotation.y = r; // fins
-    // Red glowing strip along the hull
-    for (const side of [-1, 1]) part(u.body, boxGeo(0.05, 0.12, L * 0.8), red, side * R * 1.0, y + 0.2, 0);
-    u.body.scale.setScalar(0.92);
-  }
-  u.static = true;
-  u.bob = 0.05;
-  u.tracer = dark5 ? 0xff1744 : 0xff7043;
-  u.projectile = { color: 0xeceff1, size: dark5 ? 0.8 : 0.6 };
-  return u;
 }
 
 /**
@@ -412,82 +190,6 @@ function shockCommando(level) {
   h.tracer = shock ? 0x40c4ff : 0xff7043;
   h.projectile = { color: shock ? 0x40c4ff : 0xeceff1, size: 0.45 };
   return h;
-}
-
-/**
- * Marauder (water): a sleek raider boat with a razor launcher on the bow. Lv 1 twin exhausts,
- * Lv 2 ram spikes, Lv 3 a sonar dish, Lv 4 a big harpoon gun, Lv 5 a dark red armored boat.
- */
-function marauder(level) {
-  const u = makeThing();
-  const { M } = u;
-  const armored = level >= 5;
-  const L = [4.6, 4.8, 5.0, 5.3, 5.6, 6.2][level];
-  const W = armored ? 2.6 : 2.2;
-  const hullC = M(armored ? 0x5d0a0a : 0x37474f);
-  const trim = armored ? glowThing(u, 0xff1744) : M(0xc62828);
-  const dark = M(armored ? 0x1a1a1a : 0x212121);
-  const steel = M(0x90a4ae);
-  // Low hull with a long, sharp bow
-  part(u.body, boxGeo(W, 0.7, L), hullC, 0, 0.05, -0.4);
-  part(u.body, boxGeo(W + 0.04, 0.15, L + 0.02), dark, 0, -0.25, -0.4);
-  for (const side of [-1, 1]) part(u.body, boxGeo(W * 0.62, 0.7, 2.0), hullC, side * W * 0.22, 0.05, L / 2 + 0.3).rotation.y = side * 0.42;
-  for (const side of [-1, 1]) part(u.body, boxGeo(0.06, 0.12, L * 0.85), trim, side * (W / 2 + 0.02), 0.3, -0.5); // racing stripes
-  part(u.body, boxGeo(W - 0.3, 0.08, L - 0.4), M(0x424242), 0, 0.44, -0.4); // deck
-  // Low swept cockpit
-  part(u.body, boxGeo(W - 0.7, 0.7, 1.5), dark, 0, 0.8, -L / 2 + 0.9);
-  part(u.body, boxGeo(W - 0.75, 0.35, 0.6), M(armored ? 0xff5252 : 0x4fc3f7), 0, 1.0, -L / 2 + 1.7).rotation.x = -0.6;
-  // Engines at the stern
-  for (const x of level >= 1 ? [-0.5, 0.5] : [0]) {
-    part(u.body, boxGeo(0.6, 0.6, 0.7), dark, x, 0.6, -L / 2 - 0.4);
-    if (level >= 1) part(u.body, boxGeo(0.35, 0.35, 0.1), glowThing(u, armored ? 0xff1744 : 0xff9100), x, 0.6, -L / 2 - 0.76);
-  }
-  // Weapon head on the bow
-  const head = new THREE.Group();
-  head.position.set(0, 0.5, L / 2 - 1.4);
-  u.body.add(head);
-  part(head, boxGeo(1.0, 0.3, 1.0), dark, 0, 0.15, 0);
-  if (level >= 4) {
-    // Big harpoon gun
-    part(head, boxGeo(1.0, 0.7, 1.2), M(armored ? 0x3e0d0d : 0x455a64), 0, 0.65, -0.1);
-    part(head, boxGeo(0.35, 0.35, 2.6), dark, 0, 0.75, 1.6);
-    part(head, boxGeo(0.12, 0.12, 1.2), steel, 0, 0.75, 3.2); // harpoon shaft
-    part(head, boxGeo(0.45, 0.2, 0.4), armored ? trim : steel, 0, 0.75, 3.8); // barbed head
-    part(head, boxGeo(0.5, 0.5, 0.5), M(0x5d4037), 0.75, 0.55, -0.4); // rope spool
-    addMuzzle(u, head, 0, 0.75, 4.0);
-    u.flight = { color: armored ? 0xff1744 : 0xbdbdbd, size: 1, arc: 0.5, long: true };
-  } else {
-    // Razor launcher: a magazine of spinning saw discs and a short launch rail
-    part(head, boxGeo(0.9, 0.55, 1.0), M(0x455a64), 0, 0.55, -0.1);
-    part(head, boxGeo(0.7, 0.12, 1.4), dark, 0, 0.6, 0.9); // launch rail
-    for (let i = 0; i < 2 + Math.min(level, 2); i++) part(head, cylGeo(0.42, 0.42, 0.06, 12), steel, 0, 0.88 + i * 0.1, -0.1); // disc stack
-    part(head, cylGeo(0.4, 0.4, 0.05, 12), steel, 0, 0.7, 1.3); // loaded disc
-    addMuzzle(u, head, 0, 0.7, 1.8);
-    u.flight = { color: 0xcfd8dc, size: 0.8, arc: 0.15 };
-  }
-  if (level >= 2) {
-    // Ram spikes on the bow
-    for (const x of [-0.5, 0, 0.5]) part(u.body, boxGeo(0.14, 0.14, 0.8), steel, x, 0.15, L / 2 + 1.1 - Math.abs(x) * 0.8);
-  }
-  if (level >= 3) {
-    // Sonar dish on a mast behind the cockpit
-    part(u.body, boxGeo(0.12, 1.2, 0.12), dark, 0, 1.6, -L / 2 + 0.4);
-    const dish = part(u.body, cylGeo(0.6, 0.2, 0.2, 12), M(0xeceff1), 0, 2.3, -L / 2 + 0.4);
-    dish.rotation.x = 1.0;
-    part(u.body, boxGeo(0.12, 0.12, 0.12), armored ? trim : glowThing(u, 0x76ff03), 0, 2.45, -L / 2 + 0.6);
-  }
-  if (armored) {
-    // Armor plating with spikes along the sides
-    for (const side of [-1, 1]) {
-      part(u.body, boxGeo(0.2, 0.6, L - 1), dark, side * (W / 2 + 0.1), 0.2, -0.5);
-      for (const z of [-1.6, -0.4, 0.8]) part(u.body, boxGeo(0.4, 0.15, 0.15), steel, side * (W / 2 + 0.3), 0.3, z);
-    }
-    part(u.body, boxGeo(W - 0.6, 0.12, 1.3), dark, 0, 1.2, -L / 2 + 0.9); // armored canopy
-  }
-  u.static = true;
-  u.bob = 0.08;
-  u.tracer = armored ? 0xff1744 : 0xb0bec5;
-  return u;
 }
 
 /**
@@ -705,7 +407,7 @@ function voidKing(level) {
   return h;
 }
 
-export const TOWER_MODELS_C = { glacier, enforcementBase, planeswalker, submerge, shockCommando, marauder, orbit, voidPort, voidKing };
+export const TOWER_MODELS_C = { planeswalker, shockCommando, orbit, voidPort, voidKing };
 
 // ================================================================== units
 

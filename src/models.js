@@ -159,6 +159,9 @@ import {
 } from './models/machines4.js';
 export { makeCombatDrone, makeOilDerrick, makeScoutHeli, makeShieldTower } from './models/machines4.js';
 import {
+  makeBroadcaster, makeBuccaneer, makeEnforcementBase, makeGlacier, makeGlowup, makeMarauder, makeStasis, makeSubmerge,
+} from './models/machines5.js';
+import {
   makeBubbleBlower, makeDarter, makeFirecracker, makePenetrator, makePsychoSlayer, makeQuarterer,
   makeScarecrow, makeVoidTraitor,
 } from './models/towers12.js';
@@ -393,6 +396,14 @@ export const TOWER_MODELS = {
   focus: makeFocus,
   duckyNest: makeDuckyNest,
   trawler: makeTrawler,
+  buccaneer: makeBuccaneer,
+  broadcaster: makeBroadcaster,
+  stasis: makeStasis,
+  glowup: makeGlowup,
+  glacier: makeGlacier,
+  enforcementBase: makeEnforcementBase,
+  submerge: makeSubmerge,
+  marauder: makeMarauder,
   ...TOWER_MODELS_A,
   ...TOWER_MODELS_B,
   ...TOWER_MODELS_C,
