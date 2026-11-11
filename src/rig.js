@@ -235,6 +235,10 @@ export function localBox(obj, anc, out = new THREE.Box3()) {
   return out;
 }
 
+// Tower Defense Simulator style: arms and legs are single straight blocks with no elbows or knees.
+// The bones are still there (hands still turn to hold weapons), they just never bend.
+export const STIFF_LIMBS = true;
+
 export const ARM_UP = 1; // shoulder -> elbow
 export const ARM_LOW = 0.66; // elbow -> wrist
 export const LEG_UP = 1; // hip -> knee

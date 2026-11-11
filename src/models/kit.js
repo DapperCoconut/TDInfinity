@@ -2,7 +2,7 @@
 // blocky person (makeHumanoid). Other files import these through ../models.js.
 
 import * as THREE from 'three';
-import { ballGeo, bevelGeo, headGeo } from '../rig.js';
+import { bevelGeo, headGeo } from '../rig.js';
 
 // Blocky humanoid proportions (in world units, ~5.2 tall):
 // legs 1x2x1, torso 2x2x1, arms 1x2x1, head 1.2 cube. Characters face +Z.
@@ -543,21 +543,17 @@ export function makeHumanoid({ skin = 0xf5cd30, shirt = 0x1e88e5, pants = 0x43a0
     own.userData.lower = build(own);
     return p;
   };
+  // Block limbs, Tower Defense Simulator style: one straight block with the hand / shoe flush at
+  // the end (no elbow or knee balls). STIFF_LIMBS in rig.js keeps them from bending.
   const arm = (own) => {
-    part(own, bevelGeo(1, 1, 1, 0.09), armM, 0, -0.5, 0);
-    own.userData.end = [part(own, bevelGeo(0.94, 0.36, 0.94, 0.09), handM, 0, -1.82, 0)];
-    return [
-      part(own, ballGeo(0.49), armM, 0, -1, 0), // elbow
-      part(own, bevelGeo(1, 0.66, 1, 0.09), armM, 0, -1.33, 0),
-    ];
+    part(own, bevelGeo(1, 1.64, 1, 0.07), armM, 0, -0.82, 0);
+    own.userData.end = [];
+    return [part(own, bevelGeo(1, 0.36, 1, 0.07), handM, 0, -1.82, 0)];
   };
   const leg = (own) => {
-    part(own, bevelGeo(1, 1, 1, 0.09), pantsM, 0, -0.5, 0);
-    own.userData.end = [part(own, bevelGeo(1, 0.32, 1.2, 0.09), shoeM, 0, -1.84, 0.1)];
-    return [
-      part(own, ballGeo(0.49), pantsM, 0, -1, 0), // knee
-      part(own, bevelGeo(1, 0.7, 1, 0.09), pantsM, 0, -1.35, 0),
-    ];
+    part(own, bevelGeo(1, 1.7, 1, 0.07), pantsM, 0, -0.85, 0);
+    own.userData.end = [];
+    return [part(own, bevelGeo(1.02, 0.3, 1.06, 0.07), shoeM, 0, -1.85, 0.03)];
   };
   // Facing +Z, the character's right side is -X.
   const rightArm = limb(upper, -1.5, 4, arm);

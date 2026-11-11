@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { WORLD_SCALE } from './scale.js';
-import { ARM_LOW, ARM_UP, LEG_LOW, LEG_UP, SOLE } from './rig.js';
+import { ARM_LOW, ARM_UP, LEG_LOW, LEG_UP, SOLE, STIFF_LIMBS } from './rig.js';
+
+// Block-style limbs (like Tower Defense Simulator): arms and legs stay straight, so no elbow or knee bends.
+const BEND = STIFF_LIMBS ? 0 : 1;
 
 // Visuals 2.0 pose engine. Every frame it turns a character's style (m.vis: a stance, a way of
 // holding its weapon while firing and while resting, an idle animation and a firing animation;
@@ -566,7 +569,13 @@ const _built = { q: Qn(), d: V() };
  * (null: the hand follows the forearm). `q0` / `d0`: the arm's orientation and direction as built.
  */
 function solveArm(G, fore, hand, sh, q0, d0, W, Qh, pole, stiff) {
-  if (stiff && Qh) {
+  if (STIFF_LIMBS) {
+    // A straight arm: it points from the shoulder at where the hand should be.
+    _dU.subVectors(W, sh);
+    if (_dU.lengthSq() < 1e-6) _dU.copy(d0);
+    _dU.normalize();
+    _dF.copy(_dU);
+  } else if (stiff && Qh) {
     // A weapon wrapped around the forearm: the forearm itself has to aim.
     _f.copy(DOWN).applyQuaternion(Qh);
     _E.copy(W).addScaledVector(_f, -ARM_LOW);
@@ -608,7 +617,8 @@ function solveLeg(G, shin, foot, H, A, pole, qbi, yaw, pitch) {
   _perp.copy(pole).addScaledVector(_d, -pole.dot(_d));
   if (_perp.lengthSq() < 1e-6) _perp.set(0, 0, 1);
   _perp.normalize();
-  _K.copy(H).addScaledVector(_d, a).addScaledVector(_perp, hgt);
+  if (STIFF_LIMBS) _K.copy(H).addScaledVector(_d, LEG_UP); // a straight leg
+  else _K.copy(H).addScaledVector(_d, a).addScaledVector(_perp, hgt);
   _yT.subVectors(H, _K);
   basis(_qT, _yT, _perp);
   _v4.copy(H).addScaledVector(_d, len); // the ankle, as far as the leg reaches
@@ -616,7 +626,7 @@ function solveLeg(G, shin, foot, H, A, pole, qbi, yaw, pitch) {
   basis(_qS, _yT, _perp);
   G.quaternion.copy(qbi).multiply(_qT);
   shin.quaternion.copy(_qT).invert().multiply(_qS);
-  _e.set(pitch, yaw, 0, 'YXZ');
+  _e.set(pitch * BEND, yaw * BEND, 0, 'YXZ');
   foot.quaternion.copy(_qS).invert().multiply(_q3.setFromEuler(_e));
 }
 
@@ -758,10 +768,10 @@ export function poseTower(m, st, o) {
       const fl = stance.float ?? [0.12, 0.45, -0.1, 0.3];
       m.rightLeg.rotation.set(-fl[0] + a, 0, -0.04);
       m.leftLeg.rotation.set(-fl[2] - a, 0, 0.04);
-      rig.rShin.rotation.set(fl[1] + a, 0, 0);
-      rig.lShin.rotation.set(fl[3] - a, 0, 0);
-      rig.rFoot.rotation.set(0.35, 0, 0);
-      rig.lFoot.rotation.set(0.35, 0, 0);
+      rig.rShin.rotation.set((fl[1] + a) * BEND, 0, 0);
+      rig.lShin.rotation.set((fl[3] - a) * BEND, 0, 0);
+      rig.rFoot.rotation.set(0.35 * BEND, 0, 0);
+      rig.lFoot.rotation.set(0.35 * BEND, 0, 0);
     } else {
       for (let i = 0; i < 2; i++) {
         const right = i === 0;
@@ -1004,9 +1014,9 @@ export function poseEnemy(m, st, o) {
       const a = Math.sin(t * 1.7) * 0.1;
       m.rightLeg.rotation.set(g.trail + a, 0, -0.05);
       m.leftLeg.rotation.set(g.trail * 0.55 - a, 0, 0.05);
-      rig.rShin.rotation.x = 0.55 + a;
-      rig.lShin.rotation.x = 0.3 - a;
-      rig.rFoot.rotation.x = rig.lFoot.rotation.x = 0.5;
+      rig.rShin.rotation.x = (0.55 + a) * BEND;
+      rig.lShin.rotation.x = (0.3 - a) * BEND;
+      rig.rFoot.rotation.x = rig.lFoot.rotation.x = 0.5 * BEND;
       hip = 0.25 + Math.sin(t * 2.3) * 0.16;
     } else {
       let best = 0;
@@ -1018,12 +1028,12 @@ export function poseEnemy(m, st, o) {
         const lk = right === g.limpRight ? 1 - g.limp * 0.65 : 1;
         const sw = Math.max(0, c); // 1 in the middle of the swing forward
         const A = -g.crouch - g.stride * lk * s;
-        const K = 2 * g.crouch + 0.05 + g.knee * lk * sw ** 1.3;
+        const K = (2 * g.crouch + 0.05 + g.knee * lk * sw ** 1.3) * BEND;
         const leg = right ? m.rightLeg : m.leftLeg;
         leg.rotation.set(A, sx * -g.toeOut, sx * g.width);
         (right ? rig.rShin : rig.lShin).rotation.x = K;
-        (right ? rig.rFoot : rig.lFoot).rotation.x = -(A + K) + sw * 0.4 + g.tip;
-        const reach = (LEG_UP * Math.cos(A) + LEG_LOW * Math.cos(A + K)) * Math.cos(g.width) + SOLE * Math.cos(g.tip);
+        (right ? rig.rFoot : rig.lFoot).rotation.x = (-(A + K) + sw * 0.4 + g.tip) * BEND;
+        const reach = (LEG_UP * Math.cos(A) + LEG_LOW * Math.cos(A + K)) * Math.cos(g.width) + SOLE * Math.cos(g.tip * BEND);
         if (reach > best) best = reach;
       }
       hip = best - (LEG_UP + LEG_LOW + SOLE) + g.bounce * Math.abs(g.hop ? Math.max(0, cs) : sn);
@@ -1052,7 +1062,7 @@ export function poseEnemy(m, st, o) {
     const fore = right ? rig.rFore : rig.lFore;
     const hand = right ? rig.rHand : rig.lHand;
     const aim = right ? rig.aimR : rig.aimL;
-    const stiff = right ? rig.rStiff : rig.lStiff;
+    const stiff = STIFF_LIMBS || (right ? rig.rStiff : rig.lStiff);
     if (f >= 0) {
       // Attack: both arms go up over the head, then chop down.
       const a = f < 0.6 ? -Math.PI * 0.95 * (f / 0.6) : -Math.PI * 0.95 + (Math.PI * 0.6 * (f - 0.6)) / 0.4;
