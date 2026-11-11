@@ -32,7 +32,7 @@ export function flagPole(k, x, y0, z, h, col, emblem = null) {
 }
 
 /** A roller door facing +z with its bottom on y: roll housing, side rails, slats and a handle. */
-function rollerDoor(k, w, h, x, y, z, col) {
+export function rollerDoor(k, w, h, x, y, z, col) {
   k.box(w, h, 0.06, col, x, y + h / 2, z);
   const n = Math.round(h / 0.22);
   for (let i = 0; i < n; i++) k.box(w, 0.04, 0.04, tone(col, 0.72), x, y + 0.11 + i * (h / n), z + 0.04);
@@ -74,7 +74,7 @@ function archPts(rx, ry, n) {
 }
 
 /** An A-frame tent facing +z at (x, z), size s: canvas, ridge pole, dark door, rolled flap, guy ropes. */
-function tent(k, x, z, s, col) {
+export function tent(k, x, z, s, col) {
   const w = 1.1 * s;
   const h = 1.9 * s;
   const d = 2.6 * s;

@@ -1,15 +1,15 @@
 // Tower models, file 6 of 12. Each makeX(level) builds one tower's look.
 // In here:
-// Crook Boss, Minigunner, Ranger, Helicopter, Mobster, Mortar Classic.
-// (Pursuit, the helicopter makeHeli, the factories and Merc Base moved to machines2.js; Cryo Heli to machines3.js.)
+// Crook Boss, Minigunner, Ranger, Mobster, Mortar Classic.
+// (Pursuit, the helicopter makeHeli, the factories and Merc Base moved to machines2.js; Cryo Heli to machines3.js;
+// the Attack Helicopter pad to machines7.js.)
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
 
 import * as THREE from 'three';
 import { boxGeo, makeHumanoid, part } from './kit.js';
 import {
-  addPistol, addTommyGun, fedora, glow, glowThing, helmet, holdLongGun, makeThing, setMuzzle, suit,
+  addPistol, addTommyGun, fedora, glow, helmet, holdLongGun, makeThing, setMuzzle, suit,
 } from './bits.js';
-import { makeHeli } from './machines2.js';
 
 /**
  * Crook Boss: a gangster in a pinstripe suit and fedora. Lv 2 adds shades and a gold watch,
@@ -184,48 +184,6 @@ export function makeRanger(level) {
   h.tracerWidth = ewd ? 0.4 : 0.28;
   return h;
 }
-
-// ------------------------------------------------------------------ Helicopter and Cryo Heli (they fly makeHeli)
-
-/**
- * Helicopter (alternate Pursuit form): a dark helipad with a fuel tank and hangar, plus the
- * helicopter. Top path: olive Huey (Lv 4), green Apache gunship (Lv 5), black-and-red War Apache
- * (Lv 6). Bottom path: grey AH-1Z Viper (Lv 4-5), then a black Stealth Comanche with purple trim.
- */
-export function makeHelicopterModel(level, bottom) {
-  const u = makeThing();
-  const { M } = u;
-  part(u.body, boxGeo(4.4, 0.3, 4.4), M(0x37474f), 0, 0.15, 0); // asphalt pad
-  part(u.body, boxGeo(3.6, 0.04, 3.6), M(0x455a64), 0, 0.31, 0);
-  const white = M(0xfafafa);
-  part(u.body, boxGeo(0.35, 0.05, 2.0), white, -0.6, 0.34, 0); // the "H"
-  part(u.body, boxGeo(0.35, 0.05, 2.0), white, 0.6, 0.34, 0);
-  part(u.body, boxGeo(0.9, 0.05, 0.35), white, 0, 0.34, 0);
-  for (const [x, z] of [[-2, -2], [2, -2], [-2, 2], [2, 2]]) part(u.body, boxGeo(0.25, 0.25, 0.25), glowThing(u, 0xff1744), x, 0.45, z);
-  part(u.body, boxGeo(0.9, 1.4, 0.9), M(0xc62828), 1.8, 1.0, -1.8); // fuel tank
-  part(u.body, boxGeo(0.95, 0.15, 0.95), M(0x212121), 1.8, 1.75, -1.8);
-  if (level >= 3) {
-    // Rearm crates by the pad
-    for (const z of [1.3, 1.9]) part(u.body, boxGeo(1.0, 0.45, 0.5), M(0x4e5b31), -1.7, 0.5, z);
-  }
-  if (level >= 1) part(u.body, boxGeo(0.06, 0.8, 1.2), M(bottom ? 0x546e7a : 0x2e7d32), -1.9, 1.2, -1.6); // path flag
-  if (level >= 1) part(u.body, boxGeo(0.12, 1.9, 0.12), M(0xbdbdbd), -1.9, 1.0, -2.1);
-  const big = level >= 5;
-  const look = bottom
-    ? { color: big ? 0x1a1a1a : 0x546e7a, trim: big ? 0xd500f9 : 0x263238 }
-    : { color: big ? 0x1b1b1b : level >= 4 ? 0x33691e : 0x6b7d3a, trim: big ? 0xd50000 : 0x263238 };
-  const { heli, muzzles } = makeHeli(u, level, bottom && level >= 3, look);
-  u.plane = heli;
-  u.heli = true;
-  u.muzzles = muzzles;
-  u.spin = u.spin ?? null;
-  u.flyHeight = 13;
-  u.tracer = big ? (bottom ? 0xea80fc : 0xff5252) : 0xffd740;
-  return u;
-}
-export const makeHelicopter = (level) => makeHelicopterModel(level, false);
-
-export const makeHelicopterBottom = (level) => makeHelicopterModel(level, true);
 
 /**
  * Mobster: a gangster in a vest and flat cap. Top path: an ammo belt (Lv 2), a cigar (Lv 3), two

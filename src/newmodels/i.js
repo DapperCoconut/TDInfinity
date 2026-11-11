@@ -444,7 +444,7 @@ function paralyzer(level) {
  * with red details and a rocket pod on the right; Lv 3 a chin minigun and rockets on both wings;
  * Lv 4 an olive military gunship with miniguns everywhere, 6-tube rocket pods and star markings.
  */
-function heliCraft(u, level) {
+export function heliCraft(u, level) {
   const M = mm(u);
   const G = gm(u);
   const heli = new THREE.Group();
@@ -552,43 +552,6 @@ function heliCraft(u, level) {
   return { heli, muzzles, spin };
 }
 
-/**
- * Helicopter (0-4): a helipad that the helicopter flies from (same structure as Pursuit: `plane`
- * is the flying helicopter and `heli` makes the view hover it over its patrol zone).
- */
-function helicopterI(level) {
-  const lv = Math.min(level, 4);
-  const u = makeThing();
-  const M = mm(u);
-  const G = gm(u);
-  const mil = lv >= 4;
-  B(u.body, 4.4, 0.3, 4.4, M(mil ? 0x4b5320 : 0x757575), 0, 0.15, 0);
-  B(u.body, 3.6, 0.04, 3.6, M(mil ? 0x556b2f : 0x8a8a8a), 0, 0.31, 0);
-  const mark = M(mil ? 0xfafafa : 0xfdd835);
-  B(u.body, 0.35, 0.05, 2.0, mark, -0.6, 0.34, 0); // the "H"
-  B(u.body, 0.35, 0.05, 2.0, mark, 0.6, 0.34, 0);
-  B(u.body, 0.9, 0.05, 0.35, mark, 0, 0.34, 0);
-  for (const [x, z] of [[-2, -2], [2, -2], [-2, 2], [2, 2]]) B(u.body, 0.25, 0.25, 0.25, G(lv >= 2 ? 0xff1744 : 0xff9100), x, 0.45, z);
-  B(u.body, 0.12, 2.6, 0.12, M(0xbdbdbd), 1.8, 1.6, -1.8); // windsock
-  B(u.body, 0.4, 0.4, 1.0, M(0xff6d00), 1.8, 2.7, -1.35);
-  if (lv >= 1) {
-    B(u.body, 0.9, 1.4, 0.9, M(0xc62828), -1.8, 1.0, -1.8); // fuel tank
-    B(u.body, 0.95, 0.15, 0.95, M(0x212121), -1.8, 1.75, -1.8);
-  }
-  if (lv >= 3) for (const z of [1.3, 1.9]) B(u.body, 1.0, 0.45, 0.5, M(0x4e5b31), -1.7, 0.5, z); // rocket crates
-  if (mil) {
-    for (const x of [-1.2, -0.4, 0.4, 1.2]) B(u.body, 0.75, 0.45, 0.55, M(0xc2a878), x, 0.55, 2.0); // sandbags
-    star(u.body, M(0xfafafa), 1.6, 0.36, 1.6, 1.2, 0).rotation.x = -Math.PI / 2;
-  }
-  const { heli, muzzles, spin } = heliCraft(u, lv);
-  u.plane = heli;
-  u.heli = true;
-  u.muzzles = muzzles;
-  u.spin = spin.length ? spin : null;
-  u.flyHeight = 13;
-  u.tracer = mil ? 0xff5252 : 0xffd740;
-  return u;
-}
 
 /* ================================================================== 4. Hunter */
 
@@ -1351,7 +1314,7 @@ function timeDilator(level) {
 /* ================================================================== 14. Barracks (rework) */
 
 /** A plain green soldier (Barracks squads). */
-function greenSoldier() {
+export function greenSoldier() {
   const h = makeHumanoid({ skin: 0xe0ac69, shirt: 0x4caf50, pants: 0x2e7d32, arms: 0x4caf50, face: 'soldier' });
   const M = mm(h);
   helmet(h, 0x33691e);
@@ -1363,7 +1326,7 @@ function greenSoldier() {
 }
 
 /** A Tuber: a green soldier with a bazooka tube on the shoulder. */
-function tuberSoldier() {
+export function tuberSoldier() {
   const h = makeHumanoid({ skin: 0xe0ac69, shirt: 0x558b2f, pants: 0x33691e, arms: 0x558b2f, face: 'soldier' });
   const M = mm(h);
   helmet(h, 0x33691e);
@@ -1381,7 +1344,7 @@ function tuberSoldier() {
 }
 
 /** A tough commando in dark gear with a big gun. */
-function commandoSoldier() {
+export function commandoSoldier() {
   const h = makeHumanoid({ skin: 0xc68642, shirt: 0x263238, pants: 0x1c2429, arms: 0x263238, face: 'soldier' });
   const M = mm(h);
   const G = gm(h);
@@ -1401,122 +1364,6 @@ function commandoSoldier() {
   return h;
 }
 
-/**
- * Barracks (0-4): Lv 0 a green tent and a yard with boxes and a green flag; Lv 1 a satellite dish
- * on the tent and a soldier leaning outside; Lv 2 a second door and a Tuber sitting on a box; Lv 3
- * a proper building; Lv 4 a futuristic Techno Fort.
- */
-function barracksI(level) {
-  const lv = Math.min(level, 4);
-  const u = makeThing();
-  const M = mm(u);
-  const G = gm(u);
-  const addFig = (h, x, y, z, ry = 0, s = 0.6) => {
-    h.root.scale.setScalar(s);
-    h.root.position.set(x, y, z);
-    h.root.rotation.y = ry;
-    u.body.add(h.root);
-    u.mats.push(...h.mats);
-    return h;
-  };
-  B(u.body, 4.6, 0.25, 4.6, M(lv >= 4 ? 0x37474f : lv >= 3 ? 0x8d8d80 : 0x8d7b5a), 0, 0.12, 0); // yard
-  const crate = M(0x8d6e63);
-  const crateDark = M(0x5d4037);
-  const box = (x, y, z, s = 0.7) => {
-    B(u.body, s, s, s, crate, x, y + s / 2, z);
-    B(u.body, s + 0.04, 0.1, s + 0.04, crateDark, x, y + s / 2, z);
-  };
-  if (lv <= 2) {
-    // Green tent (two doors from Lv 2: a longer tent)
-    const canvas = M(0x558b2f);
-    const len = lv >= 2 ? 3.6 : 2.8;
-    const l = B(u.body, 0.2, 3.0, len, canvas, -0.9, 1.3, -0.7);
-    l.rotation.z = -0.65;
-    const r = B(u.body, 0.2, 3.0, len, canvas, 0.9, 1.3, -0.7);
-    r.rotation.z = 0.65;
-    B(u.body, 0.2, 0.2, len + 0.1, M(0x33691e), 0, 2.45, -0.7); // ridge
-    B(u.body, 1.0, 1.9, 0.1, M(0x1b1b1b), lv >= 2 ? -0.5 : 0, 0.95, -0.7 + len / 2 - 0.05); // door
-    if (lv >= 2) {
-      // Second door on the side of the tent
-      B(u.body, 0.1, 1.5, 0.9, M(0x1b1b1b), 1.45, 0.8, -0.5);
-    }
-    // Yard boxes and green flag
-    box(1.6, 0.25, 1.6);
-    box(1.6, 0.95, 1.6, 0.5);
-    box(-1.7, 0.25, 1.7, 0.6);
-    B(u.body, 0.12, 3.4, 0.12, M(0xbdbdbd), -1.9, 1.9, -1.9);
-    B(u.body, 0.05, 0.7, 1.1, M(0x2e7d32), -1.9, 3.25, -1.3);
-    if (lv >= 1) {
-      // Satellite dish on the tent
-      B(u.body, 0.12, 0.6, 0.12, M(0x9e9e9e), 0, 2.8, -1.3);
-      const dish = B(u.body, 1.0, 1.0, 0.1, M(0xeceff1), 0, 3.3, -1.3);
-      dish.rotation.x = -0.6;
-      B(u.body, 0.15, 0.15, 0.15, G(0xff1744), 0, 3.35, -1.15);
-      // A soldier leaning on the tent pole outside, arms crossed
-      const s = addFig(greenSoldier(), -1.7, 0.25, 0.5, 0.5);
-      s.root.rotation.z = 0.12;
-      s.rightArm.rotation.set(-1.3, 0, -0.9);
-      s.leftArm.rotation.set(-1.3, 0, 0.9);
-    }
-    if (lv >= 2) {
-      // A Tuber sitting on a box by the second door
-      box(1.7, 0.25, -0.2, 0.8);
-      const t = addFig(tuberSoldier(), 1.7, 0.35, -0.25, -Math.PI / 2 + 0.6);
-      for (const leg of [t.rightLeg, t.leftLeg]) leg.rotation.x = -Math.PI / 2;
-      t.body.position.y = -0.9;
-    }
-  } else if (lv === 3) {
-    // A proper building: concrete walls, two doors, windows, flat roof with a dish
-    const wall = M(0x9e9e8c);
-    B(u.body, 3.8, 2.6, 2.8, wall, 0, 1.55, -0.7);
-    B(u.body, 4.0, 0.3, 3.0, M(0x616161), 0, 3.0, -0.7);
-    B(u.body, 3.9, 0.3, 2.9, M(0x556b2f), 0, 0.4, -0.7);
-    for (const x of [-1.0, 1.0]) {
-      B(u.body, 0.9, 1.7, 0.1, M(0x3e2723), x, 1.1, 0.72); // doors
-      B(u.body, 0.15, 0.15, 0.05, M(0xffc107), x + 0.3, 1.1, 0.79);
-    }
-    for (const x of [-1.6, 0, 1.6]) B(u.body, 0.5, 0.4, 0.06, G(0xfff59d), x, 2.3, 0.73); // windows
-    B(u.body, 0.12, 0.6, 0.12, M(0x9e9e9e), 1.2, 3.45, -1.4);
-    B(u.body, 1.0, 1.0, 0.1, M(0xeceff1), 1.2, 3.9, -1.4).rotation.x = -0.6;
-    B(u.body, 0.12, 2.6, 0.12, M(0xbdbdbd), -1.6, 4.4, -1.8); // flag on the roof
-    B(u.body, 0.05, 0.7, 1.1, M(0x2e7d32), -1.6, 5.35, -1.2);
-    for (const x of [-1.8, -1.05, 1.05, 1.8]) B(u.body, 0.7, 0.42, 0.55, M(0xc2a878), x, 0.45, 2.0); // sandbags
-    box(1.9, 0.25, 1.2, 0.6);
-    addFig(greenSoldier(), -0.3, 0.25, 1.3, 0.3);
-    const t = addFig(tuberSoldier(), 0.9, 0.25, 1.4, -0.3);
-    t.root.scale.setScalar(0.55);
-  } else {
-    // Techno Fort: dark armored walls with neon trims, corner towers, a dome turret and an antenna
-    const plate = M(0x263238);
-    const dark = M(0x151b1f);
-    const neon = G(0x00e5ff);
-    B(u.body, 3.8, 2.8, 3.2, plate, 0, 1.65, -0.5);
-    for (const x of [-1.6, -0.55, 0.55, 1.6]) B(u.body, 0.6, 0.5, 3.2, plate, x, 3.3, -0.5); // battlements
-    for (const [x, z] of [[-2.0, 1.0], [2.0, 1.0], [-2.0, -2.0], [2.0, -2.0]]) {
-      B(u.body, 1.0, 3.8, 1.0, dark, x, 2.15, z); // corner towers
-      B(u.body, 1.05, 0.12, 1.05, neon, x, 3.6, z);
-      B(u.body, 0.5, 0.3, 0.5, G(0xff1744), x, 4.2, z);
-    }
-    B(u.body, 3.82, 0.12, 3.22, neon, 0, 2.6, -0.5);
-    B(u.body, 1.4, 2.0, 0.1, M(0x0d1117), 0, 1.25, 1.12); // gate
-    B(u.body, 1.5, 0.1, 0.12, neon, 0, 2.3, 1.13);
-    for (const x of [-0.4, 0, 0.4]) B(u.body, 0.06, 1.8, 0.05, neon, x, 1.25, 1.18);
-    B(u.body, 1.8, 0.8, 1.8, dark, 0, 3.5, -0.8); // dome turret
-    B(u.body, 1.2, 0.5, 1.2, dark, 0, 4.1, -0.8);
-    B(u.body, 0.3, 0.3, 1.8, M(0x37474f), 0, 3.6, 0.6);
-    B(u.body, 0.12, 2.4, 0.12, M(0x9e9e9e), 1.0, 5.0, -1.6); // antenna
-    B(u.body, 0.25, 0.25, 0.25, neon, 1.0, 6.25, -1.6);
-    const flag = clear(u, 0x00e5ff, 0.6, true); // holo flag
-    B(u.body, 0.05, 0.7, 1.1, flag, -1.0, 5.0, -1.4);
-    B(u.body, 0.1, 1.8, 0.1, M(0x9e9e9e), -1.0, 4.4, -1.95);
-    const c = addFig(commandoSoldier(), -1.3, 0.25, 1.9, 0.2, 0.5);
-    c.root.rotation.y = 0.2;
-    addFig(greenSoldier(), 1.3, 0.25, 1.9, -0.2);
-  }
-  u.muzzles.push(mz(u.body, 0, 1.0, 2.0));
-  u.height = lv >= 4 ? 4.5 : lv >= 3 ? 3.3 : 2.8;
-  return u;
-}
 
 /* ================================================================== 15. Knifer (rework) */
 
@@ -1721,7 +1568,6 @@ export function makeEngDevice(n) {
 export const TOWER_MODELS_I = {
   scarecrow: scarecrowI,
   paralyzer,
-  helicopter: helicopterI,
   hunter,
   slugger,
   doctor,
@@ -1732,7 +1578,6 @@ export const TOWER_MODELS_I = {
   goldenZed,
   iceApprentice,
   timeDilator,
-  barracks: barracksI,
   knifer: kniferI,
 };
 

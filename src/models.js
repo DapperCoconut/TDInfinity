@@ -54,14 +54,11 @@ export {
   makeSniperTactical, makeWarden,
 } from './models/towers02.js';
 import {
-  goldShine, makeAnarchist, makeArmoredFactory, makeArmoredFactoryBottom, makeBarracks, makeCommander,
-  makeCommanderClassic, makeCowboy, makeDJ, makeDJBooth, makeFieldBarracks, makeFieldBarracksBottom,
-  makeGoldCommander, makeMilitaryBase,
+  goldShine, makeAnarchist, makeCommander, makeCommanderClassic, makeCowboy, makeDJ, makeDJBooth, makeGoldCommander,
 } from './models/towers03.js';
 export {
-  addRevolver, goldShine, makeAnarchist, makeArmoredFactory, makeArmoredFactoryBottom, makeArmoredFactoryWith,
-  makeBarracks, makeCommander, makeCommanderClassic, makeCowboy, makeDJ, makeDJBooth, makeFieldBarracks,
-  makeFieldBarracksBottom, makeFieldBarracksWith, makeGoldCommander, makeMilitaryBase,
+  addRevolver, goldShine, makeAnarchist, makeCommander, makeCommanderClassic, makeCowboy, makeDJ, makeDJBooth,
+  makeGoldCommander,
 } from './models/towers03.js';
 import {
   makeAssassin, makeBoomerang, makeBrawler, makeFrostFreezer, makeFrostRanger, makeFrostRangerBottom, makeHunter,
@@ -75,20 +72,20 @@ export {
   makeSoldierClassic, makeSoldierRanger,
 } from './models/towers04.js';
 import {
-  makeAviatorAce, makeEDJ, makeEDJBottom, makeElectro, makeFarmAirdrop, makeFarmAirdropBottom, makeFarmFruit,
+  makeAviatorAce, makeEDJ, makeEDJBottom, makeElectro,
   makeMedic, makeMedicBeam, makeMedicBeamBottom, makeMineLayer, makeMineLayerBottom, makePyromancer,
   makeRocketeerMissile, makeRocketeerTrooper, makeRocketeerTrooperBottom, makeTrapper,
 } from './models/towers05.js';
 export {
-  makeAcePlane, makeAviatorAce, makeEDJ, makeElectro, makeFarmAirdrop, makeFarmFruit, makeMedic, makeMedicBeam,
+  makeAcePlane, makeAviatorAce, makeEDJ, makeElectro, makeMedic, makeMedicBeam,
   makeMineLayer, makePyromancer, makeRocketeerMissile, makeRocketeerTrooper, makeRocketeerTrooperBottom, makeTrapper,
 } from './models/towers05.js';
 import {
-  makeCrookBoss, makeHelicopter, makeHelicopterBottom, makeMinigunner, makeMobster, makeMobsterBottom,
+  makeCrookBoss, makeMinigunner, makeMobster, makeMobsterBottom,
   makeMortarClassic, makeRanger,
 } from './models/towers06.js';
 export {
-  makeCrookBoss, makeHelicopter, makeHelicopterBottom, makeHelicopterModel, makeMinigunner, makeMobster,
+  makeCrookBoss, makeMinigunner, makeMobster,
   makeMobsterBottom, makeMobsterModel, makeMortarClassic, makeRanger,
 } from './models/towers06.js';
 import {
@@ -109,11 +106,11 @@ export {
 import {
   makeAccelerator, makeEngineer, makeHacker, makeHackerBottom, makeJohn, makeJohnBottom, makeJuggernaut,
   makeJuggernautBottom, makeLaserRailgunner, makeLaserRailgunnerBottom, makeNecromancer, makeSlammer,
-  makeSlammerBottom, makeXwm, makeXwmBottom,
+  makeSlammerBottom,
 } from './models/towers07.js';
 export {
   makeAccelerator, makeEngineer, makeGrave, makeHacker, makeHackerBottom, makeHologram, makeJohn, makeJuggernaut,
-  makeLaserRailgunner, makeNecromancer, makeSentry, makeSlammer, makeXwm,
+  makeLaserRailgunner, makeNecromancer, makeSentry, makeSlammer,
 } from './models/towers07.js';
 import {
   makeGhost, makeGhostBottom, makePaintballer,
@@ -164,6 +161,16 @@ import {
 import {
   makeBorealis, makeEldritch, makeLemonade, makeOrbit, makeSplash, makeSquadron, makeValkyr, makeVoidPort,
 } from './models/machines6.js';
+import {
+  makeArmoredFactory, makeArmoredFactoryBottom, makeBarracks, makeFarmAirdrop, makeFarmAirdropBottom, makeFarmFruit,
+  makeFieldBarracks, makeFieldBarracksBottom, makeHelicopter, makeHelicopterBottom, makeHelicopterPad, makeMilitaryBase,
+  makeXwm, makeXwmBottom,
+} from './models/machines7.js';
+export {
+  makeArmoredFactory, makeArmoredFactoryBottom, makeArmoredFactoryWith, makeBarracks, makeFarmAirdrop, makeFarmFruit,
+  makeFieldBarracks, makeFieldBarracksBottom, makeFieldBarracksWith, makeHelicopter, makeHelicopterBottom,
+  makeHelicopterModel, makeHelicopterPad, makeMilitaryBase, makeXwm,
+} from './models/machines7.js';
 import {
   makeBubbleBlower, makeDarter, makeFirecracker, makePenetrator, makePsychoSlayer, makeQuarterer,
   makeScarecrow, makeVoidTraitor,
@@ -244,6 +251,7 @@ export const TOWER_MODELS = {
   patrolArmored: makeArmoredFactory,
   patrolArmoredBottom: makeArmoredFactoryBottom,
   barracks: makeBarracks,
+  helicopter: makeHelicopterPad,
   barracksField: makeFieldBarracks,
   barracksFieldBottom: makeFieldBarracksBottom,
   zed: makeZed,

@@ -1,6 +1,6 @@
 // Tower models, file 5 of 12. Each makeX(level) builds one tower's look.
 // In here:
-// Pyromancer, Ace Plane, Aviator Ace, Medic, Medic Beam, EDJ, Farm Fruit, Farm Airdrop, Electro,
+// Pyromancer, Ace Plane, Aviator Ace, Medic, Medic Beam, EDJ, Electro,
 // Rocketeer Missile, Rocketeer Trooper, Trapper, Mine Layer.
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
 
@@ -258,103 +258,6 @@ export function makeEDJ(level, bottom = false) {
 }
 export const makeEDJBottom = (level) => makeEDJ(level, true);
 
-/** Fruit Farm (alternate Farm form): a new crop each level: carrots, wheat, trees, apples, glowing space fruit. */
-export function makeFarmFruit(level) {
-  const u = makeThing();
-  const { M } = u;
-  part(u.body, boxGeo(4.2, 0.3, 4.2), M(0x795548), 0, 0.15, 0); // soil
-  // A little farmhouse with a blue roof.
-  part(u.body, boxGeo(1.8, 1.6, 1.6), M(0xfff8e1), -1.1, 1.1, -1.2);
-  const roof = M(0x1565c0);
-  part(u.body, boxGeo(1.2, 0.2, 1.8), roof, -1.55, 2.2, -1.2).rotation.z = 0.6;
-  part(u.body, boxGeo(1.2, 0.2, 1.8), roof, -0.65, 2.2, -1.2).rotation.z = -0.6;
-  part(u.body, boxGeo(0.5, 0.8, 0.1), M(0x6d4c41), -1.1, 0.7, -0.38);
-  // Fence posts.
-  for (const x of [-1.9, -0.6, 0.7, 1.9]) part(u.body, boxGeo(0.15, 0.6, 0.15), M(0xa1887f), x, 0.55, 1.95);
-  part(u.body, boxGeo(4.0, 0.12, 0.08), M(0xa1887f), 0, 0.7, 1.95);
-  if (level <= 1) {
-    // Carrots (Lv 1) or wheat (Lv 2) in rows
-    const leaf = M(level ? 0xfbc02d : 0x43a047);
-    const root = M(0xff7043);
-    for (let i = 0; i < 3; i++) for (let j = 0; j < 4; j++) {
-      const x = -1.5 + j * 0.8;
-      const z = 0.1 + i * 0.6;
-      part(u.body, boxGeo(0.25, level ? 0.9 : 0.4, 0.25), leaf, x, level ? 0.75 : 0.5, z);
-      if (!level) part(u.body, boxGeo(0.2, 0.15, 0.2), root, x, 0.32, z);
-    }
-  } else {
-    // Trees (Lv 3), apple trees (Lv 4) or space fruit trees (Lv 5).
-    const fruit = level >= 4 ? glow(u, 0xd500f9) : M(0xe53935);
-    const leaves = M(level >= 4 ? 0x1de9b6 : 0x2e7d32);
-    for (const [x, z] of [[-1.2, 0.6], [0.2, 1.2], [1.4, 0.4], [1.3, -1.2]]) {
-      part(u.body, boxGeo(0.3, 1.2, 0.3), M(0x5d4037), x, 0.9, z);
-      part(u.body, boxGeo(1.0, 1.0, 1.0), leaves, x, 1.9, z);
-      if (level >= 3) for (const [ox, oz] of [[0.5, 0], [-0.3, 0.5], [0, -0.5]]) part(u.body, boxGeo(0.25, 0.25, 0.25), fruit, x + ox, 1.8, z + oz);
-    }
-  }
-  return u;
-}
-
-/**
- * Airdrop Farm (alternate Farm form): a concrete helipad with a big H, a little control hut and a
- * windsock. Top path: a landing light ring (Lv 2), a red-cross medical tent (Lv 3), a bank vault
- * (Lv 4) and a radar dish with flashing beacons (Lv 5). Bottom path: piles of cash crates that
- * grow every level, gold bars at Lv 4 and taller piles for Double Crates.
- */
-export function makeFarmAirdrop(level, bottom = false) {
-  const u = makeThing();
-  const { M } = u;
-  part(u.body, boxGeo(4.4, 0.3, 4.4), M(0x9e9e9e), 0, 0.15, 0); // concrete pad
-  part(u.body, boxGeo(3.4, 0.04, 3.4), M(0xffc107), 0, 0.32, 0.3); // yellow landing square
-  part(u.body, boxGeo(3.0, 0.05, 3.0), M(0x9e9e9e), 0, 0.34, 0.3);
-  const white = M(0xfafafa);
-  for (const x of [-0.6, 0.6]) part(u.body, boxGeo(0.3, 0.06, 1.8), white, x, 0.37, 0.3); // the H
-  part(u.body, boxGeo(1.2, 0.06, 0.3), white, 0, 0.37, 0.3);
-  // Control hut and windsock in the back corner.
-  part(u.body, boxGeo(1.1, 1.1, 0.9), M(0x546e7a), -1.55, 0.85, -1.65);
-  part(u.body, boxGeo(0.8, 0.3, 0.05), M(0x81d4fa), -1.55, 1.05, -1.18);
-  part(u.body, boxGeo(0.1, 2.2, 0.1), M(0x616161), 1.9, 1.4, -1.9);
-  part(u.body, boxGeo(0.25, 0.25, 0.9), M(0xff6d00), 1.9, 2.35, -1.4);
-  const crate = (x, z, y = 0.65, sz = 0.7) => {
-    part(u.body, boxGeo(sz, sz * 0.8, sz), M(0x8d6e63), x, y, z);
-    part(u.body, boxGeo(sz + 0.04, 0.12, sz * 0.3), M(0x43a047), x, y, z); // cash band
-  };
-  if (!bottom) {
-    if (level >= 1) for (const [x, z] of [[-1.8, 1.9], [1.8, 1.9], [-1.8, -0.6], [1.8, -0.6]]) part(u.body, boxGeo(0.2, 0.2, 0.2), glow(u, 0x76ff03), x, 0.4, z);
-    if (level >= 2) crate(1.2, 1.3);
-    if (level >= 3) {
-      // Medical Aid: a white tent with a red cross.
-      part(u.body, boxGeo(1.2, 1.0, 1.0), white, -0.2, 0.8, -1.7);
-      part(u.body, boxGeo(0.5, 0.15, 0.04), M(0xd32f2f), -0.2, 0.9, -1.18);
-      part(u.body, boxGeo(0.15, 0.5, 0.04), M(0xd32f2f), -0.2, 0.9, -1.18);
-    }
-    if (level >= 4) {
-      // Tower Economics: a little bank vault with a gold $ sign.
-      part(u.body, boxGeo(0.9, 1.3, 0.9), M(0x455a64), 1.0, 0.95, -1.6);
-      part(u.body, boxGeo(0.5, 0.5, 0.05), glow(u, 0xffd54f), 1.0, 1.0, -1.13);
-    }
-    if (level >= 5) {
-      // Emergency Airdrop: radar dish on the hut and red beacons.
-      part(u.body, boxGeo(0.12, 0.6, 0.12), M(0x616161), -1.55, 1.7, -1.65);
-      const dish = part(u.body, boxGeo(1.0, 0.1, 1.0), M(0xeceff1), -1.55, 2.05, -1.65);
-      dish.rotation.x = 0.6;
-      for (const [x, z] of [[-2.1, 2.1], [2.1, 2.1]]) part(u.body, boxGeo(0.25, 0.25, 0.25), glow(u, 0xff1744), x, 0.45, z);
-    }
-  } else {
-    // More crates every level.
-    const spots = [[1.4, 1.6], [1.4, 0.8], [-1.4, 1.6], [-1.4, 0.8], [0.6, -1.4]];
-    for (let i = 0; i < Math.min(level, spots.length); i++) crate(spots[i][0], spots[i][1]);
-    if (level >= 3) crate(1.4, 1.6, 1.25, 0.6);
-    if (level >= 4) for (const x of [-0.2, 0.15]) part(u.body, boxGeo(0.3, 0.2, 0.6), glow(u, 0xffd54f), x, 0.45, -1.5); // gold bars
-    if (level >= 5) {
-      // Double Crates: the piles get taller.
-      crate(-1.4, 0.8, 1.25, 0.6);
-      crate(-1.4, 1.6, 1.25, 0.6);
-    }
-  }
-  return u;
-}
-export const makeFarmAirdropBottom = (level) => makeFarmAirdrop(level, true);
 
 /**
  * Electroshocker: a lineman with a shock gun and coil pack. Lv 2 rubber gloves and goggles,

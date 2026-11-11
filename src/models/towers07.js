@@ -1,7 +1,7 @@
 // Tower models, file 7 of 12. Each makeX(level) builds one tower's look.
 // In here:
 // Necromancer, Engineer, Accelerator, Sentry, Grave, Hacker, Hologram, John, Juggernaut,
-// Laser Railgunner, Slammer, Xwm.
+// Laser Railgunner, Slammer. (XWM Turret moved to machines7.js.)
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
 
 import * as THREE from 'three';
@@ -563,89 +563,3 @@ export function makeSlammer(level, bottom = false) {
 }
 export const makeSlammerBottom = (level) => makeSlammer(level, true);
 
-/**
- * XWM Turret (alternate Turret form): a big walker-style gun pod with a pilot in the cockpit.
- * Top path: a long gun, then 2 and 4 spinning miniguns. Bottom path: a heavier barrel, then
- * rocket launchers and finally huge missile pods. A purple Dimension Shard emblem marks it.
- */
-export function makeXwm(level, bottom = false) {
-  const u = makeThing();
-  const { M } = u;
-  const top = !bottom;
-  const metal = M(level >= 5 ? 0x37474f : 0x607d8b);
-  const dark = M(0x1c1c1c);
-  const shard = glowThing(u, 0xb388ff);
-  // Legs and base
-  part(u.body, boxGeo(4.6, 0.5, 4.6), M(0x9e9e9e), 0, 0.25, 0);
-  for (const x of [-1.4, 1.4]) part(u.body, boxGeo(0.8, 2.2, 1.2), metal, x, 1.5, 0);
-  // Cockpit pod
-  const head = new THREE.Group();
-  head.position.set(0, 2.6, 0);
-  u.body.add(head);
-  part(head, boxGeo(3.0, 2.0, 3.0), metal, 0, 1.0, 0);
-  const glass = part(head, boxGeo(1.8, 0.8, 0.1), M(0x80d8ff), 0, 1.4, 1.52);
-  glass.material.transparent = true;
-  glass.material.opacity = 0.7;
-  part(head, boxGeo(0.6, 0.6, 0.6), M(0xe0ac69), 0, 1.3, 1.0); // pilot's head behind the glass
-  part(head, boxGeo(0.4, 0.4, 0.06), shard, 1.1, 0.5, 1.52);
-  if (level >= 1) for (const x of [-1, 1]) part(head, boxGeo(0.25, 1.6, 2.6), M(0x455a64), x * 1.62, 1.0, 0); // armor
-  const muzzleZ = (len) => 1.5 + len;
-  if (top) {
-    if (level < 3) {
-      const len = level >= 2 ? 4 : 3;
-      const bw = level >= 1 ? 0.45 : 0.35;
-      for (const x of [-1.9, 1.9]) {
-        part(head, boxGeo(bw, bw, len), dark, x, 0.9, 1.5 + len / 2 - 0.5);
-        gunMuzzle(u, head, x, 0.9, muzzleZ(len) - 0.3);
-      }
-    } else {
-      // Dual / Quad / Super Quad Miniguns
-      u.spin = [];
-      const xs = level >= 4 ? [-2.0, -1.4, 1.4, 2.0] : [-1.9, 1.9];
-      const len = level >= 5 ? 3.6 : 3;
-      for (const x of xs) {
-        // Barrels run along the group's Y axis (views spin it around Y), tipped forward to +Z.
-        const mount = new THREE.Group();
-        mount.position.set(x, 0.9, 1.5);
-        mount.rotation.x = Math.PI / 2;
-        head.add(mount);
-        const barrels = new THREE.Group();
-        mount.add(barrels);
-        for (let i = 0; i < 6; i++) {
-          const a = (i / 6) * Math.PI * 2;
-          part(barrels, boxGeo(0.12, len, 0.12), level >= 5 ? glowThing(u, 0x18ffff) : dark, Math.cos(a) * 0.22, len / 2, Math.sin(a) * 0.22);
-        }
-        u.spin.push(barrels);
-        gunMuzzle(u, head, x, 0.9, muzzleZ(len));
-      }
-    }
-    u.tracer = level >= 5 ? 0x18ffff : 0xffe066;
-  } else if (level < 3) {
-    const len = 3 + level * 0.5;
-    const bw = 0.4 + level * 0.12;
-    for (const x of [-1.9, 1.9]) {
-      part(head, boxGeo(bw, bw, len), dark, x, 0.9, 1.5 + len / 2 - 0.5);
-      gunMuzzle(u, head, x, 0.9, muzzleZ(len) - 0.3);
-    }
-    u.tracer = 0xffab40;
-  } else {
-    // Rocket Launchers / Missile Pods: boxes of tubes on each side
-    const pod = level >= 4 ? 2.0 : 1.4;
-    for (const x of [-1, 1]) {
-      const px = x * (1.5 + pod / 2);
-      part(head, boxGeo(pod, pod, 2.2), level >= 5 ? M(0x263238) : M(0x4e5b31), px, 1.0, 0.3);
-      const n = level >= 4 ? 3 : 2;
-      for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
-        const ox = px + (i - (n - 1) / 2) * (pod / n);
-        const oy = 1.0 + (j - (n - 1) / 2) * (pod / n);
-        part(head, boxGeo(pod / n - 0.12, pod / n - 0.12, 0.1), level >= 5 ? glowThing(u, 0xff3d00) : dark, ox, oy, 1.42);
-      }
-      gunMuzzle(u, head, px, 1.0, 1.6);
-    }
-    u.projectile = { color: 0xff7043, size: level >= 5 ? 0.6 : 0.45 };
-    u.tracer = 0xff7043;
-  }
-  u.static = true;
-  return u;
-}
-export const makeXwmBottom = (level) => makeXwm(level, true);
