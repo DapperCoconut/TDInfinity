@@ -1,7 +1,7 @@
 // Tower models, file 4 of 12. Each makeX(level) builds one tower's look.
 // In here:
 // (Classic Soldier, Ranger, Operator, Hunter: people2.js.) Machine Gunner, Frost Freezer,
-// Boomerang, Slime, Assassin, Brawler, Militant, Laser Gunner, Shotgunner Pump,
+// Boomerang, Slime, Assassin, Brawler, Shotgunner Pump,
 // Shotgunner Combat, Frost Ranger.
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
 
@@ -242,117 +242,6 @@ export function makeBrawler(level) {
 }
 
 // ------------------------------------------------------------------ alternate forms & new towers (set 2)
-
-/**
- * Militant (alternate Mercenary form): a guerrilla fighter in a bandana with a long rifle.
- * Lv 2 adds a radio pack, Lv 3 a chest rig, Lv 4 a boonie hat and bigger rifle, Lv 5 black
- * stealth gear with a suppressor and glowing sight.
- */
-export function makeMilitant(level) {
-  const stealth = level >= 4;
-  const shirt = stealth ? 0x1b1f24 : 0x6d6a3a;
-  const h = makeHumanoid({ skin: 0xc68642, shirt, pants: stealth ? 0x15181c : 0x4e4a2a, arms: shirt, face: 'soldier' });
-  const { M } = h;
-  if (level >= 3 && !stealth) {
-    const hat = M(0x5d5a32);
-    part(h.head, boxGeo(1.9, 0.12, 1.9), hat, 0, 1.25, 0);
-    part(h.head, boxGeo(1.3, 0.4, 1.3), hat, 0, 1.45, 0);
-  } else part(h.head, boxGeo(1.32, 0.35, 1.32), M(stealth ? 0x263238 : 0xb71c1c), 0, 1.15, 0); // bandana
-  if (stealth) part(h.head, boxGeo(1.25, 0.45, 0.1), M(0x111111), 0, 0.3, 0.62); // face wrap
-  if (level >= 1) {
-    part(h.torso, boxGeo(1.2, 1.4, 0.6), M(0x4b5320), 0, 0.1, -0.8); // radio pack
-    part(h.torso, boxGeo(0.08, 1.6, 0.08), M(0x212121), -0.4, 1.5, -0.9); // antenna
-  }
-  if (level >= 2) {
-    part(h.torso, boxGeo(2.1, 1.0, 1.15), M(stealth ? 0x263238 : 0x4a4628), 0, -0.2, 0); // chest rig
-    for (const x of [-0.55, 0, 0.55]) part(h.torso, boxGeo(0.4, 0.45, 0.2), M(0x3e2723), x, -0.3, 0.62);
-  }
-  const dark = M(0x262626);
-  const len = level >= 3 ? 2.1 : 1.8;
-  const gun = holdLongGun(h, len, dark);
-  part(gun, boxGeo(0.25, 0.5, 0.45), dark, 0, -0.6, -0.4); // mag
-  part(gun, boxGeo(0.25, 0.5, 0.35), M(stealth ? 0x37474f : 0x6d4c41), 0, 0.15, -0.05); // stock
-  if (stealth) {
-    part(gun, boxGeo(0.22, 0.8, 0.22), M(0x111111), 0, -len - 0.4, 0); // suppressor
-    h.muzzles[0].position.y = -len - 0.8;
-    part(gun, boxGeo(0.22, 0.4, 0.28), glow(h, 0x76ff03), 0, -0.9, 0.34); // night sight
-  }
-  h.tracer = stealth ? 0xb2ff59 : 0xffd54f;
-  return h;
-}
-
-/**
- * Laser Gunner (alternate Mercenary form): a high-tech gunner in a cyan visor with a laser rifle.
- * Top path: a power pack, armor from Lv 3 and a big glowing laser minigun at Lv 5. Bottom path:
- * a sensor antenna, a compact SMG from Lv 3 and two SMGs at Lv 5.
- */
-export function makeLaserGunner(level, bottom = false) {
-  const top = !bottom;
-  const armored = top && level >= 3;
-  const shirt = armored ? 0xcfd8dc : 0x263238;
-  const h = makeHumanoid({ skin: 0xd2a679, shirt, pants: armored ? 0x78909c : 0x1c2529, arms: shirt, face: 'soldier' });
-  const { M } = h;
-  const laser = 0x00e5ff;
-  part(h.torso, boxGeo(0.35, 0.35, 0.06), glow(h, 0xb388ff), -0.55, 0.45, 0.52); // Dimension Shard emblem
-  if (armored) helmet(h, 0xeceff1, false);
-  else part(h.head, boxGeo(1.35, 0.35, 1.35), M(0x37474f), 0, 1.2, 0);
-  part(h.head, boxGeo(1.25, 0.3, 0.08), glow(h, laser), 0, 0.72, 0.68); // visor
-  if (top && level >= 1) part(h.torso, boxGeo(1.4, 1.7, 0.7), M(0x37474f), 0, 0, -0.85); // power pack
-  if (top && level >= 2) part(h.torso, boxGeo(0.3, 1.3, 0.1), glow(h, laser), 0, 0, -1.22);
-  if (armored) {
-    part(h.torso, boxGeo(2.2, 1.6, 1.2), M(0xb0bec5), 0, 0.1, 0);
-    for (const arm of [h.rightArm, h.leftArm]) part(arm, boxGeo(1.15, 0.6, 1.15), M(0x90a4ae), 0, -0.2, 0);
-  }
-  if (bottom && level >= 1) {
-    part(h.torso, boxGeo(1.0, 1.2, 0.6), M(0x37474f), 0, 0.1, -0.8); // sensor pack
-    part(h.torso, boxGeo(0.08, 1.6, 0.08), M(0x212121), 0.35, 1.4, -0.9);
-    part(h.torso, boxGeo(0.25, 0.25, 0.25), glow(h, laser), 0.35, 2.25, -0.9);
-  }
-  if (bottom && level >= 3) {
-    // SMG / Dual SMGs: compact laser guns, one in each hand at Lv 5.
-    const smg = (arm) => {
-      const gun = new THREE.Group();
-      gun.position.set(0, -1.9, 0);
-      arm.add(gun);
-      part(gun, boxGeo(0.36, 1.3, 0.45), M(0x263238), 0, -0.65, 0);
-      part(gun, boxGeo(0.4, 0.12, 0.5), glow(h, laser), 0, -0.9, 0);
-      part(gun, boxGeo(0.25, 0.5, 0.3), M(0x111111), 0, -0.4, -0.35); // mag
-      const muzzle = new THREE.Object3D();
-      muzzle.position.set(0, -1.35, 0);
-      gun.add(muzzle);
-      return muzzle;
-    };
-    h.muzzles = [smg(h.rightArm)];
-    if (level >= 5) {
-      h.muzzles.push(smg(h.leftArm));
-      h.rightArm.rotation.set(-Math.PI / 2, 0, 0.08);
-      h.leftArm.rotation.set(-Math.PI / 2, 0, -0.08);
-      h.pose = { right: -Math.PI / 2, left: -Math.PI / 2, leftRecoil: 0.35 };
-    } else {
-      h.rightArm.rotation.set(-Math.PI / 2, 0, 0.1);
-      h.leftArm.rotation.set(-Math.PI / 2 + 0.1, 0, -0.5);
-      h.pose = { right: -Math.PI / 2, left: -Math.PI / 2 + 0.1, leftRecoil: 0.25 };
-    }
-    h.tracer = laser;
-    h.tracerWidth = 0.2;
-    return h;
-  }
-  const mini = top && level >= 5;
-  const len = mini ? 2.8 : top && level >= 3 ? 2.6 : 2.2;
-  const gun = holdLongGun(h, len, M(armored ? 0x90a4ae : 0x263238));
-  if (mini) {
-    for (const [x, z] of [[-0.18, -0.18], [0.18, -0.18], [-0.18, 0.18], [0.18, 0.18]]) part(gun, boxGeo(0.14, 1.2, 0.14), M(0x212121), x, -len - 0.5, z);
-    part(gun, boxGeo(0.6, 0.6, 0.7), M(0x37474f), 0, -1.2, 0); // motor housing
-    h.muzzles[0].position.y = -len - 1.1;
-  }
-  const coils = mini ? 4 : 3;
-  for (let i = 0; i < coils; i++) part(gun, boxGeo(0.42, 0.1, 0.5), glow(h, laser), 0, -0.7 - i * 0.45, 0);
-  part(gun, boxGeo(0.22, 0.6, 0.28), M(0x111111), 0, -0.6, 0.35); // sight
-  h.tracer = laser;
-  h.tracerWidth = mini ? 0.3 : 0.22;
-  return h;
-}
-export const makeLaserGunnerBottom = (level) => makeLaserGunner(level, true);
 
 /**
  * Pump Shotgunner (alternate Shotgunner form): an enforcer in a cap with a pump shotgun.

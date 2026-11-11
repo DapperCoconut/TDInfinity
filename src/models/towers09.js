@@ -12,7 +12,7 @@ import { glow, goldify, helmet, holdLongGun, present, pumpkin, setMuzzle } from 
 import { makeScout } from './people1.js';
 import { makeShotgunner } from './towers02.js';
 import { makeCrookBoss } from './towers06.js';
-import { makeJuggernaut } from './towers07.js';
+import { makeJuggernaut } from './people3.js';
 
 /**
  * Elf (event): green tunic, pointy ears and a striped hat, throwing presents. Lv 2 a sack of

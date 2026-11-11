@@ -1,6 +1,6 @@
 // Tower models, file 1 of 12. Each makeX(level) builds one tower's look.
 // In here:
-// (Scout, Classic Scout, Tweeter, Soldier: people1.js; Marksman: people2.js.) Commando, Gold Scout, Gold Commando, Plane,
+// (Scout, Classic Scout, Tweeter, Soldier: people1.js; Marksman: people2.js; Commando: people3.js.) Gold Scout, Gold Commando, Plane,
 // Aviator, Phaser, Railgunner.
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
 
@@ -27,66 +27,6 @@ export function addMinigun(h, arm, bodyMat, barrelMat) {
   muzzle.position.set(0, -2.5, 0);
   gun.add(muzzle);
   return { muzzle, barrels };
-}
-
-/** Commando tower: minigun (two at Lv 4). Look changes per level (0-4). */
-export function makeCommando(level) {
-  const laser = level >= 4;
-  const h = makeHumanoid(
-    laser
-      ? { skin: 0xa0522d, shirt: 0x1b1b1b, pants: 0x111111, arms: 0xa0522d, face: 'soldier' }
-      : { skin: 0xa0522d, shirt: 0x556b2f, pants: 0x3e3a2a, arms: 0xa0522d, face: 'soldier' },
-  );
-  const { M } = h;
-  // Muscle tank top with a bandolier, red bandana
-  const strap = part(h.torso, boxGeo(0.3, 2.5, 1.12), M(0x4e342e), 0, 0, 0);
-  strap.rotation.z = -0.7;
-  part(h.head, boxGeo(1.28, 0.25, 1.28), M(laser ? 0xff1744 : 0xc62828), 0, 1.05, 0);
-  part(h.head, boxGeo(0.3, 0.6, 0.15), M(laser ? 0xff1744 : 0xc62828), 0.3, 0.75, -0.66); // bandana tails
-  if (level >= 1) {
-    // Handling: fingerless gloves + knee pads
-    const glove = M(0x212121);
-    part(h.rightArm, boxGeo(1.05, 0.5, 1.05), glove, 0, -1.75, 0);
-    part(h.leftArm, boxGeo(1.05, 0.5, 1.05), glove, 0, -1.75, 0);
-    part(h.rightLeg, boxGeo(1.05, 0.4, 0.3), glove, 0, -1.2, 0.45);
-    part(h.leftLeg, boxGeo(1.05, 0.4, 0.3), glove, 0, -1.2, 0.45);
-  }
-  if (level >= 2) {
-    // Goggles: tactical night-vision goggles
-    part(h.head, boxGeo(1.3, 0.12, 1.3), M(0x263238), 0, 0.72, 0);
-    part(h.head, boxGeo(0.4, 0.32, 0.35), M(0x263238), -0.28, 0.7, 0.72);
-    part(h.head, boxGeo(0.4, 0.32, 0.35), M(0x263238), 0.28, 0.7, 0.72);
-    part(h.head, boxGeo(0.25, 0.2, 0.05), glow(h, laser ? 0xff1744 : 0x76ff03), -0.28, 0.7, 0.9);
-    part(h.head, boxGeo(0.25, 0.2, 0.05), glow(h, laser ? 0xff1744 : 0x76ff03), 0.28, 0.7, 0.9);
-    part(h.torso, boxGeo(1.6, 1.8, 0.8), M(0x3a3a3a), 0, 0, -0.9); // ammo backpack
-    part(h.torso, boxGeo(0.3, 0.3, 1.2), M(0xc9a227), -0.85, -0.6, -0.4); // feed belt
-  }
-  if (laser) {
-    // Laser Wield: armored chest plate with a glowing core
-    part(h.torso, boxGeo(2.15, 1.6, 1.15), M(0x2b2b2b), 0, 0.1, 0);
-    part(h.torso, boxGeo(0.5, 0.5, 0.1), glow(h, 0xff1744), 0, 0.3, 0.6);
-  }
-
-  const bodyMat = M(laser ? 0x37474f : 0x424242);
-  const barrelMat = laser ? glow(h, 0xff1744) : M(0x1f1f1f);
-  const right = addMinigun(h, h.rightArm, bodyMat, barrelMat);
-  h.muzzles = [right.muzzle];
-  h.spin = [right.barrels];
-  if (level >= 3) {
-    const left = addMinigun(h, h.leftArm, bodyMat, barrelMat);
-    h.muzzles.push(left.muzzle);
-    h.spin.push(left.barrels);
-    h.rightArm.rotation.set(-Math.PI / 2, 0, 0.12);
-    h.leftArm.rotation.set(-Math.PI / 2, 0, -0.12);
-    h.pose = { right: -Math.PI / 2, left: -Math.PI / 2, leftRecoil: 0.15 };
-  } else {
-    h.rightArm.rotation.set(-Math.PI / 2, 0, 0.1);
-    h.leftArm.rotation.set(-Math.PI / 2 + 0.15, 0, -0.55);
-    h.pose = { right: -Math.PI / 2, left: -Math.PI / 2 + 0.15, leftRecoil: 0.1 };
-  }
-  h.recoilScale = 0.25; // miniguns barely kick
-  h.tracer = laser ? 0xff1744 : 0xffd740;
-  return h;
 }
 
 /**

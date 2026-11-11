@@ -1,6 +1,6 @@
 // Tower models, file 6 of 12. Each makeX(level) builds one tower's look.
 // In here:
-// Crook Boss, Minigunner, Ranger, Mobster, Mortar Classic.
+// Crook Boss, Ranger, Mobster, Mortar Classic.
 // (Pursuit, the helicopter makeHeli, the factories and Merc Base moved to machines2.js; Cryo Heli to machines3.js;
 // the Attack Helicopter pad to machines7.js.)
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
@@ -60,75 +60,6 @@ export function makeCrookBoss(level) {
   }
   h.muzzles = muzzles;
   h.tracer = don ? 0xffd740 : 0xffca28;
-  return h;
-}
-
-/**
- * Minigunner (alternate Commando form): a heavy gunner with one huge minigun held in both hands.
- * Lv 2 gloves and knee pads, Lv 3 a tech visor and ammo pack, Lv 4 armor and a bigger gun,
- * Lv 5 a futuristic suit with a glowing purple minigun.
- */
-export function makeMinigunner(level) {
-  const future = level >= 4;
-  const shirt = future ? 0x1c1726 : 0x5d6b3a;
-  const h = makeHumanoid({ skin: 0xd2a679, shirt, pants: future ? 0x14101c : 0x3e3a2a, arms: shirt, face: 'soldier' });
-  const { M } = h;
-  h.body.scale.setScalar(1.1); // a big guy for a big gun
-  const shard = glow(h, 0xb388ff);
-  const dark = M(0x212121);
-  // Beanie with the shard emblem (a helmet once geared up)
-  const hat = M(future ? 0x263238 : level >= 3 ? 0x4b5320 : 0x37474f);
-  part(h.head, boxGeo(1.4, level >= 3 ? 0.55 : 0.45, 1.4), hat, 0, 1.25, 0);
-  part(h.head, boxGeo(0.3, 0.3, 0.06), shard, 0, 1.25, 0.72);
-  part(h.torso, boxGeo(0.35, 0.35, 0.06), shard, -0.55, 0.45, 0.52); // chest emblem
-  if (level >= 1) {
-    // Improved Handling: gloves and knee pads
-    for (const arm of [h.rightArm, h.leftArm]) part(arm, boxGeo(1.05, 0.5, 1.05), dark, 0, -1.75, 0);
-    for (const leg of [h.rightLeg, h.leftLeg]) part(leg, boxGeo(1.05, 0.4, 0.3), dark, 0, -1.2, 0.45);
-  }
-  if (level >= 2) {
-    // Specialized Tech: a visor and an ammo backpack with a feed belt
-    part(h.head, boxGeo(1.2, 0.3, 0.2), dark, 0, 0.72, 0.68);
-    part(h.head, boxGeo(1.0, 0.18, 0.05), future ? shard : glow(h, 0x40c4ff), 0, 0.72, 0.79);
-    part(h.torso, boxGeo(1.7, 1.9, 0.9), M(future ? 0x263238 : 0x4e4a3a), 0, 0, -0.95);
-    part(h.torso, boxGeo(0.3, 0.3, 1.3), M(0xc9a227), 0.85, -0.6, -0.4);
-  }
-  if (level >= 3) {
-    // Geared Up: armored vest and shoulder plates
-    part(h.torso, boxGeo(2.2, 1.6, 1.2), M(future ? 0x2a2235 : 0x556b2f), 0, 0.1, 0);
-    for (const arm of [h.rightArm, h.leftArm]) part(arm, boxGeo(1.15, 0.6, 1.15), M(future ? 0x2a2235 : 0x4b5320), 0, -0.2, 0);
-  }
-  if (future) part(h.torso, boxGeo(0.5, 0.5, 0.1), shard, 0, 0.3, 0.62); // glowing core
-
-  // One huge minigun on the right arm, the left hand on its carry handle.
-  const big = level >= 3 ? 1.25 : 1.1;
-  const gun = new THREE.Group();
-  gun.position.set(0, -1.9, 0);
-  gun.scale.setScalar(big);
-  h.rightArm.add(gun);
-  const body = M(future ? 0x37474f : 0x424242);
-  part(gun, boxGeo(0.8, 1.2, 0.85), body, 0, -0.5, 0);
-  part(gun, boxGeo(0.25, 0.8, 0.25), dark, 0, -0.5, 0.55); // carry handle
-  part(gun, boxGeo(0.45, 0.5, 0.9), M(0x3a3a3a), 0, -0.2, -0.7); // ammo feed
-  const barrels = new THREE.Group();
-  barrels.position.set(0, -1.1, 0);
-  gun.add(barrels);
-  const barrelMat = future ? shard : M(0x1f1f1f);
-  for (let i = 0; i < 6; i++) {
-    const a = (i / 6) * Math.PI * 2;
-    part(barrels, boxGeo(0.15, 1.9, 0.15), barrelMat, Math.cos(a) * 0.27, -0.95, Math.sin(a) * 0.27);
-  }
-  for (const y of [-0.4, -1.7]) part(barrels, boxGeo(0.7, 0.12, 0.7), body, 0, y, 0); // barrel clamps
-  const muzzle = new THREE.Object3D();
-  muzzle.position.set(0, -3.1, 0);
-  gun.add(muzzle);
-  h.muzzles = [muzzle];
-  h.spin = [barrels];
-  h.rightArm.rotation.set(-Math.PI / 2, 0, 0.1);
-  h.leftArm.rotation.set(-Math.PI / 2 + 0.1, 0, -0.5);
-  h.pose = { right: -Math.PI / 2, left: -Math.PI / 2 + 0.1, leftRecoil: 0.1 };
-  h.recoilScale = 0.2;
-  h.tracer = future ? 0xb388ff : 0xffd740;
   return h;
 }
 
@@ -247,9 +178,6 @@ export function makeMobsterModel(level, bottom) {
 }
 export const makeMobster = (level) => makeMobsterModel(level, false);
 export const makeMobsterBottom = (level) => makeMobsterModel(level, true);
-
-
-
 
 /**
  * Classic Mortar (alternate Mortar form): a gunner with a big mortar cannon behind sandbags.

@@ -1,6 +1,6 @@
 // Tower models, file 2 of 12. Each makeX(level) builds one tower's look.
 // In here:
-// Sniper, Sniper Tactical, Sniper Classic, Enforcer, Warden, Mercenary, Grenadier, Grenadier Demo,
+// Sniper, Sniper Tactical, Sniper Classic, Enforcer, Warden, Grenadier, Grenadier Demo,
 // Grenadier Assault, Frost, Rocketeer, Mortar, Flamethrower, Shotgunner, Plasma, Plasma Pulse.
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
 
@@ -314,59 +314,6 @@ export function makeWarden(level) {
   h.swing = 1.8;
   h.melee = true;
   h.tracer = level >= 3 ? 0xffab00 : 0xffffff;
-  return h;
-}
-
-/**
- * Mercenary tower: a private contractor with an assault rifle. Tan shirt and ball cap with shades;
- * Lv 2 laser sight, Lv 3 radio pack + headset, Lv 4 plate carrier, Lv 5 all-black kit, a
- * balaclava with a glowing visor and a bigger rifle with a drum mag.
- */
-export function makeMercenary(level) {
-  const elite = level >= 4;
-  const h = makeHumanoid({ skin: 0xd8a47f, shirt: elite ? 0x1c1c1c : 0xc2a878, pants: elite ? 0x141414 : 0x3b3b3b, arms: elite ? 0x1c1c1c : 0xd8a47f, face: 'soldier' });
-  const { M } = h;
-  const dark = M(0x1f1f1f);
-  if (elite) {
-    // Balaclava + glowing visor
-    part(h.head, boxGeo(1.3, 1.0, 1.3), M(0x111111), 0, 0.25, 0);
-    part(h.head, boxGeo(1.1, 0.25, 0.08), glow(h, 0xff3d00), 0, 0.75, 0.66);
-  } else {
-    // Ball cap (brim forward) and sunglasses
-    part(h.head, boxGeo(1.3, 0.35, 1.3), M(0x2e2e2e), 0, 1.4, 0);
-    part(h.head, boxGeo(1.0, 0.1, 0.6), M(0x2e2e2e), 0, 1.25, 0.85);
-    part(h.head, boxGeo(1.1, 0.2, 0.06), M(0x101010), 0, 0.75, 0.66);
-  }
-  // Chest rig with mag pouches
-  part(h.torso, boxGeo(2.1, 0.9, 1.1), M(elite ? 0x2a2a2a : 0x5b5446), 0, -0.3, 0);
-  for (const x of [-0.5, 0, 0.5]) part(h.torso, boxGeo(0.35, 0.5, 0.2), M(elite ? 0x333333 : 0x4a4438), x, -0.3, 0.62);
-  if (level >= 2) {
-    // Outside Support: radio pack with an antenna, headset on the cap
-    part(h.torso, boxGeo(1.3, 1.5, 0.6), M(elite ? 0x262626 : 0x4e4a3e), 0, 0, -0.8);
-    part(h.torso, boxGeo(0.08, 1.6, 0.08), dark, 0.45, 1.4, -0.85);
-    part(h.head, boxGeo(0.12, 0.5, 0.4), dark, -0.68, 0.6, 0);
-    part(h.head, boxGeo(0.08, 0.08, 0.5), dark, -0.62, 0.35, 0.35); // mic boom
-  }
-  if (level >= 3) {
-    // Up-Skill: plate carrier and shoulder pads
-    part(h.torso, boxGeo(2.15, 1.5, 1.15), M(elite ? 0x2b2b2b : 0x6b6450), 0, 0.2, 0);
-    part(h.rightArm, boxGeo(1.05, 0.5, 1.05), M(elite ? 0x2b2b2b : 0x6b6450), 0, -0.2, 0);
-    part(h.leftArm, boxGeo(1.05, 0.5, 1.05), M(elite ? 0x2b2b2b : 0x6b6450), 0, -0.2, 0);
-  }
-  const len = elite ? 2.4 : 2.0;
-  const gun = holdLongGun(h, len, dark);
-  part(gun, boxGeo(0.25, 0.5, 0.35), M(0x3a3a3a), 0, 0.2, -0.05); // stock
-  part(gun, boxGeo(0.36, 0.5, 0.46), M(elite ? 0x2a2a2a : 0x6d5c42), 0, -len + 0.55, 0); // handguard
-  if (elite) part(gun, boxGeo(0.5, 0.55, 0.55), M(0x333333), 0, -0.65, -0.45); // drum mag
-  else part(gun, boxGeo(0.22, 0.45, 0.55), dark, 0, -0.65, -0.42).rotation.x = -0.25; // curved mag
-  if (level >= 1) {
-    // Lasers: laser sight box with a glowing beam
-    const beamColor = elite ? 0xff3d00 : 0xff1744;
-    part(gun, boxGeo(0.2, 0.4, 0.2), dark, 0.25, -len + 0.7, 0.1);
-    part(gun, boxGeo(0.04, 1.4, 0.04), glow(h, beamColor), 0.25, -len - 0.2, 0.1);
-    part(gun, boxGeo(0.25, 0.35, 0.3), dark, 0, -0.8, 0.36); // optic
-  }
-  h.tracer = elite ? 0xff6e40 : 0xffd54f;
   return h;
 }
 

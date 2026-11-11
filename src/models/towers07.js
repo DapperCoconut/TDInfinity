@@ -1,6 +1,6 @@
 // Tower models, file 7 of 12. Each makeX(level) builds one tower's look.
 // In here:
-// Necromancer, Engineer, Accelerator, Sentry, Grave, Hacker, Hologram, Juggernaut,
+// Necromancer, Engineer, Accelerator, Sentry, Grave, Hacker, Hologram,
 // Laser Railgunner, Slammer. (XWM Turret moved to machines7.js, John to people2.js.)
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
 
@@ -298,75 +298,6 @@ export function makeHologram(def) {
   h.holo = true;
   return h;
 }
-
-/**
- * Juggernaut (alternate Commando form): a huge armored gunner with a minigun. Top path: heavier
- * armor and a longer barrel, orange HE glow at Lv 6. Bottom path: two miniguns from Lv 4 and a
- * cybernetic cyan glow from Lv 5. A purple Dimension Shard emblem marks it as an alternate form.
- */
-export function makeJuggernaut(level, bottom = false) {
-  const top = !bottom;
-  const cyber = bottom && level >= 4;
-  const shirt = cyber ? 0x1c262b : 0x4e342e;
-  const h = makeHumanoid({ skin: 0xc68642, shirt, pants: 0x2b2b2b, arms: shirt, face: 'soldier' });
-  const { M } = h;
-  h.body.scale.setScalar(1.2);
-  const shard = glow(h, 0xb388ff);
-  const dark = M(0x212121);
-  const plate = M(cyber ? 0x263238 : top && level >= 5 ? 0x3e2723 : 0x5d4037);
-  // Bomb-suit style helmet and chest plate
-  part(h.head, boxGeo(1.5, 1.4, 1.5), plate, 0, 0.65, -0.05);
-  part(h.head, boxGeo(1.2, 0.35, 0.08), cyber ? glow(h, 0x18ffff) : M(0x90a4ae), 0, 0.7, 0.72);
-  part(h.torso, boxGeo(2.2, 1.8, 1.2), plate, 0, 0.05, 0);
-  part(h.torso, boxGeo(0.35, 0.35, 0.06), shard, -0.55, 0.45, 0.62);
-  if (level >= 1) for (const arm of [h.rightArm, h.leftArm]) part(arm, boxGeo(1.1, 0.55, 1.1), dark, 0, -1.75, 0); // gloves
-  if (level >= 2) for (const arm of [h.rightArm, h.leftArm]) part(arm, boxGeo(1.2, 0.7, 1.2), plate, 0, -0.2, 0); // shoulder pads
-  if (top && level >= 5) part(h.torso, boxGeo(0.6, 0.6, 0.1), glow(h, 0xff6d00), 0, 0.3, 0.62); // HE core
-  if (cyber && level >= 4) part(h.torso, boxGeo(0.6, 0.6, 0.1), glow(h, 0x18ffff), 0, 0.3, 0.62);
-  part(h.torso, boxGeo(1.6, 1.8, 0.9), M(0x3e3a2a), 0, 0, -1.0); // ammo backpack
-
-  const dual = bottom && level >= 3;
-  const barrelMat = top && level >= 5 ? glow(h, 0xff6d00) : cyber ? glow(h, 0x18ffff) : M(0x1f1f1f);
-  const long = top && level >= 3 ? 2.4 : 1.9;
-  const gunOn = (arm) => {
-    const gun = new THREE.Group();
-    gun.position.set(0, -1.9, 0);
-    arm.add(gun);
-    const body = M(0x424242);
-    part(gun, boxGeo(0.8, 1.2, 0.85), body, 0, -0.5, 0);
-    const barrels = new THREE.Group();
-    barrels.position.set(0, -1.1, 0);
-    gun.add(barrels);
-    for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * Math.PI * 2;
-      part(barrels, boxGeo(0.15, long, 0.15), barrelMat, Math.cos(a) * 0.27, -long / 2, Math.sin(a) * 0.27);
-    }
-    part(barrels, boxGeo(0.7, 0.12, 0.7), body, 0, -long + 0.2, 0);
-    const muzzle = new THREE.Object3D();
-    muzzle.position.set(0, -1.2 - long, 0);
-    gun.add(muzzle);
-    return { muzzle, barrels };
-  };
-  const right = gunOn(h.rightArm);
-  h.muzzles = [right.muzzle];
-  h.spin = [right.barrels];
-  if (dual) {
-    const left = gunOn(h.leftArm);
-    h.muzzles.push(left.muzzle);
-    h.spin.push(left.barrels);
-    h.rightArm.rotation.set(-Math.PI / 2, 0, 0.08);
-    h.leftArm.rotation.set(-Math.PI / 2, 0, -0.08);
-    h.pose = { right: -Math.PI / 2, left: -Math.PI / 2, leftRecoil: 0.1 };
-  } else {
-    h.rightArm.rotation.set(-Math.PI / 2, 0, 0.1);
-    h.leftArm.rotation.set(-Math.PI / 2 + 0.1, 0, -0.5);
-    h.pose = { right: -Math.PI / 2, left: -Math.PI / 2 + 0.1, leftRecoil: 0.1 };
-  }
-  h.recoilScale = 0.2;
-  h.tracer = top && level >= 5 ? 0xff9100 : cyber ? 0x18ffff : 0xffd740;
-  return h;
-}
-export const makeJuggernautBottom = (level) => makeJuggernaut(level, true);
 
 /**
  * Laser Railgunner (alternate Railgunner form): a trooper with a red laser rail rifle. Top path:

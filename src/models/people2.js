@@ -17,7 +17,7 @@ const PI = Math.PI;
 // ------------------------------------------------------------------ shared bits for this batch
 
 /** A boonie hat: soft crown, a cloth band and a wide floppy brim (head space). */
-function boonie(k, col, o = {}) {
+export function boonie(k, col, o = {}) {
   const y = o.y ?? 0.98;
   dome(k, 0.72, 0.5, col, 0, y, 0);
   k.cyl(0.725, 0.14, tone(col, 0.75), 0, y + 0.08, 0, { seg: 20 });
@@ -44,7 +44,7 @@ function specs(k, frame, lens, y = 0.72) {
 }
 
 /** Night-vision goggles: a mount on the helmet front and two tubes (head space). up: flipped up. */
-function nvg(k, lens, up = false) {
+export function nvg(k, lens, up = false) {
   const y = up ? 1.42 : 0.86;
   const z = up ? 0.6 : 0.82;
   k.box(0.34, 0.24, 0.16, INK, 0, 1.18, 0.72, { r: 0.03 }); // mount
@@ -56,7 +56,7 @@ function nvg(k, lens, up = false) {
 }
 
 /** A grenade on a chest strap (torso space). */
-function grenade(k, x, y, z, col = 0x33691e) {
+export function grenade(k, x, y, z, col = 0x33691e) {
   k.ball(0.17, col, x, y, z, { sy: 1.2, seg: 10, rows: 7 });
   k.box(0.06, 0.24, 0.05, STEEL, x + 0.1, y + 0.1, z + 0.12);
   k.cyl(0.07, 0.08, STEEL, x, y + 0.22, z, { seg: 8 });
@@ -64,7 +64,7 @@ function grenade(k, x, y, z, col = 0x33691e) {
 }
 
 /** Rounded shoulder pads (torso space). */
-function shoulderPads(k, col, r = 0.6) {
+export function shoulderPads(k, col, r = 0.6) {
   for (const s of [-1, 1]) {
     k.ball(r, col, s * 1.45, 0.95, 0, { sy: 0.55, seg: 14, rows: 8 });
     k.box(0.5, 0.06, 0.9, tone(col, 0.7), s * 1.45, 0.78, 0);
