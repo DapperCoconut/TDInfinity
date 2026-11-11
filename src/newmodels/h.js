@@ -526,7 +526,7 @@ function hcrow() {
   return u;
 }
 
-/* ================================================================== 4. Buzzer */
+/* ================================================================== 4. Buzzer (the tower: machines8.js) */
 
 /** A round fuzzy bee body (about 2*s tall) with stripes, a face and curly antennae. */
 function beeShape(u, M, parent, s) {
@@ -551,79 +551,6 @@ function beeShape(u, M, parent, s) {
   return g;
 }
 
-/**
- * Buzzer (0-4): a round bee with a leaf hat and a little hive pack, on a flower. Lv 1 a bigger
- * hive pack, Lv 2 a honey pot, Lv 3 a beehive tower behind it, Lv 4 a big glowing hive.
- */
-function buzzer(level) {
-  const u = makeThing();
-  const M = mm(u);
-  B(u.body, 4.4, 0.25, 4.4, M(0x7cb342), 0, 0.12, 0);
-  // Flower base
-  for (const [x, z] of [[-1.7, 1.6], [1.8, 1.4]]) B(u.body, 0.9, 0.15, 0.5, M(0x558b2f), x, 0.32, z).rotation.y = 0.5;
-  const petal = M(0xf48fb1);
-  for (let i = 0; i < 6; i++) {
-    const a = (i / 6) * Math.PI * 2;
-    const p = B(u.body, 1.3, 0.25, 0.9, petal, Math.cos(a) * 1.3, 0.45, Math.sin(a) * 1.3);
-    p.rotation.y = -a;
-  }
-  B(u.body, 1.9, 0.4, 1.9, M(0xffd600), 0, 0.55, 0);
-  const bee = beeShape(u, M, u.body, 1.25);
-  bee.position.y = 0.75;
-  // Green leaf hat
-  const leaf = B(bee, 1.4, 0.12, 1.0, M(0x43a047), 0, 2.08, 0.05);
-  leaf.rotation.set(0.15, 0.4, 0.05);
-  B(bee, 1.1, 0.13, 0.08, M(0x2e7d32), 0, 2.1, 0.05).rotation.y = 0.4;
-  B(bee, 0.08, 0.3, 0.08, M(0x33691e), 0.1, 2.25, 0.05);
-  // Little wings
-  const wingM = clear(u, 0xe1f5fe, 0.65);
-  for (const sd of [-1, 1]) B(bee, 0.9, 0.08, 0.6, wingM, sd * 0.9, 1.75, -0.6).rotation.z = sd * 0.5;
-  // Lumpy hive pack on the back
-  const k = level >= 1 ? 1.3 : 1;
-  const comb = M(0xa1662f);
-  const pack = group(bee, 0, 1.0, -1.05, k);
-  B(pack, 1.1, 0.4, 0.7, comb, 0, -0.45, 0);
-  B(pack, 1.3, 0.4, 0.8, comb, 0, -0.05, 0);
-  B(pack, 1.0, 0.4, 0.7, comb, 0, 0.35, 0);
-  B(pack, 0.5, 0.25, 0.5, comb, 0, 0.65, 0);
-  for (const y of [-0.25, 0.15, 0.55]) B(pack, 1.2 - Math.abs(y), 0.06, 0.82, M(0x6d3f17), 0, y, 0);
-  B(pack, 0.3, 0.25, 0.06, level >= 4 ? glowThing(u, 0xffb300) : M(0x3e2410), 0, -0.05, -0.42);
-  if (level >= 2) {
-    // Honey pot
-    const pot = group(u.body, 1.8, 0.25, 1.1);
-    B(pot, 1.0, 0.9, 1.0, M(0x8d5524), 0, 0.45, 0);
-    B(pot, 0.8, 0.2, 0.8, M(0x8d5524), 0, 1.0, 0);
-    B(pot, 0.7, 0.12, 0.7, glowThing(u, 0xffa000), 0, 1.1, 0);
-    B(pot, 0.2, 0.4, 0.08, glowThing(u, 0xffa000), 0.25, 0.85, 0.5);
-    B(pot, 1.04, 0.12, 1.04, M(0xffd54f), 0, 0.7, 0);
-  }
-  if (level >= 3) {
-    // Beehive tower behind: stacked straw skep tiers (bigger and glowing at Lv 4)
-    const big = level >= 4;
-    const hv = group(u.body, -1.3, 0.25, -1.4, big ? 1.25 : 1);
-    const tiers = big ? 6 : 4;
-    const straw = M(0xe0b050);
-    for (let i = 0; i < tiers; i++) {
-      const w = 1.6 - Math.abs(i - tiers * 0.35) * 0.22;
-      B(hv, w, 0.45, w, straw, 0, 0.25 + i * 0.45, 0);
-      B(hv, w + 0.05, 0.08, w + 0.05, M(0xb07d2a), 0, 0.48 + i * 0.45, 0);
-    }
-    B(hv, 0.45, 0.35, 0.06, M(0x3e2410), 0, 0.5, 0.8);
-    if (big) {
-      const cell = glowThing(u, 0xffb300);
-      for (const [x, y] of [[-0.4, 1.4], [0.35, 1.7], [-0.1, 2.2], [0.45, 2.6], [-0.45, 2.9]]) B(hv, 0.3, 0.3, 0.06, cell, x, y, 0.82);
-      B(hv, 0.5, 0.5, 0.5, cell, 0, 0.25 + tiers * 0.45, 0);
-      // A couple of worker bees buzzing around
-      for (const [x, y, z] of [[1.5, 3.4, 0.6], [-1.6, 5.0, 1.8]]) {
-        const b = beeShape(u, M, u.body, 0.22);
-        b.position.set(x, y, z);
-      }
-    }
-  }
-  u.muzzles.push(mz(bee, 0, 1.2, 1.1));
-  return u;
-}
-
 function bbee() {
   const u = newUnit();
   const M = mm(u);
@@ -644,7 +571,7 @@ function bbee() {
   return u;
 }
 
-/* ================================================================== 5. Nuki Launcher */
+/* ================================================================== 5. Nuki Launcher (the tower: machines8.js) */
 
 /** A fluffy tanuki (about 2.2*s tall), facing +Z. */
 function tanukiShape(u, M, parent, s, { elite = false, leaf = false } = {}) {
@@ -690,63 +617,6 @@ function tanukiShape(u, M, parent, s, { elite = false, leaf = false } = {}) {
     B(g, 0.06, 0.2, 0.06, M(0x2e7d32), 0, 2.12, 0.05);
   }
   return g;
-}
-
-/**
- * Nuki Launcher (0-4): a tanuki beside a mortar-style launcher cannon aimed up and forward.
- * Lv 1 a bigger banded cannon and an ammo crate, Lv 2 a drum-shaped cannon, Lv 3 a double
- * cannon, Lv 4 a huge cannon with leaf decorations (and a leaf on the tanuki's head).
- */
-function nukiLauncher(level) {
-  const u = makeThing();
-  const M = mm(u);
-  B(u.body, 4.4, 0.25, 4.4, M(0x8d7b5a), 0, 0.12, 0);
-  const t = tanukiShape(u, M, u.body, 1.6, { leaf: level >= 4 });
-  t.position.set(1.3, 0.25, 0.4);
-  t.rotation.y = -0.3;
-  // Mount
-  const wood = M(0x6d4c41);
-  const metal = M(level >= 4 ? 0x5d4037 : 0x455a64);
-  const band = M(level >= 4 ? 0xffc400 : 0x263238);
-  B(u.body, 2.2, 0.5, 2.2, wood, -0.9, 0.5, -0.2);
-  for (const x of [-1.85, 0.05]) B(u.body, 0.3, 1.4, 0.8, wood, x, 1.3, -0.2);
-  const big = [1, 1.2, 1.3, 1.3, 1.7][level];
-  const gun = group(u.body, -0.9, 1.6, -0.2);
-  gun.rotation.x = -0.75;
-  const barrels = level >= 3 ? [-0.45, 0.45] : [0];
-  const r = level >= 3 ? 0.65 : 0.7 * big;
-  const len = 2.2 * big;
-  if (level === 2 || level >= 4) {
-    // Drum-shaped breech
-    const d = 1.6 * (level >= 4 ? 1.3 : 1);
-    B(gun, d, d * 0.7, d * 0.9, metal, 0, 0, -0.2);
-    B(gun, d * 0.7, d, d * 0.9, metal, 0, 0, -0.2);
-    B(gun, d * 1.04, d * 0.2, d * 0.94, band, 0, 0, -0.2);
-  } else B(gun, 1.2 * big, 1.1 * big, 1.1, metal, 0, 0, -0.3);
-  for (const x of barrels) {
-    B(gun, r, r, len, metal, x, 0, len / 2);
-    B(gun, r * 1.25, r * 1.25, 0.3, band, x, 0, len - 0.1);
-    if (level >= 1) B(gun, r * 1.12, r * 1.12, 0.2, band, x, 0, len * 0.45);
-    B(gun, r * 0.7, r * 0.7, 0.06, M(0x111111), x, 0, len + 0.06);
-    u.muzzles.push(mz(gun, x, 0, len + 0.1));
-  }
-  if (level >= 4) {
-    // Leaf decorations and a glowing rim
-    const leafM = M(0x43a047);
-    for (const [x, y, z, rz] of [[0.8, 0.6, 0.6, -0.5], [-0.8, 0.6, 1.2, 0.5], [0.7, -0.5, 1.8, 0.4], [0, 1.0, 2.6, 0]]) {
-      const lf = B(gun, 0.9, 0.1, 0.55, leafM, x, y, z);
-      lf.rotation.set(0.3, 0.4, rz);
-    }
-    B(gun, r * 1.3, r * 1.3, 0.12, glowThing(u, 0xffab40), 0, 0, len + 0.02);
-  }
-  if (level >= 1) {
-    // Ammo crate with a spare tanuki helmet
-    B(u.body, 1.0, 0.7, 0.8, M(0x8d6e63), 1.6, 0.6, -1.5);
-    B(u.body, 1.05, 0.1, 0.85, M(0x5d4037), 1.6, 0.7, -1.5);
-    B(u.body, 0.5, 0.3, 0.5, M(0x78909c), 1.6, 1.1, -1.5);
-  }
-  u.projectile = { color: 0xc99a86, size: 0.7, arc: 6 };
-  return u;
 }
 
 function nuki() {
@@ -980,7 +850,7 @@ function sCrab() {
   return u;
 }
 
-/* ================================================================== 7. Kart Kid */
+/* ================================================================== 7. Kart Kid (the tower: machines8.js) */
 
 /** A cardboard-box kart with the hooded kid in it. Returns { g, wheels }. */
 function kartShape(u, M, parent, s, painted) {
@@ -1045,53 +915,6 @@ function kartUnit(painted) {
     u.tracer = painted ? 0xe53935 : 0xc8a165;
     return u;
   };
-}
-
-/**
- * Kart Kid (0-4): the hooded kid in his cardboard kart, parked on a starting ramp. Lv 1 flags,
- * Lv 2 a garage, Lv 3 a tire stack, Lv 4 a red racing garage with a chequered banner and a
- * painted kart.
- */
-function zedKart(level) {
-  const u = makeThing();
-  const M = mm(u);
-  B(u.body, 4.6, 0.25, 4.6, M(0x616161), 0, 0.12, 0);
-  // Starting platform and ramp
-  const deck = M(0x8d6e63);
-  B(u.body, 2.8, 0.7, 2.4, deck, 0, 0.6, -0.6);
-  const ramp = B(u.body, 2.6, 0.15, 1.9, deck, 0, 0.55, 1.35);
-  ramp.rotation.x = 0.36;
-  for (let i = 0; i < 6; i++) for (let j = 0; j < 2; j++) B(u.body, 0.46, 0.04, 0.2, M((i + j) % 2 ? 0x111111 : 0xfafafa), -1.15 + i * 0.46, 0.97, 0.45 + j * 0.2);
-  if (level >= 2) {
-    // Garage behind the kart: wood shed, a red racing garage at Lv 4
-    const race = level >= 4;
-    const wall = M(race ? 0xc62828 : 0xa1887f);
-    for (const x of [-1.85, 1.85]) B(u.body, 0.3, 3.0, 2.2, wall, x, 1.75, -1.1);
-    B(u.body, 4.0, 3.0, 0.3, wall, 0, 1.75, -2.15);
-    B(u.body, 4.2, 0.3, 2.6, M(race ? 0x212121 : 0x6d4c41), 0, 3.4, -1.0);
-    if (race) {
-      for (let i = 0; i < 10; i++) for (let j = 0; j < 2; j++) B(u.body, 0.4, 0.3, 0.06, M((i + j) % 2 ? 0x111111 : 0xfafafa), -1.8 + i * 0.4, 3.1 - j * 0.3, 0.15);
-      for (const x of [-1.5, -0.5, 0.5, 1.5]) B(u.body, 0.3, 0.2, 0.2, glowThing(u, 0xfff59d), x, 3.25, 0.25);
-    }
-  }
-  const k = kartShape(u, M, u.body, 0.95, level >= 4);
-  k.g.position.set(0, 0.95, -0.5);
-  if (level >= 1) {
-    // Chequered flag and pennants
-    B(u.body, 0.12, 3.2, 0.12, M(0xbdbdbd), 2.0, 1.85, 1.6);
-    for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) B(u.body, 0.05, 0.3, 0.3, M((i + j) % 2 ? 0x111111 : 0xfafafa), 2.0, 3.25 - j * 0.3, 1.8 + i * 0.3);
-    B(u.body, 0.12, 2.4, 0.12, M(0xbdbdbd), -2.0, 1.45, 1.6);
-    B(u.body, 0.05, 0.5, 0.7, M(0x1e88e5), -2.0, 2.4, 1.95);
-  }
-  if (level >= 3) {
-    // Tire stack
-    for (let i = 0; i < 3; i++) {
-      B(u.body, 1.0, 0.35, 1.0, M(0x151515), 1.75, 0.45 + i * 0.36, 0.5);
-      B(u.body, 0.5, 0.36, 0.5, M(0x424242), 1.75, 0.45 + i * 0.36, 0.5);
-    }
-  }
-  u.muzzles.push(mz(u.body, 0, 0.8, 2.2));
-  return u;
 }
 
 /* ================================================================== 8. El Goblino */
@@ -1419,10 +1242,7 @@ export const TOWER_MODELS_H = {
   barracksOddport,
   patrolSlime,
   hayes,
-  buzzer,
-  nukiLauncher,
   engineerStella,
-  zedKart,
   trapperGoblino,
   jesterChaos,
 };

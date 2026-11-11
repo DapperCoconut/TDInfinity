@@ -172,13 +172,17 @@ export {
   makeHelicopterModel, makeHelicopterPad, makeMilitaryBase, makeXwm,
 } from './models/machines7.js';
 import {
-  makeBubbleBlower, makeDarter, makeFirecracker, makePenetrator, makePsychoSlayer, makeQuarterer,
-  makeScarecrow, makeVoidTraitor,
+  makeBubbleBlower, makeDarter, makeFirecracker, makePenetrator, makePsychoSlayer, makeQuarterer, makeVoidTraitor,
 } from './models/towers12.js';
 export {
-  makeBubbleBlower, makeDarter, makeFirecracker, makePenetrator, makePsychoSlayer, makeQuarterer,
-  makeScarecrow, makeVoidTraitor,
+  makeBubbleBlower, makeDarter, makeFirecracker, makePenetrator, makePsychoSlayer, makeQuarterer, makeVoidTraitor,
 } from './models/towers12.js';
+import {
+  makeBalloonPal, makeBuzzer, makeKartKid, makeNukiLauncher, makeScarecrow, makeTimeDilator,
+} from './models/machines8.js';
+export {
+  makeBalloonPal, makeBuzzer, makeKartKid, makeNukiLauncher, makeScarecrow, makeTimeDilator,
+} from './models/machines8.js';
 import { declip } from './models/declip.js';
 export { declip } from './models/declip.js';
 export { fallenParts, hardParts, mediumParts, moltenParts } from './models/enemies-medium.js';
@@ -423,6 +427,11 @@ export const TOWER_MODELS = {
   borealis: makeBorealis,
   splash: makeSplash,
   farmLemonade: makeLemonade,
+  buzzer: makeBuzzer,
+  nukiLauncher: makeNukiLauncher,
+  zedKart: makeKartKid,
+  balloonPal: makeBalloonPal,
+  timeDilator: makeTimeDilator,
   ...TOWER_MODELS_A,
   ...TOWER_MODELS_B,
   ...TOWER_MODELS_C,
@@ -432,7 +441,7 @@ export const TOWER_MODELS = {
   ...TOWER_MODELS_F,
   ...TOWER_MODELS_G,
   ...TOWER_MODELS_H,
-  // Wave 10 (newmodels/i.js): last, so its scarecrow / barracks / knifer reworks win.
+  // Wave 10 (newmodels/i.js): last, so its knifer rework wins.
   ...TOWER_MODELS_I,
 };
 // Hero towers (wave 9): per-level outfits, signature pieces and max-level effects (see blitzup.js).

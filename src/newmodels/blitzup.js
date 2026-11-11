@@ -601,17 +601,9 @@ const TIERS = {
     }
   },
 
-  // Nuki Launcher: -> sandbag wall around the launcher -> orbiting leaves and a bigger crew at max.
+  // Nuki Launcher: orbiting leaves and a bigger crew at max (the sandbags and gold bands are in
+  // its model, machines8.js).
   nukiLauncher(h, lv) {
-    if (lv >= 2) {
-      const bag = mat(h, 0xbcaaa4);
-      for (let i = 0; i < 7; i++) {
-        const a = Math.PI * 0.15 + (i / 6) * Math.PI * 0.9;
-        const s = part(h.root, boxGeo(0.9, 0.45, 0.5), bag, Math.cos(a) * 2.6, 0.22 + (i % 2) * 0.02, Math.sin(a) * 2.6);
-        s.rotation.y = -a + Math.PI / 2;
-      }
-    }
-    if (lv >= 3) paint(h, { 0x455a64: 0x37474f, 0x263238: 0xffb300 });
     if (lv >= 4) {
       orbit(h, 3.4, 2.6, 6, 0.4, [0x43a047, 0x76ff03], 0.8);
       grow(h, 1.1);

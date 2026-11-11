@@ -325,84 +325,8 @@ function djDiscount(level) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// 3. Balloon Pal: a little blue blob floating under balloons (support: range).
+// 3. Balloon Pal: machines8.js.
 // ---------------------------------------------------------------------------------------------
-
-function balloonPal(level) {
-  const h = rig();
-  const { M } = h;
-  const skin = M(0xb3e5fc);
-  const ink = M(0x1a1a1a);
-  h.torso.position.y = 2.7;
-  h.head = h.torso;
-  // Blob body / head
-  blob(h.torso, 1.9, 1.7, 1.6, skin, 0, 0, 0, 0.35);
-  for (const s of [-1, 1]) {
-    part(h.torso, boxGeo(0.2, 0.3, 0.05), ink, s * 0.4, 0.35, 0.81);
-    part(h.torso, boxGeo(0.07, 0.07, 0.05), M(0xffffff), s * 0.4 - 0.04, 0.43, 0.84);
-  }
-  // Jagged-toothed grin
-  part(h.torso, boxGeo(1.05, 0.42, 0.05), M(0xfafafa), 0, -0.15, 0.81);
-  for (let i = 0; i < 4; i++) part(h.torso, boxGeo(0.17, 0.17, 0.05), ink, -0.39 + i * 0.26, -0.15 + (i % 2 ? 0.1 : -0.1), 0.83).rotation.z = Math.PI / 4;
-  part(h.torso, boxGeo(1.1, 0.06, 0.05), ink, 0, 0.07, 0.83);
-  part(h.torso, boxGeo(1.1, 0.06, 0.05), ink, 0, -0.37, 0.83);
-  // Headphones and neckerchief
-  headphones(h, h.torso, 0.98, 0.85, 0.2, 0x37474f, 0.6);
-  const kerchief = M(0x263238);
-  part(h.torso, boxGeo(1.75, 0.26, 1.5), kerchief, 0, -0.75, 0);
-  part(h.torso, boxGeo(0.5, 0.5, 0.08), kerchief, 0, -0.95, 0.76).rotation.z = Math.PI / 4;
-  // Little arms: right one up holding the strings
-  h.rightArm.position.set(-0.95, 2.75, 0.1);
-  h.leftArm.position.set(0.95, 2.55, 0.15);
-  for (const arm of [h.rightArm, h.leftArm]) blob(arm, 0.4, 0.65, 0.4, skin, 0, -0.3, 0, 0.1);
-  const hold = [-0.95, 3.4, 0.1];
-  // Balloons
-  const spots = [
-    [0xe53935, [-1.1, 6.0, 0.1]],
-    [0xf48fb1, [0.4, 6.4, -0.2]],
-  ];
-  if (level >= 1) spots.push([0xfdd835, [-0.2, 7.1, 0.3]]);
-  if (level >= 4) {
-    spots.push([0x42a5f5, [1.2, 5.9, 0.4]], [0x66bb6a, [-1.6, 7.0, -0.4]], [0xab47bc, [0.9, 7.4, -0.5]], [0xff7043, [-0.5, 8.0, -0.3]]);
-  }
-  for (const [c, at] of spots) balloon(h, h.body, c, hold, at, level >= 4 ? 0.95 : 1);
-  if (level >= 2) {
-    // Propeller cap
-    part(h.torso, boxGeo(1.05, 0.32, 1.05), M(0xe53935), 0, 1.0, 0);
-    part(h.torso, boxGeo(0.55, 0.33, 1.06), M(0xfdd835), 0, 1.0, 0);
-    part(h.torso, boxGeo(0.1, 0.4, 0.1), M(0x424242), 0, 1.35, 0);
-    const prop = new THREE.Group();
-    prop.position.set(0, 1.55, 0);
-    h.torso.add(prop);
-    part(prop, boxGeo(1.5, 0.06, 0.25), M(0x1e88e5), 0, 0, 0);
-    part(prop, boxGeo(0.25, 0.07, 1.5), M(0x43a047), 0, 0, 0);
-    h.spin = [prop];
-    h.idleSpin = 8;
-  }
-  if (level >= 3) {
-    // A tiny basket hanging below
-    const wicker = M(0xa1887f);
-    part(h.torso, boxGeo(1.3, 0.6, 1.3), wicker, 0, -1.75, 0);
-    part(h.torso, boxGeo(1.4, 0.12, 1.4), M(0x6d4c41), 0, -1.45, 0);
-    for (const [x, z] of [[-0.6, -0.6], [0.6, -0.6], [-0.6, 0.6], [0.6, 0.6]]) stick(h.torso, M(0x8d6e63), [x, -1.45, z], [x * 1.2, -0.7, z * 1.1], 0.05);
-  }
-  if (level >= 4) {
-    // A little telescope in the left hand
-    const t = hand(h.leftArm, -0.5);
-    part(t, boxGeo(0.3, 1.0, 0.3), M(0xffb300), 0, -0.3, 0);
-    part(t, boxGeo(0.4, 0.5, 0.4), M(0xffd54f), 0, -0.95, 0);
-    part(t, boxGeo(0.3, 0.05, 0.3), glow(h, 0x80d8ff), 0, -1.22, 0);
-    pose(h, Math.PI, -1.5, 0, -0.1);
-  } else pose(h, Math.PI, -0.3, 0, -0.2);
-  // Base pad with a tether
-  part(h.root, boxGeo(1.8, 0.25, 1.8), M(0x90a4ae), 0, 0.12, 0);
-  part(h.root, boxGeo(1.2, 0.08, 1.2), M(0x4fc3f7), 0, 0.27, 0);
-  part(h.root, boxGeo(0.25, 0.4, 0.25), M(0x546e7a), 0, 0.45, 0);
-  stick(h.root, M(0xeeeeee), [0, 0.6, 0], [0, level >= 3 ? 0.9 : 1.6, 0], 0.04);
-  h.lift = 0.5;
-  h.bob = 0.35;
-  return h;
-}
 
 // ---------------------------------------------------------------------------------------------
 // 4. Dumpster Child: a pink face in a trash can with a flaming lid (damage over time).
@@ -1426,7 +1350,6 @@ function glowThing(u, color) {
 export const TOWER_MODELS_G = {
   commanderSpecter,
   djDiscount,
-  balloonPal,
   flamethrowerDumpster,
   warlockWafer,
   ghostbusterLure,

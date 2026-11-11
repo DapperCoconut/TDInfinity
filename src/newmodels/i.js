@@ -163,24 +163,6 @@ function star(parent, mat, x, y, z, s = 1, rotY = 0) {
 }
 
 /** A jack-o'-lantern: orange ribbed box with a glowing face on its front (+Z). */
-function jackHead(u, M, G, parent, size, x, y, z, glowC = 0xffab00) {
-  const g = group(parent, x, y, z);
-  B(g, size, size * 0.85, size, M(0xef6c00));
-  B(g, size * 0.8, size * 0.92, size * 1.04, M(0xf57c00));
-  B(g, size * 1.04, size * 0.7, size * 0.6, M(0xe65100));
-  B(g, size * 0.14, size * 0.3, size * 0.14, M(0x33691e), 0, size * 0.55, 0);
-  const l = G(glowC);
-  const f = size * 0.52 + 0.01;
-  for (const sx of [-1, 1]) {
-    B(g, size * 0.2, size * 0.16, 0.05, l, sx * size * 0.22, size * 0.14, f);
-    B(g, size * 0.1, size * 0.1, 0.05, l, sx * size * 0.22, size * 0.24, f);
-  }
-  B(g, size * 0.1, size * 0.1, 0.05, l, 0, 0, f); // nose
-  B(g, size * 0.6, size * 0.1, 0.05, l, 0, -size * 0.18, f);
-  for (const sx of [-0.2, 0.2]) B(g, size * 0.1, size * 0.08, 0.05, l, sx * size, -size * 0.11, f); // teeth gaps
-  return g;
-}
-
 /** A small perched crow facing +Z (about 1.4*s long). */
 function crow(M, parent, x, y, z, s = 0.5, ry = 0) {
   const g = group(parent, x, y, z, s);
@@ -210,139 +192,7 @@ function miniSoldier(M, parent, x, y, z, s, rx = 0, rz = 0) {
   return g;
 }
 
-/* ================================================================== 1. Scarecrow */
-
-/**
- * Scarecrow (0-4): Lv 0 a plain scarecrow on a pole with a jack-o'-lantern head; Lv 1 brown
- * clothes and a fancy top hat; Lv 2 leather straps and a crow on its left shoulder; Lv 3 The
- * Statue: a dark stone hooded harbinger; Lv 4 the Pumpkin King with glowing souls circling it.
- */
-function scarecrowI(level) {
-  const u = makeThing();
-  const M = mm(u);
-  const G = gm(u);
-  const lv = Math.min(level, 4);
-  B(u.body, 4.4, 0.25, 4.4, M(lv >= 3 ? 0x3e3a36 : 0x6d8b3a), 0, 0.12, 0);
-  const straw = M(0xe6c35c);
-  if (lv <= 2) {
-    for (const [x, z] of [[-1.4, 1.2], [1.3, 1.5], [1.6, -1.2], [-1.2, -1.5]]) B(u.body, 0.8, 0.3, 0.6, straw, x, 0.38, z);
-    const wood = M(0x6d4c41);
-    B(u.body, 0.35, 5.8, 0.35, wood, 0, 2.9, -0.3); // pole
-    B(u.body, 4.6, 0.3, 0.3, wood, 0, 4.4, -0.35); // crossbar
-    const shirtC = lv >= 1 ? 0x6d4c41 : 0xc9a66b;
-    const shirt = M(shirtC);
-    const pants = M(lv >= 1 ? 0x4e342e : 0x5c7a99);
-    B(u.body, 1.6, 2.0, 0.9, shirt, 0, 3.6, 0);
-    for (const s of [-1, 1]) {
-      B(u.body, 1.9, 0.6, 0.65, shirt, s * 1.6, 4.4, -0.05); // sleeves along the crossbar
-      B(u.body, 0.4, 0.5, 0.45, straw, s * 2.7, 4.4, -0.05);
-      for (const dy of [-0.15, 0.15]) B(u.body, 0.4, 0.1, 0.1, straw, s * 2.95, 4.4 + dy, -0.05).rotation.z = s * dy * 2;
-      B(u.body, 0.6, 1.4, 0.6, pants, s * 0.4, 2.0, 0); // dangling legs
-      B(u.body, 0.4, 0.4, 0.4, straw, s * 0.4, 1.15, 0);
-    }
-    if (lv === 0) {
-      B(u.body, 0.4, 0.4, 0.06, M(0x8e24aa), 0.4, 3.9, 0.46); // patch
-      B(u.body, 0.35, 0.35, 0.06, M(0x1565c0), -0.45, 3.1, 0.46);
-    } else {
-      // Brown coat with buttons and a waistcoat front
-      B(u.body, 0.5, 1.9, 0.06, M(0x8d6e63), 0, 3.6, 0.47);
-      for (const y of [3.0, 3.5, 4.0]) B(u.body, 0.14, 0.14, 0.06, M(0xffc107), 0, y, 0.5);
-      for (const s of [-1, 1]) B(u.body, 0.5, 0.8, 0.12, shirt, s * 0.55, 2.35, -0.1); // coat tails
-    }
-    jackHead(u, M, G, u.body, 1.35, 0, 5.3, 0);
-    if (lv >= 1) {
-      // Fancy top hat: tall black crown, purple band, a little feather
-      const hat = M(0x1a1a1a);
-      B(u.body, 1.9, 0.12, 1.9, hat, 0, 5.95, 0);
-      B(u.body, 1.15, 1.2, 1.15, hat, 0, 6.6, 0);
-      B(u.body, 1.2, 0.22, 1.2, M(0x6a1b9a), 0, 6.15, 0);
-      B(u.body, 0.08, 0.7, 0.3, M(0xc62828), 0.6, 6.5, 0.2).rotation.z = -0.3;
-    }
-    if (lv >= 2) {
-      // Crossed leather straps with a gold buckle, and a crow on the left shoulder
-      const strap = M(0x3e2723);
-      for (const s of [-1, 1]) B(u.body, 0.22, 2.3, 0.08, strap, 0, 3.6, 0.48).rotation.z = s * 0.6;
-      B(u.body, 0.3, 0.3, 0.1, M(0xffc107), 0, 3.6, 0.53);
-      B(u.body, 1.7, 0.2, 0.95, strap, 0, 2.75, 0);
-      crow(M, u.body, 0.85, 4.6, 0, 0.5);
-    }
-    u.muzzles.push(mz(u.body, 0, 5.3, 0.8));
-    u.height = lv >= 1 ? 7.2 : 6.2;
-  } else if (lv === 3) {
-    // The Statue: a hooded stone harbinger on a plinth, holding a stone scythe
-    const stone = M(0x4a4f55);
-    const dark = M(0x2e3236);
-    const moss = M(0x556b2f);
-    B(u.body, 2.8, 0.8, 2.8, dark, 0, 0.65, 0);
-    B(u.body, 3.0, 0.2, 3.0, stone, 0, 1.1, 0);
-    B(u.body, 2.3, 2.6, 1.7, stone, 0, 2.5, 0); // robe skirt
-    B(u.body, 2.0, 1.8, 1.5, stone, 0, 4.6, 0); // chest
-    B(u.body, 2.6, 0.5, 1.6, stone, 0, 5.4, 0); // shoulders
-    for (const x of [-0.6, 0, 0.6]) B(u.body, 0.18, 2.4, 0.06, dark, x, 2.4, 0.86); // robe folds
-    B(u.body, 1.7, 1.7, 1.7, stone, 0, 6.3, -0.05); // hood
-    B(u.body, 1.0, 0.6, 1.2, stone, 0, 7.3, -0.3); // hood peak
-    B(u.body, 1.1, 1.0, 0.1, M(0x0b0b0b), 0, 6.2, 0.82); // shadowed face
-    for (const x of [-0.25, 0.25]) B(u.body, 0.2, 0.12, 0.05, G(0xb2ff59), x, 6.35, 0.88);
-    for (const s of [-1, 1]) B(u.body, 0.75, 2.2, 0.8, stone, s * 1.4, 4.4, 0.25).rotation.x = -0.25; // sleeves
-    // Stone scythe in the right hand (-X)
-    B(u.body, 0.22, 6.2, 0.22, dark, -1.5, 3.9, 0.7);
-    B(u.body, 0.2, 0.3, 2.4, dark, -1.5, 6.9, 1.6);
-    B(u.body, 0.15, 0.6, 1.4, stone, -1.5, 6.6, 2.4).rotation.x = 0.5;
-    for (const [x, y, z] of [[0.7, 1.5, 1.2], [-0.9, 3.0, 0.86], [0.5, 5.6, 0.7]]) B(u.body, 0.5, 0.25, 0.12, moss, x, y, z);
-    u.muzzles.push(mz(u.body, 0, 6.3, 1.0));
-    u.height = 7.6;
-  } else {
-    // The Pumpkin King: a tall pinstriped figure with a crowned jack-o'-lantern head and souls
-    const black = M(0x161616);
-    const stripe = M(0x3a3a3a);
-    for (const [x, z] of [[-1.6, 1.4], [1.7, 1.2], [1.5, -1.6]]) jackHead(u, M, G, u.body, 0.8, x, 0.6, z, 0xff6d00);
-    for (const s of [-1, 1]) {
-      B(u.body, 0.5, 2.6, 0.5, black, s * 0.45, 1.55, 0); // thin legs
-      for (const y of [0.8, 1.6, 2.4]) B(u.body, 0.52, 0.12, 0.52, stripe, s * 0.45, y, 0);
-      B(u.body, 0.6, 0.3, 1.0, black, s * 0.45, 0.4, 0.2); // pointed shoes
-      B(u.body, 0.2, 0.2, 0.3, black, s * 0.45, 0.6, 0.8).rotation.x = -0.6;
-    }
-    B(u.body, 1.9, 2.4, 1.1, black, 0, 4.0, 0); // tailcoat
-    for (const x of [-0.5, 0, 0.5]) B(u.body, 0.1, 2.3, 0.06, stripe, x, 4.0, 0.56);
-    for (const s of [-1, 1]) B(u.body, 0.7, 1.4, 0.12, black, s * 0.5, 2.4, -0.45).rotation.x = 0.2; // coat tails
-    // Bat bow tie
-    B(u.body, 0.25, 0.25, 0.1, black, 0, 5.0, 0.6);
-    for (const s of [-1, 1]) B(u.body, 0.5, 0.35, 0.08, M(0x2a2a2a), s * 0.35, 5.0, 0.6).rotation.z = s * 0.3;
-    // Long arms, one raised with clawed white fingers
-    for (const s of [-1, 1]) {
-      const arm = B(u.body, 0.45, 2.6, 0.45, black, s * 1.3, 4.1, 0.1);
-      arm.rotation.z = s * 0.35;
-      for (const k of [-0.12, 0, 0.12]) B(u.body, 0.08, 0.5, 0.08, M(0xeeeeee), s * 1.78 + k, 2.75, 0.1);
-    }
-    // Purple-lined cape
-    B(u.body, 2.6, 3.6, 0.12, M(0x1a0d26), 0, 3.6, -0.65);
-    B(u.body, 2.4, 3.4, 0.06, M(0x4a148c), 0, 3.6, -0.57);
-    for (const s of [-1, 1]) B(u.body, 0.6, 1.2, 0.15, M(0x1a0d26), s * 1.0, 5.6, -0.5).rotation.z = s * -0.3; // high collar
-    jackHead(u, M, G, u.body, 1.9, 0, 6.15, 0, 0xffd740);
-    // Crown
-    const gold = M(0xffc107);
-    B(u.body, 1.5, 0.3, 1.5, gold, 0, 7.15, 0);
-    for (const [x, z] of [[-0.6, 0.6], [0, 0.6], [0.6, 0.6], [-0.6, -0.6], [0.6, -0.6]]) B(u.body, 0.22, 0.45, 0.22, gold, x, 7.5, z);
-    B(u.body, 0.25, 0.25, 0.06, G(0xd500f9), 0, 7.2, 0.77);
-    // Glowing souls orbiting it (spin with idleSpin)
-    const souls = group(u.body, 0, 0, 0);
-    const soulM = G(0x84ffff);
-    const soulHalo = clear(u, 0xe0f7fa, 0.35, true);
-    for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * Math.PI * 2;
-      const y = 3.2 + (i % 3) * 1.2;
-      B(souls, 0.35, 0.35, 0.35, soulM, Math.cos(a) * 2.6, y, Math.sin(a) * 2.6);
-      B(souls, 0.6, 0.6, 0.6, soulHalo, Math.cos(a) * 2.6, y, Math.sin(a) * 2.6);
-      B(souls, 0.15, 0.4, 0.15, soulHalo, Math.cos(a) * 2.6, y - 0.45, Math.sin(a) * 2.6);
-    }
-    u.spin = [souls];
-    u.idleSpin = 1.5;
-    u.muzzles.push(mz(u.body, 0, 6.2, 1.1));
-    u.height = 7.8;
-  }
-  u.tracer = lv >= 4 ? 0x84ffff : lv === 3 ? 0xb2ff59 : 0xffab00;
-  return u;
-}
+/* ================================================================== 1. Scarecrow: machines8.js */
 
 /* ================================================================== 2. Paralyzer */
 
@@ -1164,152 +1014,7 @@ function iceApprentice(level) {
   return h;
 }
 
-/* ================================================================== 13. Time Dilator */
-
-/**
- * Time Dilator (0-5): a robotic bunny sitting on a pedestal. Silver plated body, big feet, a round
- * tail, long jointed ears with glowing tips and a cyan visor. Its chest is a glass window with a
- * glowing hourglass (the time core) and a clock face on its belly. Lv 1 gear joints on its hips
- * and shoulders; Lv 2 emitter dishes on the ear tips and pylons around it; Lv 3 a floating clock
- * ring that turns; Lv 4 a warp-drive backpack with thrusters; Lv 5 B.U.N.N.Y: gold trim, a pink
- * glowing visor and a bunny emblem. The glowing time core is named `timeCore` and its material is
- * in `u.timeMats`, for tinting.
- */
-function timeDilator(level) {
-  const lv = Math.min(level, 5);
-  const u = makeThing();
-  const M = mm(u);
-  const G = gm(u);
-  const plate = M(0xe0e0e0); // silver-white armour plates
-  const joint = M(0x546e7a);
-  const dark = M(0x263238);
-  const trim = M(lv >= 5 ? 0xffc107 : 0x90a4ae);
-  const eye = G(lv >= 5 ? 0xff4081 : 0x18ffff);
-  const tip = G(lv >= 5 ? 0xff80ab : 0x40c4ff);
-  // Pedestal
-  B(u.body, 4.0, 0.3, 4.0, M(0x455a64), 0, 0.15, 0);
-  B(u.body, 3.2, 0.5, 3.2, joint, 0, 0.55, 0);
-  B(u.body, 3.3, 0.08, 3.3, trim, 0, 0.82, 0);
-  // Big feet sticking out the front, with toe pads
-  for (const s of [-1, 1]) {
-    B(u.body, 0.8, 0.45, 1.8, plate, s * 0.75, 1.05, 0.55);
-    B(u.body, 0.82, 0.12, 0.3, dark, s * 0.75, 0.88, 1.35);
-    for (const x of [-0.22, 0, 0.22]) B(u.body, 0.14, 0.1, 0.1, eye, s * 0.75 + x, 1.1, 1.47);
-  }
-  // Haunches and body (a sitting bunny: wide at the bottom)
-  for (const s of [-1, 1]) B(u.body, 0.9, 1.0, 1.4, plate, s * 0.85, 1.65, -0.2);
-  B(u.body, 1.9, 1.3, 1.6, plate, 0, 1.85, -0.1); // belly
-  B(u.body, 1.6, 1.3, 1.4, plate, 0, 3.0, -0.15); // chest
-  B(u.body, 1.95, 0.1, 1.65, trim, 0, 2.5, -0.1); // waist seam
-  // Clock face on the belly
-  B(u.body, 1.0, 1.0, 0.08, M(0xfff8e1), 0, 1.85, 0.72);
-  for (let i = 0; i < 12; i++) {
-    const a = (i / 12) * Math.PI * 2;
-    B(u.body, 0.06, 0.06, 0.04, dark, Math.sin(a) * 0.4, 1.85 + Math.cos(a) * 0.4, 0.78);
-  }
-  B(u.body, 0.06, 0.34, 0.04, dark, 0, 2.0, 0.8);
-  B(u.body, 0.26, 0.06, 0.04, dark, 0.11, 1.85, 0.8);
-  // Chest window with the glowing hourglass inside
-  const glass = clear(u, 0xe1f5fe, 0.4);
-  const sand = G(0xffd54f);
-  sand.userData.timeCore = true;
-  u.timeMats = [sand];
-  B(u.body, 0.9, 1.0, 0.1, dark, 0, 3.05, 0.55);
-  B(u.body, 0.7, 0.8, 0.06, glass, 0, 3.05, 0.62);
-  const core = B(u.body, 0.45, 0.14, 0.1, sand, 0, 2.78, 0.6);
-  core.name = 'timeCore';
-  B(u.body, 0.22, 0.14, 0.1, sand, 0, 2.92, 0.6);
-  B(u.body, 0.05, 0.22, 0.08, sand, 0, 3.08, 0.6);
-  B(u.body, 0.3, 0.1, 0.1, sand, 0, 3.3, 0.6);
-  // Arms: little paws held up in front of the chest
-  for (const s of [-1, 1]) {
-    B(u.body, 0.4, 1.0, 0.4, plate, s * 0.95, 2.9, 0.2).rotation.x = -0.6;
-    B(u.body, 0.42, 0.35, 0.45, joint, s * 0.85, 2.5, 0.65);
-  }
-  // Round fluffy tail (a glowing ball of fibre-optics)
-  B(u.body, 0.7, 0.7, 0.5, M(0xfafafa), 0, 1.6, -1.05);
-  B(u.body, 0.4, 0.4, 0.3, tip, 0, 1.6, -1.32);
-  // Head: a rounded box with cheek panels, a visor and a nose
-  const head = group(u.body, 0, 4.15, 0);
-  B(head, 1.5, 1.15, 1.35, plate);
-  B(head, 1.56, 0.3, 1.1, trim, 0, -0.45, 0.05); // jaw ring
-  B(head, 1.25, 0.34, 0.1, dark, 0, 0.12, 0.7); // visor frame
-  for (const s of [-1, 1]) B(head, 0.42, 0.22, 0.06, eye, s * 0.3, 0.12, 0.76); // visor eyes
-  B(head, 0.24, 0.16, 0.12, M(0xf48fb1), 0, -0.18, 0.72); // nose
-  B(head, 0.06, 0.18, 0.06, dark, 0, -0.34, 0.72);
-  for (const s of [-1, 1]) {
-    B(head, 0.08, 0.34, 0.5, joint, s * 0.78, -0.05, 0.1); // ear sockets / audio receptors
-    for (let i = 0; i < 3; i++) B(head, 0.3, 0.03, 0.03, M(0xb0bec5), s * (0.55 + i * 0.02), -0.25 - i * 0.06, 0.7).rotation.z = s * (0.15 - i * 0.12); // whiskers
-  }
-  // Long jointed ears that lean out a little, with glowing tips
-  for (const s of [-1, 1]) {
-    const ear = group(head, s * 0.4, 0.55, -0.1);
-    ear.rotation.z = -s * 0.18;
-    ear.rotation.x = -0.15;
-    B(ear, 0.42, 1.0, 0.2, plate, 0, 0.5, 0);
-    B(ear, 0.26, 0.82, 0.06, M(0xf8bbd0), 0, 0.5, 0.12);
-    B(ear, 0.5, 0.18, 0.28, joint, 0, 1.05, 0); // joint
-    const upper = group(ear, 0, 1.1, 0);
-    upper.rotation.x = -0.25;
-    B(upper, 0.38, 1.0, 0.18, plate, 0, 0.5, 0);
-    B(upper, 0.22, 0.78, 0.06, M(0xf8bbd0), 0, 0.5, 0.1);
-    B(upper, 0.3, 0.25, 0.22, tip, 0, 1.08, 0);
-    if (lv >= 2) {
-      // Emitter dish on each ear tip
-      B(upper, 0.6, 0.06, 0.6, trim, 0, 1.25, 0);
-      B(upper, 0.12, 0.25, 0.12, tip, 0, 1.4, 0);
-    }
-  }
-  if (lv >= 1) {
-    // Gear joints on the hips and shoulders
-    for (const s of [-1, 1]) {
-      for (const [y, z] of [[1.75, -0.2], [3.4, -0.15]]) {
-        const g = group(u.body, s * (y < 2 ? 1.32 : 0.86), y, z);
-        for (let i = 0; i < 4; i++) B(g, 0.1, 0.75, 0.2, trim).rotation.x = (i * Math.PI) / 4;
-        B(g, 0.14, 0.4, 0.4, M(0x795548));
-      }
-    }
-  }
-  if (lv >= 2) {
-    // Emitter pylons at the corners
-    for (const [x, z] of [[-1.6, -1.6], [1.6, -1.6], [-1.6, 1.6], [1.6, 1.6]]) {
-      B(u.body, 0.3, 1.6, 0.3, joint, x, 1.1, z);
-      B(u.body, 0.35, 0.35, 0.35, tip, x, 2.05, z);
-    }
-  }
-  if (lv >= 3) {
-    // Floating clock ring around its middle that turns slowly
-    const ring = group(u.body, 0, 2.6, 0);
-    for (let i = 0; i < 12; i++) {
-      const a = (i / 12) * Math.PI * 2;
-      B(ring, 0.5, 0.15, 0.2, i % 3 ? trim : tip, Math.cos(a) * 2.0, 0, Math.sin(a) * 2.0).rotation.y = -a + Math.PI / 2;
-    }
-    u.spin = [ring];
-    u.idleSpin = 0.8;
-  }
-  if (lv >= 4) {
-    // Warp-drive backpack: two thrusters with glowing nozzles
-    B(u.body, 1.3, 1.2, 0.5, dark, 0, 3.0, -1.0);
-    for (const s of [-1, 1]) {
-      B(u.body, 0.45, 1.1, 0.45, joint, s * 0.45, 2.7, -1.3);
-      B(u.body, 0.35, 0.2, 0.35, G(0xff9100), s * 0.45, 2.05, -1.3);
-    }
-  }
-  if (lv >= 5) {
-    // B.U.N.N.Y: a gold bunny emblem on the pedestal front, gold crown band on the head
-    const plaque = group(u.body, 0, 0.55, 1.62);
-    B(plaque, 1.4, 0.4, 0.08, dark);
-    const white = M(0xfafafa);
-    B(plaque, 0.3, 0.26, 0.06, white, 0, -0.03, 0.06);
-    for (const s of [-1, 1]) B(plaque, 0.09, 0.26, 0.06, white, s * 0.09, 0.2, 0.06);
-    for (const s of [-1, 1]) B(plaque, 0.16, 0.08, 0.06, tip, s * 0.5, 0, 0.06);
-    B(head, 1.58, 0.14, 1.42, trim, 0, 0.5, 0);
-  }
-  u.muzzles.push(mz(head, 0, 1.0, 0));
-  u.tracer = 0x80d8ff;
-  u.height = 7.2;
-  return u;
-}
+/* ================================================================== 13. Time Dilator: machines8.js */
 
 /* ================================================================== 14. Barracks (rework) */
 
@@ -1566,7 +1271,6 @@ export function makeEngDevice(n) {
 /* ------------------------------------------------------------------ exports */
 
 export const TOWER_MODELS_I = {
-  scarecrow: scarecrowI,
   paralyzer,
   hunter,
   slugger,
@@ -1577,7 +1281,6 @@ export const TOWER_MODELS_I = {
   traitor,
   goldenZed,
   iceApprentice,
-  timeDilator,
   knifer: kniferI,
 };
 

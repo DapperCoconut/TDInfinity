@@ -1,12 +1,12 @@
 // Tower models, file 12 of 12. Each makeX(level) builds one tower's look.
 // In here:
-// Void Traitor, Psycho Slayer, Bubble Blower, Scarecrow, Darter, Firecracker, Quarterer,
+// Void Traitor, Psycho Slayer, Bubble Blower, Darter, Firecracker, Quarterer,
 // Penetrator. (MLRS: machines3.js.)
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
 
 import * as THREE from 'three';
 import { boxGeo, makeHumanoid, part } from './kit.js';
-import { addHandgun, clearMat, cylGeo, glow, helmet, holdLongGun, inHand, makeThing, setMuzzle } from './bits.js';
+import { addHandgun, clearMat, cylGeo, glow, helmet, holdLongGun, inHand, setMuzzle } from './bits.js';
 
 /**
  * Void Traitor (event): a dark knight with a glowing void sword. Lv 1 a longer blade, Lv 2 the
@@ -179,45 +179,6 @@ export function makeBubbleBlower(level) {
   h.tracer = 0xb3e5fc;
   h.tracerWidth = 0.3;
   return h;
-}
-
-/**
- * Scarecrow (event): a straw-stuffed scarecrow on a wooden post with a burlap face and a straw
- * hat. Every upgrade adds a patch, then a crow, a pumpkin lantern and finally a crown of straw.
- */
-export function makeScarecrow(level) {
-  const u = makeThing();
-  const { M } = u;
-  const wood = M(0x6d4c41);
-  const straw = M(0xfdd835);
-  const shirt = M([0x8d6e63, 0x8d6e63, 0x795548, 0x6d4c41, 0x5d4037, 0x4e342e][level]);
-  part(u.body, boxGeo(0.4, 5.4, 0.4), wood, 0, 2.7, 0); // post
-  part(u.body, boxGeo(5.0, 0.35, 0.35), wood, 0, 4.0, 0); // crossbar
-  part(u.body, boxGeo(2.0, 2.2, 1.0), shirt, 0, 3.4, 0); // shirt
-  for (const side of [-1, 1]) {
-    part(u.body, boxGeo(1.4, 0.8, 0.8), shirt, side * 1.6, 4.0, 0); // sleeves
-    part(u.body, boxGeo(0.5, 0.5, 0.5), straw, side * 2.5, 4.0, 0); // straw hands
-  }
-  part(u.body, boxGeo(0.5, 0.6, 0.4), straw, 0, 2.1, 0); // straw poking out the bottom
-  part(u.body, boxGeo(1.3, 1.3, 1.3), M(0xd7ccc8), 0, 5.2, 0); // burlap head
-  for (const x of [-0.3, 0.3]) part(u.body, boxGeo(0.22, 0.22, 0.05), M(0x212121), x, 5.35, 0.66); // button eyes
-  part(u.body, boxGeo(0.7, 0.1, 0.05), M(0x212121), 0, 4.9, 0.66); // stitched mouth
-  part(u.body, boxGeo(2.2, 0.15, 2.2), straw, 0, 5.9, 0); // hat brim
-  part(u.body, boxGeo(1.2, 0.6, 1.2), M(0xf9a825), 0, 6.25, 0); // hat top
-  const patches = [[0.5, 3.8], [-0.5, 3.0], [0.4, 2.7]];
-  for (let i = 0; i < Math.min(level, 3); i++) part(u.body, boxGeo(0.5, 0.5, 0.06), M([0xc62828, 0x1565c0, 0x2e7d32][i]), patches[i][0], patches[i][1], 0.52);
-  if (level >= 4) {
-    // A crow sitting on the crossbar.
-    part(u.body, boxGeo(0.5, 0.5, 0.8), M(0x111111), 2.0, 4.45, 0);
-    part(u.body, boxGeo(0.15, 0.15, 0.3), M(0xffa000), 2.0, 4.5, 0.5);
-  }
-  if (level >= 5) {
-    part(u.body, boxGeo(0.9, 0.8, 0.9), M(0xff6f00), -2.5, 3.4, 0); // pumpkin lantern
-    part(u.body, boxGeo(0.4, 0.2, 0.05), glow(u, 0xffd740), -2.5, 3.45, 0.46);
-    for (const x of [-0.4, 0, 0.4]) part(u.body, boxGeo(0.2, 0.5, 0.2), straw, x, 6.75, 0); // straw crown
-  }
-  u.height = 6.5;
-  return u;
 }
 
 /**
