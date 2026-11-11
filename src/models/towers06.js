@@ -1,6 +1,6 @@
 // Tower models, file 6 of 12. Each makeX(level) builds one tower's look.
 // In here:
-// Crook Boss, Ranger, Mobster, Mortar Classic.
+// Crook Boss, Mobster, Mortar Classic.
 // (Pursuit, the helicopter makeHeli, the factories and Merc Base moved to machines2.js; Cryo Heli to machines3.js;
 // the Attack Helicopter pad to machines7.js.)
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
@@ -8,7 +8,7 @@
 import * as THREE from 'three';
 import { boxGeo, makeHumanoid, part } from './kit.js';
 import {
-  addPistol, addTommyGun, fedora, glow, helmet, holdLongGun, makeThing, setMuzzle, suit,
+  addPistol, addTommyGun, fedora, glow, helmet, setMuzzle, suit,
 } from './bits.js';
 
 /**
@@ -60,59 +60,6 @@ export function makeCrookBoss(level) {
   }
   h.muzzles = muzzles;
   h.tracer = don ? 0xffd740 : 0xffca28;
-  return h;
-}
-
-/**
- * Ranger (alternate Railgunner form): a long-range marksman in a wide hat and duster coat.
- * Lv 2 a bandolier, Lv 3 a radio pack, Lv 4 an outlaw bandana and darker coat,
- * Lv 5 the Experimental Weapon of Destruction: a huge glowing purple cannon rifle.
- */
-export function makeRanger(level) {
-  const ewd = level >= 4;
-  const outlaw = level >= 3;
-  const coat = outlaw ? 0x3e2723 : 0x8d6e63;
-  const h = makeHumanoid({ skin: 0xc68642, shirt: coat, pants: outlaw ? 0x212121 : 0x5d4037, arms: coat, face: 'soldier' });
-  const { M } = h;
-  const shard = glow(h, 0xb388ff);
-  const dark = M(0x1a1a1a);
-  // Wide-brim ranger hat with the shard band
-  const hat = M(outlaw ? 0x212121 : 0x6d4c41);
-  part(h.head, boxGeo(1.4, 0.55, 1.4), hat, 0, 1.35, 0);
-  part(h.head, boxGeo(2.1, 0.1, 2.1), hat, 0, 1.08, 0);
-  part(h.head, boxGeo(1.45, 0.15, 1.45), shard, 0, 1.15, 0);
-  part(h.torso, boxGeo(2.15, 1.0, 1.2), M(outlaw ? 0x2b1d18 : 0x795548), 0, -0.6, 0); // duster coat tails
-  if (level >= 1) {
-    // Faster Reloading: a bandolier of big rounds
-    const belt = part(h.torso, boxGeo(0.35, 2.2, 1.15), M(0x4e342e), 0, 0, 0);
-    belt.rotation.z = -0.7;
-    for (const y of [-0.5, 0, 0.5]) part(h.torso, boxGeo(0.14, 0.32, 0.14), M(0xd4af37), -y * 0.8, y, 0.62);
-  }
-  if (level >= 2) {
-    // Intelligence Radio: a radio backpack with a tall antenna and a blinking light
-    part(h.torso, boxGeo(1.4, 1.6, 0.7), M(0x455a64), 0, 0, -0.85);
-    part(h.torso, boxGeo(0.1, 2.2, 0.1), dark, 0.5, 1.8, -0.9);
-    part(h.torso, boxGeo(0.25, 0.25, 0.25), glow(h, 0xff5252), 0.5, 2.9, -0.9);
-    part(h.head, boxGeo(0.15, 0.5, 0.45), dark, -0.68, 0.65, 0); // headset
-  }
-  if (outlaw) part(h.head, boxGeo(1.3, 0.45, 0.15), M(0x7f0000), 0, 0.4, 0.66); // bandana
-
-  const len = ewd ? 4.2 : 3.6;
-  const gun = holdLongGun(h, len, M(ewd ? 0x263238 : 0x5d4037));
-  part(gun, boxGeo(0.26, 1.3, 0.32), dark, 0, -0.9, 0.38); // scope
-  part(gun, boxGeo(0.35, 0.6, 0.45), M(ewd ? 0x1c1726 : 0x4e342e), 0, 0.2, -0.05); // stock
-  if (ewd) {
-    // Experimental Weapon of Destruction: a fat cannon barrel wrapped in glowing coils
-    part(gun, boxGeo(0.75, 2.4, 0.75), M(0x37474f), 0, -len + 1.1, 0);
-    for (let i = 0; i < 4; i++) part(gun, boxGeo(0.85, 0.12, 0.85), shard, 0, -len + 0.2 + i * 0.55, 0);
-    part(gun, boxGeo(0.6, 0.8, 0.6), M(0x455a64), 0, -0.4, -0.45); // power cell
-    part(gun, boxGeo(0.3, 0.5, 0.1), shard, 0, -0.4, -0.76);
-  } else {
-    part(gun, boxGeo(0.18, 0.6, 0.18), dark, 0, -len - 0.2, 0); // muzzle brake
-  }
-  h.muzzles[0].position.y = -len - 0.4;
-  h.tracer = ewd ? 0xb388ff : 0xffe082;
-  h.tracerWidth = ewd ? 0.4 : 0.28;
   return h;
 }
 

@@ -72,7 +72,7 @@ export function shoulderPads(k, col, r = 0.6) {
 }
 
 /** A long coat: back panel, side panels to the knees and lapels (torso space). */
-function duster(k, col, o = {}) {
+export function duster(k, col, o = {}) {
   k.slab(2.16, 2.7, 0.16, col, 0, -0.4, -0.6, { bw: 1.12 });
   for (const s of [-1, 1]) k.slab(0.26, 2.7, 1.12, col, s * 1.0, -0.4, 0, { bw: 1.25, bx: s * 0.03 });
   for (const s of [-1, 1]) k.box(0.24, 1.2, 0.08, tone(col, 0.85), s * 0.82, 0.35, 0.55, { rz: s * 0.15 });
@@ -85,7 +85,7 @@ function duster(k, col, o = {}) {
  * in `o`: len, wood, metal, scope (its length, or false), lens, can (suppressor), brake, bipod.
  * Returns the bore point [y, z].
  */
-function boltRifle(k, o = {}) {
+export function boltRifle(k, o = {}) {
   const len = o.len ?? 2.6;
   const wood = o.wood ?? WOOD;
   const metal = o.metal ?? GUNMETAL;

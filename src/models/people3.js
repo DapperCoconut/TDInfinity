@@ -43,7 +43,7 @@ function balaclava(k, col) {
 }
 
 /** A row of brass rounds on a strap that crosses the chest (torso space; side as in sash). */
-function bandolier(k, side, strap = 0x4e342e) {
+export function bandolier(k, side, strap = 0x4e342e) {
   const rz = side * 0.62;
   k.box(0.3, 2.5, 1.12, strap, 0, 0, 0, { rz });
   for (let i = 0; i < 8; i++) {

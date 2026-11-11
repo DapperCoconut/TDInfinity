@@ -1,14 +1,14 @@
 // Tower models, file 7 of 12. Each makeX(level) builds one tower's look.
 // In here:
-// Necromancer, Engineer, Accelerator, Sentry, Grave, Hacker, Hologram,
-// Laser Railgunner, Slammer. (XWM Turret moved to machines7.js, John to people2.js.)
+// Necromancer, Engineer, Sentry, Grave, Hacker, Hologram, Slammer.
+// (XWM Turret moved to machines7.js, John to people2.js, Accelerator and Laser Railgunner to people4.js.)
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
 
 import * as THREE from 'three';
 import { makeMechTurret } from '../newmodels/e.js';
 import { makeEngDevice } from '../newmodels/i.js';
 import { boxGeo, makeHumanoid, part, setOpacity } from './kit.js';
-import { addHandgun, glow, glowThing, gunMuzzle, helmet, holdLongGun, makeThing, setMuzzle, turret } from './bits.js';
+import { glow, glowThing, gunMuzzle, helmet, holdLongGun, makeThing, setMuzzle, turret } from './bits.js';
 import { makeEnemy } from './enemy.js';
 
 // ------------------------------------------------------------------ Necromancer, Engineer, Accelerator
@@ -108,39 +108,6 @@ export function makeEngineer(level) {
   h.muzzles[0].position.y = -len - 0.2;
   h.tracer = rocket ? 0xff7043 : 0xa1887f;
   h.flight = rocket ? { color: 0xff7043, size: 0.8, arc: 0.6 } : { color: 0x8d6e63, size: 0.7, arc: 0.4, long: true }; // rebar / splash rocket
-  return h;
-}
-
-/**
- * Accelerator (alternate Phaser): a heavy suit with a plasma cannon. Lv 3 a second energy
- * canister, Lv 4 armor, Lv 5 a supercharger coil, Lv 6 a glowing gold-and-violet suit.
- */
-export function makeAccelerator(level) {
-  const vessel = level >= 5;
-  const plasma = vessel ? 0xd500f9 : level >= 4 ? 0xff6d00 : 0x18ffff;
-  const suitC = vessel ? 0x1a0033 : level >= 3 ? 0x263238 : 0xcfd8dc;
-  const h = makeHumanoid({ skin: 0xe0ac69, shirt: suitC, pants: suitC, arms: suitC, face: 'soldier' });
-  const { M } = h;
-  const armor = M(vessel ? 0xffc400 : level >= 3 ? 0x455a64 : 0x90a4ae);
-  part(h.head, boxGeo(1.45, 1.4, 1.45), armor, 0, 0.66, -0.03);
-  part(h.head, boxGeo(1.25, 0.3, 0.08), glow(h, plasma), 0, 0.75, 0.7);
-  part(h.torso, boxGeo(1.4, 1.8, 0.8), M(0x37474f), 0, 0, -0.9); // energy pack
-  part(h.torso, boxGeo(0.35, 1.3, 0.1), glow(h, plasma), -0.35, 0, -1.32); // canister
-  if (level >= 2) part(h.torso, boxGeo(0.35, 1.3, 0.1), glow(h, plasma), 0.35, 0, -1.32); // second canister
-  if (level >= 3) {
-    part(h.torso, boxGeo(2.2, 1.7, 1.2), armor, 0, 0.05, 0);
-    for (const x of [-1.4, 1.4]) part(h.torso, boxGeo(0.85, 0.5, 1.35), armor, x, 1.0, 0);
-  }
-  if (vessel) for (const x of [-0.5, 0, 0.5]) part(h.head, boxGeo(0.2, 0.6, 0.2), M(0xffc400), x, 1.55, 0); // crest
-  const len = level >= 4 ? 2.6 : 2.2;
-  const gun = holdLongGun(h, len, M(vessel ? 0x311b92 : 0x37474f));
-  part(gun, boxGeo(0.8, 1.0, 0.8), M(0x263238), 0, -0.5, 0); // breech
-  const coils = level >= 4 ? 4 : 2;
-  for (let i = 0; i < coils; i++) part(gun, boxGeo(0.7, 0.14, 0.7), glow(h, plasma), 0, -1.1 - i * 0.35, 0);
-  part(gun, boxGeo(0.55, 0.3, 0.55), glow(h, plasma), 0, -len, 0);
-  h.muzzles[0].position.y = -len - 0.2;
-  h.tracer = plasma;
-  h.tracerWidth = vessel ? 0.6 : level >= 3 ? 0.5 : 0.4;
   return h;
 }
 
@@ -298,81 +265,6 @@ export function makeHologram(def) {
   h.holo = true;
   return h;
 }
-
-/**
- * Laser Railgunner (alternate Railgunner form): a trooper with a red laser rail rifle. Top path:
- * Rail Trooper armor from Lv 4, a bigger glowing rifle at Lv 5-6. Bottom path: sits behind a
- * mounted laser turret from Lv 4, twin barrels at Lv 5 and the giant XRT-9000 at Lv 6.
- */
-export function makeLaserRailgunner(level, bottom = false) {
-  const top = !bottom;
-  const trooper = top && level >= 3;
-  const shirt = trooper ? 0xeceff1 : 0x37474f;
-  const h = makeHumanoid({ skin: 0xd2a679, shirt, pants: trooper ? 0x90a4ae : 0x263238, arms: shirt, face: 'soldier' });
-  const { M } = h;
-  const laser = 0xff1744;
-  const shard = glow(h, 0xb388ff);
-  part(h.torso, boxGeo(0.35, 0.35, 0.06), shard, -0.55, 0.45, 0.52);
-  if (trooper) {
-    helmet(h, 0xeceff1, false);
-    part(h.head, boxGeo(1.25, 0.35, 0.08), glow(h, laser), 0, 0.72, 0.7);
-    part(h.torso, boxGeo(2.2, 1.7, 1.2), M(0xcfd8dc), 0, 0.05, 0);
-    for (const arm of [h.rightArm, h.leftArm]) part(arm, boxGeo(1.15, 0.6, 1.15), M(0xb0bec5), 0, -0.2, 0);
-  } else {
-    part(h.head, boxGeo(1.35, 0.35, 1.35), M(0x263238), 0, 1.2, 0);
-    part(h.head, boxGeo(0.35, 0.3, 0.1), glow(h, laser), -0.28, 0.7, 0.62); // targeting monocle
-  }
-  if (level >= 1) part(h.torso, boxGeo(1.5, 1.8, 0.7), M(0x263238), 0, 0, -0.85); // cooling / power pack
-  if (level >= 2) part(h.torso, boxGeo(0.35, 1.4, 0.1), glow(h, laser), 0, 0, -1.22);
-
-  if (top || level < 3) {
-    const len = top && level >= 4 ? 3.6 : 3.0;
-    const gun = holdLongGun(h, len, M(trooper ? 0xb0bec5 : 0x263238));
-    const coils = top && level >= 4 ? 5 : 4;
-    for (let i = 0; i < coils; i++) part(gun, boxGeo(0.45, 0.1, 0.55), glow(h, laser), 0, -0.8 - i * 0.5, 0);
-    part(gun, boxGeo(0.22, 0.8, 0.3), M(0x111111), 0, -0.7, 0.35); // scope
-    h.muzzles[0].position.y = -len - 0.1;
-    h.tracer = laser;
-    h.tracerWidth = top && level >= 4 ? 0.5 : 0.35;
-    return h;
-  }
-
-  // Sentry / Dual Barrels / XRT-9000: a mounted laser cannon on the root.
-  const xrt = level >= 5;
-  const dual = level >= 4;
-  const mount = new THREE.Group();
-  h.root.add(mount);
-  const steel = M(xrt ? 0x263238 : 0x546e7a);
-  const barrelLen = xrt ? 8 : 5.5;
-  const bw = xrt ? 1.3 : 0.6;
-  const gy = xrt ? 3.2 : 2.7;
-  const gz = xrt ? 1.8 : 1.2;
-  part(mount, boxGeo(xrt ? 3.6 : 2.4, 1.6, xrt ? 3.6 : 2.4), steel, 0, 0.8, gz);
-  part(mount, boxGeo(bw * (dual ? 2.4 : 1) + 0.6, bw + 0.6, 1.8), steel, 0, gy, gz);
-  const xs = dual && !xrt ? [-0.5, 0.5] : [0];
-  for (const x of xs) {
-    part(mount, boxGeo(bw, bw, barrelLen), M(0x212121), x, gy, gz + barrelLen / 2 + 0.5);
-    for (let i = 0; i < 5; i++) part(mount, boxGeo(bw + 0.25, bw + 0.25, 0.25), glow(h, laser), x, gy, gz + 1.3 + i * ((barrelLen - 1) / 5));
-  }
-  if (xrt) part(mount, boxGeo(0.8, 0.8, 0.8), shard, 0, gy + bw, gz); // XRT core
-  const muzzle = new THREE.Object3D();
-  muzzle.position.set(0, gy, gz + barrelLen + 0.6);
-  mount.add(muzzle);
-  h.muzzles = [muzzle];
-  part(h.root, boxGeo(1.6, 1.0, 1.4), steel, 0, 0.5, -0.3); // seat
-  h.lift = -0.9;
-  h.bob = 0.02;
-  h.body.position.y = h.lift;
-  h.rightLeg.rotation.x = -Math.PI / 2;
-  h.leftLeg.rotation.x = -Math.PI / 2;
-  h.rightArm.rotation.set(-Math.PI / 2 + 0.2, 0, 0.2);
-  h.leftArm.rotation.set(-Math.PI / 2 + 0.2, 0, -0.2);
-  h.pose = { right: -Math.PI / 2 + 0.2, left: -Math.PI / 2 + 0.2, leftRecoil: 0.35 };
-  h.tracer = laser;
-  h.tracerWidth = xrt ? 1.2 : 0.6;
-  return h;
-}
-export const makeLaserRailgunnerBottom = (level) => makeLaserRailgunner(level, true);
 
 /**
  * Slammer (alternate Enforcer form): a strong woman with a big sledgehammer. Top path: a bigger,

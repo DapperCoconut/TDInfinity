@@ -819,7 +819,7 @@ export function makeTweeter(level) {
 // ------------------------------------------------------------------ Cowboy
 
 /** A cowboy hat (head space): wide brim curled up at the sides, pinched crown and a band. */
-function cowboyHat(k, col, bandCol) {
+export function cowboyHat(k, col, bandCol) {
   k.cyl(1.05, 0.07, col, 0, 1.12, 0, { seg: 24, sz: 0.88 });
   for (const s of [-1, 1]) k.box(0.18, 0.3, 1.5, col, s * 0.98, 1.24, 0, { rz: s * -0.55, r: 0.04 });
   k.cyl(0.6, 0.62, col, 0, 1.45, 0, { seg: 18, r2: 0.5, sz: 0.9 });

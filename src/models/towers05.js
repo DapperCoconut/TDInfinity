@@ -1,12 +1,12 @@
 // Tower models, file 5 of 12. Each makeX(level) builds one tower's look.
 // In here:
-// Pyromancer, Ace Plane, Aviator Ace, Medic, Medic Beam, EDJ, Electro,
+// Pyromancer, Ace Plane, Medic, Medic Beam, EDJ, Electro,
 // Rocketeer Missile, Rocketeer Trooper, Trapper, Mine Layer.
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
 
 import * as THREE from 'three';
 import { boxGeo, makeHumanoid, part } from './kit.js';
-import { cylGeo, glow, helmet, holdLongGun, makeThing, setMuzzle } from './bits.js';
+import { cylGeo, glow, helmet, holdLongGun, setMuzzle } from './bits.js';
 
 /**
  * Pyromancer (alternate Flamethrower form): a firefighter-turned-arsonist in a red coat.
@@ -99,36 +99,6 @@ export function makeAcePlane(h, level) {
   bank.add(bay);
   plane.userData = { bank, prop, bay, missiles: [] };
   return { plane, muzzles };
-}
-
-/** Ace Pilot (alternate Aviator form): a flying ace in a bomber jacket, flight helmet from Lv 3. */
-export function makeAviatorAce(level) {
-  const jet = level >= 2;
-  const h = makeHumanoid({ skin: 0xe0ac69, shirt: 0x8d5524, pants: 0x3e4a5a, arms: 0x8d5524 });
-  const { M } = h;
-  if (jet) {
-    part(h.head, boxGeo(1.45, 1.4, 1.45), M(level >= 4 ? 0xffc107 : 0x546e7a), 0, 0.65, -0.03);
-    part(h.head, boxGeo(1.2, 0.45, 0.08), M(0xff7043), 0, 0.7, 0.7);
-  } else {
-    const cap = M(0x4e342e);
-    part(h.head, boxGeo(1.35, 0.6, 1.35), cap, 0, 1.0, -0.02);
-    part(h.head, boxGeo(1.3, 0.12, 0.1), M(0x3e2723), 0, 1.05, 0.66);
-    for (const x of [-0.28, 0.28]) part(h.head, boxGeo(0.4, 0.3, 0.08), M(0xffe082), x, 1.05, 0.7);
-  }
-  part(h.torso, boxGeo(2.15, 0.45, 1.15), M(0xefebe9), 0, 0.85, 0); // fur collar
-  if (level >= 1) part(h.torso, boxGeo(0.5, 0.5, 0.1), M(0xffd54f), -0.5, 0.2, 0.52); // ace badge
-  if (level >= 3) part(h.head, boxGeo(0.08, 0.9, 0.08), M(0x212121), -0.7, 1.6, -0.2); // radio antenna
-  // A small runway pad with stripes.
-  part(h.root, boxGeo(3.6, 0.08, 1.0), M(0x424242), 0, 0.04, -1.6);
-  for (const x of [-1.2, 0, 1.2]) part(h.root, boxGeo(0.6, 0.1, 0.2), M(0xfafafa), x, 0.06, -1.6);
-  h.rightArm.rotation.set(Math.PI * 0.85, 0, 0.25);
-  h.pose = { right: Math.PI * 0.85, left: 0, leftRecoil: 0 };
-  const { plane, muzzles } = makeAcePlane(h, level);
-  h.plane = plane;
-  h.muzzles = muzzles;
-  h.flyHeight = 12;
-  h.tracer = level >= 4 ? 0xffab40 : 0xffe082;
-  return h;
 }
 
 /**
