@@ -603,7 +603,7 @@ export const DIFFICULTIES = {
     hpCurve: [[1, 1.3], [4, 1.3], [6, 0.9]], bossHp: 0.5,
     // mapModes: a map of the event that plays its own waves. These fields replace the mode's own
     // there (modeFor). Halloween Night 2 (see halloween2.js).
-    mapModes: { carnival: { waves: HALLOWEEN2_WAVES, timers: HALLOWEEN2_TIMERS, boss: 'h2Ringmaster', hpCurve: [[1, 1], [6, 1], [8, 0.8], [14, 0.8], [19, 0.5]], bossHp: 0.7 } } },
+    mapModes: { carnival: { waves: HALLOWEEN2_WAVES, timers: HALLOWEEN2_TIMERS, boss: 'h2Ringmaster', hpCurve: [[1, 1], [6, 1], [8, 0.7], [14, 0.7], [18, 0.4]], bossHp: 0.6 } } },
 };
 export const DEFAULT_DIFFICULTY = 'easy';
 /** The modes on the mode cards, and the special events (each has its own button and its own map). */
