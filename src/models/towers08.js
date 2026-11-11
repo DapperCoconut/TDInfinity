@@ -1,6 +1,6 @@
 // Tower models, file 8 of 12. Each makeX(level) builds one tower's look.
 // In here:
-// Sentry Tower, AATurret, Patrol Boat, Ghost, Toxicnator, Tesla, Saboteur, Paintballer.
+// Patrol Boat, Ghost, Toxicnator, Saboteur, Paintballer. (Sentry, AA Turret and Tesla: machines1.js.)
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
 
 import * as THREE from 'three';
@@ -24,117 +24,7 @@ export function miniBarrels(u, parent, x, y, z, len, n, r, mat) {
   return barrels;
 }
 
-/**
- * Sentry: a small gun on a tripod. Top path: a longer barrel at Lv 3, a bigger gun at Lv 4, sabot
- * ammo box at Lv 5 and a dark X-Sentry with glowing stripes at Lv 6. Bottom path: a scope at Lv 2,
- * a thicker barrel at Lv 3, then a minigun with a rocket pod (two pods and a big frame at Lv 6).
- */
-export function makeSentryTower(level, bottom = false) {
-  const u = makeThing();
-  const { M } = u;
-  const xs = !bottom && level >= 5;
-  const xwm = bottom && level >= 5;
-  const metal = M(xs ? 0x263238 : xwm ? 0x37474f : 0x78909c);
-  const dark = M(0x212121);
-  const accent = xs ? glowThing(u, 0x00e5ff) : xwm ? glowThing(u, 0xff6d00) : M(0xfbc02d);
-  // Tripod
-  part(u.body, boxGeo(0.5, 1.2, 0.5), metal, 0, 0.6, 0);
-  for (let i = 0; i < 3; i++) {
-    const a = (i / 3) * Math.PI * 2;
-    const leg = part(u.body, boxGeo(0.18, 0.18, 1.3), dark, Math.sin(a) * 0.55, 0.15, Math.cos(a) * 0.55);
-    leg.rotation.y = a;
-  }
-  const gun = new THREE.Group();
-  gun.position.set(0, 1.45, 0);
-  gun.scale.setScalar(bottom ? (level >= 5 ? 1.35 : level >= 3 ? 1.15 : 1) : level >= 3 ? 1.2 : 1);
-  u.body.add(gun);
-  part(gun, boxGeo(0.8, 0.6, 1.1), metal, 0, 0, -0.1); // body
-  part(gun, boxGeo(0.82, 0.08, 0.9), accent, 0, 0.32, -0.1); // stripe
-  if (bottom && level >= 3) {
-    miniBarrels(u, gun, 0, 0, 0.4, level >= 5 ? 1.8 : 1.5, 6, 0.16, dark);
-    gunMuzzle(u, gun, 0, 0, level >= 5 ? 2.2 : 1.9);
-    // Rocket pods on the side
-    const pods = level >= 5 ? [-1, 1] : [1];
-    for (const side of pods) {
-      part(gun, boxGeo(0.5, 0.5, 0.9), M(0x4e5b31), side * 0.7, 0.1, 0);
-      for (const oy of [-0.12, 0.12]) part(gun, boxGeo(0.16, 0.16, 0.05), xwm ? accent : dark, side * 0.7, 0.1 + oy, 0.46);
-    }
-    if (level >= 5) for (const side of [-1, 1]) part(u.body, boxGeo(0.15, 1.6, 0.15), metal, side * 0.9, 1.2, -0.5); // frame
-    u.projectile = { color: 0xff7043, size: 0.35 };
-    u.tracer = 0xffe066;
-  } else {
-    const len = !bottom && level >= 2 ? 1.6 : 1.1;
-    const bw = (bottom && level >= 2) || (!bottom && level >= 3) ? 0.26 : 0.18;
-    part(gun, boxGeo(bw, bw, len), dark, 0, 0.05, 0.45 + len / 2);
-    if (!bottom && level >= 3) part(gun, boxGeo(0.34, 0.34, 0.25), dark, 0, 0.05, 0.45 + len); // muzzle brake
-    gunMuzzle(u, gun, 0, 0.05, 0.6 + len);
-    if (!bottom && level >= 4) part(gun, boxGeo(0.4, 0.35, 0.5), M(0x556b2f), -0.6, -0.1, -0.1); // sabot ammo box
-    u.tracer = xs ? 0x00e5ff : 0xffe066;
-  }
-  if (bottom && level >= 1) part(gun, boxGeo(0.2, 0.2, 0.6), M(0x111111), 0, 0.42, 0.1); // optics
-  u.static = true;
-  return u;
-}
-export const makeSentryTowerBottom = (level) => makeSentryTower(level, true);
 
-/**
- * AA Turret: a launcher on a turntable with a radar dish. Top path: one missile tube per missile
- * in its burst, in a bigger rack each level (white Patriot boxes at Lv 6). Bottom path: a bigger
- * radar at Lv 3, then a C-RAM: a white dome over a spinning gatling (two at Lv 5, bigger at Lv 6).
- */
-export function makeAATurret(level, bottom = false) {
-  const u = makeThing();
-  const { M } = u;
-  const olive = M(0x5d6b3a);
-  const dark = M(0x212121);
-  const white = M(0xeceff1);
-  part(u.body, boxGeo(2.6, 0.4, 2.6), M(0x9e9e9e), 0, 0.2, 0);
-  part(u.body, boxGeo(1.6, 0.5, 1.6), dark, 0, 0.65, 0);
-  const head = new THREE.Group();
-  head.position.set(0, 0.9, 0);
-  u.body.add(head);
-  // Radar dish on a mast at the back
-  const big = bottom && level >= 2;
-  part(head, boxGeo(0.15, big ? 1.8 : 1.2, 0.15), dark, 0, big ? 0.9 : 0.6, -1.0);
-  const dish = part(head, boxGeo(big ? 1.4 : 0.9, big ? 0.9 : 0.6, 0.1), white, 0, big ? 1.8 : 1.2, -1.0);
-  dish.rotation.x = -0.4;
-  if (bottom && level >= 3) {
-    const ram = level >= 4 ? [-0.55, 0.55] : [0];
-    const size = level >= 5 ? 1.25 : 1;
-    for (const x of ram) {
-      part(head, boxGeo(0.9 * size, 1.1 * size, 1.0 * size), white, x, 0.7, 0.1); // dome
-      miniBarrels(u, head, x, 0.5, 0.6, 1.6 * size, 6, 0.14 * size, dark);
-      gunMuzzle(u, head, x, 0.5, 0.6 + 1.6 * size);
-    }
-    u.tracer = 0xffab40;
-  } else {
-    const burst = TOWERS[bottom ? 'aaTurretBottom' : 'aaTurret'].levels[level].burst || 1;
-    const cols = Math.min(burst, 4);
-    const rows = Math.ceil(burst / cols);
-    const patriot = !bottom && level >= 5;
-    const tube = patriot ? 0.55 : 0.4;
-    const w = cols * tube + 0.3;
-    const h = rows * tube + 0.3;
-    const rack = new THREE.Group();
-    rack.position.set(0, 0.6 + h / 2, 0.2);
-    rack.rotation.x = -0.35; // tilted up to the sky
-    head.add(rack);
-    part(rack, boxGeo(w, h, patriot ? 2.4 : 1.6), patriot ? white : olive, 0, 0, 0);
-    for (let i = 0; i < burst; i++) {
-      const cx = ((i % cols) - (cols - 1) / 2) * tube;
-      const cy = (Math.floor(i / cols) - (rows - 1) / 2) * tube;
-      part(rack, boxGeo(tube - 0.1, tube - 0.1, 0.06), dark, cx, cy, patriot ? 1.21 : 0.81);
-      if (!patriot) part(rack, boxGeo(0.12, 0.12, 0.2), M(0xe53935), cx, cy, 0.85); // missile tips
-    }
-    gunMuzzle(u, rack, 0, 0, patriot ? 1.3 : 0.9);
-    for (const side of [-1, 1]) part(head, boxGeo(0.15, 0.9, 0.6), dark, side * (w / 2 + 0.1), 0.6, 0.2); // rack arms
-    u.projectile = { color: 0xeceff1, size: patriot ? 0.55 : 0.4 };
-    u.tracer = 0xffffff;
-  }
-  u.static = true;
-  return u;
-}
-export const makeAATurretBottom = (level) => makeAATurret(level, true);
 
 /**
  * Patrol Boat: a grey gunboat floating on the water, facing +Z. Top path: Lv 1 an ammo box,
@@ -385,70 +275,6 @@ export function makeToxicnator(level, bottom = false) {
 }
 export const makeToxicnatorBottom = (level) => makeToxicnator(level, true);
 
-/**
- * Tesla: a big Tesla coil on a stone plinth (it doesn't turn; bolts leap from the crown).
- * Lv 2 a kite flying from a copper wire, Lv 3 battery packs around the base, Lv 4 a gold
- * Auric cooling cell around the column, Lv 5 Kimat's Bite: a dark column with a blazing crown.
- */
-export function makeTesla(level) {
-  const u = makeThing();
-  const { M } = u;
-  const kimat = level >= 4;
-  const bolt = kimat ? 0xe1f5fe : 0x80d8ff;
-  const copper = M(0xb87333);
-  const dark = M(0x263238);
-  const spark = glowThing(u, bolt);
-  // Plinth and column
-  part(u.body, boxGeo(3.6, 0.6, 3.6), M(0x78909c), 0, 0.3, 0);
-  part(u.body, boxGeo(2.6, 0.5, 2.6), M(0x546e7a), 0, 0.85, 0);
-  const tall = level >= 2 ? 6.6 : 6;
-  part(u.body, boxGeo(1.1, tall, 1.1), kimat ? dark : M(0x37474f), 0, 1.1 + tall / 2, 0);
-  // Copper windings up the column
-  const rings = level >= 2 ? 8 : 6;
-  for (let i = 0; i < rings; i++) part(u.body, boxGeo(1.35, 0.18, 1.35), copper, 0, 1.6 + (i * (tall - 1.2)) / (rings - 1), 0);
-  // Crown: a flat ring of boxes (the toroid) with a glowing core
-  const top = 1.1 + tall + 0.35;
-  const ringR = kimat ? 1.6 : 1.3;
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2;
-    const seg = part(u.body, boxGeo(1.0, 0.55, 0.6), kimat ? M(0x37474f) : M(0xb0bec5), Math.cos(a) * ringR, top, Math.sin(a) * ringR);
-    seg.rotation.y = -a + Math.PI / 2;
-  }
-  part(u.body, boxGeo(0.9, 0.9, 0.9), spark, 0, top + 0.2, 0);
-  if (kimat) for (let i = 0; i < 4; i++) {
-    const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
-    part(u.body, boxGeo(0.25, 1.1, 0.25), spark, Math.cos(a) * ringR, top + 0.8, Math.sin(a) * ringR); // prongs
-  }
-  gunMuzzle(u, u.body, 0, top + 0.6, 0);
-  if (level >= 1) {
-    // Kite in the Wind: a kite on a copper wire, tied to the crown
-    const kite = part(u.body, boxGeo(1.4, 1.4, 0.1), M(0xe53935), -2.6, top + 3.2, -1.2);
-    kite.rotation.set(0.3, 0.4, Math.PI / 4);
-    const wire = part(u.body, boxGeo(0.06, 0.06, 4.3), copper, -1.3, top + 1.6, -0.6);
-    wire.lookAt(-2.6, top + 3.2, -1.2);
-    part(u.body, boxGeo(0.2, 0.2, 0.2), spark, -2.6, top + 2.3, -1.2);
-  }
-  if (level >= 2) {
-    // Self-Sustaining Battery: battery packs on each side of the plinth
-    for (const [x, z] of [[1.5, 0], [-1.5, 0], [0, 1.5], [0, -1.5]]) {
-      part(u.body, boxGeo(0.8, 1.2, 0.8), M(0x455a64), x, 1.2, z);
-      part(u.body, boxGeo(0.5, 0.2, 0.5), level >= 3 ? glowThing(u, 0xffd740) : spark, x, 1.9, z);
-    }
-  }
-  if (level >= 3) {
-    // Auric Quantum Cooling Cell: gold fins around the middle of the column
-    const gold = glowThing(u, 0xffc400);
-    gold.emissiveIntensity = 0.35;
-    for (let i = 0; i < 4; i++) {
-      const a = (i / 4) * Math.PI * 2;
-      const fin = part(u.body, boxGeo(0.25, 2.2, 1.2), gold, Math.cos(a) * 0.85, 1.1 + tall * 0.55, Math.sin(a) * 0.85);
-      fin.rotation.y = -a;
-    }
-  }
-  u.tracer = bolt;
-  u.static = true;
-  return u;
-}
 
 /**
  * Saboteur (alternate Toxicnator): a hooded black-market operative with a sawn-off poison

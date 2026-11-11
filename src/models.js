@@ -84,15 +84,15 @@ export {
   makeMineLayer, makePyromancer, makeRocketeerMissile, makeRocketeerTrooper, makeRocketeerTrooperBottom, makeTrapper,
 } from './models/towers05.js';
 import {
-  makeBehemothFactory, makeBehemothFactoryBottom, makeCrookBoss, makeCryoHeli, makeGatling, makeHelicopter,
+  makeBehemothFactory, makeBehemothFactoryBottom, makeCrookBoss, makeCryoHeli, makeHelicopter,
   makeHelicopterBottom, makeMercBase, makeMinigunner, makeMobster, makeMobsterBottom, makeMortarClassic, makePursuit,
-  makePursuitBottom, makeRanger, makeTurret, makeWarMachineFactory, makeWarMachineFactoryBottom,
+  makePursuitBottom, makeRanger, makeWarMachineFactory, makeWarMachineFactoryBottom,
 } from './models/towers06.js';
 export {
-  makeBehemothFactory, makeBehemothFactoryBottom, makeCrookBoss, makeCryoHeli, makeGatling, makeHeavyFactory,
+  makeBehemothFactory, makeBehemothFactoryBottom, makeCrookBoss, makeCryoHeli, makeHeavyFactory,
   makeHeli, makeHelicopter, makeHelicopterBottom, makeHelicopterModel, makeMercBase, makeMinigunner, makeMobster,
   makeMobsterBottom, makeMobsterModel, makeMortarClassic, makePursuit, makePursuitBottom, makePursuitModel,
-  makeRanger, makeTurret, makeWarMachineFactory, makeWarMachineFactoryBottom,
+  makeRanger, makeWarMachineFactory, makeWarMachineFactoryBottom,
 } from './models/towers06.js';
 import {
   makeAccelerator, makeEngineer, makeHacker, makeHackerBottom, makeJohn, makeJohnBottom, makeJuggernaut,
@@ -104,11 +104,13 @@ export {
   makeLaserRailgunner, makeNecromancer, makeSentry, makeSlammer, makeXwm,
 } from './models/towers07.js';
 import {
-  makeAATurret, makeAATurretBottom, makeGhost, makeGhostBottom, makePaintballer, makePatrolBoat, makePatrolBoatBottom,
-  makeSaboteur, makeSentryTower, makeSentryTowerBottom, makeTesla, makeToxicnator, makeToxicnatorBottom,
+  makeGhost, makeGhostBottom, makePaintballer, makePatrolBoat, makePatrolBoatBottom,
+  makeSaboteur, makeToxicnator, makeToxicnatorBottom,
 } from './models/towers08.js';
+import { makeAATurret, makeAATurretBottom, makeGatling, makeSentryTower, makeSentryTowerBottom, makeTesla, makeTurret } from './models/machines1.js';
+export { makeAATurret, makeGatling, makeSentryTower, makeTesla, makeTurret } from './models/machines1.js';
 export {
-  makeAATurret, makeGhost, makePaintballer, makePatrolBoat, makeSaboteur, makeSentryTower, makeTesla, makeToxicnator,
+  makeGhost, makePaintballer, makePatrolBoat, makeSaboteur, makeToxicnator,
   miniBarrels,
 } from './models/towers08.js';
 import {
