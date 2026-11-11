@@ -9,7 +9,7 @@ import { PAD_COLORS, driftFx } from './views.js';
 import { profile } from './profile.js';
 import { audio } from './audio.js';
 import { damageText, detectText, dpsText, dpsValue, extrasText, isNonAttacker, limitRange, towerKind } from './stats.js';
-import { towerIcon } from './icons.js';
+import { cachedTowerIcon, towerIcon } from './icons.js';
 import { blurbHtml, descHtml } from './text.js';
 
 // Shop order: cheapest to most expensive. Credit towers by price (free ones first), then shard
@@ -204,8 +204,40 @@ export class LoadoutScreen {
       TOWERS[type].goldOf && '<span class="lo-badge gold" title="Golden perk on">★</span>',
     ].filter(Boolean).join('');
     return `<button class="inv-tower${sel}${owned ? '' : ' locked'}" data-pick="${base}" title="${esc(def.name)}">
-      <img src="${this.lobby.icons[type]}" alt=""><span class="inv-name">${esc(def.name)}</span>${badges}${extra}
+      ${this.img(type)}<span class="inv-name">${esc(def.name)}</span>${badges}${extra}
     </button>`;
+  }
+
+  /** A card portrait: the picture if it's drawn already, else an empty one that fillIcons() draws soon. */
+  img(type) {
+    const url = cachedTowerIcon(type);
+    return url !== undefined ? `<img src="${url}" alt="">` : `<img data-icon="${type}" alt="">`;
+  }
+
+  /**
+   * Draws the missing card portraits a few per frame, so opening the shop doesn't freeze while
+   * hundreds of tower models are built and drawn at once.
+   */
+  fillIcons() {
+    if (this.iconRaf) return;
+    const step = () => {
+      this.iconRaf = 0;
+      if (!this.open) return;
+      const imgs = document.querySelectorAll('#lo-slots img[data-icon], #lo-grid img[data-icon], #lo-events img[data-icon]');
+      if (!imgs.length) return;
+      const end = performance.now() + 8; // about half a frame
+      for (const im of imgs) {
+        const type = im.dataset.icon;
+        const url = towerIcon(type, 0);
+        for (const same of document.querySelectorAll(`img[data-icon="${type}"]`)) {
+          same.src = url;
+          same.removeAttribute('data-icon');
+        }
+        if (performance.now() > end) break;
+      }
+      this.iconRaf = requestAnimationFrame(step);
+    };
+    this.iconRaf = requestAnimationFrame(step);
   }
 
   renderSlots() {
@@ -220,6 +252,7 @@ export class LoadoutScreen {
   renderGrid() {
     $('lo-grid').innerHTML = SHOP_ORDER.map((t) => this.card(t)).join('');
     $('lo-events').innerHTML = EVENT_TOWERS.map((t) => this.card(t)).join('');
+    this.fillIcons();
   }
 
   /**

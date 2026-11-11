@@ -66,6 +66,11 @@ export function renderIcon(model) {
   return url;
 }
 
+/** A tower's level-0 portrait if it's drawn already, else undefined (nothing gets drawn). */
+export function cachedTowerIcon(type) {
+  return cache.get(`${type}|0`);
+}
+
 /** The portrait of a tower at a level (0 = as placed). */
 export function towerIcon(type, level = 0) {
   const make = TOWER_MODELS[type];
