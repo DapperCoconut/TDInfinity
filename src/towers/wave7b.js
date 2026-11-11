@@ -1,0 +1,416 @@
+// Towers: wave 7, second half. Enforcement Base to Borealis.
+// One group of the TOWERS table. config.js joins the groups in order (see TOWERS there).
+// Shared units and abilities (MERC, AP_AB, ...) come from shared.js.
+import {
+  BOREAL, DIVE_AB, DROP_POINT_AB, EB, JERICHO_AB, JET, MECH, PUNK, PUNK_REVEAL, REDEPLOY_PUNK_AB, RIFT_AB, SCOPE_AB,
+  SKY_SLAM_AB, SPLASH_ALL, SPLASH_MOVE, VP, WIPEOUT_AB, WRONG_WAY_AB, bleed, cyc, marauderHarpoon, railgun,
+  shockMissileAb, sonar,
+} from './shared.js';
+
+export const TOWERS_WAVE_7B = {
+  // Enforcement Base (alternate Patrol form): sends Enforcers, Enforcer Ms, Turret Trucks and the APM-Bot.
+  enforcementBase: {
+    name: 'Enforcement Base',
+    altOf: 'patrol',
+    form: 'Enforcement Base',
+    shards: 1,
+    price: 0,
+    cost: 1150,
+    limit: 3,
+    kind: 'spawner',
+    spawnEvery: 60,
+    blurb: 'An alternate Patrol: a building that sends a squad of hard-hitting units down the path: Enforcers, Enforcer Ms, then the Turret Truck and the APM-Bot, which slow down while they fire. Cheap to place with huge late-game power, but its top upgrade is very expensive.',
+    tip: 'Pair it with a Broadcaster to make its later levels cheaper.',
+    levels: [
+      { name: 'Enforcement Base', desc: 'An Enforcer every 60s.', hidden: false, unit: EB.enf },
+      { name: 'Faster Dispatch', desc: 'An Enforcer every 40s.', cost: 850, hidden: false, spawnEvery: 40, unit: EB.enf },
+      { name: 'Enforcer M', desc: 'Adds an Enforcer M every 45s: a sturdier close-range unit.', cost: 2500, hidden: false, spawnEvery: 40, unit: EB.enf, unit2: EB.m, spawnEvery2: 45 },
+      { name: 'Squads', desc: '3 Enforcers every 30s, 2 Enforcer Ms every 45s.', cost: 5850, hidden: false, spawnEvery: 30, unit: { ...EB.enf, count: 3 }, unit2: { ...EB.m, count: 2 }, spawnEvery2: 45 },
+      { name: 'Turret Truck', desc: 'Faster squads, and a Turret Truck every 50s (450 HP, 140 DPS, hidden detection).', cost: 14500, hidden: true, spawnEvery: 25, unit: { ...EB.enf, count: 3 },
+        unit2: { ...EB.m, count: 3 }, spawnEvery2: 35, unit3: EB.truck, spawnEvery3: 50 },
+      { name: 'APM-Bot', desc: '5 Enforcers every 25s, more Ms and Trucks, and the APM-Bot every 75s (2,700 HP, 375 DPS, 260-damage blasts).', cost: 80000, hidden: true, spawnEvery: 25, unit: { ...EB.enf, count: 5 },
+        unit2: { ...EB.m, count: 3 }, spawnEvery2: 25, unit3: EB.truck, spawnEvery3: 40, unit4: EB.apm, spawnEvery4: 75 },
+    ],
+  },
+  // Planeswalker: a cliff sniper. Zombies inside its inner range (`closeRange`) take `closeMult` damage.
+  planeswalker: {
+    name: 'Planeswalker',
+    event: 'Beat Expert mode', // win reward (see DIFFICULTIES unlock)
+    lead: true,
+    price: 12000,
+    cost: 4500,
+    limit: 12,
+    placement: 'cliff',
+    kindLabel: 'Sniper',
+    blurb: 'A cliff sniper whose shots hit harder the farther away the zombie is: zombies inside its inner range take less. Fires instantly, so it snipes fast zombies easily. Hits one zombie at a time, and it\'s very expensive. Hidden detection at max level.',
+    tip: 'Put it as far from the path as its range allows to get the most damage.',
+    levels: [
+      { name: 'Planeswalker', desc: 'A long-range instant shot. Zombies inside its inner range take 30% less.', damage: 135, cooldown: 5, range: 16, closeRange: 6.5, closeMult: 0.7, hidden: false },
+      { name: 'Farsight', desc: 'Damage 135 → 180, faster, more range.', cost: 3250, damage: 180, cooldown: 4.5, range: 20, closeRange: 8, closeMult: 0.7, hidden: false },
+      { name: 'Planar Rounds', desc: 'Damage 180 → 285, faster, more range.', cost: 9000, damage: 285, cooldown: 4, range: 25, closeRange: 10, closeMult: 0.7, hidden: false },
+      { name: 'Rift Walker', desc: 'Damage 285 → 360, much faster, more range.', cost: 22500, damage: 360, cooldown: 2.5, range: 28, closeRange: 11, closeMult: 0.7, hidden: false },
+      { name: 'Walker of Planes', desc: 'Damage 360 → 505, faster, more range, and hidden detection.', cost: 46000, damage: 505, cooldown: 2, range: 32, closeRange: 12.5, closeMult: 0.7, hidden: true },
+    ],
+  },
+  // Submerge (alternate Warship form, water): Afloat mode fires coastal missile bursts. From Lv 3
+  // Dive switches to Submerged mode (`sub` fields replace the level's): slow nukes with a huge
+  // blast, and the only mode with hidden detection. Lv 5: Jericho Missile.
+  submerge: {
+    name: 'Submerge',
+    lead: true,
+    altOf: 'warship',
+    form: 'Submerge',
+    shards: 1,
+    price: 0,
+    cost: 6000,
+    limit: 5,
+    placement: 'water',
+    homing: true,
+    lob: 1,
+    blurb: 'An alternate Warship: a submarine with two modes from Lv 3. Afloat fires bursts of coastal missiles; Submerged launches slow nukes with huge splash and is the only mode that sees hidden zombies. At Lv 5 its Jericho Missile splits midair and rains 18,000 damage across the map. A slow burn, and water only.',
+    tip: 'Most players keep it Submerged. Set it to Strongest so less damage is wasted.',
+    levels: [
+      { name: 'Submerge', desc: 'Bursts of 2 coastal missiles.', damage: 35, burst: 2, burstGap: 1, cooldown: cyc(2, 1, 7), range: 110, radius: 3, hidden: false },
+      { name: 'More Tubes', desc: 'Damage 63 → 90, bursts of 4.', cost: 3500, damage: 50, burst: 4, burstGap: 1, cooldown: cyc(4, 1, 7), range: 110, radius: 3, hidden: false },
+      { name: 'Missile Deck', desc: 'Damage 90 → 115, more range, bursts of 8, shorter pauses.', cost: 6550, damage: 65, burst: 8, burstGap: 1, cooldown: cyc(8, 1, 6.5), range: 130, radius: 3, hidden: false },
+      { name: 'Dive', desc: 'Afloat: damage 115 → 135, much shorter pauses. Unlocks Submerged mode: 575-damage nukes with a huge blast and hidden detection.', cost: 11000, damage: 75, burst: 8, burstGap: 1, cooldown: cyc(8, 1, 3.5), range: 130, radius: 3, hidden: false,
+        sub: { damage: 320, burst: 1, burstGap: 3, cooldown: 6, range: 150, radius: 8, lob: 2.5, hidden: true }, abilities: [DIVE_AB] },
+      { name: 'Silent Hunter', desc: 'Afloat: damage 145, faster, more range. Submerged: 855-damage nukes, 2 per burst, more range.', cost: 19500, damage: 80, burst: 8, burstGap: 0.8, cooldown: cyc(8, 0.8, 3.5), range: 140, radius: 3, hidden: false,
+        sub: { damage: 475, burst: 2, burstGap: 2.5, cooldown: cyc(2, 2.5, 6), range: 190, radius: 8, lob: 2.5, hidden: true }, abilities: [DIVE_AB] },
+      { name: 'Jericho', desc: 'Afloat: damage 215, faster, more range. Submerged: 1,530-damage nukes, 3 per burst. Unlocks the Jericho Missile.', cost: 42000, damage: 120, burst: 8, burstGap: 0.75, cooldown: cyc(8, 0.75, 3.5), range: 150, radius: 3, hidden: false,
+        sub: { damage: 850, burst: 3, burstGap: 2.5, cooldown: cyc(3, 2.5, 10), range: 200, radius: 9, lob: 2.5, hidden: true }, abilities: [DIVE_AB, JERICHO_AB] },
+    ],
+  },
+  // Shock Commando (alternate Commando form): bursts of explosive missiles. Lv 4+: Shock Missile.
+  shockCommando: {
+    name: 'Shock Commando',
+    lead: true,
+    altOf: 'commando',
+    form: 'Shock Commando',
+    shards: 1,
+    price: 0,
+    cost: 850,
+    limit: 8,
+    homing: true,
+    lob: 0.5,
+    blurb: 'An alternate Commando that fires bursts of high-damage explosive missiles. Strong early, keeps up in the mid game, and late on you can build lots of them. From Lv 4 its Shock Missile does heavy damage and stuns any zombie, bosses included.',
+    tip: 'Save the Shock Missile for boss attacks.',
+    levels: [
+      { name: 'Shock Commando', desc: 'Bursts of 2 explosive missiles.', damage: 14, burst: 2, burstGap: 0.75, cooldown: cyc(2, 0.75, 3), range: 10, radius: 2, hidden: false },
+      { name: 'Bigger Warheads', desc: 'Damage 14 → 20, shorter pauses, bigger blast.', cost: 950, damage: 20, burst: 2, burstGap: 0.75, cooldown: cyc(2, 0.75, 2.8), range: 10, radius: 2.45, hidden: false },
+      { name: 'Thermal Sights', desc: 'Damage 20 → 30, faster, more range, and hidden detection.', cost: 2400, damage: 30, burst: 2, burstGap: 0.65, cooldown: cyc(2, 0.65, 2.7), range: 12, radius: 2.45, hidden: true },
+      { name: 'Second Pod', desc: 'Damage 30 → 35, more range, bursts of 4, bigger blast.', cost: 6500, damage: 35, burst: 4, burstGap: 0.65, cooldown: cyc(4, 0.65, 2.7), range: 14, radius: 2.75, hidden: true },
+      { name: 'Shock Missile', desc: 'Damage 35 → 60, faster, more range. Unlocks Shock Missile (150 damage, 1s stun).', cost: 7500, damage: 60, burst: 4, burstGap: 0.5, cooldown: cyc(4, 0.5, 2.7), range: 16, radius: 2.75, hidden: true, abilities: [shockMissileAb(150, 1)] },
+      { name: 'Storm Commando', desc: 'Damage 60 → 135, more range, bigger blast. Shock Missile: 500 damage, 1.25s stun.', cost: 23000, damage: 135, burst: 4, burstGap: 0.5, cooldown: cyc(4, 0.5, 2.7), range: 17, radius: 3, hidden: true, abilities: [shockMissileAb(500, 1.25)] },
+    ],
+  },
+  // Marauder (water): razors that make zombies bleed (poison-style damage every 0.5s). Lv 3+ sonar
+  // bombs that go for hidden zombies first and reveal them; Lv 4+ Harpoon. No hidden detection.
+  marauder: {
+    name: 'Marauder',
+    lead: true,
+    price: 9500,
+    cost: 7650,
+    limit: 3,
+    placement: 'water',
+    blurb: 'A raider boat that fires razors that make zombies bleed. Later levels add sonar bombs that hunt down and reveal hidden zombies, and a Harpoon that does huge damage, stuns (bosses too) and makes its target take 25% more damage. A top heavy-damage pick for Hard mode, but very expensive and it can\'t see hidden zombies itself. Water only.',
+    tip: 'One Marauder gives most of the value: spend the rest of your cash elsewhere. Open boss fights with the Harpoon.',
+    levels: [
+      { name: 'Marauder', desc: 'Razors that make zombies bleed (15 over 3s).', damage: 40, cooldown: 3, range: 60, poison: bleed(15, 3), hidden: false },
+      { name: 'Serrated Razors', desc: 'Damage 40 → 65, bleed 25 over 3.5s.', cost: 5350, damage: 65, cooldown: 3, range: 60, poison: bleed(25, 3.5), hidden: false },
+      { name: 'Twin Launchers', desc: '2 razors per shot, more range, bleed 40.', cost: 10000, damage: 65, burst: 2, burstGap: 0.75, cooldown: cyc(2, 0.75, 3), range: 70, poison: bleed(40, 3.5), hidden: false },
+      { name: 'Sonar', desc: 'Damage 65 → 90, bleed 65 over 4s. Sonar bombs (350 damage) every 17.5s that hunt and reveal hidden zombies.', cost: 23500, damage: 90, burst: 2, burstGap: 0.75, cooldown: cyc(2, 0.75, 2.75), range: 70, poison: bleed(65, 4), hidden: false,
+        missiles: [sonar(350, 17.5)] },
+      { name: 'Harpoon', desc: 'Damage 90 → 200, more range, bleed 115, sonar 550 every 15s. Unlocks the Harpoon.', cost: 45500, damage: 200, burst: 2, burstGap: 0.75, cooldown: cyc(2, 0.75, 3.25), range: 85, poison: bleed(115, 4.5), hidden: false,
+        missiles: [sonar(550, 15)], abilities: [marauderHarpoon(2500)] },
+      { name: 'Blood Tide', desc: 'Damage 160 → 400, faster, bleed 210, sonar 1,150 every 12.5s, Harpoon 5,000.', cost: 85000, damage: 400, burst: 2, burstGap: 0.5, cooldown: cyc(2, 0.5, 2.5), range: 90, poison: bleed(210, 4.5), hidden: false,
+        missiles: [sonar(1150, 12.5)], abilities: [marauderHarpoon(5000)] },
+    ],
+  },
+  // Orbit: a satellite that fires a long laser burst (firing time), then recharges. Its shield
+  // (Shield Tower style) protects towers in its aura. Lv 5: Orbital Wipeout.
+  orbit: {
+    name: 'Orbit',
+    lead: true,
+    laser: true,
+    price: 15000,
+    cost: 5000,
+    limit: 4,
+    blurb: 'Launches a satellite that charges up for a long time, then fires a plasma laser in a long burst. Sees hidden zombies from the start. Its Aligning Stars shield protects towers nearby from damage. At max level, Orbital Wipeout splits huge damage among every zombie on the map. Some zombies resist lasers.',
+    tip: 'Place it where it sees a lot of path and its shield covers your towers. Farms and a Broadcaster help you afford it.',
+    levels: [
+      { name: 'Orbit', desc: '5s of laser fire, then 8s recharging. Shields towers nearby (100 every 15s).', damage: 7, burst: 42, burstGap: 0.12, cooldown: cyc(42, 0.12, 8), range: 20, aura: 20, shield: { amount: 100, every: 15 }, hidden: true },
+      { name: 'Focusing Lens', desc: 'Damage 7 → 12, faster, more range, 6s of fire.', cost: 4900, damage: 12, burst: 60, burstGap: 0.1, cooldown: cyc(60, 0.1, 8), range: 22, aura: 22, shield: { amount: 150, every: 15 }, hidden: true },
+      { name: 'Plasma Core', desc: 'Damage 12 → 18, more range.', cost: 10000, damage: 18, burst: 60, burstGap: 0.1, cooldown: cyc(60, 0.1, 8), range: 23, aura: 23, shield: { amount: 250, every: 15 }, hidden: true },
+      { name: 'Solar Array', desc: 'Damage 18 → 28, 7s of fire.', cost: 19000, damage: 28, burst: 70, burstGap: 0.1, cooldown: cyc(70, 0.1, 8), range: 23, aura: 23, shield: { amount: 400, every: 15 }, hidden: true },
+      { name: 'Quick Recharge', desc: 'Damage 28 → 33, more range, recharges in 7s.', cost: 27500, damage: 33, burst: 70, burstGap: 0.1, cooldown: cyc(70, 0.1, 7), range: 24, aura: 24, shield: { amount: 600, every: 15 }, hidden: true },
+      { name: 'Orbital Wipeout', desc: 'Damage 33 → 40, more range, 10s of fire, recharges in 6.5s. Unlocks Orbital Wipeout.', cost: 44500, damage: 40, burst: 100, burstGap: 0.1, cooldown: cyc(100, 0.1, 6.5), range: 25, aura: 25, shield: { amount: 1000, every: 15 }, hidden: true, abilities: [WIPEOUT_AB] },
+    ],
+  },
+  // Void Port (alternate Zed form): sends armed carts, then trains (a locomotive whose `train`
+  // wagons follow it). Carts slow down while they shoot. Not used by the game yet (kept for later):
+  // `trainStops` (when the locomotive is destroyed the wagons should stop where they are and keep firing).
+  voidPort: {
+    name: 'Void Port',
+    altOf: 'zed',
+    form: 'Void Port',
+    shards: 1,
+    price: 0,
+    cost: 4950,
+    limit: 3,
+    kind: 'spawner',
+    spawnEvery: 85,
+    trainStops: true,
+    blurb: 'An alternate Zed that sends armed carts down the path, and later a whole train: a locomotive pulling gun wagons and mortar wagons. The carts are tanky, hit hard, see hidden zombies, and slow down while they shoot. Very expensive.',
+    tip: 'A Broadcaster cuts its huge upgrade costs. Its carts are great at catching fast zombies.',
+    levels: [
+      { name: 'Void Port', desc: 'A Gunner Cart and a Mortar Cart every 85s.', hidden: true, unit: VP.gunCart, unit2: VP.mortarCart, spawnEvery2: 85 },
+      { name: 'Faster Rails', desc: 'Carts every 65s.', cost: 2625, hidden: true, spawnEvery: 65, unit: VP.gunCart, unit2: VP.mortarCart, spawnEvery2: 65 },
+      { name: 'Double Carts', desc: '2 Gunner Carts and 2 Mortar Carts.', cost: 7200, hidden: true, spawnEvery: 65, unit: { ...VP.gunCart, count: 2 }, unit2: { ...VP.mortarCart, count: 2 }, spawnEvery2: 65 },
+      { name: 'Train', desc: 'A train every 75s: a Locomotive (975 HP) pulling a Gun Wagon (170 DPS) and a Mortar Wagon.', cost: 20000, hidden: true, spawnEvery: 75, unit: VP.loco([VP.gunWagon, VP.mortarWagon]) },
+      { name: 'Long Train', desc: '2 Gun Wagons and 2 Mortar Wagons.', cost: 33250, hidden: true, spawnEvery: 75, unit: VP.loco([VP.gunWagon, VP.gunWagon, VP.mortarWagon, VP.mortarWagon]) },
+      { name: 'Void Train', desc: 'The Void train: a Void Loc (2,280 HP), 2 Void GWagons (280 DPS) and 2 Void Mortars, each 1,300 HP.', cost: 95000, hidden: true, spawnEvery: 75, unit: VP.voidLoco([VP.voidGun, VP.voidGun, VP.voidMortar, VP.voidMortar]) },
+    ],
+  },
+  // Void King (alternate Void Traitor form): a melee sword hitting up to `targets` zombies. Every
+  // `lasers.every` hits, lasers strike `count` zombies within `reach` and stun them. Lv 4: Sky Slam.
+  voidKing: {
+    name: 'Void King',
+    altOf: 'traitor',
+    form: 'Void King',
+    shards: 1,
+    price: 0,
+    flying: false,
+    lead: true,
+    cost: 2000,
+    limit: 4,
+    melee: true,
+    kindLabel: 'Multi',
+    blurb: 'An alternate Void Traitor: one of the strongest towers in the game. Huge sword swings that hit several zombies, and every few hits he summons lasers that do massive damage and stun. Can\'t be stunned from Lv 3. At max level his Sky Slam crashes down for 330 damage in a huge radius. Tiny range, and he never sees hidden zombies.',
+    tip: 'Place him on the busiest stretch of path, and pair him with a tower that sees hidden zombies.',
+    levels: [
+      { name: 'Void King', desc: 'Sword swings at up to 3 zombies.', damage: 50, cooldown: 2, range: 4.5, targets: 3, hp: 1400, hidden: false },
+      { name: 'Void Lasers', desc: 'Damage 17 → 38, hits 4. Every 25 hits, lasers strike 3 zombies (115 damage, 1s stun).', cost: 3250, damage: 115, cooldown: 2, range: 4.5, targets: 4, lasers: { every: 25, count: 3, damage: 350, stun: 1, reach: 15 }, hp: 1600, hidden: false },
+      { name: 'Crimson Edge', desc: 'Damage 38 → 83, faster, more reach. Lasers 250.', cost: 7500, damage: 250, cooldown: 1.75, range: 5, targets: 4, lasers: { every: 25, count: 3, damage: 750, stun: 1, reach: 15 }, hp: 2000, hidden: false },
+      { name: 'Unshakable', desc: 'Damage 83 → 155, hits 5, can\'t be stunned. Lasers 460.', cost: 18000, damage: 475, cooldown: 1.75, range: 5, targets: 5, lasers: { every: 25, count: 3, damage: 1400, stun: 1, reach: 15 }, hp: 3000, hidden: false, stunImmune: true },
+      { name: 'King of the Void', desc: 'Damage 155 → 415, faster, more reach, hits 7, lasers every 15 hits (1,240). Unlocks Sky Slam.', cost: 35400, damage: 1250, cooldown: 1.5, range: 5.5, targets: 7, lasers: { every: 15, count: 4, damage: 3750, stun: 1, reach: 15 }, hp: 6000, hidden: false, stunImmune: true, abilities: [SKY_SLAM_AB] },
+    ],
+  },
+  // The Eldritch (alternate Star Cannon form): every hit builds charge; at `railgun.max` it fires a
+  // railgun that pierces every zombie on a long line. Rift: teleport + 20s stun immunity. Support
+  // towers can't boost it and nothing can heal it. Not used by the game yet (kept for later):
+  // `noShield` (Shield Tower / Orbit shields shouldn't cover it), `leech` (heals as it fires).
+  eldritch: {
+    name: 'The Eldritch',
+    altOf: 'starCannon',
+    form: 'The Eldritch',
+    shards: 1,
+    price: 0,
+    lead: true,
+    cost: 5750,
+    limit: 3,
+    noBuff: true,
+    noHeal: true,
+    noShield: true,
+    blurb: 'An alternate Star Cannon: a cosmic railgun. Its shots build charge, and when it\'s full it fires a railgun shot that pierces every zombie on a huge line. Sees hidden zombies from the start, and Rift teleports it anywhere. Very fragile, and support towers, shields and healing do nothing for it.',
+    tip: 'Use Rift to move it out of danger when a boss comes close. High risk, high reward.',
+    levels: [
+      { name: 'The Eldritch', desc: 'Every 8 hits: a 350-damage railgun shot that pierces a 44-long line.', damage: 40, cooldown: 1, range: 22, railgun: railgun(8, 350, 44), hp: 30, hidden: true, leech: true, abilities: [RIFT_AB] },
+      { name: 'Whispers', desc: 'Damage 40 → 80, more range, railgun 650 every 10 hits.', cost: 7600, damage: 80, cooldown: 1, range: 25, railgun: railgun(10, 650, 50), hp: 35, hidden: true, leech: true, abilities: [RIFT_AB] },
+      { name: 'Madness', desc: 'Damage 80 → 140, faster, railgun 1,150 every 12 hits.', cost: 9500, damage: 140, cooldown: 0.85, range: 25, railgun: railgun(12, 1150, 55), hp: 40, hidden: true, leech: true, abilities: [RIFT_AB] },
+      { name: 'Beyond the Stars', desc: 'Damage 140 → 215, faster, more range, railgun 2,700.', cost: 23750, damage: 215, cooldown: 0.8, range: 32, railgun: railgun(12, 2700, 65), hp: 50, hidden: true, leech: true, abilities: [RIFT_AB] },
+      { name: 'Old Ones', desc: 'Damage 215 → 330, railgun 4,350.', cost: 35600, damage: 330, cooldown: 0.8, range: 32, railgun: railgun(12, 4350, 70), hp: 55, hidden: true, leech: true, abilities: [RIFT_AB] },
+      { name: 'The Eldritch', desc: 'Damage 330 → 435, faster, more range, railgun 9,000 every 18 hits with an 85-long line that loses only 5% per zombie.', cost: 80000, damage: 435, cooldown: 0.75, range: 34, railgun: railgun(18, 9000, 85, 0.05), hp: 65, hidden: true, leech: true, abilities: [RIFT_AB] },
+    ],
+  },
+  // Valkyr (alternate War Machine Factory form): drops a mech at its drop point (the path closest
+  // to it until you pick one). Mechs fight up close (`bump`) and leak air (`decay`). Not used by the
+  // game yet (kept for later): `smallRange` (its mechs should only fight in a very small range until max level).
+  valkyr: {
+    name: 'Valkyr',
+    altOf: 'warMachine',
+    form: 'Valkyr',
+    shards: 1,
+    price: 0,
+    cost: 11500,
+    limit: 2,
+    kind: 'spawner',
+    spawnEvery: 60,
+    throwNear: true,
+    smallRange: true,
+    blurb: 'An alternate War Machine Factory that airdrops a giant mech at a drop point you choose. Mechs hit devastatingly hard up close, and later get rifles and explosives. When damaged they leak air and slowly lose health. One of the strongest summoners when it gets to fight, but it drops slowly and is very expensive.',
+    tip: 'Set the drop point where zombies bunch up.',
+    levels: [
+      { name: 'Valkyr', desc: 'Drops a Mark 1 mech (1,490 HP, 225 melee DPS) every 60s.', hidden: false, unit: MECH.m1, abilities: [DROP_POINT_AB] },
+      { name: 'Mark 2', desc: 'Drops a Mark 2 (2,210 HP, 440 melee DPS, a 280 DPS rifle) every 75s.', cost: 15000, hidden: false, spawnEvery: 75, unit: MECH.m2, abilities: [DROP_POINT_AB] },
+      { name: 'Mark 4.5', desc: 'Mark 4.5: 4,500 HP, 770 melee DPS, 530 DPS rifle.', cost: 30500, hidden: false, spawnEvery: 75, unit: MECH.m45, abilities: [DROP_POINT_AB] },
+      { name: 'Mark 10 Kaboom', desc: 'Mark 10 Kaboom every 85s: 7,200 HP, 1,270 melee DPS, 860 DPS rifle, and explosives.', cost: 46500, hidden: false, spawnEvery: 85, unit: MECH.m10, abilities: [DROP_POINT_AB] },
+      { name: 'Mark O-Ultimate', desc: 'Mark O-Ultimate: 10,400 HP, 2,000 melee DPS, 1,300 DPS rifle, stronger explosives.', cost: 78500, hidden: false, spawnEvery: 85, unit: MECH.ult, abilities: [DROP_POINT_AB] },
+    ],
+  },
+  // Squadron (water): an aircraft carrier. Each jet it has unlocked takes off every 42s and flies
+  // down the path from its drop point (zombies can't touch them). Airlifters drop paratroopers.
+  // Not used by the game yet (kept for later): `irradiate` (if it's destroyed it should explode
+  // and badly hurt your towers nearby for 5 minutes).
+  squadron: {
+    name: 'Squadron',
+    lead: true,
+    price: 50000,
+    cost: 16500,
+    limit: 2,
+    placement: 'water',
+    kind: 'spawner',
+    spawnEvery: 42,
+    irradiate: true,
+    blurb: 'An aircraft carrier that launches fighter jets to strafe the path and drop paratroopers. On paper the highest damage in the game, but each jet only comes every 42s and flies past quickly. Huge bursts that wipe out big threats. Water only, and very expensive.',
+    tip: 'Set the drop point so the jets fly over the busiest part of the path. Keep slowing towers for the gaps.',
+    levels: [
+      { name: 'Squadron', desc: 'Launches a Merlin every 42s (500 DPS, hidden detection).', hidden: true, unit: JET.merlin, abilities: [DROP_POINT_AB] },
+      { name: 'Falcon', desc: 'Adds the Falcon: 5-shot bursts of 450 blast damage.', cost: 15500, hidden: true, unit: JET.merlin, unit2: JET.falcon, spawnEvery2: 42, abilities: [DROP_POINT_AB] },
+      { name: 'Raptor', desc: 'Adds the Raptor: 75 damage every 0.1s.', cost: 30000, hidden: true, unit: JET.merlin, unit2: JET.falcon, spawnEvery2: 42, unit3: JET.raptor, spawnEvery3: 42, abilities: [DROP_POINT_AB] },
+      { name: 'Hardpoint', desc: 'Adds the Hardpoint: 2-bomb bursts of 1,500 blast damage.', cost: 42500, hidden: true, unit: JET.merlin, unit2: JET.falcon, spawnEvery2: 42, unit3: JET.raptor, spawnEvery3: 42,
+        unit4: JET.hardpoint, spawnEvery4: 42, abilities: [DROP_POINT_AB] },
+      { name: 'Airlifter', desc: 'Adds the Airlifter, which drops 3 paratroopers (90 DPS each).', cost: 60000, hidden: true, unit: JET.merlin, unit2: JET.falcon, spawnEvery2: 42, unit3: JET.raptor, spawnEvery3: 42,
+        unit4: JET.hardpoint, spawnEvery4: 42, unit5: JET.airlifter, spawnEvery5: 42, abilities: [DROP_POINT_AB] },
+      { name: 'Tentative', desc: 'Adds the Tentative: a 15,000-damage shot after 3s of aiming.', cost: 125000, hidden: true, unit: JET.merlin, unit2: JET.falcon, spawnEvery2: 42, unit3: JET.raptor, spawnEvery3: 42,
+        unit4: JET.hardpoint, spawnEvery4: 42, unit5: JET.airlifter, spawnEvery5: 42, unit6: JET.tentative, spawnEvery6: 42, abilities: [DROP_POINT_AB] },
+    ],
+  },
+  // Splash (alternate Cryo Helicopter form): a helicopter whose water shots slow zombies (bosses
+  // half as much). Relocation flies it anywhere; Total Relocation moves every Splash you own.
+  splash: {
+    name: 'Splash',
+    altOf: 'cryoHeli',
+    form: 'Splash',
+    shards: 1,
+    price: 0,
+    cost: 575,
+    limit: 6,
+    heli: { speed: 12, height: 13 },
+    kindLabel: 'Slow',
+    blurb: 'An alternate Cryo Helicopter: a water helicopter with low damage whose shots slow zombies by 30-45% (bosses half as much). Its range is small, but Relocation flies it anywhere on the map, and Total Relocation moves all your Splashes at once. Never sees hidden zombies.',
+    tip: 'Keep moving it to wherever the current threat is.',
+    levels: [
+      { name: 'Splash', desc: 'Water shots that slow zombies 30% for 3s.', damage: 7, cooldown: 4, range: 7, patrol: 5, slime: { slow: 0.3, time: 3, boss: 0.5 }, hp: 70, hidden: false, abilities: [SPLASH_MOVE, SPLASH_ALL] },
+      { name: 'Pressure Hose', desc: 'Damage 21 → 60, more range and health.', cost: 900, damage: 20, cooldown: 4, range: 8, patrol: 5, slime: { slow: 0.3, time: 3, boss: 0.5 }, hp: 150, hidden: false, abilities: [SPLASH_MOVE, SPLASH_ALL] },
+      { name: 'Soaker', desc: 'Damage 60 → 75, faster, 40% slow.', cost: 2800, damage: 25, cooldown: 3.5, range: 8, patrol: 5, slime: { slow: 0.4, time: 3, boss: 0.5 }, hp: 390, hidden: false, abilities: [SPLASH_MOVE, SPLASH_ALL] },
+      { name: 'Tidal Cannon', desc: 'Damage 75 → 90, more range, 45% slow.', cost: 6500, damage: 30, cooldown: 3.5, range: 10, patrol: 5, slime: { slow: 0.45, time: 3, boss: 0.5 }, hp: 780, hidden: false, abilities: [SPLASH_MOVE, SPLASH_ALL] },
+      { name: 'Tsunami', desc: 'Damage 90 → 270, faster.', cost: 9000, damage: 90, cooldown: 3, range: 10, patrol: 5, slime: { slow: 0.45, time: 3, boss: 0.5 }, hp: 1320, hidden: false, abilities: [SPLASH_MOVE, SPLASH_ALL] },
+    ],
+  },
+  // Ghostbuster (event tower): a plasma beam. Each other Ghostbuster beaming the same zombie adds
+  // `team.boost` damage, but crossed beams hurt it (`team.self` per tick). Lv 1+: 2x vs Ghosts.
+  ghostbuster: {
+    name: 'Ghostbuster',
+    event: 'Ghost\'s Edge event reward',
+    lead: true,
+    laser: true,
+    cost: 3400,
+    limit: 8,
+    retarget: 0,
+    blurb: 'Fires a plasma beam. On its own it\'s an ordinary tower, but every other Ghostbuster beaming the same zombie adds 10% damage. Once beams cross, the Ghostbusters start hurting themselves. From Lv 1 it does double damage to Ghosts. Sees hidden zombies. Some zombies resist lasers.',
+    tip: 'Build them in groups: a group of Lv 2s is the sweet spot.',
+    levels: [
+      { name: 'Ghostbuster', desc: 'A plasma beam at one zombie.', damage: 6, maxDamage: 6, ramp: 1, cooldown: 0.2, range: 12, team: { boost: 0.1, self: 0.5 }, hidden: true },
+      { name: 'Ghost Trap', desc: 'Damage 6 → 9, faster, more range, and double damage to Ghosts.', cost: 2300, damage: 9, maxDamage: 9, ramp: 1, cooldown: 0.175, range: 14, team: { boost: 0.1, self: 0.5 }, ghostMult: 2, hidden: true },
+      { name: 'Proton Boost', desc: 'Damage 9 → 13, faster.', cost: 4000, damage: 13, maxDamage: 13, ramp: 1, cooldown: 0.15, range: 14, team: { boost: 0.1, self: 0.5 }, ghostMult: 2, hidden: true },
+      { name: 'Long Stream', desc: 'Damage 13 → 15, faster, more range.', cost: 8500, damage: 15, maxDamage: 15, ramp: 1, cooldown: 0.125, range: 16, team: { boost: 0.1, self: 0.5 }, ghostMult: 2, hidden: true },
+      { name: 'Overload Pack', desc: 'Damage 15 → 19, faster.', cost: 15000, damage: 19, maxDamage: 19, ramp: 1, cooldown: 0.1, range: 16, team: { boost: 0.1, self: 0.5 }, ghostMult: 2, hidden: true },
+      { name: 'Total Protonic Reversal', desc: 'Damage 19 → 25, faster.', cost: 25000, damage: 25, maxDamage: 25, ramp: 1, cooldown: 0.075, range: 16, team: { boost: 0.1, self: 0.5 }, ghostMult: 2, hidden: true },
+    ],
+  },
+  // Gift Elf (alternate Elf form): lobbed presents that burst on a small area. From Lv 1 they
+  // reveal hidden zombies in the blast for `reveal` s; from Lv 3 they stun the zombie they land on.
+  giftElf: {
+    name: 'Gift Elf',
+    altOf: 'elf',
+    form: 'Gift Elf',
+    shards: 1,
+    price: 0,
+    cost: 350,
+    limit: 10,
+    lob: 0.8,
+    blurb: 'An alternate Elf: a cheap early support tower that throws gifts. From Lv 1 its gifts reveal hidden zombies, it sees hidden zombies itself from Lv 2, and from Lv 3 its gifts stun the zombie they land on. Great value early, but it falls off in the mid and late game.',
+    tip: 'Its revealing gifts let your other towers hit hidden zombies too.',
+    levels: [
+      { name: 'Gift Elf', desc: 'Throws gifts that burst on a small area.', damage: 12, cooldown: 3, range: 8, radius: 3, hidden: false },
+      { name: 'Wrapping Paper', desc: 'Damage 12 → 15, more range, and gifts reveal hidden zombies for 3s.', cost: 500, damage: 15, cooldown: 3, range: 9, radius: 3, reveal: 3, hidden: false },
+      { name: 'Naughty List', desc: 'Damage 15 → 21, faster, and hidden detection.', cost: 1200, damage: 21, cooldown: 2.75, range: 9, radius: 3, reveal: 3, hidden: true },
+      { name: 'Stun Presents', desc: 'Damage 21 → 33, more range, and gifts stun the zombie they land on (0.5s).', cost: 2000, damage: 33, cooldown: 2.75, range: 12, radius: 3, reveal: 3, stun: 0.5, stunTargets: 1, hidden: true },
+      { name: 'Big Sack', desc: 'Damage 33 → 45, faster, more range, 0.75s stuns.', cost: 3250, damage: 45, cooldown: 2.5, range: 13, radius: 3, reveal: 3, stun: 0.75, stunTargets: 1, hidden: true },
+    ],
+  },
+  // Stormwing (event tower): a plane circling its pad, shooting and (Lv 1+) bombing. Expanded Scope
+  // makes the circle `scope` times as big; Wrong Direction flies it the other way round.
+  stormwing: {
+    name: 'Stormwing',
+    event: 'Event gift reward',
+    lead: 3,
+    cost: 650,
+    limit: 6,
+    placement: 'any',
+    orbit: 10,
+    lap: 7,
+    blurb: 'A plane that circles its landing pad, firing at the zombies under it. From Lv 1 it drops bombs too. Expanded Scope makes its circle bigger, and Wrong Direction flips which way it flies, so it can hover over a horde or sweep back through it. Strong early and mid game, but fairly weak if you don\'t use its abilities.',
+    tip: 'Keep flipping Wrong Direction so it stays over the horde, and resize the circle to catch extra hits.',
+    levels: [
+      { name: 'Stormwing', desc: 'Circles its pad, firing at zombies under it.', damage: 3, cooldown: 0.2, range: 6, scope: 1.6, hidden: false, abilities: [SCOPE_AB, WRONG_WAY_AB] },
+      { name: 'Bomb Bay', desc: 'Damage 3 → 4, faster, and 12-damage bombs.', cost: 700, damage: 4, cooldown: 0.175, range: 6, scope: 1.6, bomb: { damage: 12, count: 1, every: 2, radius: 3 }, hidden: false, abilities: [SCOPE_AB, WRONG_WAY_AB] },
+      { name: 'Storm Radar', desc: 'Damage 4 → 7, more range, 20-damage bombs, and hidden detection.', cost: 1800, damage: 7, cooldown: 0.175, range: 6.5, scope: 1.6, bomb: { damage: 20, count: 1, every: 2, radius: 3 }, hidden: true, abilities: [SCOPE_AB, WRONG_WAY_AB] },
+      { name: 'Twin Bombs', desc: 'Damage 7 → 12, faster, two 45-damage bombs.', cost: 5800, damage: 12, cooldown: 0.15, range: 6.5, scope: 1.6, bomb: { damage: 45, count: 2, every: 2, radius: 3.5 }, hidden: true, abilities: [SCOPE_AB, WRONG_WAY_AB] },
+      { name: 'Thunderhead', desc: 'Damage 12 → 19, much faster, more range, two 75-damage bombs.', cost: 14000, damage: 19, cooldown: 0.11, range: 6.75, scope: 1.6, bomb: { damage: 75, count: 2, every: 2, radius: 3.5 }, hidden: true, abilities: [SCOPE_AB, WRONG_WAY_AB] },
+    ],
+  },
+  // Punkbuster (alternate Graveyard form): throws summons onto the path nearest it (or where Redeploy
+  // sends them). It can only have as many of each out as it throws at once (`max`). Lv 3+ summons
+  // reveal hidden zombies near where they land.
+  punkbuster: {
+    name: 'Punkbuster',
+    altOf: 'graveyard',
+    form: 'Punkbuster',
+    shards: 1,
+    price: 0,
+    cost: 800,
+    limit: 3,
+    kind: 'spawner',
+    spawnEvery: 60,
+    throwNear: true,
+    blurb: 'An alternate Graveyard that throws fighters onto the path near it: Fraggers first, then Boogiemen, Rocketeers and finally the Nucleus, which blows up for huge damage. It can only keep as many of each out as it throws at once. From Lv 3 its summons reveal hidden zombies where they land. Very strong early; the top upgrade is very expensive.',
+    tip: 'Use Redeploy to throw its summons right where the trouble is.',
+    levels: [
+      { name: 'Punkbuster', desc: 'Throws a Fragger every 60s (keeps 1 out).', hidden: false, unit: PUNK.fragger(1), abilities: [REDEPLOY_PUNK_AB] },
+      { name: 'Double Trouble', desc: '2 Fraggers every 50s.', cost: 2050, hidden: false, spawnEvery: 50, unit: PUNK.fragger(2), abilities: [REDEPLOY_PUNK_AB] },
+      { name: 'Boogieman', desc: 'Also throws a Boogieman every 60s.', cost: 8500, hidden: false, spawnEvery: 50, unit: PUNK.fragger(2), unit2: PUNK.boogie(1), spawnEvery2: 60, abilities: [REDEPLOY_PUNK_AB] },
+      { name: 'Rocketeers', desc: 'Also throws a Rocketeer every 75s, and summons reveal hidden zombies where they land.', cost: 30500, hidden: false, spawnEvery: 50, unit: { ...PUNK.fragger(2), reveal: PUNK_REVEAL },
+        unit2: PUNK.boogie(1, PUNK_REVEAL), spawnEvery2: 60, unit3: PUNK.rocketeer(1, PUNK_REVEAL), spawnEvery3: 75, abilities: [REDEPLOY_PUNK_AB] },
+      { name: 'Nucleus', desc: '2 Boogiemen and 2 Rocketeers at a time, plus the Nucleus every 150s, which blows up for 24,000 damage.', cost: 125000, hidden: false, spawnEvery: 50, unit: { ...PUNK.fragger(2), reveal: PUNK_REVEAL },
+        unit2: PUNK.boogie(2, PUNK_REVEAL), spawnEvery2: 60, unit3: PUNK.rocketeer(2, PUNK_REVEAL), spawnEvery3: 75, unit4: PUNK.nucleus(PUNK_REVEAL), spawnEvery4: 150, abilities: [REDEPLOY_PUNK_AB] },
+    ],
+  },
+  // Borealis (alternate Elf Camp form, water): an ice carrier whose planes fly down the path from
+  // its waypoint. Not used by the game yet (kept for later): Sleigh `healTowers` (should heal towers it flies over).
+  borealis: {
+    name: 'Borealis',
+    altOf: 'elfCamp',
+    form: 'Borealis',
+    shards: 1,
+    price: 0,
+    cost: 11000,
+    limit: 2,
+    placement: 'water',
+    kind: 'spawner',
+    spawnEvery: 15,
+    noBuff: true,
+    blurb: 'An alternate Elf Camp: an aircraft carrier made of ice. Its planes fly down the path from a waypoint you set, dealing big damage along the way. Later it adds Sleighs that stun zombies and the Festive Fortress, which drops tanky Festive Tanks to catch leaks. Weak against bosses, and expensive. Water only.',
+    tip: 'Set the waypoint so its planes cover as much path as possible.',
+    levels: [
+      { name: 'Borealis', desc: 'A Breeze every 15s (150 DPS).', hidden: false, unit: BOREAL.breeze, abilities: [DROP_POINT_AB] },
+      { name: 'Ornaments', desc: 'Adds an Ornament every 20s (200-damage blasts).', cost: 12000, hidden: false, unit: BOREAL.breeze, unit2: BOREAL.ornament, spawnEvery2: 20, abilities: [DROP_POINT_AB] },
+      { name: 'Northwinds', desc: 'Breezes become Northwinds (312 DPS).', cost: 20000, hidden: false, unit: BOREAL.northwind, unit2: BOREAL.ornament, spawnEvery2: 20, abilities: [DROP_POINT_AB] },
+      { name: 'Sleighs', desc: 'Faster planes, and a Sleigh every 25s that bombs and stuns zombies.', cost: 35000, hidden: false, spawnEvery: 12, unit: BOREAL.northwind, unit2: BOREAL.ornament, spawnEvery2: 17,
+        unit3: BOREAL.sleigh, spawnEvery3: 25, abilities: [DROP_POINT_AB] },
+      { name: 'Festive Fortress', desc: 'Adds the Festive Fortress every 30s (942 DPS), which drops Festive Tanks (1,550 HP) to catch leaks.', cost: 105000, hidden: false, unit: BOREAL.northwind, unit2: BOREAL.ornament, spawnEvery2: 20,
+        unit3: BOREAL.sleigh, spawnEvery3: 25, unit4: BOREAL.fortress, spawnEvery4: 30, abilities: [DROP_POINT_AB] },
+    ],
+  },
+};
