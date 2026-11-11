@@ -1,79 +1,12 @@
 // Tower models, file 1 of 12. Each makeX(level) builds one tower's look.
 // In here:
-// (Scout, Classic Scout, Tweeter, Soldier: people1.js.) Marksman, Commando, Gold Scout, Gold Commando, Plane,
+// (Scout, Classic Scout, Tweeter, Soldier: people1.js; Marksman: people2.js.) Commando, Gold Scout, Gold Commando, Plane,
 // Aviator, Phaser, Railgunner.
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
 
 import * as THREE from 'three';
 import { boxGeo, makeHumanoid, part } from './kit.js';
 import { addHalo, addHandgun, addWings, glow, goldify, holdLongGun } from './bits.js';
-
-/** Marksman tower: long-range rifle. Look changes per level (0-4). */
-export function makeMarksman(level) {
-  const cyber = level >= 4;
-  const h = makeHumanoid(
-    cyber
-      ? { skin: 0x8d5524, shirt: 0x212121, pants: 0x151515, arms: 0x2c2c2c, face: 'soldier' }
-      : { skin: 0x8d5524, shirt: 0x8d7b55, pants: 0x5a4d35, arms: 0x8d7b55, face: 'soldier' },
-  );
-  const { M } = h;
-
-  if (cyber) {
-    // Cyber Hunter: bounty-hunter helmet with a red T-visor, armor, cape
-    const steel = M(0x546e7a);
-    part(h.head, boxGeo(1.45, 1.45, 1.45), steel, 0, 0.62, 0);
-    part(h.head, boxGeo(1.1, 0.22, 0.08), glow(h, 0xff1744), 0, 0.82, 0.74);
-    part(h.head, boxGeo(0.22, 0.6, 0.08), glow(h, 0xff1744), 0, 0.5, 0.74);
-    part(h.torso, boxGeo(2.2, 1.6, 1.2), steel, 0, 0.15, 0);
-    part(h.torso, boxGeo(0.3, 0.3, 0.1), glow(h, 0xff1744), 0.55, 0.5, 0.62);
-    part(h.torso, boxGeo(2.0, 2.4, 0.12), M(0x4a1010), 0, -0.4, -0.62); // cape
-  } else {
-    // Boonie hat
-    const hat = M(0x6b5d3f);
-    part(h.head, boxGeo(1.9, 0.12, 1.9), hat, 0, 1.25, 0);
-    part(h.head, boxGeo(1.3, 0.4, 1.3), hat, 0, 1.45, 0);
-    if (level >= 1) {
-      // Specs: round glasses
-      const frame = M(0x3e2723);
-      part(h.head, boxGeo(0.4, 0.34, 0.06), frame, -0.28, 0.66, 0.62);
-      part(h.head, boxGeo(0.4, 0.34, 0.06), frame, 0.28, 0.66, 0.62);
-      part(h.head, boxGeo(0.3, 0.24, 0.07), M(0xb3e5fc), -0.28, 0.66, 0.63);
-      part(h.head, boxGeo(0.3, 0.24, 0.07), M(0xb3e5fc), 0.28, 0.66, 0.63);
-      // ...and a spotter pack with a rangefinder
-      part(h.torso, boxGeo(1.3, 1.5, 0.6), M(0x6b5d3f), 0, 0, -0.8);
-      part(h.torso, boxGeo(0.5, 0.35, 0.7), M(0x263238), 0.4, 1.0, -0.8);
-    }
-    if (level >= 2) {
-      // Headshot Practice: ghillie shawl and bandolier
-      part(h.torso, boxGeo(2.3, 0.8, 1.3), M(0x556b2f), 0, 0.7, 0);
-      const strap = part(h.torso, boxGeo(0.25, 2.4, 1.12), M(0x4e342e), 0, 0, 0);
-      strap.rotation.z = 0.7;
-    }
-  }
-
-  const len = cyber ? 2.6 : level >= 3 ? 2.8 : 2.4;
-  const gun = holdLongGun(h, len, cyber ? M(0x37474f) : level >= 3 ? M(0x212121) : M(0x5d4037));
-  const dark = M(0x1a1a1a);
-  if (cyber) {
-    // Pulse rifle: glowing coils along the barrel
-    for (let i = 0; i < 3; i++) part(gun, boxGeo(0.45, 0.15, 0.55), glow(h, 0xff1744), 0, -0.9 - i * 0.5, 0);
-    part(gun, boxGeo(0.25, 0.7, 0.3), dark, 0, -0.9, 0.35); // scope
-    h.tracer = 0xff1744;
-  } else {
-    part(gun, boxGeo(0.22, 0.9, 0.3), dark, 0, -0.8, 0.35); // scope
-    part(gun, boxGeo(0.14, 0.6, 0.14), dark, 0, -len - 0.3, 0); // barrel tip
-    h.muzzles[0].position.y = -len - 0.6;
-    if (level >= 3) {
-      // The Right Tools: bigger scope, bipod, suppressor
-      part(gun, boxGeo(0.3, 0.3, 0.35), dark, 0, -0.35, 0.38);
-      part(gun, boxGeo(0.3, 0.3, 0.35), dark, 0, -1.25, 0.38);
-      part(gun, boxGeo(0.08, 0.08, 0.7), dark, 0.15, -len + 0.4, -0.45);
-      part(gun, boxGeo(0.08, 0.08, 0.7), dark, -0.15, -len + 0.4, -0.45);
-    }
-    h.tracer = 0xffffff;
-  }
-  return h;
-}
 
 /** Minigun on an arm pivot: body + spinning barrel cluster. Returns { muzzle, barrels }. */
 export function addMinigun(h, arm, bodyMat, barrelMat) {

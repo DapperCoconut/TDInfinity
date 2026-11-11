@@ -379,13 +379,13 @@ export function aimBoth(h) {
 }
 
 /** Marks a model whose guns are built here, so weapons.js leaves them as they are. */
-const own = (h, up = UP) => {
+export const own = (h, up = UP) => {
   h.ownGun = up;
   return h;
 };
 
 /** The purple Dimension Shard badge that marks alternate forms (a material for the kit). */
-const shardOf = (h) => glowMat(h, 0xb388ff);
+export const shardOf = (h) => glowMat(h, 0xb388ff);
 
 // ------------------------------------------------------------------ Scout
 

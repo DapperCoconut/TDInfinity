@@ -1,7 +1,7 @@
 // Tower models, file 7 of 12. Each makeX(level) builds one tower's look.
 // In here:
-// Necromancer, Engineer, Accelerator, Sentry, Grave, Hacker, Hologram, John, Juggernaut,
-// Laser Railgunner, Slammer. (XWM Turret moved to machines7.js.)
+// Necromancer, Engineer, Accelerator, Sentry, Grave, Hacker, Hologram, Juggernaut,
+// Laser Railgunner, Slammer. (XWM Turret moved to machines7.js, John to people2.js.)
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
 
 import * as THREE from 'three';
@@ -298,80 +298,6 @@ export function makeHologram(def) {
   h.holo = true;
   return h;
 }
-
-/**
- * John: a guy in a hoodie and jeans with a pistol. Top path: a vest at Lv 2, a silver Desert
- * Eagle at Lv 4, dual Deagles at Lv 5 and a glowing red rage headband at Lv 6. Bottom path: a
- * visor at Lv 2, a chef hat at Lv 3, an AK shotgun at Lv 4, armor at Lv 5, and at Lv 6 the
- * Slayer's axe on its back and a railgun on its shoulder.
- */
-export function makeJohn(level, bottom = false) {
-  const top = !bottom;
-  const slayer = bottom && level >= 5;
-  const shirt = slayer ? 0x263238 : 0x2e7d32;
-  const h = makeHumanoid({ skin: 0xe0ac69, shirt, pants: 0x1e3a5f, arms: shirt, face: 'smile' });
-  const { M } = h;
-  // Hood down around the neck, and messy brown hair
-  part(h.torso, boxGeo(1.7, 0.4, 1.2), M(slayer ? 0x1c262b : 0x1b5e20), 0, 0.95, -0.1);
-  if (!(bottom && level >= 2)) part(h.head, boxGeo(1.3, 0.35, 1.3), M(0x4e342e), 0, 1.3, -0.02);
-  if (top && level >= 1) part(h.torso, boxGeo(2.15, 1.6, 1.15), M(level >= 5 ? 0x3e2723 : 0x37474f), 0, 0.05, 0); // vest
-  if (top && level >= 5) {
-    // John Rage: a glowing red headband and red eyes
-    part(h.head, boxGeo(1.3, 0.22, 1.3), glow(h, 0xff1744), 0, 1.0, 0);
-    part(h.head, boxGeo(0.3, 0.15, 0.06), glow(h, 0xff1744), -0.28, 0.7, 0.62);
-    part(h.head, boxGeo(0.3, 0.15, 0.06), glow(h, 0xff1744), 0.28, 0.7, 0.62);
-  }
-  if (bottom && level >= 1) {
-    // Visor Upgrade
-    part(h.head, boxGeo(1.3, 0.3, 0.12), M(0x212121), 0, 0.72, 0.64);
-    part(h.head, boxGeo(1.1, 0.18, 0.06), glow(h, 0x40c4ff), 0, 0.72, 0.71);
-  }
-  if (bottom && level >= 2 && !slayer) {
-    // Chef Knowledge: a tall white chef hat
-    part(h.head, boxGeo(1.3, 0.3, 1.3), M(0xfafafa), 0, 1.3, 0);
-    part(h.head, boxGeo(1.6, 0.9, 1.6), M(0xffffff), 0, 1.85, 0);
-  }
-  if (bottom && level >= 4) {
-    part(h.torso, boxGeo(2.2, 1.7, 1.2), M(0x37474f), 0, 0.05, 0); // armor plates
-    for (const arm of [h.rightArm, h.leftArm]) part(arm, boxGeo(1.15, 0.6, 1.15), M(0x455a64), 0, -0.2, 0);
-  }
-  if (slayer) {
-    helmet(h, 0x263238, false);
-    part(h.head, boxGeo(1.3, 0.25, 0.08), glow(h, 0x76ff03), 0, 0.72, 0.68);
-    // Axe on its back
-    const axe = part(h.torso, boxGeo(0.2, 2.8, 0.2), M(0x5d4037), 0.3, 0.1, -0.75);
-    axe.rotation.z = 0.5;
-    part(axe, boxGeo(0.12, 0.9, 1.0), M(0xb0bec5), 0, 1.15, -0.3);
-    // Railgun on the left shoulder
-    part(h.torso, boxGeo(0.5, 0.5, 2.4), M(0x212121), 1.2, 1.25, 0.4);
-    for (let i = 0; i < 3; i++) part(h.torso, boxGeo(0.6, 0.6, 0.15), glow(h, 0x29b6f6), 1.2, 1.25, -0.2 + i * 0.6);
-  }
-  if (bottom && level >= 3) {
-    // AK Shotgun: a rifle body with a drum mag
-    const gun = holdLongGun(h, 1.9, M(0x3e2723));
-    part(gun, boxGeo(0.36, 0.9, 0.46), M(0x212121), 0, -1.1, 0);
-    part(gun, boxGeo(0.55, 0.55, 0.55), M(0x424242), 0, -0.6, 0.45);
-    h.tracer = slayer ? 0x76ff03 : 0xffab40;
-    return h;
-  }
-  const deagle = top && level >= 3;
-  const opts = { body: deagle ? 0xb0bec5 : 0x2b2b2b, trim: top && level >= 5 ? 0xff1744 : null };
-  const muzzles = [addHandgun(h, h.rightArm, opts)];
-  if (top && level >= 4) {
-    muzzles.push(addHandgun(h, h.leftArm, opts));
-    h.rightArm.rotation.set(-Math.PI / 2, 0, 0.08);
-    h.leftArm.rotation.set(-Math.PI / 2, 0, -0.08);
-    h.pose = { right: -Math.PI / 2, left: -Math.PI / 2, leftRecoil: 0.35 };
-  } else {
-    h.rightArm.rotation.set(-Math.PI / 2, 0, 0.1);
-    h.leftArm.rotation.set(-Math.PI / 2 + 0.1, 0, -0.5);
-    h.pose = { right: -Math.PI / 2, left: -Math.PI / 2 + 0.1, leftRecoil: 0.25 };
-  }
-  h.muzzles = muzzles;
-  h.tracer = top && level >= 5 ? 0xff5252 : 0xffe066;
-  return h;
-}
-export const makeJohnBottom = (level) => makeJohn(level, true);
 
 /**
  * Juggernaut (alternate Commando form): a huge armored gunner with a minigun. Top path: heavier

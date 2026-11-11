@@ -80,7 +80,7 @@ entries.forEach(([k, lv, ln], i) => {
   let m;
   try {
     if (kind === 'unit') m = makeUnit(k, UNITS.get(k)?.soldiers || 1);
-    else if (kind === 'tower') m = TOWER_MODELS[k](Math.min(lv, TOWERS[k].levels.length - 1));
+    else if (kind === 'tower') m = TOWER_MODELS[k](Math.min(lv, (TOWERS[k]?.levels.length ?? 6) - 1));
     else m = makeEnemy(ENEMIES[k]);
   } catch (e) {
     errors.push(`${k}: ${e.message}`);

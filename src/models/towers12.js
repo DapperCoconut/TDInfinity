@@ -1,7 +1,7 @@
 // Tower models, file 12 of 12. Each makeX(level) builds one tower's look.
 // In here:
-// Void Traitor, Psycho Slayer, Bubble Blower, Firecracker, Quarterer,
-// Penetrator. (MLRS: machines3.js; Darter: people1.js.)
+// Void Traitor, Psycho Slayer, Bubble Blower, Firecracker,
+// Penetrator. (MLRS: machines3.js; Darter: people1.js; Quarterer: people2.js.)
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
 
 import * as THREE from 'three';
@@ -232,45 +232,6 @@ export function makeFirecracker(level) {
   h.pose = { right: -2.8, left: -1.0, leftRecoil: 0 };
   h.swing = 1.9;
   h.projectile = { color: 0xd50000, size: 0.35, arc: 3 };
-  return h;
-}
-
-/**
- * Quarterer (alternate Soldier form): a gunslinger with two pistols. Lv 1 fingerless gloves,
- * Lv 2 a bandana, Lv 3 shades and holsters, Lv 4 a long duster coat with drum-mag pistols,
- * Lv 5 a black coat with purple-trimmed guns.
- */
-export function makeQuarterer(level) {
-  const storm = level >= 5;
-  const coat = level >= 4;
-  const shirt = storm ? 0x1c1726 : coat ? 0x5d4037 : 0x546e7a;
-  const h = makeHumanoid({ skin: 0xc68642, shirt, pants: storm ? 0x14101c : 0x263238, arms: shirt, face: 'soldier' });
-  const { M } = h;
-  const shard = glow(h, 0xb388ff);
-  part(h.torso, boxGeo(0.35, 0.35, 0.06), shard, 0.55, 0.45, 0.52);
-  if (level >= 1) for (const arm of [h.rightArm, h.leftArm]) part(arm, boxGeo(1.05, 0.45, 1.05), M(0x212121), 0, -1.75, 0); // gloves
-  if (level >= 2) {
-    part(h.head, boxGeo(1.32, 0.35, 1.32), M(storm ? 0x4a148c : 0xb71c1c), 0, 1.2, 0); // bandana
-    part(h.head, boxGeo(0.3, 0.5, 0.2), M(storm ? 0x4a148c : 0xb71c1c), 0.3, 1.0, -0.72); // knot
-  }
-  if (level >= 3) {
-    part(h.head, boxGeo(1.25, 0.1, 0.08), M(0x9e9e9e), 0, 0.8, 0.63);
-    for (const x of [-0.27, 0.27]) part(h.head, boxGeo(0.42, 0.3, 0.07), M(0x111111), x, 0.66, 0.63);
-    part(h.torso, boxGeo(2.1, 0.3, 1.1), M(0x3e2723), 0, -0.85, 0); // gun belt
-    for (const x of [-1.1, 1.1]) part(h.torso, boxGeo(0.35, 0.7, 0.5), M(0x3e2723), x, -1.2, 0.1); // holsters
-  }
-  if (coat) {
-    part(h.torso, boxGeo(2.05, 1.8, 0.2), M(storm ? 0x14101c : 0x4e342e), 0, -1.6, -0.45); // duster tails
-    part(h.torso, boxGeo(2.2, 0.35, 1.2), M(storm ? 0x14101c : 0x4e342e), 0, 0.85, 0); // collar
-  }
-  const gunOpts = { body: storm ? 0x37474f : 0x2b2b2b, trim: storm ? 0xb388ff : null, laser: level >= 3 };
-  const muzzles = [addHandgun(h, h.rightArm, gunOpts), addHandgun(h, h.leftArm, gunOpts)];
-  if (coat) for (const arm of [h.rightArm, h.leftArm]) part(arm, boxGeo(0.45, 0.45, 0.45), M(0x424242), 0, -2.5, -0.35); // drum mags
-  h.rightArm.rotation.set(-Math.PI / 2, 0, 0.08);
-  h.leftArm.rotation.set(-Math.PI / 2, 0, -0.08);
-  h.pose = { right: -Math.PI / 2, left: -Math.PI / 2, leftRecoil: 0.35 };
-  h.muzzles = muzzles;
-  h.tracer = storm ? 0xb388ff : 0xffe066;
   return h;
 }
 
