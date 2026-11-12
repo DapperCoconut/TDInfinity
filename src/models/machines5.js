@@ -493,7 +493,7 @@ export function makeStasis(level) {
 // ------------------------------------------------------------------ Glowup
 
 /** A speaker cabinet facing +z: box, a woofer cone, a horn tweeter and a neon edge on top. */
-function speaker(k, x, y, z, w, h, neon) {
+export function speaker(k, x, y, z, w, h, neon) {
   k.box(w, h, 0.9, 0x15151c, x, y + h / 2, z, { r: 0.05 });
   const r = Math.min(w, h * 0.6) * 0.36;
   const wy = y + h * 0.38;
@@ -508,7 +508,7 @@ function speaker(k, x, y, z, w, h, neon) {
 }
 
 /** A square truss from a to b ([x, y, z]), `s` wide: four chords and a zigzag on each face. */
-function truss(k, a, b, s, col) {
+export function truss(k, a, b, s, col) {
   const d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
   const len = Math.hypot(...d);
   const up = Math.abs(d[1]) > Math.abs(d[0]) + Math.abs(d[2]);
