@@ -219,6 +219,26 @@ import {
 export {
   makeBalloonPal, makeBuzzer, makeKartKid, makeNukiLauncher, makeScarecrow, makeTimeDilator,
 } from './models/machines8.js';
+// People batches 9-24 and the hero batches: each file has a MODELS map laid over TOWER_MODELS below.
+import { MODELS as PEOPLE_9 } from './models/people9.js';
+import { MODELS as PEOPLE_10 } from './models/people10.js';
+import { MODELS as PEOPLE_11 } from './models/people11.js';
+import { MODELS as PEOPLE_12 } from './models/people12.js';
+import { MODELS as PEOPLE_13 } from './models/people13.js';
+import { MODELS as PEOPLE_14 } from './models/people14.js';
+import { MODELS as PEOPLE_15 } from './models/people15.js';
+import { MODELS as PEOPLE_16 } from './models/people16.js';
+import { MODELS as PEOPLE_17 } from './models/people17.js';
+import { MODELS as PEOPLE_18 } from './models/people18.js';
+import { MODELS as PEOPLE_19 } from './models/people19.js';
+import { MODELS as PEOPLE_20 } from './models/people20.js';
+import { MODELS as PEOPLE_21 } from './models/people21.js';
+import { MODELS as PEOPLE_22 } from './models/people22.js';
+import { MODELS as PEOPLE_23 } from './models/people23.js';
+import { MODELS as PEOPLE_24 } from './models/people24.js';
+import { MODELS as HEROES_1 } from './models/heroes1.js';
+import { MODELS as HEROES_2 } from './models/heroes2.js';
+import { MODELS as HEROES_3 } from './models/heroes3.js';
 import { declip } from './models/declip.js';
 export { declip } from './models/declip.js';
 export { fallenParts, hardParts, mediumParts, moltenParts } from './models/enemies-medium.js';
@@ -480,6 +500,8 @@ export const TOWER_MODELS = {
   // Wave 10 (newmodels/i.js): last, so its knifer rework wins.
   ...TOWER_MODELS_I,
 };
+// The rebuilt people and heroes (models/people9-24.js, models/heroes1-3.js) win over the older builders above.
+for (const m of [PEOPLE_9, PEOPLE_10, PEOPLE_11, PEOPLE_12, PEOPLE_13, PEOPLE_14, PEOPLE_15, PEOPLE_16, PEOPLE_17, PEOPLE_18, PEOPLE_19, PEOPLE_20, PEOPLE_21, PEOPLE_22, PEOPLE_23, PEOPLE_24, HEROES_1, HEROES_2, HEROES_3]) Object.assign(TOWER_MODELS, m);
 // Hero towers (wave 9): per-level outfits, signature pieces and max-level effects (see blitzup.js).
 blitzUpgrades(TOWER_MODELS);
 
