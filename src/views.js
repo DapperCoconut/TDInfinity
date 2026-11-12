@@ -1707,8 +1707,14 @@ export class UnitView {
       this.aimAt(tmp.x, tmp.z);
     } else if (this.aimT) this.aimT = 1.5;
     if (enemyView) {
-      // Laser Behemoth railguns: a thick glowing beam right across the map.
-      effects.tracer(from, enemyView.aimPoint(tmp), cannon ? 0xff9100 : m.tracer, cannon ? 0.3 : rail ? 0.5 : undefined);
+      enemyView.aimPoint(tmp);
+      if (m.arrow && !cannon && !rail) {
+        // Relic Archer: an arrow flies straight to the zombie.
+        effects.blade({ ox: from.x, oz: from.z, tx: tmp.x, tz: tmp.z }, 0.2, from.y, { ...m.arrow, knife: true });
+      } else {
+        // Laser Behemoth railguns: a thick glowing beam right across the map.
+        effects.tracer(from, tmp, cannon ? 0xff9100 : m.tracer, cannon ? 0.3 : rail ? 0.5 : undefined);
+      }
       enemyView.hit();
     }
     effects.flash(from, cannon ? 0xffab40 : rail ? m.tracer ?? 0xfff3b0 : 0xfff3b0, cannon ? 1.5 : rail ? 1.6 : 0.6);

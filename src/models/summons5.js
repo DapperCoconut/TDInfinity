@@ -39,6 +39,7 @@ const unit = (build, fly) => (count = 1) => {
   const h = u.soldiers[0];
   u.height = 3.5 * (h.size ?? 1);
   u.tracer = h.tracer;
+  if (h.arrow) u.arrow = h.arrow; // the Archer's shots fly as arrows (views.js UnitView.shoot)
   if (fly) u.fly = fly;
   return u;
 };
@@ -251,7 +252,7 @@ function makeRelicArcher() {
   h.leftArm.rotation.set(-PI / 2, 0, 0.3);
   h.rightArm.rotation.set(-PI / 2, 0, -0.4);
   h.pose = { right: -PI / 2, left: -PI / 2, leftRecoil: 0 };
-  h.projectile = { color: 0x8d6e63, size: 0.25, arc: 1 };
+  h.arrow = { color: 0x8d6e63, size: 1 };
   h.tracer = 0xbcaaa4;
   h.size = 0.9;
   return own(h, 0);
