@@ -14,6 +14,7 @@ import { UNIT_MODELS_I } from '../newmodels/i.js';
 import { axle, wheel } from '../vehicles.js';
 import { VEHICLE_UNITS } from '../vehicleunits.js';
 import { UNDEAD_MODELS, makeUndeadUnit } from './undead.js';
+import { SUMMON_MODELS } from './summons.js';
 import { boxGeo, makeHumanoid, part, setOpacity } from './kit.js';
 import {
   addHalo, addPistol, addTommyGun, addWings, boxRow, fedora, glow, glowThing, goldify, gunMuzzle, helmet, holdLongGun,
@@ -110,6 +111,7 @@ const GOONS = ['pistolgoon', 'tommygoon', 'dongoon', 'mgoon', 'mgoon2', 'mgoon3'
 export function makeUnit(model, count = 1) {
   if (VEHICLE_UNITS[model]) return VEHICLE_UNITS[model](model); // the mechanical summons: jeeps, trucks, tanks, mechs, trains (vehicleunits.js)
   if (UNDEAD_MODELS.includes(model)) return makeUndeadUnit(model); // Graveyard undead (undead.js)
+  if (SUMMON_MODELS[model]) return SUMMON_MODELS[model](count); // kit-built humanoid summons (summons.js)
   const extra = UNIT_MODELS_A[model] ?? UNIT_MODELS_B[model] ?? UNIT_MODELS_C[model] ?? UNIT_MODELS_D[model] ?? UNIT_MODELS_E[model] ?? UNIT_MODELS_F[model] ?? UNIT_MODELS_G[model] ?? UNIT_MODELS_H[model] ?? UNIT_MODELS_I[model]; // wave 7-10 units
   if (extra) {
     const m = extra(count);
