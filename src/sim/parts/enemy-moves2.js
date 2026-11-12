@@ -158,11 +158,11 @@ export class SimEnemyMoves2 {
     return false;
   }
 
-  /** Demise's pink mist: towers within `r` of (x, z) drop one level (no refund). Returns how many. */
-  downgradeTowers(x, z, r) {
+  /** Demise's pink mist: towers within `r` of (x, z) drop one level (no refund). `filter` picks which. Returns how many. */
+  downgradeTowers(x, z, r, filter = null) {
     let n = 0;
     for (const t of this.towers.values()) {
-      if (t.level <= 0 || t.holo || (t.x - x) ** 2 + (t.z - z) ** 2 > r * r || this.stealthy(t)) continue;
+      if ((filter && !filter(t)) || t.level <= 0 || t.holo || (t.x - x) ** 2 + (t.z - z) ** 2 > r * r || this.stealthy(t)) continue;
       if (buffOf(this.buffs, t.id).invuln || t.invulnT > 0) continue;
       const def = TOWERS[t.type];
       if (def.cross || !def.levels[t.level - 1]) continue; // crosspath towers keep their levels

@@ -4,6 +4,7 @@
 // These are methods of Sim: sim.js puts them on the Sim class, so "this" is the game.
 
 import { ENEMIES, TOWERS } from '../../config.js';
+import { HERO_TOWERS } from '../../herotowers.js';
 import { buffOf, r2 } from './shared.js';
 
 /** Enemies that use carnivalMoves (sim.js checks this set every tick). */
@@ -105,7 +106,7 @@ export class SimCarnival {
 
   /** Jack O' Lanterns: when one dies it explodes, stunning towers (and hurting units) close by. */
   carnivalBlast(e, b) {
-    const n = this.hexTowers(e.x, e.z, b.radius, 'stun', b.stun, true);
+    const n = this.hexTowers(e.x, e.z, b.radius, 'stun', b.stun, true, b.heroes ? (t) => !!HERO_TOWERS[t.type] : null); // heroes: hero towers only (Night 3 Bomb Barrel Boy)
     if (b.unitDmg) this.hurtUnitsNear(e.x, e.z, b.radius, b.unitDmg);
     this.events.push({ k: 'eBlast', x: r2(e.x), z: r2(e.z), r: b.radius, c: 0xff6d00 });
     if (n) this.events.push({ k: 'chaos', x: r2(e.x), z: r2(e.z), text: `🎃 BOOM! ${n} stunned`, color: '#ff9100' });
