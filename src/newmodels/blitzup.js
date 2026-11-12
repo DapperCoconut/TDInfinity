@@ -202,58 +202,6 @@ const TIERS = {
 
   // Maitake, Scientist, Stella, Wafer and Sparks: their level looks are built into models/people22.js.
 
-  // Branch: thorny sprout -> roots spreading over the ground -> bark-brown head with a crown of
-  // leaves -> an ancient glowing tree spirit with leaves circling it.
-  sparkBranch(h, lv) {
-    const { top } = anchors(h);
-    if (lv >= 2) {
-      const root = mat(h, 0x5d4037);
-      for (let i = 0; i < 6; i++) {
-        const a = (i / 6) * Math.PI * 2 + 0.5;
-        const r = part(h.root, boxGeo(1.6, 0.22, 0.32), root, Math.cos(a) * 1.9, 0.11, Math.sin(a) * 1.9);
-        r.rotation.y = -a;
-      }
-    }
-    if (lv >= 3) {
-      paint(h, { 0x7b4a52: 0x6d4c41 });
-      const leaf = mat(h, lv >= 4 ? 0x00e676 : 0x2e7d32, lv >= 4);
-      const g = new THREE.Group();
-      g.position.y = top + 0.1;
-      h.body.add(g);
-      around(g, 7, 0.9, (i, a) => {
-        const s = part(g, boxGeo(0.35, 0.9, 0.12), leaf, 0, 0.3, 0);
-        s.rotation.set(0, -a + Math.PI / 2, 0);
-        s.rotateX(-0.5);
-        return s;
-      });
-    }
-    if (lv >= 4) {
-      paint(h, { 0x2e7d32: 0x1b5e20, 0x43a047: 0x00c853, 0x388e3c: 0x00a152 });
-      orbit(h, 2.8, 2.5, 8, 0.35, [0x69f0ae, 0xb9f6ca, 0xc6ff00], 0.7);
-      grow(h, 1.15);
-    }
-  },
-
-  // Specter (ghost guitarist): white ghost -> music notes floating around -> purple scarf and glowing
-  // notes -> on stage (base model) with a spotlight ring.
-  commanderSpecter(h, lv) {
-    if (lv >= 1) {
-      const black = mat(h, lv >= 2 ? 0x18ffff : 0x212121, lv >= 2);
-      const g = drifter(h, h.root, 4.2, 0.6, 0.3);
-      around(g, 4, 2.2, (i) => {
-        const n = new THREE.Group();
-        g.add(n);
-        part(n, boxGeo(0.35, 0.28, 0.2), black, 0, 0, 0);
-        part(n, boxGeo(0.08, 0.7, 0.08), black, 0.14, 0.4, 0);
-        if (i % 2) part(n, boxGeo(0.3, 0.1, 0.08), black, 0.28, 0.72, 0);
-        return n;
-      });
-    }
-    if (lv >= 2) paint(h, { 0xd32f2f: 0x7b1fa2 });
-    if (lv >= 3) paint(h, { 0xf7f7f7: 0xe0f7fa });
-    if (lv >= 4) groundRing(h, 2.9, 14, 0xe040fb, 0.5, 0.9, 0.85);
-  },
-
   // Keith: his overalls colours, back rack and golden boomerangs are in his model (people23.js);
   // here he only grows a bit at max level.
   boomerangKeith(h, lv) {
