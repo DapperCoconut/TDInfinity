@@ -4,24 +4,6 @@
 import * as THREE from 'three';
 import { boxGeo, part } from './kit.js';
 
-/** Handgun on an arm pivot, pointing along the arm. Optional laser sight. Returns its muzzle. */
-export function addHandgun(h, arm, { body = 0x2b2b2b, laser = false, trim = null } = {}) {
-  const gun = new THREE.Group();
-  gun.position.set(0, -1.9, 0);
-  arm.add(gun);
-  part(gun, boxGeo(0.3, 1.0, 0.38), h.M(body), 0, -0.5, 0); // slide
-  part(gun, boxGeo(0.26, 0.32, 0.6), h.M(0x1f1f1f), 0, -0.05, -0.32); // grip
-  if (trim) part(gun, boxGeo(0.34, 0.12, 0.42), glow(h, trim), 0, -0.75, 0);
-  if (laser) {
-    part(gun, boxGeo(0.2, 0.35, 0.2), h.M(0x212121), 0, -0.7, 0.3);
-    part(gun, boxGeo(0.08, 0.06, 0.08), glow(h, 0xff1744), 0, -0.9, 0.3);
-  }
-  const muzzle = new THREE.Object3D();
-  muzzle.position.set(0, -1.0, 0);
-  gun.add(muzzle);
-  return muzzle;
-}
-
 /** Small pistol on an arm pivot, pointing along the arm. Returns its muzzle. */
 export function addPistol(h, arm, gold) {
   const gun = new THREE.Group();
@@ -223,18 +205,6 @@ export function present(h, parent, color, ribbon, size = 0.7) {
   return g;
 }
 
-/** A jack-o'-lantern (box with a glowing face) in `parent`. */
-export function pumpkin(h, parent, size, glowColor = 0xffab00) {
-  const g = new THREE.Group();
-  parent.add(g);
-  part(g, boxGeo(size, size * 0.85, size), h.M(0xef6c00));
-  part(g, boxGeo(size * 0.15, size * 0.3, size * 0.15), h.M(0x33691e), 0, size * 0.55, 0); // stem
-  const lit = glow(h, glowColor);
-  for (const x of [-0.22, 0.22]) part(g, boxGeo(size * 0.18, size * 0.15, 0.05), lit, x * size, size * 0.12, size / 2 + 0.01);
-  part(g, boxGeo(size * 0.55, size * 0.1, 0.05), lit, 0, -size * 0.18, size / 2 + 0.01);
-  return g;
-}
-
 // ---------------------------------------------------------------- event towers (wave 3)
 
 /** A tool or weapon group held in the right hand (hangs down the arm, so -y is "out of the hand"). */
@@ -254,11 +224,6 @@ export function boxRow(parent, n, gap, geo, mat, y, z, mats = null) {
 // Warship, Shield Tower, Oil Derrick, Combat Medic, Refractor, Scout Helicopter, Noob Tuber,
 // Stinger, Jet Trooper, Combat Drone and Void Traitor.
 
-/** A cylinder part (y axis). */
-export function cylPart(parent, rt, rb, h, mat, x = 0, y = 0, z = 0, seg = 10) {
-  return part(parent, cylGeo(rt, rb, h, seg), mat, x, y, z);
-}
-
 /** A see-through glowing material (shield domes, rotor blur, void auras). */
 export function clearMat(u, color, opacity) {
   const m = glow(u, color);
@@ -266,23 +231,6 @@ export function clearMat(u, color, opacity) {
   m.opacity = opacity;
   m.depthWrite = false;
   return m;
-}
-
-/** A spinning-rotor blur: a thin see-through disc. */
-export function blurDisc(u, parent, r, x, y, z) {
-  const d = part(parent, cylGeo(r, r, 0.05, 16), clearMat(u, 0x9e9e9e, 0.3), x, y, z);
-  d.castShadow = false;
-  return d;
-}
-
-/** A small US flag on a pole (Oil Derrick Bottom path). */
-export function usFlag(u, parent, x, z, poleH, s = 1) {
-  const { M } = u;
-  part(parent, boxGeo(0.12, poleH, 0.12), M(0xbdbdbd), x, poleH / 2, z);
-  const red = M(0xc62828);
-  const white = M(0xfafafa);
-  for (let i = 0; i < 7; i++) part(parent, boxGeo(0.05, 0.14 * s, 1.6 * s), i % 2 ? white : red, x, poleH - 0.1 - i * 0.14 * s, z + 0.85 * s);
-  part(parent, boxGeo(0.07, 0.56 * s, 0.7 * s), M(0x1a237e), x, poleH - 0.38 * s, z + 0.4 * s);
 }
 
 // ------------------------------------------------------------------ Easy mode creatures

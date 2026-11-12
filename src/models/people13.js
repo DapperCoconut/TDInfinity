@@ -2,7 +2,7 @@
 // In here: Snowballer, Huntsman, Archer, Stunner, Harpoon Hunter, Gladiator, Commando (the
 // event Commando, eventCommando).
 // Each makeX(level) builds one tower's look; MODELS at the bottom is laid over TOWER_MODELS in
-// ../models.js, so these win over the old builders in towers09.js.
+// ../models.js (they replaced the older box-built ones).
 // The shared gear (helmets, vests, packs, guns) and the spaces it works in are in people1.js.
 
 import * as THREE from 'three';

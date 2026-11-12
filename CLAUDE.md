@@ -73,13 +73,17 @@ Game logic (no three.js, no DOM; runs in the browser and in Node):
 
 Drawing (three.js):
 
-- `src/models.js`: the `TOWER_MODELS` registry. The older builders it lists are in `src/models/`:
-  `kit.js` (`boxGeo`, `part`, `makeHumanoid`), `bits.js` (small shared pieces), `towers01.js` ...
-  `towers12.js` (tower builders; each lists its towers at the top), `units.js` (`makeUnit`),
-  `enemy.js` (`makeEnemy`) with `enemies-*.js`, `declip.js`. Newer builders are in
-  `src/newmodels/a.js` ... `i.js`, `blitzup.js` (hero tower per-level looks), `hc.js` (Hardcore
-  enemies), `halloween.js`. Every key in `TOWERS` needs a `TOWER_MODELS` entry (gold and crosspath
-  forms get theirs automatically at the bottom of the registry).
+- `src/models.js`: the `TOWER_MODELS` registry. Every tower is kit-built (the `src/vehicles.js` kit) in
+  `src/models/`: `machines1.js` ... `machines8.js` (machines and buildings), `people1.js` ... `people25.js`
+  (people; people1.js holds the shared gear), `heroes1-3.js` (Tower Blitz heroes), `cross1-3.js`
+  (crosspath forms, a `CROSS` map of `(a, b) => model`); each file lists its towers at the top, and
+  people9+ / heroes / cross files export a `MODELS` (or `CROSS`) map that models.js lays over the registry.
+  Also there: `kit.js` (`boxGeo`, `part`, `makeHumanoid`), `bits.js` (small shared pieces),
+  `towers01/03/05/07.js` (the few old pieces still used), `units.js` (`makeUnit`), `enemy.js`
+  (`makeEnemy`) with `enemies-*.js`, `declip.js`. `src/newmodels/` now holds mostly units and enemies:
+  `a.js` ... `i.js`, `blitzup.js` (hero max-level effects), `hc.js` (Hardcore enemies), `halloween.js`.
+  Every key in `TOWERS` needs a `TOWER_MODELS` entry (gold and crosspath forms get theirs
+  automatically at the bottom of the registry).
 - Layers applied over builders: `src/visuals.js` (stances, holds, enemy shapes), `src/weapons.js`,
   `src/rig.js`, `src/anim.js`. Fix a wrong look there before touching the builder.
 - Vehicles and other mechanical summons: the kit in `src/vehicles.js`, builders in

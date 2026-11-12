@@ -4,7 +4,9 @@
 // models/ (the files there need this one loaded first).
 //   models/kit.js        boxes, faces and the blocky person every model starts from
 //   models/bits.js       small shared pieces (hand guns, glows, hats, turrets...)
-//   models/towers01-12   the tower builders (each file lists its towers at the top)
+//   models/machines1-8   towers that are machines and buildings (each file lists its towers at the top)
+//   models/people1-25    towers that are people; heroes1-3 the Tower Blitz heroes; cross1-3 crosspath forms
+//   models/towers01-07   the few older pieces still used (planes, sentry, goldShine)
 //   models/units.js      summoned units (makeUnit)
 //   models/enemy.js      makeEnemy, with the enemy parts in models/enemies-*.js
 //   models/declip.js     stops flat faces from flickering
@@ -27,20 +29,16 @@ import { armWeapons } from './weapons.js';
 export { boxGeo, faceTexture, makeHumanoid, part, setEmissive, setOpacity } from './models/kit.js';
 import { goldify } from './models/bits.js';
 export {
-  addHalo, addHandgun, addPistol, addTommyGun, addWings, blurDisc, boxRow, clearMat, creature, crown, cylGeo, cylGeoX,
-  cylGeoZ, cylPart, eyes, fedora, glow, glowThing, goldify, gunMuzzle, helmet, holdLongGun, inHand, makeThing,
-  present, pumpkin, setMuzzle, suit, turret, usFlag,
+  addHalo, addPistol, addTommyGun, addWings, boxRow, clearMat, creature, crown, cylGeo, cylGeoX, cylGeoZ, eyes,
+  fedora, glow, glowThing, goldify, gunMuzzle, helmet, holdLongGun, inHand, makeThing, present, setMuzzle, suit,
+  turret,
 } from './models/bits.js';
 export {
   makeBubbleBuddy, makeCampUnit, makeFieldSoldier, makeGoon, makeHeavyUnit, makeMerc, makeMobGoon, makePlantUnit,
   makeRelicUnit, makeSkeleton, makeTrooper, makeUnit, makeVoidSoldier, makeVoidTank, wheels,
 } from './models/units.js';
-import {
-  makeGoldCommando, makeGoldScout,
-} from './models/towers01.js';
-export {
-  addCannon, addMinigun, makeGoldCommando, makeGoldScout, makePlane,
-} from './models/towers01.js';
+
+export { makePlane } from './models/towers01.js';
 import {
   makeCowboy, makeDarter, makePaintballer, makeScout, makeScoutClassic, makeSoldier, makeTweeter,
 } from './models/people1.js';
@@ -97,36 +95,11 @@ import {
 export {
   makeElectro, makePlasma, makePlasmaPulse, makePyromancer, makeShotgunner, makeShotgunnerCombat, makeShotgunnerPump,
 } from './models/people8.js';
-import {
-  goldShine, makeAnarchist, makeCommander, makeCommanderClassic, makeDJ, makeDJBooth, makeGoldCommander,
-} from './models/towers03.js';
-export {
-  addRevolver, goldShine, makeAnarchist, makeCommander, makeCommanderClassic, makeDJ, makeDJBooth,
-  makeGoldCommander,
-} from './models/towers03.js';
-import {
-  makeAssassin, makeBoomerang, makeBrawler, makeMachineGunner, makeMachineGunnerBottom,
-  makeSlime,
-} from './models/towers04.js';
-export {
-  makeAssassin, makeBoomerang, makeBrawler, makeMachineGunner, makeSlime,
-} from './models/towers04.js';
-import {
-  makeEDJ, makeEDJBottom,
-  makeMedic, makeMedicBeam, makeMedicBeamBottom, makeMineLayer, makeMineLayerBottom,
-  makeTrapper,
-} from './models/towers05.js';
-export {
-  makeAcePlane, makeEDJ, makeMedic, makeMedicBeam,
-  makeMineLayer, makeTrapper,
-} from './models/towers05.js';
-import {
-  makeCrookBoss, makeMobster, makeMobsterBottom,
-} from './models/towers06.js';
-export {
-  makeCrookBoss, makeMobster,
-  makeMobsterBottom, makeMobsterModel,
-} from './models/towers06.js';
+import { goldShine } from './models/towers03.js';
+export { goldShine } from './models/towers03.js';
+
+export { makeAcePlane } from './models/towers05.js';
+
 import {
   makeBehemothFactory, makeBehemothFactoryBottom, makeFarm, makeMercBase, makePatrol, makePursuit, makePursuitBottom,
   makeWarMachineFactory, makeWarMachineFactoryBottom, makeZed,
@@ -142,50 +115,12 @@ import {
 export {
   makeCryoHeli, makeElfCamp, makeGraveyard, makeMLRS, makePatrolBoat, makeRelic, makeStarCannon, makeWarship,
 } from './models/machines3.js';
-import {
-  makeEngineer, makeHacker, makeHackerBottom, makeNecromancer,
-} from './models/towers07.js';
-export {
-  makeEngineer, makeGrave, makeHacker, makeHackerBottom, makeHologram, makeNecromancer, makeSentry,
-} from './models/towers07.js';
-import {
-  makeGhost, makeGhostBottom,
-  makeSaboteur, makeToxicnator, makeToxicnatorBottom,
-} from './models/towers08.js';
+
+export { makeGrave, makeHologram, makeSentry } from './models/towers07.js';
+
 import { makeAATurret, makeAATurretBottom, makeGatling, makeSentryTower, makeSentryTowerBottom, makeTesla, makeTurret } from './models/machines1.js';
 export { makeAATurret, makeGatling, makeSentryTower, makeTesla, makeTurret } from './models/machines1.js';
-export {
-  makeGhost, makeSaboteur, makeToxicnator,
-  miniBarrels,
-} from './models/towers08.js';
-import {
-  makeArcher, makeBowmaster, makeBreacher, makeCryoBlaster, makeCryoBlasterBottom, makeCryoMortar, makeElf,
-  makeEventCommando, makeExecutioner, makeFlameTrooper, makeFrostBlaster, makeGladiator, makeGooGunner,
-  makeHallowboomer, makeHarpoonHunter, makeHuntsman, makeKingpin, makeKnifer, makeOperator, makeSlasher, makeSledger,
-  makeSleeter, makeSnowballer, makeStunner, makeSwarmer, makeTitan, makeToxicGunner,
-} from './models/towers09.js';
-export {
-  bladeIn, evoEmblem, iceGun, makeArcher, makeBowmaster, makeBreacher, makeCryoBlaster, makeCryoBlasterBottom,
-  makeCryoMortar, makeElf, makeEventCommando, makeExecutioner, makeFlameTrooper, makeFrostBlaster, makeGladiator,
-  makeGooGunner, makeHallowboomer, makeHarpoonHunter, makeHuntsman, makeKingpin, makeKnifer,
-  makeOperator, makeSlasher, makeSledger, makeSleeter, makeSnowballer, makeStunner, makeSwarmer, makeTitan,
-  makeToxicGunner, recolor,
-} from './models/towers09.js';
-import {
-  makeBiologist, makeCryomancer, makeElementalist, makeFireworkTech, makeHallowPunk,
-  makeHarvester, makeIceBreaker, makeJester, makeShockTrooper, makeSnowballerFrost, makeSpotlightTech,
-  makeWarlock,
-} from './models/towers10.js';
-export {
-  makeBiologist, makeCryomancer, makeElementalist, makeFireworkTech, makeHallowPunk,
-  makeHarvester, makeIceBreaker, makeJester, makeShockTrooper, makeSnowballerFrost, makeSpotlightTech,
-  makeWarlock,
-} from './models/towers10.js';
-import {
-  makeCombatMedic, makeCombatMedicBottom, makeJetTrooper, makeJetTrooperBottom, makeNoobTuber, makeRefractor,
-  makeRefractorBottom, makeStinger,
-} from './models/towers11.js';
-export { makeCombatMedic, makeJetTrooper, makeNoobTuber, makeRefractor, makeStinger } from './models/towers11.js';
+
 import {
   makeCombatDrone, makeCombatDroneBottom, makeDuckyNest, makeFocus, makeOilDerrick, makeOilDerrickBottom,
   makePlantation, makeScoutHeli, makeShieldTower, makeShieldTowerBottom, makeTrawler,
@@ -207,12 +142,7 @@ export {
   makeFieldBarracks, makeFieldBarracksBottom, makeFieldBarracksWith, makeHelicopter, makeHelicopterBottom,
   makeHelicopterModel, makeHelicopterPad, makeMilitaryBase, makeXwm,
 } from './models/machines7.js';
-import {
-  makeBubbleBlower, makePsychoSlayer, makeVoidTraitor,
-} from './models/towers12.js';
-export {
-  makeBubbleBlower, makePsychoSlayer, makeVoidTraitor,
-} from './models/towers12.js';
+
 import {
   makeBalloonPal, makeBuzzer, makeKartKid, makeNukiLauncher, makeScarecrow, makeTimeDilator,
 } from './models/machines8.js';
@@ -278,8 +208,6 @@ export const TOWER_MODELS = {
   operatorBottom: makeOperatorBottom,
   marksman: makeMarksman,
   commando: makeCommando,
-  goldScoutBase: makeGoldScout,
-  goldCommando: makeGoldCommando,
   commandoMinigunner: makeMinigunner,
   aviator: makeAviator,
   phaser: makePhaser,
@@ -306,10 +234,6 @@ export const TOWER_MODELS = {
   shotgunner: makeShotgunner,
   plasma: makePlasma,
   plasmaPulse: makePlasmaPulse,
-  boomerang: makeBoomerang,
-  slime: makeSlime,
-  assassin: makeAssassin,
-  brawler: makeBrawler,
   patrol: makePatrol,
   patrolMilitary: makeMilitaryBase,
   patrolArmored: makeArmoredFactory,
@@ -320,12 +244,6 @@ export const TOWER_MODELS = {
   barracksFieldBottom: makeFieldBarracksBottom,
   zed: makeZed,
   farm: makeFarm,
-  commander: makeCommander,
-  goldCommander: makeGoldCommander,
-  commanderClassic: makeCommanderClassic,
-  dj: makeDJ,
-  djBooth: makeDJBooth,
-  anarchist: makeAnarchist,
   mercMilitant: makeMilitant,
   mercLaser: makeLaserGunner,
   mercLaserBottom: makeLaserGunnerBottom,
@@ -343,39 +261,21 @@ export const TOWER_MODELS = {
   farmFruit: makeFarmFruit,
   farmAirdrop: makeFarmAirdrop,
   farmAirdropBottom: makeFarmAirdropBottom,
-  medic: makeMedic,
-  medicBeam: makeMedicBeam,
-  medicBeamBottom: makeMedicBeamBottom,
-  djEdj: makeEDJ,
-  djEdjBottom: makeEDJBottom,
   electro: makeElectro,
-  trapper: makeTrapper,
-  mineLayer: makeMineLayer,
-  mineLayerBottom: makeMineLayerBottom,
-  crookBoss: makeCrookBoss,
   pursuit: makePursuit,
   pursuitBottom: makePursuitBottom,
   pursuitHeli: makeHelicopter,
   pursuitHeliBottom: makeHelicopterBottom,
-  mobster: makeMobster,
-  mobsterBottom: makeMobsterBottom,
   zedBehemoth: makeBehemothFactory,
   zedBehemothBottom: makeBehemothFactoryBottom,
   warMachine: makeWarMachineFactory,
   warMachineBottom: makeWarMachineFactoryBottom,
   gatling: makeGatling,
-  gatlingMachine: makeMachineGunner,
-  gatlingMachineBottom: makeMachineGunnerBottom,
   turret: makeTurret,
   mortarClassic: makeMortarClassic,
   mortarArtillery: (level) => makeArtillery(level),
   mortarArtilleryBottom: (level) => makeArtillery(level, true),
-  electroTrooper: makeShockTrooper,
   mercenary: makeMercBase,
-  necromancer: makeNecromancer,
-  engineer: makeEngineer,
-  hacker: makeHacker,
-  hackerBottom: makeHackerBottom,
   phaserAccel: makeAccelerator,
   john: makeJohn,
   johnBottom: makeJohnBottom,
@@ -393,79 +293,22 @@ export const TOWER_MODELS = {
   aaTurretBottom: makeAATurretBottom,
   patrolBoat: makePatrolBoat,
   patrolBoatBottom: makePatrolBoatBottom,
-  ghost: makeGhost,
-  ghostBottom: makeGhostBottom,
-  toxicnator: makeToxicnator,
-  toxicnatorBottom: makeToxicnatorBottom,
-  toxicnatorSaboteur: makeSaboteur,
   tesla: makeTesla,
-  elf: makeElf,
-  hallowboomer: makeHallowboomer,
   graveyard: makeGraveyard,
-  sleeter: makeSleeter,
-  snowballer: makeSnowballer,
-  huntsman: makeHuntsman,
-  archer: makeArcher,
-  knifer: makeKnifer,
-  stunner: makeStunner,
-  harpoonHunter: makeHarpoonHunter,
-  gladiator: makeGladiator,
-  eventCommando: makeEventCommando,
-  kniferSlasher: makeSlasher,
-  sleeterBlaster: makeFrostBlaster,
-  flameTrooper: makeFlameTrooper,
-  gooGunner: makeGooGunner,
-  frostBlaster: makeCryoBlaster,
-  frostBlasterBottom: makeCryoBlasterBottom,
-  cryoMortar: makeCryoMortar,
-  archerBow: makeBowmaster,
-  swarmer: makeSwarmer,
-  toxicGunner: makeToxicGunner,
-  sledger: makeSledger,
-  sledgerIce: makeIceBreaker,
   cryoHeli: makeCryoHeli,
-  executioner: makeExecutioner,
   elfCamp: makeElfCamp,
   relic: makeRelic,
-  jester: makeJester,
-  cryomancer: makeCryomancer,
-  hallowboomerPunk: makeHallowPunk,
-  harvester: makeHarvester,
-  snowballerFrost: makeSnowballerFrost,
-  elementalist: makeElementalist,
-  fireworkTech: makeFireworkTech,
-  biologist: makeBiologist,
-  warlock: makeWarlock,
-  spotlight: makeSpotlightTech,
   starCannon: makeStarCannon,
-  evoOperator: makeOperator,
-  evoBreacher: (level) => makeBreacher(level),
-  evoBreacherBottom: (level) => makeBreacher(level, true),
-  evoKingpin: (level) => makeKingpin(level),
-  evoKingpinBottom: (level) => makeKingpin(level, true),
-  evoTitan: (level) => makeTitan(level),
-  evoTitanBottom: (level) => makeTitan(level, true),
   warship: makeWarship,
   warshipBottom: makeWarshipBottom,
   shieldTower: makeShieldTower,
   shieldTowerBottom: makeShieldTowerBottom,
   oilDerrick: makeOilDerrick,
   oilDerrickBottom: makeOilDerrickBottom,
-  combatMedic: makeCombatMedic,
-  combatMedicBottom: makeCombatMedicBottom,
-  refractor: makeRefractor,
-  refractorBottom: makeRefractorBottom,
   scoutHeli: makeScoutHeli,
-  noobTuber: makeNoobTuber,
-  stinger: makeStinger,
-  jetTrooper: makeJetTrooper,
-  jetTrooperBottom: makeJetTrooperBottom,
   combatDrone: makeCombatDrone,
   combatDroneBottom: makeCombatDroneBottom,
-  voidTraitor: makeVoidTraitor,
   mlrs: makeMLRS,
-  eventCommandoPsycho: makePsychoSlayer,
-  cryomancerBubble: makeBubbleBlower,
   scarecrow: makeScarecrow,
   plantation: makePlantation,
   focus: makeFocus,

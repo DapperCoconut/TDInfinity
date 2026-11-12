@@ -2,12 +2,12 @@
 // the Chaos Jester tower's model (all its juggling, dice and wheel), with the colors turned dark
 // and purple and its eyes glowing red. The enemy's `scale` makes it big.
 import * as THREE from 'three';
-import { TOWER_MODELS_H } from './h.js';
+import { jesterChaos } from './h.js';
 
 const PURPLE = new THREE.Color(0x4a148c);
 
 export function makeLlJesterModel() {
-  const h = TOWER_MODELS_H.jesterChaos(4);
+  const h = jesterChaos(4);
   for (const m of h.mats) {
     if (!m.color) continue;
     // Glowing bits (coins, cubes) stay bright; everything else goes dark purple.

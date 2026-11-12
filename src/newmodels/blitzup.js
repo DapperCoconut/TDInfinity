@@ -29,33 +29,6 @@ function mat(h, hex, glowing = false, opacity = 1) {
   return m;
 }
 
-/**
- * Recolours parts: every mesh under `h.root` (minus anything under `skip`) whose colour is a key of
- * `map` gets the mapped colour. Parts with a face texture (material arrays) keep their look.
- * minY: only parts whose middle is higher than that (model space), e.g. clothes but not props.
- */
-function paint(h, map, skip = [], minY = -Infinity) {
-  const made = new Map();
-  const skipSet = new Set(skip.filter(Boolean));
-  h.root.updateMatrixWorld(true);
-  const box = new THREE.Box3();
-  const walk = (o) => {
-    if (skipSet.has(o)) return;
-    if (o.isMesh && !Array.isArray(o.material) && o.material.color && (minY === -Infinity || box.setFromObject(o).getCenter(new THREE.Vector3()).y > minY)) {
-      const hex = o.material.color.getHex();
-      const to = map[hex];
-      if (to != null) {
-        const glowing = !!o.material.userData.glow;
-        const key = `${to}|${glowing}|${o.material.opacity}`;
-        if (!made.has(key)) made.set(key, mat(h, to, glowing, o.material.userData.keepOpacity ?? 1));
-        o.material = made.get(key);
-      }
-    }
-    for (const c of o.children) walk(c);
-  };
-  walk(h.root);
-}
-
 /** Model-space box of the whole model, and the head's box in the head's own space. */
 function anchors(h) {
   h.root.updateMatrixWorld(true);
@@ -124,41 +97,6 @@ function halo(h, y, r, n, color, size = 0.3) {
     s.rotation.y = -a + Math.PI / 2;
     return s;
   });
-  return g;
-}
-
-/** A blocky crown on top of the head (head-space box `hb`). */
-function crown(h, hb, color, gem, scale = 1) {
-  if (!hb) return null;
-  const g = new THREE.Group();
-  const w = Math.min(hb.max.x - hb.min.x, 1.4) * scale;
-  g.position.set((hb.min.x + hb.max.x) / 2, hb.max.y, (hb.min.z + hb.max.z) / 2);
-  h.head.add(g);
-  const m = mat(h, color);
-  part(g, boxGeo(w, 0.3 * scale, w), m, 0, 0.15 * scale, 0);
-  const k = w / 2 - 0.1 * scale;
-  for (const [x, z] of [[-k, -k], [k, -k], [-k, k], [k, k], [0, k], [0, -k], [k, 0], [-k, 0]]) part(g, boxGeo(0.2 * scale, 0.35 * scale, 0.2 * scale), m, x, 0.45 * scale, z);
-  part(g, boxGeo(0.25 * scale, 0.25 * scale, 0.08), mat(h, gem, true), 0, 0.18 * scale, w / 2 + 0.02);
-  return g;
-}
-
-/** Shoulder pads on both arms. */
-function shoulderPads(h, color, trim, size = 1.25) {
-  for (const arm of [h.rightArm, h.leftArm]) {
-    part(arm, boxGeo(size, 0.5, size), mat(h, color), 0, -0.05, 0);
-    part(arm, boxGeo(size + 0.06, 0.12, size + 0.06), mat(h, trim), 0, -0.3, 0);
-  }
-}
-
-/** A cape hanging down the back of the torso. */
-function cape(h, color, trim, len = 3.2) {
-  const g = new THREE.Group();
-  g.position.set(0, 0.95, -0.62);
-  g.rotation.x = 0.08;
-  h.torso.add(g);
-  part(g, boxGeo(2.1, len, 0.1), mat(h, color), 0, -len / 2, 0);
-  part(g, boxGeo(2.16, 0.22, 0.14), mat(h, trim), 0, -len + 0.1, 0);
-  part(g, boxGeo(2.3, 0.3, 0.3), mat(h, trim), 0, 0, 0.08);
   return g;
 }
 
