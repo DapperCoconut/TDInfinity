@@ -32,6 +32,9 @@ const glowMat = basic(0xffa040);
 const cliffMats = [lambert(0xb87848), lambert(0xa86a3e), lambert(0xc8885a), lambert(0x9a5e36)];
 
 /** A point light (kept to a few per map: lights are slow). */
+/** Set by the game client: the portal glows bright from Halloween Night 3's wave 34 on. */
+export const NM_STATE = { glow: 0 };
+
 function light(g, color, intensity, dist, x, y, z) {
   const l = new THREE.PointLight(color, intensity, dist, 1.6);
   l.position.set(x, y, z);
@@ -130,11 +133,16 @@ export const NM_PROPS = {
     glow.rotation.x = -Math.PI / 2;
     glow.position.set(5, 0.06, 0);
     g.add(glow);
-    light(g, 0xffa040, 30, 34, 4, 7, 0);
+    const lamp = light(g, 0xffa040, 30, 34, 4, 7, 0);
+    NM_STATE.glow = 0;
+    let on = 0; // fades up to 1 once the portal starts to glow
     animated.push((t) => {
-      tex.rotation = t * 0.8;
-      tex2.rotation = -t * 1.3;
-      glow.material.opacity = 0.22 + Math.sin(t * 2.3) * 0.06;
+      on += ((NM_STATE.glow ? 1 : 0) - on) * 0.02;
+      tex.rotation = t * (0.8 + on * 1.5);
+      tex2.rotation = -t * (1.3 + on * 2);
+      glow.material.opacity = 0.22 + Math.sin(t * 2.3) * 0.06 + on * (0.35 + Math.sin(t * 6) * 0.15);
+      glow.scale.setScalar(1 + on * 0.6);
+      lamp.intensity = 30 + on * (60 + Math.sin(t * 6) * 25);
     });
   },
 

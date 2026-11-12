@@ -7,6 +7,7 @@ import { DIFFICULTIES, ENEMIES, GAME, PERK_NAMES, TOWERS, TRACKS, VERSUS, WAVES,
 import { profile } from '../profile.js';
 import { LEAP_TIME } from '../views.js';
 import { audio } from '../audio.js';
+import { NM_STATE } from '../nightmareworld.js';
 import { MODEL_SCALE } from '../scale.js';
 import { BOUNDS, path } from '../sim/path.js';
 import { CASTLE, laneOf, laneOz } from '../sim/map.js';
@@ -1620,6 +1621,7 @@ export class GameEvents {
             this.ui.toast(`Wave ${ev.i + 1}${ev.bonus ? ` · +$${ev.bonus}` : ''}${scripted && !scripted.startsWith('Final') ? ` — ${scripted}` : ''}`, scripted ? 3000 : 1600);
             break;
           }
+          if (ev.glow) NM_STATE.glow = 1; // Halloween Night 3: the portal starts to glow
           const note = ev.note ?? difficulty(st.mode).waves[ev.i]?.note;
           audio.waveStart();
           this.ui.toast(note ? `Wave ${ev.i + 1}: ${note}` : `Wave ${ev.i + 1}`, note ? 3200 : 1500);

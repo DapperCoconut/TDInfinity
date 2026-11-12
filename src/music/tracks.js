@@ -127,6 +127,16 @@ export const TRACKS = {
   'boss:h2Ringmaster': t('spooky', 132, 'D', 'harmonic', [0, 4, 0, 4], [5, 4, 3, 0], { C: [0, 3, 4, 4], form: 'big', kit: 'four', lead: 'organ', arp: ['bell', 'updown', 1] }),
   'boss:h2Predator': t('heavy', 150, 'C', 'phrygian', [0, 1, 0, 5], [6, 5, 1, 0], { kit: 'double' }),
   'boss:h2Heretic': t('night', 84, 'F', 'harmonic', [0, 5, 0, 1], [3, 4, 5, 0], { kit: 'half', lead: 'organ' }),
+  // Halloween Night 3
+  'boss:n3CurseVine': t('night', 96, 'G', 'harmonic', [0, 1, 0, 3], [4, 3, 5, 0], { kit: 'half' }),
+  'boss:n3RottingTerror': t('heavy', 120, 'D', 'phrygian', [0, 1, 0, 3], [5, 3, 1, 0], { kit: 'half' }),
+  'boss:n3Conjurer': t('spooky', 112, 'B', 'harmonic', [0, 3, 1, 4], [5, 1, 4, 0], { lead: 'organ', arp: ['bell', 'up', 1] }),
+  'boss:n3Titus': t('heavy', 140, 'E', 'phrygian', [0, 6, 0, 1], [4, 1, 6, 0], { kit: 'double' }),
+  'boss:n3HexMaw': t('heavy', 164, 'F', 'harmonic', [0, 1, 4, 0], [6, 4, 1, 0], { kit: 'double' }),
+  'boss:n3JackTerror': t('spooky', 128, 'C', 'harmonic', [0, 4, 3, 4], [5, 3, 4, 0], { C: [0, 1, 4, 4], form: 'big', kit: 'four', lead: 'organ' }),
+  'boss:n3HarvestWitch': t('night', 104, 'A', 'harmonic', [0, 5, 3, 4], [1, 4, 3, 0], { kit: 'half', lead: 'organ', arp: ['bell', 'updown', 1] }),
+  'boss:n3Conserver': t('night', 92, 'D', 'phrygian', [0, 1, 5, 4], [3, 1, 4, 0], { kit: 'half', lead: 'organ' }),
+  'boss:n3Drako': t('heavy', 156, 'E', 'harmonic', [0, 1, 3, 4], [5, 6, 4, 0], { C: [0, 5, 1, 4], form: 'big', kit: 'double', lead: 'organ', arp: ['bell', 'updown', 1] }),
 };
 
 // A boss's other shapes share its track: Hardcore's copies (hcFKing = fKing), second phases

@@ -26,7 +26,7 @@ const NEW = {
   n3BigGourdian: H('Big Gourdian', 120, 2, 'gourd', 0xef6c00, 0x2e5d1e, 0x3e2723, { scale: 1.35, big: true }),
   n3HexWraith: H('Hex Wraith', 60, 4, 'hexWraith', 0x9575cd, 0x311b92, 0x1a0f40),
   n3Corroded: H('Corroded', 80, 2.5, 'corroded', 0x558b2f, 0x33691e, 0x1b3a12),
-  n3Ghost: E('Ghost', 50, 3.5, { h: 4.2, model: 'n3Soul', soul: 'ghost', skin: 0xeceff1 }),
+  n3Ghost: E('Ghost', 50, 3.5, { h: 4.2, model: 'n3Soul', soul: 'ghost', skin: 0xeceff1, scale: 1.5 }),
   n3PumpkinBat: E('Pumpkin Bat', 40, 5, { h: 2.4, model: 'h2Bat', skin: 0xe65100 }),
   n3HexRevenant: H('Hex Revenant', 200, 2.5, 'hexRevenant', 0x7e57c2, 0x37474f, 0x263238, { scale: 1.1 }),
   n3Reaper: E('Reaper', 150, 3, { h: 5.2, model: 'h2Reaper', reaper: 'plain', skin: 0x424242, hidden: true,
@@ -44,7 +44,7 @@ const NEW = {
     wrap: { every: 15, range: 30, stun: 5 },
     intro: '🌿 MINI-BOSS: CURSE VINE! Every 15 seconds it wraps the nearest tower in vines for 5 seconds.' }),
   n3SkullReaper: E('Skull Reaper', 600, 3, { h: 5.2, model: 'h2Reaper', reaper: 'skull', skin: 0xe0d6c0, hidden: true }),
-  n3LostSoul: E('Lost Soul', 100, 5, { h: 3.6, model: 'n3Soul', soul: 'lost', skin: 0x80deea,
+  n3LostSoul: E('Lost Soul', 100, 5, { h: 3.6, model: 'n3Soul', soul: 'lost', skin: 0x80deea, scale: 1.2,
     intro: '👻 Lost Souls: quick little spirits.' }),
 
   // ------------------------------------------------------------ act 2 (waves 8-14)
@@ -53,7 +53,7 @@ const NEW = {
   n3BlightWalker: H('Blight Walker', 2000, 2, 'blight', 0x9ccc65, 0x33691e, 0x1b3a12, { scale: 1.2,
     puddle: { every: 8, radius: 7, life: 6, heal: 0.04 },
     intro: '🟢 Blight Walkers leave HEALING PUDDLES. Enemies in them heal. Kill them early!' }),
-  n3TormentedSoul: E('Tormented Soul', 400, 4, { h: 4.0, model: 'n3Soul', soul: 'tormented', skin: 0xef5350 }),
+  n3TormentedSoul: E('Tormented Soul', 400, 4, { h: 4.0, model: 'n3Soul', soul: 'tormented', skin: 0xef5350, scale: 1.4 }),
   n3RottingTerror: H('Rotting Terror', 15000, 1.5, 'rotting', 0x7c8b3a, 0x3e4a1e, 0x2a2f14, { scale: 1.8, boss: true,
     slam: { range: 12, every: 15, stun: 2 },
     intro: '🧟 MINI-BOSS: ROTTING TERROR! Big and slow. Its stomp stuns the towers around it.' }),

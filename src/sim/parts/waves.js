@@ -67,7 +67,7 @@ export class SimWaves {
     this.loadCrates();
     this.skipVotes.clear();
     w.votes = 0;
-    this.events.push({ k: 'waveStart', i: w.index, ...(this.waves[w.index]?.note ? { note: this.waves[w.index].note } : {}) });
+    this.events.push({ k: 'waveStart', i: w.index, ...(this.waves[w.index]?.note ? { note: this.waves[w.index].note } : {}), ...(this.waves[w.index]?.glow ? { glow: 1 } : {}) }); // glow: Halloween Night 3's portal lights up
   }
 
   /** Versus: zombies another player sent here, `n` of them `gap` seconds apart. */
