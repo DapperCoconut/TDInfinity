@@ -1672,6 +1672,16 @@ export class GameEvents {
           if (!this.versus || ev.L === this.myLane) this.effects.baseHit(new THREE.Vector3(path.end.x, 0, path.end.z + laneOz(ev.L ?? 0)));
           break;
         }
+        case 'gateHit': {
+          // Frostgate Citadel: an enemy at the gate hits it (a spark on the gate, a thud now and then).
+          this.effects.puff(new THREE.Vector3(ev.x + 1.5, 3, ev.z), 0xff6f8f, 5, 0.4, 5);
+          const now = performance.now();
+          if (now - (this.gateSound ?? 0) > 700) {
+            this.gateSound = now;
+            audio.baseHit();
+          }
+          break;
+        }
         case 'waveStart': {
           this.earnXp();
           if (this.versus) {

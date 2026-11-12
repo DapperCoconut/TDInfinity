@@ -612,8 +612,8 @@ export const DIFFICULTIES = {
   // Christmas Event (2026-11-11 spec, see christmas.js): Christmas Night 1, 20 waves on Frostwatch
   // Basin against the FROST SPIRIT. An event like Halloween's (its own button and map); the cash,
   // base health and credits are copied from Halloween (guesses).
-  christmas: { name: 'Christmas Event', icon: '🎄', color: '#4fc3f7', boss: 'xmSpirit', desc: 'Christmas Night 1: 20 icy waves on Frostwatch Basin against the FROST SPIRIT. Four paths, frost creatures, and towers that get frozen. A full server\'s cash is shared between the players: $22,000 to start solo, $5,500 each with four. 100 base health. 3x credits.',
-    waves: CHRISTMAS_WAVES, timers: CHRISTMAS_TIMERS, event: true, map: 'frost', maps: ['frost'], cash: 1, dmgCash: 1.5, pot: 4, credits: 3, shards: 3, baseHp: 100, startCash: 5500, groupBonus: 0, flatHp: true,
+  christmas: { name: 'Christmas Event', icon: '🎄', color: '#4fc3f7', boss: 'xmSpirit', desc: 'Christmas Night 1: 20 icy waves on Frostwatch Basin against the FROST SPIRIT. Four paths, frost creatures, and towers that get frozen. Christmas Night 2: defend the Frostgate Citadel\'s gate (27,000 health) from 12 lanes. A full server\'s cash is shared between the players: $22,000 to start solo, $5,500 each with four. 100 base health. 3x credits.',
+    waves: CHRISTMAS_WAVES, timers: CHRISTMAS_TIMERS, event: true, map: 'frost', maps: ['frost', 'citadel'], cash: 1, dmgCash: 1.5, pot: 4, credits: 3, shards: 3, baseHp: 100, startCash: 5500, groupBonus: 0, flatHp: true,
     mpHp: [0, 0, 0, 0, 0],
     hpCurve: [[1, 1], [8, 0.8], [11, 0.6], [14, 0.4], [15, 0.3]], bossHp: 0.6 },
   // Liminal contract (2026-11-11 spec, see lastlaugh.js): the endless mode in the Backrooms. Not on

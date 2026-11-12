@@ -69,6 +69,7 @@ export const TRACKS = {
   'map:nightmare': t('spooky', 128, 'D', 'harmonic', [0, 5, 0, 6], [3, 4, 5, 4, 3, 6, 4, 0], { C: [0, 6, 5, 4], kit: 'rock', name: 'Halloween Night 3' }),
   'map:backrooms': t('void', 72, 'F#', 'phrygian', [0, 1, 0, 6], [1, 0, 6, 0], { C: [0, 6, 1, 0], name: 'The Backrooms' }), // Liminal contract: a low hum
   'map:frost': t('calm', 104, 'E', 'major', [0, 5, 3, 4], [3, 4, 0, 4], { C: [5, 3, 0, 4], mel: PENTA_MAJOR, arp: ['pluck', 'alberti', 2], name: 'Frostwatch Basin' }),
+  'map:citadel': t('calm', 96, 'B', 'minor', [0, 5, 3, 4], [5, 3, 4, 0], { C: [0, 3, 5, 4], arp: ['pluck', 'alberti', 2], kit: 'rock', name: 'Frostgate Citadel' }),
   'map:rig': t('industrial', 126, 'G', 'minor', [0, 6, 5, 6], [3, 5, 6, 0], { C: [0, 0, 5, 6], name: 'Rig Point' }),
 
   // ---------------------------------------------------------------- bosses: first game, Easy, Medium

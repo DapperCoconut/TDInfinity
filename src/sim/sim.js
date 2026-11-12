@@ -18,7 +18,7 @@ import {
   DIFFICULTIES, ENEMIES, GAME, PERKS, PLAYER_COLORS, SPEEDS, TARGET_MODES, TOWERS, WAVES, abilityCost, canHit,
   choiceOptions, choicesOf, difficulty, eventMap, modeFor, facesCone, pickOptions, rootType, towerCost, towerLimit, towerMaxHp,
 } from '../config.js';
-import { canPlace, laneOf, laneOz, mapKey, placeFail, setMap } from './map.js';
+import { canPlace, laneOf, laneOz, mapInfo, mapKey, placeFail, setMap } from './map.js';
 import { pickableMap } from './maps.js';
 import { BEELINE, BOUNDS, path, setTimeWorld } from './path.js';
 import {
@@ -52,6 +52,11 @@ import { SimChristmas, XM_FX } from './parts/christmas.js';
 import { SimContract } from './parts/contract.js';
 import { SimLiminal } from './parts/liminal.js';
 
+// Frostgate Citadel: an enemy at the gate hits it every GATE_HIT_EVERY seconds for GATE_HIT x its
+// `damage` (the number a leak would take off the base). Both are guesses.
+const GATE_HIT = 10;
+const GATE_HIT_EVERY = 1;
+
 export class Sim {
   /**
    * @param {{id: string, name: string, color?: number, loadout?: string[], evo?: object}[]} players  (no loadout = any tower;
@@ -82,7 +87,7 @@ export class Sim {
     this.flatHp = !!dm.flatHp; // Medium: enemy health doesn't grow per wave
     this.dm = dm; // its DIFFICULTIES entry (hpCurve reads it)
     this.timers = dm.timers ?? null; // Medium: waves that start the next one after a while anyway
-    this.maxBaseHp = dm.baseHp ?? GAME.baseHp;
+    this.maxBaseHp = (!this.vs && mapInfo.gate) || (dm.baseHp ?? GAME.baseHp); // Frostgate Citadel: the gate's health
     this.mpHp = dm.mpHp ?? null; // Hard: enemy health bonus per number of extra players
     this.mpPerEnemy = !!dm.mpPerEnemy; // Expert: each enemy has its own multiplayer health (mpTop / mpPow)
     this.voidArmor = dm.voidArmor ?? null; // Void mode: the void armor mutation (see armorUp)
@@ -380,7 +385,19 @@ export class Sim {
         e.dist = 0;
         this.events.push({ k: 'hcRecede', e: e.id, n: e.recedes, left: def.recede.n - e.recedes });
       }
-      if (e.dist >= path.length) {
+      if (e.dist >= path.length && mapInfo.gate && !this.vs) {
+        // Frostgate Citadel: an enemy at the gate stops there and hits it once a second.
+        e.dist = path.length;
+        e.gateT = (e.gateT ?? 0) - dt;
+        if (e.gateT <= 0) {
+          e.gateT = GATE_HIT_EVERY;
+          const dmg = def.damage * GATE_HIT;
+          this.baseHp = Math.max(0, this.baseHp - dmg);
+          this.events.push({ k: 'gateHit', e: e.id, d: dmg, x: r2(e.x), z: r2(e.z) });
+          if (this.baseHp <= 0) return this.end(false);
+        }
+      }
+      if (e.dist >= path.length && !(mapInfo.gate && !this.vs)) {
         this.enemies.delete(e.id);
         const dmg = def.leakHp ? Math.ceil(e.hp * def.leakHp) : def.damage; // Mr. Saw: double the health he has left
         this.baseHp = Math.max(0, this.baseHp - dmg);

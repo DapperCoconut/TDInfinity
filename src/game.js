@@ -455,6 +455,15 @@ export class GameClient {
       this.hemi.groundColor.set(spring ? 0x4e6a3e : 0x5a6470);
       this.hemi.intensity = spring ? 1.6 : 1.15;
     }
+    // Frostgate Citadel: a cold blue night with pink lights near the citadel.
+    if (mapInfo.citadel) {
+      this.sunOff = [-60, 100, -30];
+      this.sun.color.set(0x9fb4e8);
+      this.sun.intensity = 0.75;
+      this.hemi.color.set(0x7d92c8);
+      this.hemi.groundColor.set(0x4a5478);
+      this.hemi.intensity = 1.2;
+    }
     if (t.sunOff) this.sunOff = t.sunOff; // a map's own sun direction (Brook Hollow: from the east)
     this.root.fog.near = t.fogNear ?? 90; // drawn units
     this.root.fog.far = t.fogFar ?? 200;

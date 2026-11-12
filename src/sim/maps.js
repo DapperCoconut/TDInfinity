@@ -1346,6 +1346,90 @@ function frFixed() {
   return out;
 }
 
+/**
+ * Frostgate Citadel (Christmas Night 2, 2026-11-11 user spec, with its own name and props): a snowy
+ * walled corridor at night, 26 x 12 grid (columns A-Z, rows 1-12, north = top), 1 cell = 6 units.
+ * Enemies leave a fog bank in the west and walk 12 straight lanes east to the citadel's gate. No
+ * castle: the gate is the base. It has `gate` health (27,000) instead of the mode's base health,
+ * and enemies that reach it stop and hit it until they die (sim.js tick).
+ *
+ *     ABCDEFGHIJKLMNOPQRSTUVWXYZ
+ *  1  ========W=||=====W====FFFF
+ *  2  ~~~....XXX||***.L..L*GFFFF
+ *  3  ~~~.......||##...hh./GFFFF
+ *  4  ~~~>>>>>>>||##>>>>>>/GFFFF   (12 lanes over rows 4-8)
+ *  6  ~S~>>>>>>>||##>>>>>>/BFFFF
+ *  8  ~~~>>>>>>>||##>>>>>>/GFFFF
+ *  9  ~~~...XXXX||##..LhhL*GFFFF
+ * 10  ==========||====KKKK=GFFFF
+ * 11  ~~~.C.....||..C.KKKK..FFFF
+ * 12  rrr.......||..........FFFF
+ *
+ * S fog bank (spawn), > lanes, B gate (base), G gate face, = wall (with gaps under the truss), W wall
+ * tower, | steel truss, # dark raised strip, L floodlight, h hazard pad, / striped apron, F citadel,
+ * K bunker, X rubble, * snow drift, C crane, r fire glow.
+ */
+export const CG_CELL = 6;
+/** World [x, z] of grid cell (c, r) (fractions allowed). */
+export const cgCell = (c, r) => [(c - 12.5) * CG_CELL, (r - 5.5) * CG_CELL];
+const citXz = (c, r) => {
+  const [x, z] = cgCell(c, r);
+  return { x, z };
+};
+export const CG_WALL_Z = 27; // the two long walls (north at -27, south at +27), 6 thick
+export const CG_GATE_X = 49; // the gate's middle (its face is at x 47)
+const CG_LANES = 12;
+const CG_ROUTES = Array.from({ length: CG_LANES }, (_, i) => {
+  const z = -11 + i * 2; // 2 units apart: one wide band of lanes down the middle
+  return [[-63, z], [46, z]];
+});
+
+function cgFixed() {
+  const out = [];
+  out.push({ kind: 'cgGround' });
+  out.push({ kind: 'cgFog', x: -70, z: 0 });
+  // The two long walls, with a gap under the truss (K-L) so players can walk outside.
+  for (const side of [-1, 1]) {
+    for (const [a, b] of [[-78, -18], [-6, 47]]) {
+      out.push({ kind: 'cgWall', x: (a + b) / 2, z: side * CG_WALL_Z, len: b - a, side, block: 0.1, box: [(b - a) / 2, 3, 12] });
+      for (let x = a + 3; x <= b - 2; x += 5) out.push({ kind: 'cgBlock', x, z: side * CG_WALL_Z, block: 3.4 });
+    }
+  }
+  // Wall towers on the north wall (I1, R1).
+  for (const c of [8, 17]) out.push({ kind: 'cgWallTower', ...citXz(c, 1), block: 6, box: [5, 5, 18] });
+  // The truss across the map (K-L), standing on footings outside the walls.
+  out.push({ kind: 'cgTruss', x: -12, z: 3 });
+  for (const z of [-34, 37]) out.push({ kind: 'cgBlock', x: -12, z, block: 4.5, box: [5, 2, Infinity] });
+  // The dark raised strip (M-N) the lanes cross.
+  out.push({ kind: 'cgStrip', x: 3, z: 0, w: 12, d: 44 });
+  // The lit courtyard (Q-T), its hazard pads, the striped apron (U) and the gate.
+  out.push({ kind: 'cgCourt', x: 30, z: 0, w: 24, d: 48 });
+  for (const z of [-17, 17]) out.push({ kind: 'cgPad', x: 30, z, w: 12, d: 6 });
+  out.push({ kind: 'cgApron', x: 45, z: 0, w: 4, d: 48 });
+  out.push({ kind: 'cgGate', x: CG_GATE_X, z: 0 });
+  for (const z of [-19, -10, 0, 10, 19]) out.push({ kind: 'cgBlock', x: CG_GATE_X, z, block: 0.1, box: [2, 5, Infinity] });
+  out.push({ kind: 'cgCitadel', x: 66, z: 3 });
+  // The bunker on the south wall (Q-T).
+  out.push({ kind: 'cgBunker', x: 31, z: 29, block: 0.1, box: [9, 6, 10] });
+  for (const x of [24, 31, 38]) out.push({ kind: 'cgBlock', x, z: 29, block: 6 });
+  // Floodlights along the courtyard's sides (off the lanes).
+  [[19, -21], [30, -21], [41, -21], [19, 21], [30, 21], [41, 21]].forEach(([x, z], i) =>
+    out.push({ kind: 'cgFlood', x, z, face: z < 0 ? 1 : -1, lit: i === 1 || i === 4, block: 1, bh: Infinity }));
+  // Rubble heaps, fallen slabs, drifts, barrels, a generator and a cage.
+  [[-33, -20, 4], [-27, -18, 3.4], [-22, -21, 3], [-33, 19, 3.6], [-27, 21, 4], [-21, 18, 3]].forEach(([x, z, s], i) =>
+    out.push({ kind: 'cgRubble', x, z, s, rot: i * 1.3, block: s, bh: s * 0.6 }));
+  [[-60, 18], [-53, 17], [-46, 19], [-41, 18]].forEach(([x, z], i) => out.push({ kind: 'cgSlab', x, z, rot: i * 0.7 - 0.6, block: 2.2, bh: 1 }));
+  [[0, -21], [8, -22], [45, -21], [45, 21]].forEach(([x, z], i) => out.push({ kind: 'cgDrift', x, z, s: 1 + (i % 2) * 0.3, rot: i }));
+  [[22, 15.5], [24, 16.2], [23, 14.4]].forEach(([x, z], i) => out.push({ kind: 'cgBarrel', x, z, lie: i !== 1, rot: i * 1.1, block: 1 }));
+  out.push({ kind: 'cgGenerator', x: 37, z: 16, block: 2.4, bh: 3 });
+  out.push({ kind: 'cgCage', x: 21, z: -16, block: 2, bh: 3 });
+  // Outside the south wall: two cranes, wreckage and a red fire glow.
+  for (const c of [4, 14]) out.push({ kind: 'cgCrane', ...citXz(c, 11), block: 2.5, bh: Infinity });
+  out.push({ kind: 'cgFire', x: -70, z: 39 });
+  [[-40, 36], [0, 39], [-55, -33], [20, -34]].forEach(([x, z], i) => out.push({ kind: 'cgRubble', x, z, s: 2.4, rot: i, block: 2.4, bh: 1.4 }));
+  return out;
+}
+
 // How hard a map is (MAPS[key].rating): its card in the menus is that color. Judged by eye from
 // the path (long and winding is easy; short, split or random is hard) and how much room there is to build.
 export const MAP_RATINGS = {
@@ -1640,6 +1724,33 @@ export const MAPS = {
       sky: 0x1e2a2c, fog: 0x5a7378, fogNear: 90, fogFar: 230, night: true, snow: true,
       leaves: [0xe6e8ea, 0xe6e8ea, 0xe6e8ea], rock: 0x2a2c32,
       cliff: [0x2a2c32, 0x202228, 0x55585e], water: [0x1f4c50, 0x173a3e],
+    },
+  },
+  citadel: {
+    name: 'Frostgate Citadel',
+    rating: 'medium',
+    icon: '🏰',
+    desc: 'Christmas Night 2: a walled snowy corridor at night. Enemies march out of the fog on 12 lanes and attack the citadel gate. The gate has 27,000 health: keep them off it!',
+    path: CG_ROUTES[0],
+    routes: CG_ROUTES, // 12 straight lanes, west to east
+    spawn: { x: 8, z: -18 },
+    base: 'gate', // no castle: the citadel gate (cgGate) is the base
+    baseAt: [CG_GATE_X, 0],
+    baseR: 3,
+    gate: 27000, // the gate's health (instead of the mode's base health); enemies that reach it hit it
+    portal: false, // enemies come out of the fog bank (cgFog)
+    event: 'christmas', // the Christmas Event's second map (see DIFFICULTIES.christmas.maps)
+    citadel: true, // lighting in game.js
+    bounds: { minX: -78, maxX: 47, minZ: -38, maxZ: 42 },
+    cliffs: [],
+    pools: [],
+    trees: 0, tree: 'pine', rocks: 0, border: 'none',
+    fixed: cgFixed(),
+    theme: {
+      ground: ['#b8c6e6', '#b2c0e0', '#bccaea', '#aebcdc'], path: ['#9aa8cc', '#94a2c6', '#a0aed2', '#8e9cc0'],
+      sky: 0x3b4d7a, fog: 0x7088b8, fogNear: 90, fogFar: 230, night: true, snow: true,
+      leaves: [0xe6e8ea, 0xe6e8ea, 0xe6e8ea], rock: 0x3a4058,
+      cliff: [0x5a6690, 0x3a4058, 0x8a93b0], water: [0x1f4c50, 0x173a3e],
     },
   },
   rig: {
