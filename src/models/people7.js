@@ -21,7 +21,7 @@ const PI = Math.PI;
 // ------------------------------------------------------------------ shared bits for this batch
 
 /** A visor strip across a round helmet (head space). */
-function visor(k, mat) {
+export function visor(k, mat) {
   band(k, 0.79, 0.05, 0.3, 2.0, mat, 0.76);
   for (const s of [-1, 1]) k.cyl(0.07, 0.06, INK, s * 0.72, 0.8, 0.28, { axis: 'x', seg: 8 });
 }
@@ -132,7 +132,7 @@ export function rocketPod(k, cols, rows, col, cap, o = {}) {
 }
 
 /** A shell held in the fist (gun space): body, ogive nose, fins at the tail. */
-function heldShell(k, col, fat = false, nose = null) {
+export function heldShell(k, col, fat = false, nose = null) {
   const r = fat ? 0.27 : 0.2;
   k.cyl(r, 0.7, col, 0, -0.35, 0.05, { seg: 12 });
   k.cyl(0.03, 0.35, nose ?? tone(col, 0.8), 0, -0.88, 0.05, { seg: 12, r2: r });
@@ -145,7 +145,7 @@ function heldShell(k, col, fat = false, nose = null) {
 }
 
 /** Holds a shell in the right hand at chest height, ready to load (the mortar crews' pose). */
-function loaderPose(h, key, col, fat, nose) {
+export function loaderPose(h, key, col, fat, nose) {
   const g = fist(h.rightArm, -1.9, 1.15);
   g.position.x = 0.35;
   g.rotation.z = 0.3;
@@ -166,7 +166,7 @@ function shell(k, x, z, r, hh, col, nose) {
 }
 
 /** A wooden rack of shells standing on the ground (root space). */
-function shellRack(k, x, z, cols, col, nose, o = {}) {
+export function shellRack(k, x, z, cols, col, nose, o = {}) {
   const r = o.r ?? 0.17;
   const p = r * 2 + 0.12;
   const w = cols * p + 0.2;
@@ -192,7 +192,7 @@ function sandbags(k, rx, rz, cz, n = 6, col) {
  * bipod with an elevation screw. Returns the tube group (the muzzle goes on it). o: w (tube
  * radius), len, col, bands (glow material), stripe (glow material), rings (reinforcing bands).
  */
-function mortarGun(h, key, o) {
+export function mortarGun(h, key, o) {
   const mount = new THREE.Group();
   mount.position.set(0, 0, o.z ?? 2.2);
   h.root.add(mount);
