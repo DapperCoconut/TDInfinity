@@ -249,7 +249,7 @@ export function makeGrenadier(level) {
  * a leaf sight. o.drum: a six-shot revolving drum, o.heavy: a bigger barrel with a yellow ring.
  * Returns the bore point [y, z].
  */
-function launcher(k, o = {}) {
+export function launcher(k, o = {}) {
   const U = UP;
   const r = o.heavy ? 0.3 : 0.24;
   const len = o.heavy ? 2.2 : 1.9;
