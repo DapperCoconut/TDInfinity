@@ -54,7 +54,7 @@ function flightHelmet(k, col, visor, o = {}) {
 }
 
 /** A sci-fi helmet: round shell, a wide glowing visor in a frame, ear pods and a crest (head space). */
-function visorHelmet(k, col, visor, o = {}) {
+export function visorHelmet(k, col, visor, o = {}) {
   dome(k, 0.77, 0.66, col, 0, 0.78, 0);
   k.cyl(0.77, 0.62, col, 0, 0.48, 0, { seg: 22, open: true });
   band(k, 0.79, 0.09, 0.42, 2.1, tone(col, 0.6), 0.74); // visor frame
@@ -116,7 +116,7 @@ function bombCart(k, x, z, bomb = 0x37474f) {
  * rings and an emitter tip. o: len, body, trim, glow (material), rings, scope, fat (a size factor
  * for the barrel parts). Returns the bore point [y, z].
  */
-function beamGun(k, o = {}) {
+export function beamGun(k, o = {}) {
   const len = o.len ?? 1.9;
   const body = o.body ?? 0xeceff1;
   const trim = o.trim ?? 0x546e7a;
@@ -293,7 +293,7 @@ const thighPocket = (k, col) => {
 };
 
 /** A small back pack of glowing cells in a frame (torso space): `n` cells across. */
-function cellPack(k, col, glow, n = 3, o = {}) {
+export function cellPack(k, col, glow, n = 3, o = {}) {
   const w = o.w ?? 1.5;
   const z = -0.88;
   k.box(w, 1.7, 0.7, col, 0, 0, z, { r: 0.1 });
@@ -310,7 +310,7 @@ function cellPack(k, col, glow, n = 3, o = {}) {
 }
 
 /** Chest armour: a rounded plate, belly bands and a glowing core (torso space). */
-function chestPlate(k, col, light, o = {}) {
+export function chestPlate(k, col, light, o = {}) {
   k.box(2.18, 1.3, 1.2, col, 0, 0.3, 0, { r: 0.16 });
   for (let i = 0; i < 3; i++) k.box(2.12, 0.18, 1.16, tone(col, 0.82), 0, -0.45 - i * 0.24, 0, { r: 0.05 });
   if (light) {

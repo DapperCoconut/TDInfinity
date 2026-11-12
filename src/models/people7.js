@@ -71,7 +71,7 @@ function rocketPack(k, n, body, nose, col = 0x4e342e) {
  * back end), scope (a big optic), warhead (colour of the rocket poking out), fat, bands (a glow
  * material for rings), grip (a front grip). Returns the muzzle [y, z].
  */
-function tubeLauncher(k, o = {}) {
+export function tubeLauncher(k, o = {}) {
   const r = o.r ?? 0.34;
   const len = o.len ?? 2.6;
   const back = o.back ?? 0.8;
@@ -105,7 +105,7 @@ function tubeLauncher(k, o = {}) {
 }
 
 /** A box pod of rocket tubes on the fist (gun space, mouths along -y): cols x rows tubes. Returns [y, z]. */
-function rocketPod(k, cols, rows, col, cap, o = {}) {
+export function rocketPod(k, cols, rows, col, cap, o = {}) {
   const p = o.pitch ?? 0.42;
   const w = cols * p + 0.2;
   const d = rows * p + 0.2;
