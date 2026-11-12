@@ -285,6 +285,7 @@ export class Lobby {
         if (credits) this.toast(`+${credits} credits for the waves you cleared`, 3000);
       },
       onEndPrimary: () => {
+        if (this.client.session?.sim?.lm) return this.startLiminal(); // Liminal: back to the Backrooms
         if (this.client.session?.mp) {
           this.client.stop();
           this.inGame = false;
@@ -301,6 +302,19 @@ export class Lobby {
     this.client.stop();
     this.inGame = false;
     this.show('title');
+  }
+
+  /**
+   * Liminal contract: you walked into Sunken Canyon's glitchy pit. You leave the game (and its room,
+   * in multiplayer) and start the endless Backrooms on your own.
+   */
+  startLiminal() {
+    const mp = this.client.session?.mp;
+    this.client.stop();
+    if (mp) this.net.send({ type: 'room.leave' });
+    this.inGame = true;
+    this.show(null);
+    this.client.start(new LocalSession(this.name, PLAYER_COLORS[0], 'liminal', profile.evoLevels(), 'backrooms', null));
   }
 
   startSolo() {

@@ -810,6 +810,12 @@ function generate(def) {
         obstacles.push({ x: w.x, z: w.z, r: 1.8 });
         colliders.push({ x: w.x, z: w.z, hx: 1.5, hz: 0.6, h: 4 });
       }
+    } else if (f.kind === 'brWall') {
+      // The Backrooms (Liminal contract): a straight wall along x (rot 0) or z (rot 1).
+      props.push({ ...f });
+      const h = f.len / 2;
+      for (let d = -h + 1.5; d <= h - 1.5 + 0.01; d += 3) obstacles.push({ x: f.x + (f.rot ? 0 : d), z: f.z + (f.rot ? d : 0), r: 1.7 });
+      colliders.push({ x: f.x, z: f.z, hx: f.rot ? 0.5 : h, hz: f.rot ? h : 0.5, h: Infinity });
     } else if (f.kind === 'volcano') {
       props.push({ ...f });
       obstacles.push({ x: f.x, z: f.z, r: 15 });

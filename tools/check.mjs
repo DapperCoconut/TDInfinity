@@ -127,6 +127,7 @@ await section('data', async () => {
     return [`${k}:${m}`, { ...d, ...v }];
   })]);
   for (const [mode, d] of modeList) {
+    if (d.endless) continue; // the Liminal mode makes its waves up as it goes (checked in modes)
     if (!Array.isArray(d.waves) || !d.waves.length) {
       fail('data', `mode ${mode} has no waves`);
       continue;
@@ -283,7 +284,7 @@ await section('modes', () => {
       }
       const kinds = new Set();
       const t0 = Date.now();
-      const last = sim.waves.length - 1;
+      const last = DIFFICULTIES[mode].endless ? 54 : sim.waves.length - 1; // the endless Liminal mode: 55 waves (two room shifts)
       let simT = 0;
       let next = 0;
       let allOut = null; // game time when the last wave finished spawning

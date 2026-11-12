@@ -607,11 +607,17 @@ export const DIFFICULTIES = {
     mapModes: { carnival: { waves: HALLOWEEN2_WAVES, timers: HALLOWEEN2_TIMERS, boss: 'h2Ringmaster', hpCurve: [[1, 1], [6, 1], [8, 0.7], [14, 0.7], [18, 0.4]], bossHp: 0.6 },
       // Halloween Night 3 (see halloween3.js).
       nightmare: { waves: HALLOWEEN3_WAVES, timers: HALLOWEEN3_TIMERS, boss: 'n3Drako', hpCurve: [[1, 1], [5, 0.9], [8, 0.7], [14, 0.55], [20, 0.45], [28, 0.4]], bossHp: 0.7 } } },
+  // Liminal contract (2026-11-11 spec, see lastlaugh.js): the endless mode in the Backrooms. Not on
+  // the mode cards or an event button (`hidden`): you get here by walking into Sunken Canyon's
+  // glitchy pit. `endless`: its waves are made up as you go (sim/parts/liminal.js), so `waves` is
+  // empty. Every number here is a guess.
+  liminal: { name: 'Liminal', icon: '🟨', color: '#c9b046', desc: 'Endless waves of random enemies in the Backrooms. Survive 30 waves to finish the contract.',
+    waves: [], endless: true, hidden: true, map: 'backrooms', maps: ['backrooms'], cash: 1.6, dmgCash: 0.4, credits: 3, shards: 3, baseHp: 200, startCash: 600, groupBonus: 100, flatHp: true },
 };
 export const DEFAULT_DIFFICULTY = 'easy';
 /** The modes on the mode cards, and the special events (each has its own button and its own map). */
-export const MODE_KEYS = Object.keys(DIFFICULTIES).filter((k) => !DIFFICULTIES[k].event);
-export const EVENT_KEYS = Object.keys(DIFFICULTIES).filter((k) => DIFFICULTIES[k].event);
+export const MODE_KEYS = Object.keys(DIFFICULTIES).filter((k) => !DIFFICULTIES[k].event && !DIFFICULTIES[k].hidden);
+export const EVENT_KEYS = Object.keys(DIFFICULTIES).filter((k) => DIFFICULTIES[k].event && !DIFFICULTIES[k].hidden);
 /** The map mode `key` plays when `map` is picked: an event plays one of its own maps (its first when `map` isn't one), other modes get null (they play the picked map). */
 export function eventMap(key, map) {
   const d = DIFFICULTIES[key];

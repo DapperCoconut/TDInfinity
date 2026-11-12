@@ -23,13 +23,13 @@ import { pickableMap } from './maps.js';
 import { BEELINE, BOUNDS, path, setTimeWorld } from './path.js';
 import {
   HC_FX, INSANE_FX, MAX_STEP, ORION_FX, ST_AIRBORNE, ST_ARMORED, ST_BIOHAZARD, ST_BURNING, ST_CHARGING, ST_CHILLED,
-  ST_CLOAKED, ST_CONFUSED, ST_DANCE, ST_INHUMAN, ST_ENRAGED, ST_FLOAT, ST_FROZEN, ST_GASSED, ST_GLITCHED, ST_HACKED, ST_HASTED,
+  ST_CLOAKED, ST_CONFUSED, ST_DANCE, ST_INHUMAN, ST_MUTANT, ST_ENRAGED, ST_FLOAT, ST_FROZEN, ST_GASSED, ST_GLITCHED, ST_HACKED, ST_HASTED,
   ST_SHOCKED, ST_SHROOM, ST_SLIMED, ST_SMOKED, ST_STUNNED, ST_VOIDARMOR, ST_VOIDAURA, VB_FX, VOID_FX, buffOf, cdSnap,
   computeBuffs, nextUpgrade, r2, spyCircles,
 } from './parts/shared.js';
 export {
   FLY_HEIGHT, FPS_BACK, ST_AIRBORNE, ST_ARMORED, ST_BIOHAZARD, ST_BURNING, ST_CHARGING, ST_CHILLED, ST_CLOAKED,
-  ST_CONFUSED, ST_DANCE, ST_ENRAGED, ST_FLOAT, ST_FROZEN, ST_GASSED, ST_GLITCHED, ST_HACKED, ST_HASTED, ST_SHOCKED, ST_INHUMAN,
+  ST_CONFUSED, ST_DANCE, ST_ENRAGED, ST_FLOAT, ST_FROZEN, ST_GASSED, ST_GLITCHED, ST_HACKED, ST_HASTED, ST_SHOCKED, ST_INHUMAN, ST_MUTANT,
   ST_SHROOM, ST_SLIMED, ST_SMOKED, ST_STUNNED, ST_VOIDARMOR, ST_VOIDAURA, beamHealable, bladePos, borrowsHidden,
   buffOf, computeBuffs, droneMode, droneModes, mediCharge, medicShields, modeStats, nextUpgrade, orbitOf, planePos,
   spyCircles, upgradeCost,
@@ -49,6 +49,7 @@ import { SimWeapons4 } from './parts/weapons4.js';
 import { H2_FX, SimCarnival } from './parts/carnival.js';
 import { N3_FX, SimNightmare } from './parts/nightmare.js';
 import { SimContract } from './parts/contract.js';
+import { SimLiminal } from './parts/liminal.js';
 
 export class Sim {
   /**
@@ -101,6 +102,7 @@ export class Sim {
     this.speed = 1;
     this.over = 0; // 0 = playing, 1 = victory, -1 = defeat
     this.wave = { state: 'intermission', index: 0, countdown: dm.firstIntermission ?? GAME.firstIntermission, t: 0, left: 0, votes: 0, total: this.waves.length };
+    if (dm.endless) this.initLiminal(); // Liminal contract: endless waves made up as you go
     this.queue = [];
     this.shells = []; // bombs and missiles in flight
     this.flights = []; // single-target projectiles in flight (slime globs, harpoons, thrown grenades...)
@@ -308,7 +310,7 @@ export class Sim {
         | (e.shockT > 0 ? ST_SHOCKED : 0) | (e.taints?.has('biohazard') ? ST_BIOHAZARD : 0)
         | (e.airT > 0 ? ST_AIRBORNE : 0) | (e.shroom ? ST_SHROOM : 0) | (e.enraged || e.raged ? ST_ENRAGED : 0)
         | (e.smoked ? ST_SMOKED : 0) | (e.armorUp ? ST_ARMORED : 0) | (e.hasted ? ST_HASTED : 0) | (e.glitchT > 0 ? ST_GLITCHED : 0)
-        | (e.auraArmor ? ST_VOIDAURA : 0) | (e.charging ? ST_CHARGING : 0) | (e.cloak ? ST_CLOAKED : 0) | (e.vShield > 0 ? ST_VOIDARMOR : 0) | (e.glitch ? ST_INHUMAN : 0);
+        | (e.auraArmor ? ST_VOIDAURA : 0) | (e.charging ? ST_CHARGING : 0) | (e.cloak ? ST_CLOAKED : 0) | (e.vShield > 0 ? ST_VOIDARMOR : 0) | (e.glitch ? ST_INHUMAN : 0) | (e.mut ? ST_MUTANT : 0);
       // Confused zombies walk back toward the entrance.
       if (e.confT > 0) e.dist = Math.max(0, e.dist - e.speed * dt);
       else if (e.glitch) {
@@ -544,7 +546,8 @@ export class Sim {
         const def = TOWERS[m.type];
         if (!def) return 'Unknown tower';
         if (p.loadout && !p.loadout.includes(m.type)) return `${def.name} isn't in your loadout`;
-        const cost = towerCost(def, !!this.vs);
+        const lmMod = p.lmMods?.[m.type]; // Liminal contract: the tower's blessing and curse
+        const cost = Math.round(towerCost(def, !!this.vs) * (lmMod?.cost ?? 1));
         if (p.cash < cost) return `Not enough cash! ${def.name} costs $${cost}`;
         let owned = 0;
         for (const t of this.towers.values()) if (t.owner === pid && !t.holo && rootType(t.type) === m.type) owned++;
@@ -557,6 +560,7 @@ export class Sim {
         }
         p.cash -= cost;
         const t = this.newTower(pid, m.type, x, z, m.yaw, cost);
+        if (lmMod) t.lm = lmMod;
         this.events.push({ k: 'place', id: t.id, owner: pid, x, z });
         return null;
       }
@@ -595,6 +599,8 @@ export class Sim {
         this.events.push({ k: 'upgrade', id: t.id, owner: pid, name: next.name, x: t.x, z: t.z });
         return null;
       }
+      case 'lmPick':
+        return this.lmPick(p, m); // Liminal contract: a tower picked every 10 waves
       case 'sell': {
         const t = this.ownedTower(pid, m.id);
         if (typeof t === 'string') return t;
@@ -869,7 +875,7 @@ export class Sim {
 
 // Sim's methods are kept in several files (see the list at the top). This puts them all on Sim,
 // just as if they were written inside the class.
-for (const part of [SimEnemyMoves1, SimEnemyMoves2, SimTowerHealth, SimWaves, SimTowerUpdate, SimWeapons1, SimWeapons2, SimWeapons3, SimUnits, SimAbilities, SimDamage, SimWeapons4, SimCarnival, SimNightmare, SimContract]) {
+for (const part of [SimEnemyMoves1, SimEnemyMoves2, SimTowerHealth, SimWaves, SimTowerUpdate, SimWeapons1, SimWeapons2, SimWeapons3, SimUnits, SimAbilities, SimDamage, SimWeapons4, SimCarnival, SimNightmare, SimContract, SimLiminal]) {
   const props = Object.getOwnPropertyDescriptors(part.prototype);
   delete props.constructor;
   Object.defineProperties(Sim.prototype, props);

@@ -10,7 +10,7 @@ import { lerpAngle } from './utils.js';
 import { kickGun, newState, poseEnemy, poseTower, settleGuns } from './anim.js';
 import { MODEL_SCALE as K, PLAYER_SCALE, WORLD_SCALE } from './scale.js';
 import { FX, shade } from './effects.js';
-import { orbitOf, FLY_HEIGHT, ST_INHUMAN, ST_VOIDAURA, ST_CHARGING, ST_ARMORED, ST_GLITCHED, ST_HASTED, ST_SMOKED, ST_AIRBORNE, ST_ENRAGED, ST_SHROOM, ST_BURNING, ST_CHILLED, ST_CONFUSED, ST_DANCE, ST_FLOAT, ST_FROZEN, ST_GASSED, ST_HACKED, ST_SLIMED, ST_STUNNED, ST_SHOCKED, ST_BIOHAZARD, ST_CLOAKED, ST_VOIDARMOR } from './sim/sim.js';
+import { orbitOf, FLY_HEIGHT, ST_INHUMAN, ST_MUTANT, ST_VOIDAURA, ST_CHARGING, ST_ARMORED, ST_GLITCHED, ST_HASTED, ST_SMOKED, ST_AIRBORNE, ST_ENRAGED, ST_SHROOM, ST_BURNING, ST_CHILLED, ST_CONFUSED, ST_DANCE, ST_FLOAT, ST_FROZEN, ST_GASSED, ST_HACKED, ST_SLIMED, ST_STUNNED, ST_SHOCKED, ST_BIOHAZARD, ST_CLOAKED, ST_VOIDARMOR } from './sim/sim.js';
 
 const tmp = new THREE.Vector3();
 const tmpPt = {};
@@ -905,6 +905,10 @@ const SLIME_NAME = /slime|ooze|blob|goo|jelly|sludge/i;
 const GHOST_NAME = /ghost|spirit|shadow|wraith|phantom|soul|spectre|specter|shade|void|wisp|banshee|reaper/i;
 const CRYSTAL_NAME = /crystal|shard|glass|rune|fragment|prism/i;
 const FIRE_NAME = /molten|lava|magma|fire|flame|inferno|ember|burn|blaze/i;
+// Liminal contract: mutated enemies' fleshy tint and growths.
+const MUTANT_FLESH = new THREE.Color(0xd8a08a);
+const MUTANT_LUMP = new THREE.IcosahedronGeometry(1, 0);
+const MUTANT_MAT = new THREE.MeshLambertMaterial({ color: 0xc07a6a });
 const STATUS_FX = ST_BURNING | ST_FROZEN | ST_CHILLED | ST_SHOCKED | ST_HACKED | ST_GLITCHED | ST_GASSED | ST_BIOHAZARD | ST_SLIMED | ST_INHUMAN;
 const STYLES = new Map();
 function deathStyle(def) {
@@ -1257,6 +1261,12 @@ export class EnemyView {
                         : st & ST_HASTED ? 0x2a0045
                           : st & ST_INHUMAN ? (Math.random() < 0.06 ? 0x00838f : 0x000000) // Inhuman: a cyan flicker now and then
                             : 0x000000;
+    if (st & ST_MUTANT && !this.mutated) this.mutateLook(); // Liminal contract
+    if (this.lumps) {
+      // A mutant's growths throb.
+      const k = 1 + Math.sin(performance.now() / 180 + this.phase) * 0.12;
+      for (const l of this.lumps) l.scale.setScalar(l.userData.s * k);
+    }
     if (st & ST_INHUMAN && !this.darkened) {
       // Inhuman contract: sent by the glitchy bot, so it goes nearly black.
       this.darkened = true;
@@ -1267,6 +1277,41 @@ export class EnemyView {
       this.flashOn = color;
     }
     if (!this.dying && FX) this.statusParticles(st, dt);
+  }
+
+  /**
+   * Liminal contract: a mutated enemy. Works on any model: every part is stretched or squashed a
+   * little, the colors go pale and fleshy, and lumpy growths sprout from a few parts.
+   */
+  mutateLook() {
+    this.mutated = true;
+    const meshes = [];
+    this.root.traverse((o) => {
+      if (o.isMesh && !o.userData.noMutate) meshes.push(o);
+    });
+    for (const m of meshes) {
+      const r = () => 0.75 + Math.random() * 0.6;
+      m.scale.set(m.scale.x * r(), m.scale.y * r(), m.scale.z * r());
+    }
+    for (const mt of this.model.mats ?? []) mt.color?.lerp(MUTANT_FLESH, 0.4);
+    this.lumps = [];
+    for (let i = 0; i < 3 && meshes.length; i++) {
+      const host = meshes[Math.floor(Math.random() * meshes.length)];
+      const l = new THREE.Mesh(MUTANT_LUMP, MUTANT_MAT);
+      l.userData.noMutate = true;
+      l.userData.s = 0.25 + Math.random() * 0.3;
+      l.position.set((Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 0.6);
+      // Undo the host's own scale so the growth keeps its shape.
+      host.add(l);
+      host.updateWorldMatrix(true, false);
+      const ws = new THREE.Vector3();
+      host.getWorldScale(ws);
+      const rs = new THREE.Vector3();
+      this.root.getWorldScale(rs);
+      l.userData.s /= Math.max(0.05, (ws.x / rs.x + ws.y / rs.y + ws.z / rs.z) / 3);
+      l.scale.setScalar(l.userData.s);
+      this.lumps.push(l);
+    }
   }
 
   /** What's wrong with it, as particles: flames, frost, sparks, gas bubbles, slime drips; bosses kick up dust. */

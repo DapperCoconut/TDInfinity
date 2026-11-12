@@ -40,8 +40,8 @@ export class GameInput {
       }
       this.keys.add(e.code);
       if (e.repeat || this.ended) return;
-      const slot = /^Digit([1-9])$/.exec(e.code);
-      const type = slot && this.loadout[Number(slot[1]) - 1];
+      const slot = /^Digit([0-9])$/.exec(e.code);
+      const type = slot && this.loadout[(Number(slot[1]) + 9) % 10]; // (0 is the 10th slot, in the Backrooms)
       if (type) this.placing === type ? this.cancelPlace() : this.beginPlace(type);
       else if (slot && slot[1] === '7' && this.ct?.open && !this.versus) this.placing === FENCE ? this.cancelPlace() : this.beginFence(); // Last Laugh: fences
       if (e.code === 'Escape' || e.code === 'KeyQ') {

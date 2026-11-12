@@ -152,7 +152,7 @@ export class UI {
     this.icons = icons;
     this.costOf = costOf;
     let html = '';
-    for (let i = 0; i < GAME.loadoutSize; i++) {
+    for (let i = 0; i < Math.max(GAME.loadoutSize, loadout.length); i++) { // (the Backrooms allow up to 10)
       const type = loadout[i];
       if (!type) {
         html += `<div class="slot empty"><div class="slot-key">${i + 1}</div></div>`;
@@ -161,7 +161,7 @@ export class UI {
       const def = TOWERS[type];
       html += `<button class="slot" data-tower="${type}" title="${def.name} — ${splitBlurb(def.blurb)[0]}">
         <img src="${icons[type]}" alt="${def.name}">
-        <div class="slot-key">${i + 1}</div>
+        <div class="slot-key">${(i + 1) % 10}</div>
         <div class="slot-count"></div>
         <div class="slot-cost">$${costOf(type)}</div>
       </button>`;
@@ -284,7 +284,7 @@ export class UI {
       if (showSkip) this.el.skip.textContent = `${w.state === 'intermission' ? 'Start Wave ▶' : 'Next Wave ▶'} ${w.votes}/${st.votesNeeded}`;
       return;
     }
-    this.el.waveLabel.textContent = `Wave ${Math.min(w.index + 1, w.total)} / ${w.total}`;
+    this.el.waveLabel.textContent = w.total ? `Wave ${Math.min(w.index + 1, w.total)} / ${w.total}` : `Wave ${w.index + 1} / ∞`; // (total 0: the endless Backrooms)
     let status = '';
     if (w.state === 'intermission') status = `Wave ${w.index + 1} starts in ${Math.ceil(w.countdown)}s`;
     else if (w.state === 'wave') status = w.left ? `${st.mode === 'zombies' ? 'Zombies' : 'Monsters'} incoming!` : 'Clear the remaining enemies!';

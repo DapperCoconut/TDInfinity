@@ -19,6 +19,7 @@ export class GameView {
     if (!!st.timeWorld !== !!this.timeShown) this.showTimeWorld(st.timeWorld);
     this.syncContract(realDt); // Contracts (Last Laugh): the little jester, fences, the open court's route
     this.syncInhuman(realDt); // Inhuman contract: the glitchy bot's black specks
+    this.syncLiminal(realDt); // Liminal contract: Sunken Canyon's glitchy pit, the Backrooms shifting
     // Beholder time bombs stuck to towers.
     this.bombViews ??= new Map();
     const bombs = st.bombs ?? [];

@@ -14,6 +14,7 @@ export class SimWaves {
     for (const p of this.players.values()) p.cash += bonus;
     this.events.push({ k: 'waveClear', i: w.index, bonus, ...(skip ? { skip: 1 } : {}) });
     this.payIncome(skip);
+    if (this.lm) this.lmWaveDone(w.index); // Liminal: tower picks, the contract's goal
   }
 
   /**
@@ -47,6 +48,7 @@ export class SimWaves {
       w.t = 0;
     }
     w.index = index;
+    if (this.lm) this.lmBeforeWave(index); // Liminal: more made-up waves, the rooms shift
     // An optional 5th entry sets the exact health for that group (Easy lists it per wave), or
     // (an object) Hard mode's modifiers: { boss, aggro, bloated, nimble, hidden, regen }.
     for (const [type, count, interval, delay, x] of waveGroups(index, this.waves)) {
@@ -318,6 +320,7 @@ export class SimWaves {
       if (mods.hidden) e.hidden = e.cloak = true;
       if (mods.regen) e.regen = GAME.healthRegen;
     }
+    if (this.lm && at?.wave && !e.boss && Math.random() < this.lmMutChance) this.mutate(e); // Liminal: mutated enemies
     if (def.adapt) e.bulletResist = e.laserResist = e.explosiveResist = e.goldResist = def.adapt.start;
     if (def.blockShots) this.blockers = true; // turns on line-of-sight checks in findTarget (see blocker)
     // Void mode: wave enemies may spawn in void armor (a group's `voidArmor` mod always does).

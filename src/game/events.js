@@ -391,9 +391,14 @@ export class GameEvents {
           break;
         case 'contractDone': {
           const def = CONTRACTS[ev.key];
-          if (profile.finishContract(ev.key)) this.ui.toast(`🏆 Contract complete: ${def?.name ?? 'Contract'}!`, 4500);
+          if (profile.finishContract(ev.key)) this.ui.toast(`🏆 Contract complete: ${def?.name ?? 'Contract'}!${ev.endless ? ' The Backrooms go on forever: how far can you get?' : ''}`, 4500);
           break;
         }
+        case 'lmShift':
+        case 'lmOffer':
+        case 'lmPicked':
+          this.liminalEvent(ev); // Liminal contract: the rooms shift, tower picks
+          break;
         case 'dice': {
           // Last Laugh: the JESTER's exploding dice.
           const at = new THREE.Vector3(ev.x, 0.3, ev.z);

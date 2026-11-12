@@ -9,6 +9,7 @@ const net = new Net();
 const lobby = new Lobby(net);
 const client = new GameClient(document.getElementById('game'), lobby.clientHooks());
 lobby.client = client;
+client.onLiminal = () => lobby.startLiminal(); // Liminal contract: walked into Sunken Canyon's glitchy pit
 lobby.show('title');
 
 // Music plays everywhere, menus included, but a browser only lets a page make sound after a click

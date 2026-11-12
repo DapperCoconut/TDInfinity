@@ -426,6 +426,7 @@ export class SimDamage {
     if (t && !this.dot && dmg > 0) dmg += buffOf(this.buffs, t.id).dmgAdd || 0; // Bugler Snare Drums, Slinger boosts
     if (t && this.contract?.boost) dmg *= this.llBoost.dmg; // Last Laugh: the JESTER's boost
     if (t && this.inhumanPow) dmg *= this.inhumanPow.dmg; // Inhuman contract: the glitchy bot's towers
+    if (t?.lm) dmg *= t.lm.dmg; // Liminal contract: the tower's blessing or curse
     const adapt = ENEMIES[e.type].adapt;
     if (adapt) this.adaptResist(e, kind, dmg, adapt); // Void Colossus: its resistance wears down
     if (kind === 'bullet' && e.bulletResist && !this.ignoresBulletResist(t)) dmg *= 1 - e.bulletResist; // Shielders, Drones...

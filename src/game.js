@@ -29,6 +29,7 @@ import { baseKey } from './sim/maps.js';
 import { GameEvents } from './game/events.js';
 import { GameWheel } from './game/wheel.js';
 import { GameContract } from './game/contract.js';
+import { GameLiminal } from './game/liminal.js';
 import { GameView } from './game/view.js';
 import { GameInput } from './game/input.js';
 import { GameTowers } from './game/towers.js';
@@ -219,7 +220,7 @@ export class GameClient {
     return this.me?.lane ?? 0;
   }
   costOf(type) {
-    return towerCost(TOWERS[type], this.versus);
+    return Math.round(towerCost(TOWERS[type], this.versus) * (this.lmMod(type)?.cost ?? 1)); // (Liminal: a picked tower's blessing or curse)
   }
 
   /** Placement limit of `type` (Field Barracks: lower in bigger teams; each Versus player is on their own). */
@@ -562,6 +563,7 @@ export class GameClient {
     for (const v of this.beamViews?.values() ?? []) v.dispose();
     this.beamViews?.clear();
     this.clearContract(); // Last Laugh: the jester, fences, the wheel window
+    this.clearLiminal(); // Liminal: the pit, the tower pick window
     this.ihShown = false; // Inhuman: its warning shows again next game
     this.lasering = null;
     this.effects.setVoid(0);
@@ -677,7 +679,7 @@ export class GameClient {
 
 // GameClient's methods are kept in several files (see the list at the top). This puts them all on
 // GameClient, just as if they were written inside the class.
-for (const part of [GameEvents, GameView, GameInput, GameTowers, GameWheel, GameContract]) {
+for (const part of [GameEvents, GameView, GameInput, GameTowers, GameWheel, GameContract, GameLiminal]) {
   const props = Object.getOwnPropertyDescriptors(part.prototype);
   delete props.constructor;
   Object.defineProperties(GameClient.prototype, props);

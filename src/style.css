@@ -2626,3 +2626,103 @@ input:focus {
     box-shadow: 0 0 22px #ff1744;
   }
 }
+
+/* Liminal contract: the tower pick every 10 waves in the Backrooms (game/liminal.js). */
+#lm-pick {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 40;
+}
+#lm-pick.hidden {
+  display: none;
+}
+.lmp-box {
+  pointer-events: auto;
+  background: rgba(40, 34, 12, 0.95);
+  border: 3px solid #d8c060;
+  border-radius: 16px;
+  padding: 14px 22px 18px;
+  color: #fff;
+  text-align: center;
+  max-width: 640px;
+}
+.lmp-box h3 {
+  margin: 0 0 4px;
+  color: #ffe98a;
+}
+.lmp-box p {
+  margin: 4px 0 10px;
+  font-size: 14px;
+  opacity: 0.9;
+}
+.lmp-cards {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+.lmp-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 170px;
+  padding: 10px 8px;
+  background: rgba(255, 240, 180, 0.08);
+  border: 2px solid rgba(216, 192, 96, 0.5);
+  border-radius: 12px;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+.lmp-card:hover,
+.lmp-card.on {
+  border-color: #ffe98a;
+  background: rgba(255, 240, 180, 0.18);
+}
+.lmp-card img {
+  width: 72px;
+  height: 72px;
+  border-radius: 10px;
+}
+.lmp-cost {
+  color: #ffd54f;
+  font-weight: bold;
+}
+.lmp-good {
+  color: #9cff8a;
+  font-size: 13px;
+}
+.lmp-bad {
+  color: #ff8a80;
+  font-size: 13px;
+}
+.lmp-swap.hidden {
+  display: none;
+}
+.lmp-row {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.lmp-old {
+  padding: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.lmp-old:hover {
+  border-color: #ff8a80;
+}
+.lmp-old img {
+  width: 44px;
+  height: 44px;
+  display: block;
+}

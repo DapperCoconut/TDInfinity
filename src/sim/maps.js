@@ -13,6 +13,7 @@
 //   theme    colors: ground / path tile colors, sky, cliff side and top, rocks, leaves, water.
 //
 // Bounds are x -104..104, z -66..66 (see path.js).
+import { backroomsLayout } from './backrooms.js';
 
 /** Sunny Meadow's path: a smooth wave (two full swings) that flattens out before the castle. */
 function wave() {
@@ -1475,6 +1476,27 @@ export const MAPS = {
       cliff: [0x4a4d50, 0x3a3d40, 0x8a8c8e], water: [0x4a86a8, 0x3a7698],
     },
   },
+  // The Backrooms (Liminal contract, see lastlaugh.js): only the Liminal mode plays it. Its rooms
+  // come from the seed in the key (sim/backrooms.js), and the mode asks for a new seed every 25 waves.
+  backrooms: {
+    name: 'The Backrooms',
+    event: 'liminal', // not on the map list: you get here by walking into Sunken Canyon's glitchy pit
+    rating: 'hard',
+    icon: '🟨',
+    desc: 'Endless yellow rooms that hum. The rooms shift every 25 waves.',
+    backrooms: true,
+    random: true,
+    ...backroomsLayout(0), // replaced by each game's own rooms (see seededDef)
+    cliffs: [],
+    pools: [],
+    trees: 0, tree: 'round', rocks: 0, border: 'none',
+    theme: {
+      ground: ['#c9b46a', '#c3ad62', '#cebb73', '#bfa95f'], path: ['#8f7d47', '#8a7843', '#94824c', '#857340'],
+      sky: 0x9a8a4a, fog: 0xcfc184, fogNear: 70, fogFar: 230,
+      leaves: [0x8a7a40, 0x8a7a40, 0x8a7a40], rock: 0xb8a462,
+      cliff: [0xd8c47a, 0xc8b46a, 0xe8d48a], water: [0x9aa060, 0x8a9050],
+    },
+  },
 };
 
 // Maps with `random` draw a new route every game: their key carries that game's seed
@@ -1500,6 +1522,7 @@ export function seededDef(key) {
   const def = mapDef(key);
   const seed = seedOf(key);
   if (!def.random || seed == null) return def;
+  if (def.backrooms) return { ...def, ...backroomsLayout(seed), seed }; // Liminal contract: rooms from the seed
   const r = courtRoute(seed);
   return { ...def, path: r.path, tiles: r.tiles, seed };
 }

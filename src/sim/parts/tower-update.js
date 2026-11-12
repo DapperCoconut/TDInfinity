@@ -122,7 +122,7 @@ export class SimTowerUpdate {
     if (t.parryT > 0) return; // Gladiator: recovering from a parry
     // Slowed towers (and ones the Beholder's sword has nerfed for good) do everything slower.
     // Time Dilator bubble: faster or slower (spawners only from Paradox Limiters).
-    const tempo = (t.slowT > 0 ? 1 - t.slowAmt : 1) * (t.nerf ?? 1) * (t.dil && (def.kind !== 'spawner' || t.dil.spawn) ? t.dil.scale : 1) * (this.contract?.boost ? this.llBoost.rate : 1) * (this.inhumanPow?.rate ?? 1); // Last Laugh boost, Inhuman bot's towers
+    const tempo = (t.slowT > 0 ? 1 - t.slowAmt : 1) * (t.nerf ?? 1) * (t.dil && (def.kind !== 'spawner' || t.dil.spawn) ? t.dil.scale : 1) * (this.contract?.boost ? this.llBoost.rate : 1) * (this.inhumanPow?.rate ?? 1) * (t.lm?.rate ?? 1); // Last Laugh boost, Inhuman bot's towers, Liminal blessing/curse
     if (tempo !== 1) dt *= tempo;
     if (t.dpT > 0) t.dpT = Math.max(0, t.dpT - dt); // Bugler Directed Power
     // Abilities with `auto` (Gunslinger Reinforcements) use themselves when ready during a wave.
@@ -163,7 +163,7 @@ export class SimTowerUpdate {
       t.spinT = Math.max(0, t.spinT - dt * b.rate);
       return;
     }
-    const rangeMult = b.range * (t.smoke > 0 ? VERSUS.smokeRange : 1);
+    const rangeMult = b.range * (t.smoke > 0 ? VERSUS.smokeRange : 1) * (t.lm?.range ?? 1); // (Liminal blessing/curse)
     if (rangeMult !== 1) s = { ...s, range: s.range * rangeMult };
     // Electricizer: zombies within part of its range switch it to its short-range mode.
     if (s.near) {

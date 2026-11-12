@@ -43,6 +43,36 @@ export const CONTRACTS = {
     sendHp: 1.75, // the enemies it sends you have this much more health
     jump: [0.35, 0.8], // they stand still, then jump to where they would have walked, every 0.35-0.8 s
   },
+  // Contract 3, Liminal (2026-11-11 spec): on Sunken Canyon the giant pit in the middle turns
+  // glitchy, and walking into it takes you to the Backrooms: an endless mode (DIFFICULTIES.liminal).
+  // Random enemies from every mode, tougher the further you get; some come mutated (twisted shapes,
+  // more health). The rooms shift every 25 waves. Every 10 waves you pick 1 of 3 of your own towers
+  // to add to your loadout (better ones later on), each with a random blessing and curse. Up to 10
+  // towers. Surviving 30 waves finishes the contract, but it keeps going.
+  // The Sim code is in sim/parts/liminal.js, the pit and the picks in game/liminal.js.
+  liminal: {
+    name: 'Liminal',
+    icon: '🟨',
+    color: '#b59a2c',
+    pit: true, // not a map's contract: it opens Sunken Canyon's pit
+    pic: 'hacker',
+    desc: 'Play on Sunken Canyon and walk into the glitchy pit in the middle. Survive 30 waves in the endless Backrooms.',
+    goal: 30, // waves to survive
+    // Every number below is a guess (the spec gives none).
+    shiftEvery: 25, // the rooms shift after this many waves
+    pickEvery: 10, // a new tower to pick after this many waves
+    maxTowers: 10, // loadout size in the Backrooms
+    // A wave's total enemy health: base x grow^wave, growing slower (late) after `lateFrom`.
+    budget: { base: 150, grow: 1.2, late: 1.15, lateFrom: 30 },
+    perEnemy: 18, // a wave has about this many enemies' worth of health (picks how tough the kinds are)
+    groups: [1, 3], // kinds of enemy in a wave
+    maxCount: 30, // most of one kind in a wave (more health each instead)
+    // Mutated enemies: this much more health; the chance grows each wave up to `max`.
+    mutant: { hp: 2, chance: 0.03, grow: 0.008, max: 0.5 },
+    // Blessings and curses on picked towers: [smallest, biggest] change (0.2 = 20%).
+    bless: { dmg: [0.15, 0.4], rate: [0.1, 0.3], range: [0.1, 0.3], cost: [0.1, 0.3] },
+    curse: { dmg: [0.1, 0.3], rate: [0.1, 0.25], range: [0.1, 0.25], cost: [0.15, 0.4] },
+  },
 };
 export const CONTRACT_KEYS = Object.keys(CONTRACTS);
 
