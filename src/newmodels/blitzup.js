@@ -208,38 +208,7 @@ const TIERS = {
     if (lv >= 4) grow(h, 1.1);
   },
 
-  // El Goblino: -> skull stakes beside him -> bear traps scattered around -> a dark bog with
-  // glowing green mushrooms and will-o'-wisps.
-  trapperGoblino(h, lv) {
-    if (lv >= 1) {
-      const wood = mat(h, 0x6d4c41);
-      const bone = mat(h, 0xeeeeee);
-      for (const [x, z] of [[-1.9, -1.3], [1.9, -1.3]]) {
-        part(h.root, boxGeo(0.18, 1.8, 0.18), wood, x, 0.9, z);
-        part(h.root, boxGeo(0.5, 0.45, 0.45), bone, x, 1.95, z);
-      }
-    }
-    if (lv >= 3) {
-      const steel = mat(h, 0x9e9e9e);
-      for (const [x, z] of [[-1.6, 1.6], [1.7, 1.4], [0, 2.0]]) {
-        const t = new THREE.Group();
-        t.position.set(x, 0.05, z);
-        h.root.add(t);
-        part(t, boxGeo(0.9, 0.08, 0.9), steel, 0, 0, 0);
-        for (const s of [-1, 1]) for (let i = 0; i < 3; i++) part(t, boxGeo(0.1, 0.2, 0.1), steel, -0.3 + i * 0.3, 0.12, s * 0.42);
-      }
-    }
-    if (lv >= 4) {
-      paint(h, { 0x5d4f3a: 0x2e2416 });
-      const glow = [0x76ff03, 0x00e676];
-      for (const [x, z, s] of [[-1.3, 1.9, 1], [1.4, -1.9, 0.8], [-2.0, 0.2, 0.7]]) {
-        part(h.root, boxGeo(0.15 * s, 0.5 * s, 0.15 * s), mat(h, 0xf1f8e9), x, 0.3 * s, z);
-        part(h.root, boxGeo(0.55 * s, 0.22 * s, 0.55 * s), mat(h, glow[0], true), x, 0.6 * s, z);
-      }
-      orbit(h, 2.6, 2.4, 3, 0.4, glow, 0.6, 0.75);
-      grow(h, 1.08);
-    }
-  },
+  // El Goblino and Hayes: their level looks are built into models/heroes3.js.
 
   // Chaos Jester: his level colours and circling cards are in his model (people23.js).
 
@@ -249,26 +218,6 @@ const TIERS = {
     if (lv >= 4) {
       orbit(h, 3.4, 2.6, 6, 0.4, [0x43a047, 0x76ff03], 0.8);
       grow(h, 1.1);
-    }
-  },
-
-  // Hayes (scarecrow): -> a patched purple vest -> a ghostly green fog ring and floating jack-o'-
-  // lantern lights at max level.
-  hayes(h, lv) {
-    if (lv >= 3) paint(h, { 0xef6c00: 0x6a1b9a }, [], 2.5); // the vest, not the pumpkins
-    if (lv >= 4) {
-      groundRing(h, 3.7, 18, 0x76ff03, 0.3, 1.1, 0.7, 0.3);
-      const g = drifter(h, h.root, 4.6, 0.5, 0.35);
-      const pump = mat(h, 0xff9100, true);
-      const eye = mat(h, 0x212121);
-      around(g, 3, 2.8, () => {
-        const p = new THREE.Group();
-        g.add(p);
-        part(p, boxGeo(0.6, 0.5, 0.6), pump, 0, 0, 0);
-        part(p, boxGeo(0.12, 0.12, 0.1), eye, 0, 0.1, 0.3);
-        return p;
-      });
-      grow(h, 1.08);
     }
   },
 };
