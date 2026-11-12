@@ -4,6 +4,7 @@ import { addHardcoreEnemies } from './hardcore.js';
 import { addHalloweenEnemies } from './halloween.js';
 import { addHalloween2Enemies } from './halloween2.js';
 import { addHalloween3Enemies } from './halloween3.js';
+import { addChristmasEnemies } from './christmas.js';
 import { addLastLaughEnemies } from './lastlaugh.js';
 
 // Insane mode (2026-11-09 spec) guesses: kill reward and base damage from an enemy's health.
@@ -679,4 +680,5 @@ addHardcoreEnemies(ENEMIES);
 addHalloweenEnemies(ENEMIES); // the Halloween Event's own enemies (see halloween.js)
 addHalloween2Enemies(ENEMIES); // and Halloween Night 2's (see halloween2.js)
 addHalloween3Enemies(ENEMIES); // and Halloween Night 3's (see halloween3.js)
+addChristmasEnemies(ENEMIES); // and Christmas Night 1's (see christmas.js)
 addLastLaughEnemies(ENEMIES); // the Last Laugh contract's Jester (see lastlaugh.js)

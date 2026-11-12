@@ -15,6 +15,7 @@ import { HALLOWEEN_TIMERS, HALLOWEEN_WAVES } from './halloween.js';
 import { HALLOWEEN2_TIMERS, HALLOWEEN2_WAVES } from './halloween2.js';
 import { HALLOWEEN3_TIMERS, HALLOWEEN3_WAVES } from './halloween3.js';
 import { buildRemix } from './halloweenremix.js';
+import { CHRISTMAS_TIMERS, CHRISTMAS_WAVES } from './christmas.js';
 export { BOSS_KNOCK, KNOCK_STUDS, abilityCost, arrowModes, arrowName, timedAbility } from './towers/shared.js';
 import { TOWERS_GUNNERS } from './towers/gunners.js';
 import { TOWERS_HEAVY } from './towers/heavy.js';
@@ -608,6 +609,13 @@ export const DIFFICULTIES = {
     mapModes: { carnival: { waves: HALLOWEEN2_WAVES, timers: HALLOWEEN2_TIMERS, boss: 'h2Ringmaster', hpCurve: [[1, 1], [6, 1], [8, 0.7], [14, 0.7], [18, 0.4]], bossHp: 0.6 },
       // Halloween Night 3 (see halloween3.js).
       nightmare: { waves: HALLOWEEN3_WAVES, timers: HALLOWEEN3_TIMERS, boss: 'n3Drako', hpCurve: [[1, 1], [5, 0.9], [8, 0.7], [14, 0.55], [20, 0.45], [28, 0.4]], bossHp: 0.7 } } },
+  // Christmas Event (2026-11-11 spec, see christmas.js): Christmas Night 1, 20 waves on Frostwatch
+  // Basin against the FROST SPIRIT. An event like Halloween's (its own button and map); the cash,
+  // base health and credits are copied from Halloween (guesses).
+  christmas: { name: 'Christmas Event', icon: '🎄', color: '#4fc3f7', boss: 'xmSpirit', desc: 'Christmas Night 1: 20 icy waves on Frostwatch Basin against the FROST SPIRIT. Four paths, frost creatures, and towers that get frozen. A full server\'s cash is shared between the players: $22,000 to start solo, $5,500 each with four. 100 base health. 3x credits.',
+    waves: CHRISTMAS_WAVES, timers: CHRISTMAS_TIMERS, event: true, map: 'frost', maps: ['frost'], cash: 1, dmgCash: 1.5, pot: 4, credits: 3, shards: 3, baseHp: 100, startCash: 5500, groupBonus: 0, flatHp: true,
+    mpHp: [0, 0, 0, 0, 0],
+    hpCurve: [[1, 1], [8, 0.8], [11, 0.6], [14, 0.4], [15, 0.3]], bossHp: 0.6 },
   // Liminal contract (2026-11-11 spec, see lastlaugh.js): the endless mode in the Backrooms. Not on
   // the mode cards or an event button (`hidden`): you get here by walking into Sunken Canyon's
   // glitchy pit. `endless`: its waves are made up as you go (sim/parts/liminal.js), so `waves` is

@@ -1059,7 +1059,7 @@ export class EnemyView {
     // Bubble Blower: a floating zombie drifts up inside a bubble.
     this.floatY = (this.floatY || 0) + ((e.st & ST_FLOAT ? 2.5 * K : 0) - (this.floatY || 0)) * Math.min(1, dt * 6);
     // Eradicator: rises into the air while it flies, and comes back down after.
-    const lift = this.def.flying ? FLY_HEIGHT * K : e.st & ST_AIRBORNE ? FLY_HEIGHT * 2 * K : 0;
+    const lift = this.def.flying ? FLY_HEIGHT * K : e.st & ST_AIRBORNE ? FLY_HEIGHT * 2 * K : this.hover ? FLY_HEIGHT * 0.6 * K : 0; // hover: Christmas Frost Spirit's Flying Frost (looks only)
     this.lift += (lift - this.lift) * Math.min(1, dt * 3);
     this.pos.set(tmpPt.x, this.ground + this.lift + this.floatY, tmpPt.z + (e.oz || 0)).add(this.off);
     this.root.position.copy(this.pos);

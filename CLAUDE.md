@@ -41,7 +41,7 @@ Gameplay data (plain objects, no three.js):
 | Towers (stats, levels, abilities, units) | One file per group in `src/towers/` (`gunners.js`, `heavy.js`, `spread.js`, `melee.js`, `spawners.js`, `support.js`, `paths.js`, `golden.js`, `event1.js`, `forms4.js`, `event2.js`, `evolved.js`, `wave6.js`, `golden6.js`, `wave7a.js`, `wave7b.js`; each lists its towers at the top). `TOWERS` in `src/config.js` joins them in that order, then the later batches: `src/crosstowers.js` (crosspath forms), `herotowers.js`, `tenthtowers.js`, `goldtowers.js` |
 | Units and abilities shared by towers | `src/towers/shared.js` (it also explains how a tower entry is written) |
 | Load-time passes over towers | `RANGE_BOOST` and `TOWER_TUNE` in `src/config.js` (they change the numbers after the table is read, so the table is not always what the game uses) |
-| Enemies | `ENEMIES` in `src/enemies.js`; Hardcore's in `src/hardcore.js`, Halloween's in `src/halloween.js` |
+| Enemies | `ENEMIES` in `src/enemies.js`; Hardcore's in `src/hardcore.js`, Halloween's in `src/halloween.js` (nights 2-3: `halloween2.js`, `halloween3.js`), Christmas Night 1's in `src/christmas.js` |
 | Waves | `EASY_WAVES` ... `VOID_WAVES` in `src/waves.js`, `HARDCORE_WAVES`, `HALLOWEEN_WAVES` in their own files. Group = `[enemy, count, gap, delay, health/opts]` |
 | Modes | `DIFFICULTIES` in `src/config.js` (its comments explain every field) |
 | Maps | `MAPS` in `src/sim/maps.js`; placement rules and props in `src/sim/map.js`; path math in `src/sim/path.js` |

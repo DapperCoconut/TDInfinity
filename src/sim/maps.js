@@ -1620,7 +1620,7 @@ export const MAPS = {
     name: 'Frostwatch Basin',
     rating: 'hard',
     icon: '❄',
-    desc: 'Christmas Night 1: a snowy basin deep in a canyon. Four paths leave a blue portal in pairs, wind round a frozen pond, cross in the stone yard and escape through two tunnels. After wave 20 the snow melts into spring.',
+    desc: 'Christmas Night 1: a snowy basin deep in a canyon. Four paths leave a blue portal in pairs, wind round a frozen pond, cross in the stone yard and escape through two tunnels. When the Frost Spirit falls, the snow melts into spring.',
     path: FR_ROUTES[0],
     routes: FR_ROUTES, // Far Left, Middle Left (east tunnel), Middle Right, Far Right (west tunnel)
     spawn: { x: frCell(5.5, 6.2)[0], z: frCell(5.5, 6.2)[1] },
@@ -1628,7 +1628,8 @@ export const MAPS = {
     baseAt: FR_ROUTES[0][FR_ROUTES[0].length - 1],
     baseR: 4,
     portal: false, // the blue portal is a prop (frPortal)
-    frost: true, // winter until wave 21, then spring (frostworld.js)
+    event: 'christmas', // the Christmas Event's map: only that event plays it (see pickableMap)
+    frost: true, // winter until the Frost Spirit falls, then spring (frostworld.js)
     bounds: { minX: -64, maxX: 66, minZ: -44, maxZ: 44 },
     cliffs: [],
     pools: [],

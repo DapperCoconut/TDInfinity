@@ -138,7 +138,7 @@ export class SimWaves {
     // Engineer teleporters: fresh enemies come out of the one furthest down the path.
     let dist = at?.dist ?? 0;
     // Maps with several lanes: wave spawns take turns; summons follow whoever summoned them.
-    let route = at?.route ?? this.enemies.get(at?.owner)?.route ?? this.nextRoute();
+    let route = at?.route ?? (at?.mods?.route != null && path.multi ? at.mods.route % path.routes.length : null) ?? this.enemies.get(at?.owner)?.route ?? this.nextRoute(); // mods.route: a wave group's own lane (Christmas)
     if (def.beeline && at?.dist == null) route = BEELINE; // Drakobloxxer: straight for the base
     if (at?.dist == null && def.placeAt) dist = path.length * rand(...def.placeAt); // Viorb: hovers somewhere along the path
     else if (at?.dist == null) {
@@ -306,7 +306,7 @@ export class SimWaves {
       if (r.hp && at?.hp == null) e.hp = e.maxHp = Math.max(1, Math.round(maxHp * rand(...r.hp) / def.hp));
       if (r.explosiveResist) e.explosiveResist = rand(...r.explosiveResist);
     }
-    if (def.osh) e.osh = e.oshMax = Math.max(1, Math.round(def.osh * (def.fixedHp ? 1 : mp)));
+    if (def.osh) e.osh = e.oshMax = Math.max(1, Math.round(def.osh * (def.fixedHp ? 1 : mp) * (def.oshCurve ? curve : 1))); // oshCurve: the mode's balance curve shrinks the shield too (Frost Ravager)
     if (def.pod) {
       e.podT = def.pod.open;
       e.noTarget = true;

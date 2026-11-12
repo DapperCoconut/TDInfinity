@@ -439,7 +439,7 @@ export class SimDamage {
     if (mr && t && !this.dot && (TOWERS[t.type]?.melee || ts0?.melee)) dmg *= 1 - mr;
     // Armor tops out at 90%, except Hard mode Corpses (100%: only defense piercing gets through).
     const cap = e.armor >= 1 ? 1 : 0.9;
-    let armor = Math.min(cap, e.armor + (e.gear || 0) + (e.auraArmor || 0) + (e.blessed || 0) + (e.vShield > 0 ? this.voidArmor.armor : 0)); // Mechanics bolt extra armor on; VOID's aura; Jester Blessed; void armor
+    let armor = Math.min(cap, e.armor + (e.gear || 0) + (e.auraArmor || 0) + (e.blessed || 0) + (e.vShield > 0 ? this.voidArmor.armor : 0) + (e.osh > 0 ? ENEMIES[e.type].shieldArmor ?? 0 : 0)); // Mechanics bolt extra armor on; VOID's aura; Jester Blessed; void armor; Frost Ravager's shield
     // Defense piercing: ignores that share of the armor (negative: armor counts for more).
     const dp = this.dot ? 0 : hm?.defPierce ?? ts0?.defPierce ?? 0;
     if (dp && armor) armor = Math.min(cap, armor * (1 - Math.min(1, dp)));
@@ -657,6 +657,7 @@ export class SimDamage {
     if (def.necroBurst) this.necroBurst(e, def.necroBurst);
     if (def.deathBlast) this.carnivalBlast(e, def.deathBlast); // Halloween Night 2 Jack O' Lanterns
     if (def.deathFatigue) this.nightmareDeath(e, def.deathFatigue); // Halloween Night 3 Unknowns
+    if (def.flashFreeze) this.flashFreeze(e, def.flashFreeze); // Christmas Unstable Ice
     if (def.deathHaste) {
       // Overcharged: the enemies around it get a big burst of speed.
       const h = def.deathHaste;

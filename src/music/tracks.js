@@ -138,6 +138,11 @@ export const TRACKS = {
   'boss:n3JackTerror': t('spooky', 128, 'C', 'harmonic', [0, 4, 3, 4], [5, 3, 4, 0], { C: [0, 1, 4, 4], form: 'big', kit: 'four', lead: 'organ' }),
   'boss:n3HarvestWitch': t('night', 104, 'A', 'harmonic', [0, 5, 3, 4], [1, 4, 3, 0], { kit: 'half', lead: 'organ', arp: ['bell', 'updown', 1] }),
   'boss:n3Conserver': t('night', 92, 'D', 'phrygian', [0, 1, 5, 4], [3, 1, 4, 0], { kit: 'half', lead: 'organ' }),
+  // Christmas Night 1
+  'boss:xmRavager': t('heavy', 132, 'D', 'minor', [0, 5, 0, 6], [3, 5, 6, 0], { kit: 'half' }),
+  'boss:xmNecro': t('night', 96, 'B', 'harmonic', [0, 1, 0, 4], [5, 3, 4, 0], { kit: 'half', lead: 'organ' }),
+  'boss:xmHero': t('epic', 138, 'G', 'harmonic', [0, 5, 3, 4], [5, 6, 0, 4], { kit: 'march' }),
+  'boss:xmSpirit': t('epic', 120, 'E', 'harmonic', [0, 5, 6, 4], [3, 5, 4, 0], { C: [0, 6, 5, 4], form: 'big', kit: 'double', arp: ['bell', 'updown', 1] }),
   'boss:n3Drako': t('heavy', 156, 'E', 'harmonic', [0, 1, 3, 4], [5, 6, 4, 0], { C: [0, 5, 1, 4], form: 'big', kit: 'double', lead: 'organ', arp: ['bell', 'updown', 1] }),
 };
 

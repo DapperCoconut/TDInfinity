@@ -48,6 +48,7 @@ import { SimDamage } from './parts/damage.js';
 import { SimWeapons4 } from './parts/weapons4.js';
 import { H2_FX, SimCarnival } from './parts/carnival.js';
 import { N3_FX, SimNightmare } from './parts/nightmare.js';
+import { SimChristmas, XM_FX } from './parts/christmas.js';
 import { SimContract } from './parts/contract.js';
 import { SimLiminal } from './parts/liminal.js';
 
@@ -304,6 +305,7 @@ export class Sim {
       if (HC_FX.has(e.type) && this.hcAttacks(e, def, dt) === 'gone') continue; // Hardcore (a Drop Pod may burst open)
       if (H2_FX.has(e.type)) this.carnivalMoves(e, def, dt); // Halloween Night 2
       if (N3_FX.has(e.type)) this.nightmareMoves(e, def, dt); // Halloween Night 3
+      if (XM_FX.has(e.type)) this.christmasMoves(e, def, dt); // Christmas Night 1
       if (def.jester) this.jesterMoves(e, def, dt); // Last Laugh contract's JESTER
       e.st = (e.stopKind === 'ice' ? ST_FROZEN : e.stopKind === 'stun' ? ST_STUNNED : e.stopKind === 'dance' ? ST_DANCE : e.stopKind === 'float' ? ST_FLOAT : 0) | (e.burn || e.taints?.has('burn') ? ST_BURNING : 0)
         | (e.slime ? ST_SLIMED : 0) | (e.chill ? ST_CHILLED : 0) | (e.hackEv || e.fraud ? ST_HACKED : 0) | (e.gas?.size || e.poison || e.taints?.has('radioactive') ? ST_GASSED : 0) | (e.confT > 0 ? ST_CONFUSED : 0)
@@ -875,7 +877,7 @@ export class Sim {
 
 // Sim's methods are kept in several files (see the list at the top). This puts them all on Sim,
 // just as if they were written inside the class.
-for (const part of [SimEnemyMoves1, SimEnemyMoves2, SimTowerHealth, SimWaves, SimTowerUpdate, SimWeapons1, SimWeapons2, SimWeapons3, SimUnits, SimAbilities, SimDamage, SimWeapons4, SimCarnival, SimNightmare, SimContract, SimLiminal]) {
+for (const part of [SimEnemyMoves1, SimEnemyMoves2, SimTowerHealth, SimWaves, SimTowerUpdate, SimWeapons1, SimWeapons2, SimWeapons3, SimUnits, SimAbilities, SimDamage, SimWeapons4, SimCarnival, SimNightmare, SimChristmas, SimContract, SimLiminal]) {
   const props = Object.getOwnPropertyDescriptors(part.prototype);
   delete props.constructor;
   Object.defineProperties(Sim.prototype, props);

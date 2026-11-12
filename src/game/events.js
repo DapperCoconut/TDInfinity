@@ -649,6 +649,13 @@ export class GameEvents {
             audio.whisper();
             this.ui.banner('JACK HAS FALLEN', 'Happy Halloween!', 4000);
           }
+          if (v?.def.thaw && mapInfo.frost && !FR_STATE.spring) {
+            // Frostwatch Basin: the Frost Spirit falls and the season is restored (snow melts, the portal goes dark).
+            FR_STATE.spring = 1;
+            this.applyLighting();
+            this.setSky(0x6f8584);
+            this.ui.banner('THE FROST SPIRIT HAS FALLEN', 'The season is restored!', 4000);
+          }
           if (v) {
             v.die(ev.r, this.effects, audio);
             this.enemyViews.delete(ev.e);
@@ -1641,6 +1648,13 @@ export class GameEvents {
           this.ui.banner('VOID HAS FALLEN', 'Light returns to the world. It is finally over.', 5000, 'light');
           break;
         }
+        case 'xmFly': {
+          // Christmas Frost Spirit: Flying Frost at half health (it hovers a little, views.js).
+          const v = this.enemyViews.get(ev.e);
+          if (v) v.hover = 1;
+          audio.waveStart();
+          break;
+        }
         case 'enrage': {
           const v = this.enemyViews.get(ev.e);
           audio.waveStart();
@@ -1667,13 +1681,6 @@ export class GameEvents {
             break;
           }
           if (ev.glow) NM_STATE.glow = 1; // Halloween Night 3: the portal starts to glow
-          if (mapInfo.frost && ev.i >= 20 && !FR_STATE.spring) {
-            // Frostwatch Basin: the season is restored after wave 20 (snow melts, the portal goes dark).
-            FR_STATE.spring = 1;
-            this.applyLighting();
-            this.setSky(0x6f8584);
-            this.ui.toast('The season is restored!', 3000);
-          }
           const note = ev.note ?? difficulty(st.mode).waves[ev.i]?.note;
           audio.waveStart();
           this.ui.toast(note ? `Wave ${ev.i + 1}: ${note}` : `Wave ${ev.i + 1}`, note ? 3200 : 1500);
