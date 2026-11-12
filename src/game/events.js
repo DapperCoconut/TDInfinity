@@ -1527,9 +1527,9 @@ export class GameEvents {
           this.ui.toast(ev.type === 'voidGuardian' ? `⚔️ The ${name}'s armor shattered! It draws its swords and charges!` : `💥 The ${name}'s void armor broke! No more lead or explosion resistance.`, 2600);
           break;
         }
-        case 'acid': // Acid Void: a puddle of acid
-          this.effects.puddle(new THREE.Vector3(ev.x, 0, ev.z + laneOz(ev.L ?? 0)), ev.r, ev.life, 0x64dd17);
-          this.effects.puff(new THREE.Vector3(ev.x, 1, ev.z + laneOz(ev.L ?? 0)), 0x76ff03, 10, 0.5, 6);
+        case 'acid': // Acid Void: a puddle of acid (ev.c: another color, e.g. SantaBot's fire)
+          this.effects.puddle(new THREE.Vector3(ev.x, 0, ev.z + laneOz(ev.L ?? 0)), ev.r, ev.life, ev.c ?? 0x64dd17);
+          this.effects.puff(new THREE.Vector3(ev.x, 1, ev.z + laneOz(ev.L ?? 0)), ev.c ?? 0x76ff03, 10, 0.5, 6);
           break;
         case 'drain': {
           // Golden Void: cash floats off toward it.

@@ -678,7 +678,7 @@ export class SimDamage {
       const cnt = Array.isArray(d.n) ? d.n[0] + Math.floor(Math.random() * (d.n[1] - d.n[0] + 1)) : d.n; // Void Slime: 3-4 Goos
       for (let i = 0; i < cnt; i++) {
         const type = d.list[Math.floor(Math.random() * d.list.length)];
-        this.reborn.push({ route: e.route, type, dist: Math.max(0, e.dist - i * 1.2), lateral: e.lateral, hpScale: 1, from: e.type });
+        this.reborn.push({ route: e.route, type, dist: Math.max(0, e.dist - i * 1.2), lateral: e.lateral, hpScale: 1, from: e.type, ...(d.noCash ? { noCash: true } : {}) }); // noCash: Christmas Presents
       }
       this.events.push({ k: 'burst', e: e.id, n: cnt, kind: 'berserk' });
     }

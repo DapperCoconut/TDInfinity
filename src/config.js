@@ -16,6 +16,7 @@ import { HALLOWEEN2_TIMERS, HALLOWEEN2_WAVES } from './halloween2.js';
 import { HALLOWEEN3_TIMERS, HALLOWEEN3_WAVES } from './halloween3.js';
 import { buildRemix } from './halloweenremix.js';
 import { CHRISTMAS_TIMERS, CHRISTMAS_WAVES } from './christmas.js';
+import { CHRISTMAS2_TIMERS, CHRISTMAS2_WAVES } from './christmas2.js';
 export { BOSS_KNOCK, KNOCK_STUDS, abilityCost, arrowModes, arrowName, timedAbility } from './towers/shared.js';
 import { TOWERS_GUNNERS } from './towers/gunners.js';
 import { TOWERS_HEAVY } from './towers/heavy.js';
@@ -612,10 +613,12 @@ export const DIFFICULTIES = {
   // Christmas Event (2026-11-11 spec, see christmas.js): Christmas Night 1, 20 waves on Frostwatch
   // Basin against the FROST SPIRIT. An event like Halloween's (its own button and map); the cash,
   // base health and credits are copied from Halloween (guesses).
-  christmas: { name: 'Christmas Event', icon: '🎄', color: '#4fc3f7', boss: 'xmSpirit', desc: 'Christmas Night 1: 20 icy waves on Frostwatch Basin against the FROST SPIRIT. Four paths, frost creatures, and towers that get frozen. Christmas Night 2: defend the Frostgate Citadel\'s gate (27,000 health) from 12 lanes. A full server\'s cash is shared between the players: $22,000 to start solo, $5,500 each with four. 100 base health. 3x credits.',
+  christmas: { name: 'Christmas Event', icon: '🎄', color: '#4fc3f7', boss: 'xmSpirit', desc: 'Christmas Night 1: 20 icy waves on Frostwatch Basin against the FROST SPIRIT. Four paths, frost creatures, and towers that get frozen. Christmas Night 2: 25 waves defending the Frostgate Citadel\'s gate (27,000 health) from 12 lanes against the Toymaker, SantaBot, the Snow Worm and EXO SANTA. A full server\'s cash is shared between the players: $22,000 to start solo, $5,500 each with four. 100 base health. 3x credits.',
     waves: CHRISTMAS_WAVES, timers: CHRISTMAS_TIMERS, event: true, map: 'frost', maps: ['frost', 'citadel'], cash: 1, dmgCash: 1.5, pot: 4, credits: 3, shards: 3, baseHp: 100, startCash: 5500, groupBonus: 0, flatHp: true,
     mpHp: [0, 0, 0, 0, 0],
-    hpCurve: [[1, 1], [8, 0.8], [11, 0.6], [14, 0.4], [15, 0.3]], bossHp: 0.6 },
+    hpCurve: [[1, 1], [8, 0.8], [11, 0.6], [14, 0.4], [15, 0.3]], bossHp: 0.6,
+    // Christmas Night 2 on Frostgate Citadel (see christmas2.js).
+    mapModes: { citadel: { waves: CHRISTMAS2_WAVES, timers: CHRISTMAS2_TIMERS, boss: 'xcExoSanta', hpCurve: [[1, 0.5], [6, 0.4], [10, 0.3], [16, 0.25], [20, 0.2]], bossHp: 0.35 } } },
   // Liminal contract (2026-11-11 spec, see lastlaugh.js): the endless mode in the Backrooms. Not on
   // the mode cards or an event button (`hidden`): you get here by walking into Sunken Canyon's
   // glitchy pit. `endless`: its waves are made up as you go (sim/parts/liminal.js), so `waves` is
