@@ -1,7 +1,7 @@
 // Tower models, file 10 of 12. Each makeX(level) builds one tower's look.
 // In here:
 // Jester, Cryomancer, Hallow Punk, Harvester, Snowballer Frost, Elementalist, Firework Tech,
-// Biologist, Warlock, Spotlight Tech, Artillery, Shock Trooper, Ice Breaker.
+// Biologist, Warlock, Spotlight Tech, Shock Trooper, Ice Breaker.
 // (Elf Camp, Relic and Star Cannon: machines3.js.)
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
 
@@ -563,72 +563,6 @@ export function makeSpotlightTech(level) {
   h.leftArm.rotation.set(-0.3, 0, -0.2);
   h.pose = { right: -1.4, left: -0.3, leftRecoil: 0 };
   h.spot = [0xfff8e1, 0xffe0b2, 0xffcc80, 0xffb74d, 0xffd740][level];
-  return h;
-}
-
-/**
- * Artillery (alternate Mortar with two paths): a gunner beside a wheeled field howitzer. Top path:
- * a crew cap at Lv 1, a longer M119 barrel at Lv 2, a shell rack at Lv 3, fat shells at Lv 4 and
- * three barrels at Lv 5. Bottom path: HE shells at Lv 1, a heavier barrel at Lv 2, the big M198 at
- * Lv 3, an even longer barrel at Lv 4, and the grey Skyhawk with a radar dish at Lv 5.
- */
-export function makeArtillery(level, bottom = false) {
-  const sky = bottom && level >= 5;
-  const coat = sky ? 0x37474f : 0x6b7d3a;
-  const h = makeHumanoid({ skin: 0xc68642, shirt: coat, pants: sky ? 0x263238 : 0x4b5320, arms: coat, face: 'soldier' });
-  const { M } = h;
-  const shard = glow(h, 0xb388ff);
-  helmet(h, sky ? 0x455a64 : 0x556b2f);
-  part(h.head, boxGeo(0.3, 0.3, 0.06), shard, 0, 1.32, 0.74); // Dimension Shard emblem
-  if (level >= 1) for (const x of [-0.7, 0.7]) part(h.head, boxGeo(0.25, 0.55, 0.55), M(0xff8f00), x, 0.6, 0); // ear protectors
-  // The gun: a carriage on two wheels with a long barrel pointing up and forward.
-  const gun = new THREE.Group();
-  gun.position.set(1.6, 0, 2.2);
-  h.root.add(gun);
-  const steel = M(sky ? 0x78909c : 0x4a5a3a);
-  const big = bottom ? [1, 1, 1.1, 1.3, 1.45, 1.6][level] : level >= 2 ? 1.1 : 1;
-  gun.scale.setScalar(big);
-  part(gun, boxGeo(1.6, 0.6, 1.4), steel, 0, 1.0, 0); // carriage
-  for (const side of [-1, 1]) {
-    part(gun, boxGeo(0.3, 1.4, 1.4), M(0x212121), side * 1.0, 0.7, 0); // wheels
-    const trail = part(gun, boxGeo(0.25, 0.25, 2.6), steel, side * 0.45, 0.4, -1.4); // trail legs
-    trail.rotation.y = side * 0.2;
-  }
-  part(gun, boxGeo(1.2, 1.0, 0.15), steel, 0, 1.6, 0.7); // gun shield
-  const n = !bottom && level >= 5 ? 3 : 1;
-  const len = bottom ? 4.2 : level >= 2 ? 4.4 : 3.8;
-  const w = bottom && level >= 3 ? 0.6 : 0.45;
-  const barrels = new THREE.Group();
-  barrels.position.set(0, 1.4, 0.2);
-  barrels.rotation.x = 0.9; // tilted up toward the sky
-  gun.add(barrels);
-  for (let i = 0; i < n; i++) {
-    const x = (i - (n - 1) / 2) * 0.55;
-    part(barrels, boxGeo(w, len, w), M(sky ? 0x546e7a : 0x3e4a2a), x, len / 2, 0);
-    part(barrels, boxGeo(w + 0.2, 0.35, w + 0.2), M(0x212121), x, len, 0); // muzzle brake
-  }
-  if (bottom && level >= 3) part(barrels, boxGeo(w + 0.25, 1.2, w + 0.25), steel, 0, 0.8, 0); // recoil cylinders
-  setMuzzle(h, barrels, 0, len + 0.3, 0);
-  if (sky) {
-    // Skyhawk: a radar dish on a mast
-    part(gun, boxGeo(0.15, 1.6, 0.15), M(0x263238), -0.7, 2.2, -0.6);
-    part(gun, boxGeo(1.2, 1.2, 0.12), M(0xcfd8dc), -0.7, 3.1, -0.6).rotation.x = -0.5;
-    part(gun, boxGeo(0.25, 0.25, 0.25), glow(h, 0xff1744), -0.7, 3.1, -0.45);
-  }
-  const shellM = bottom && level >= 1 ? M(0x8d6e63) : M(0x37474f);
-  if ((!bottom && level >= 3) || (bottom && level >= 2)) {
-    // A rack of ready shells
-    part(h.root, boxGeo(1.6, 0.2, 1.0), M(0x5d4037), -2.0, 0.1, 0.4);
-    for (const x of [-2.5, -2.0, -1.5]) for (const z of [0.15, 0.65]) part(h.root, boxGeo(0.35, 1.1, 0.35), shellM, x, 0.75, z);
-  }
-  const fat = (!bottom && level >= 4) || sky;
-  const shell = part(h.rightArm, boxGeo(fat ? 0.55 : 0.4, 0.9, fat ? 0.55 : 0.4), shellM, 0.6, -2.1, 0);
-  shell.rotation.z = 0.3;
-  h.rightArm.rotation.set(-1.0, 0, 0.3);
-  h.leftArm.rotation.set(-1.0, 0, -0.3);
-  h.pose = { right: -1.0, left: -1.0, leftRecoil: 0 };
-  h.recoilScale = 0.4;
-  h.projectile = sky ? { color: 0xff6d00, size: 1.1, arc: 26, glowing: true } : { color: 0x37474f, size: fat ? 0.9 : 0.7, arc: 24 };
   return h;
 }
 

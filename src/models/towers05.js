@@ -1,7 +1,7 @@
 // Tower models, file 5 of 12. Each makeX(level) builds one tower's look.
 // In here:
 // Pyromancer, Ace Plane, Medic, Medic Beam, EDJ, Electro,
-// Rocketeer Missile, Rocketeer Trooper, Trapper, Mine Layer.
+// Trapper, Mine Layer. (Missile Rocketeer, Missile Trooper: people7.js.)
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
 
 import * as THREE from 'three';
@@ -261,121 +261,6 @@ export function makeElectro(level) {
   h.tracer = bolt;
   return h;
 }
-
-/**
- * Missile Rocketeer (alternate Rocketeer form): a heavy weapons trooper with a big tube.
- * Lv 2 a rocket pack, Lv 3 a helmet visor and vest, Lv 4 a heavier launcher, Lv 5 a quad
- * missile pod.
- */
-export function makeRocketeerMissile(level) {
-  const quad = level >= 4;
-  const shirt = quad ? 0x263238 : 0x5d6b3a;
-  const h = makeHumanoid({ skin: 0x8d5524, shirt, pants: quad ? 0x1c2429 : 0x3e4a2a, arms: shirt, face: 'soldier' });
-  const { M } = h;
-  helmet(h, quad ? 0x37474f : 0x4b5320);
-  if (level >= 2) {
-    part(h.head, boxGeo(1.2, 0.4, 0.08), M(0xff8f00), 0, 0.75, 0.7); // visor
-    part(h.torso, boxGeo(2.15, 1.7, 1.15), M(quad ? 0x37474f : 0x4a5232), 0, 0.05, 0);
-  }
-  if (level >= 1) {
-    part(h.torso, boxGeo(1.5, 1.7, 0.7), M(0x4e342e), 0, 0, -0.85);
-    for (const x of [-0.4, 0, 0.4]) part(h.torso, boxGeo(0.3, 0.6, 0.3), M(0xeceff1), x, 1.1, -0.85);
-  }
-  const gun = new THREE.Group();
-  gun.position.set(0, -1.9, 0);
-  h.rightArm.add(gun);
-  if (quad) {
-    // Quad launcher: four tubes in a box.
-    part(gun, boxGeo(1.4, 2.6, 1.4), M(0x37474f), 0, -0.8, 0);
-    for (const x of [-0.35, 0.35]) for (const z of [-0.35, 0.35]) part(gun, boxGeo(0.5, 0.1, 0.5), glow(h, 0xff3d00), x, -2.12, z);
-    setMuzzle(h, gun, 0, -2.2, 0);
-  } else {
-    const w = level >= 3 ? 1.0 : 0.8;
-    const len = level >= 3 ? 3.2 : 2.7;
-    part(gun, boxGeo(w, len, w), M(level >= 3 ? 0x33691e : 0x616161), 0, -len / 2 + 0.6, 0);
-    part(gun, boxGeo(w + 0.2, 0.35, w + 0.2), M(0x212121), 0, -len + 0.6, 0);
-    if (level >= 2) part(gun, boxGeo(0.4, 1.0, 0.4), M(0x212121), 0, -0.8, w / 2 + 0.25);
-    setMuzzle(h, gun, 0, -len + 0.4, 0);
-  }
-  part(gun, boxGeo(0.3, 0.5, 0.3), M(0x212121), 0, -0.3, -0.5); // grip
-  h.rightArm.rotation.set(-Math.PI / 2, 0, 0.1);
-  h.leftArm.rotation.set(-Math.PI / 2 + 0.1, 0, -0.5);
-  h.pose = { right: -Math.PI / 2, left: -Math.PI / 2 + 0.1, leftRecoil: 0.2 };
-  h.projectile = quad ? { color: 0xeceff1, size: 0.9 } : { color: 0xff6d00, size: level >= 3 ? 1.3 : 1.1 };
-  return h;
-}
-
-/**
- * Missile Trooper (alternate Rocketeer form with two paths): a desert-camo trooper with a
- * shoulder launcher. Top path: Lv 1 orange HE warhead, Lv 2 an optic sight, Lv 3 the longer
- * SMAW+ with a visor, Lv 4 a fat warhead, Lv 5 the olive Javelin tube with its sight unit.
- * Bottom path: Lv 1-2 gloves and a rocket bandolier, Lv 3 the green M2 Carl with a front grip,
- * Lv 4 a wider bore, Lv 5 a six-tube MRL pod.
- */
-export function makeRocketeerTrooper(level, bottom = false) {
-  const top = !bottom;
-  const jav = top && level >= 5;
-  const mrl = bottom && level >= 5;
-  const shirt = mrl ? 0x3b3f2a : jav ? 0x6b5d3f : 0xa08c62;
-  const h = makeHumanoid({ skin: 0xc68642, shirt, pants: mrl ? 0x262a1b : 0x7a6a48, arms: shirt, face: 'soldier' });
-  const { M } = h;
-  const dark = M(0x212121);
-  helmet(h, mrl ? 0x2e3322 : 0x8a7a55);
-  if ((top && level >= 3) || mrl) part(h.head, boxGeo(1.2, 0.4, 0.08), M(mrl ? 0x76ff03 : 0x4fc3f7), 0, 0.75, 0.7); // visor
-  if (level >= 3) part(h.torso, boxGeo(2.15, 1.7, 1.15), M(mrl ? 0x2e3322 : 0x6d6046), 0, 0.05, 0); // vest
-  if (bottom && level >= 1) {
-    // Gloves, then a bandolier of spare rockets.
-    for (const arm of [h.rightArm, h.leftArm]) part(arm, boxGeo(0.62, 0.45, 0.62), dark, 0, -2.0, 0);
-    if (level >= 2) {
-      const strap = part(h.torso, boxGeo(0.3, 2.5, 1.18), M(0x4e342e), 0, 0, 0);
-      strap.rotation.z = -0.7;
-      for (const t of [-0.6, 0, 0.6]) part(h.torso, boxGeo(0.25, 0.25, 0.35), M(0xff6d00), t * -0.75, t * -0.8, 0.68);
-    }
-  }
-  // Spare rocket on the back.
-  part(h.torso, boxGeo(0.45, 1.6, 0.45), M(0x5d5d4a), 0.5, 0.2, -0.75);
-  part(h.torso, boxGeo(0.35, 0.4, 0.35), M(level >= 1 && top ? 0xff6d00 : 0x9e9e9e), 0.5, 1.15, -0.75);
-
-  const gun = new THREE.Group();
-  gun.position.set(0, -1.9, 0);
-  h.rightArm.add(gun);
-  if (mrl) {
-    // MRL: a 2x3 pod of rocket tubes.
-    part(gun, boxGeo(1.7, 2.6, 1.15), M(0x3b3f2a), 0, -0.9, 0);
-    for (const x of [-0.5, 0, 0.5]) for (const z of [-0.27, 0.27]) part(gun, boxGeo(0.38, 0.1, 0.38), glow(h, 0xff3d00), x, -2.22, z);
-    setMuzzle(h, gun, 0, -2.3, 0);
-  } else if (jav) {
-    // Javelin: a thick olive tube with the command launch unit on the side.
-    part(gun, boxGeo(1.15, 3.6, 1.15), M(0x556b2f), 0, -1.2, 0);
-    for (const y of [0.4, -2.8]) part(gun, boxGeo(1.35, 0.35, 1.35), M(0x3d4d21), 0, y, 0);
-    part(gun, boxGeo(0.9, 0.9, 0.7), M(0x333333), 0.95, -0.4, 0.2); // launch unit
-    part(gun, boxGeo(0.3, 0.3, 0.12), glow(h, 0xff1744), 0.95, -0.4, 0.58);
-    setMuzzle(h, gun, 0, -3.0, 0);
-  } else {
-    const carl = bottom && level >= 3;
-    const w = carl ? (level >= 4 ? 1.05 : 0.9) : top && level >= 4 ? 0.9 : 0.75;
-    const len = carl ? 3.0 : top && level >= 3 ? 3.2 : 2.6;
-    part(gun, boxGeo(w, len, w), M(carl ? 0x2e7d32 : 0x6d6046), 0, -len / 2 + 0.6, 0);
-    part(gun, boxGeo(w + 0.2, 0.35, w + 0.2), dark, 0, -len + 0.6, 0);
-    if (carl) {
-      part(gun, boxGeo(w + 0.25, 0.5, w + 0.25), M(0x1b5e20), 0, 0.4, 0); // venturi
-      part(gun, boxGeo(0.25, 0.25, 0.7), dark, 0, -1.2, w / 2 + 0.3); // front grip
-    } else if (top && level >= 1) {
-      // A warhead poking out of the tube (fatter at Lv 4).
-      const hw = level >= 4 ? 0.85 : 0.55;
-      part(gun, boxGeo(hw, 0.5, hw), M(0xff6d00), 0, -len + 0.35, 0);
-    }
-    if (top && level >= 2) part(gun, boxGeo(0.35, 0.9, 0.35), dark, 0, -0.9, w / 2 + 0.2); // optic sight
-    setMuzzle(h, gun, 0, -len + 0.3, 0);
-  }
-  part(gun, boxGeo(0.3, 0.5, 0.3), dark, 0, -0.3, -0.5); // grip
-  h.rightArm.rotation.set(-Math.PI / 2, 0, 0.1);
-  h.leftArm.rotation.set(-Math.PI / 2 + 0.1, 0, -0.5);
-  h.pose = { right: -Math.PI / 2, left: -Math.PI / 2 + 0.1, leftRecoil: 0.2 };
-  h.projectile = mrl ? { color: 0xffab40, size: 0.75 } : jav ? { color: 0xeceff1, size: 1.3 } : { color: 0xff6d00, size: level >= 3 ? 1.2 : 1.0 };
-  return h;
-}
-export const makeRocketeerTrooperBottom = (level) => makeRocketeerTrooper(level, true);
 
 /**
  * Trapper: a backwoods trapper in a fur hat with a sack of traps. Lv 2 a spike bandolier,

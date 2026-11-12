@@ -83,10 +83,18 @@ export {
   makeFirecracker, makeFrost, makeFrostFreezer, makeFrostRanger, makeGrenadier, makeGrenadierAssault, makeGrenadierDemo,
 } from './models/people6.js';
 import {
-  makeFlamethrower, makeMortar, makePlasma, makePlasmaPulse, makeRocketeer, makeShotgunner,
+  makeArtillery, makeFlamethrower, makeMortar, makeMortarClassic, makeRocketeer, makeRocketeerMissile,
+  makeRocketeerTrooper, makeRocketeerTrooperBottom,
+} from './models/people7.js';
+export {
+  makeArtillery, makeFlamethrower, makeMortar, makeMortarClassic, makeRocketeer, makeRocketeerMissile,
+  makeRocketeerTrooper, makeRocketeerTrooperBottom,
+} from './models/people7.js';
+import {
+  makePlasma, makePlasmaPulse, makeShotgunner,
 } from './models/towers02.js';
 export {
-  makeFlamethrower, makeMortar, makePlasma, makePlasmaPulse, makeRocketeer, makeShotgunner,
+  makePlasma, makePlasmaPulse, makeShotgunner,
 } from './models/towers02.js';
 import {
   goldShine, makeAnarchist, makeCommander, makeCommanderClassic, makeDJ, makeDJBooth, makeGoldCommander,
@@ -105,19 +113,18 @@ export {
 import {
   makeEDJ, makeEDJBottom, makeElectro,
   makeMedic, makeMedicBeam, makeMedicBeamBottom, makeMineLayer, makeMineLayerBottom, makePyromancer,
-  makeRocketeerMissile, makeRocketeerTrooper, makeRocketeerTrooperBottom, makeTrapper,
+  makeTrapper,
 } from './models/towers05.js';
 export {
   makeAcePlane, makeEDJ, makeElectro, makeMedic, makeMedicBeam,
-  makeMineLayer, makePyromancer, makeRocketeerMissile, makeRocketeerTrooper, makeRocketeerTrooperBottom, makeTrapper,
+  makeMineLayer, makePyromancer, makeTrapper,
 } from './models/towers05.js';
 import {
   makeCrookBoss, makeMobster, makeMobsterBottom,
-  makeMortarClassic,
 } from './models/towers06.js';
 export {
   makeCrookBoss, makeMobster,
-  makeMobsterBottom, makeMobsterModel, makeMortarClassic,
+  makeMobsterBottom, makeMobsterModel,
 } from './models/towers06.js';
 import {
   makeBehemothFactory, makeBehemothFactoryBottom, makeFarm, makeMercBase, makePatrol, makePursuit, makePursuitBottom,
@@ -164,12 +171,12 @@ export {
   makeToxicGunner, recolor,
 } from './models/towers09.js';
 import {
-  makeArtillery, makeBiologist, makeCryomancer, makeElementalist, makeFireworkTech, makeHallowPunk,
+  makeBiologist, makeCryomancer, makeElementalist, makeFireworkTech, makeHallowPunk,
   makeHarvester, makeIceBreaker, makeJester, makeShockTrooper, makeSnowballerFrost, makeSpotlightTech,
   makeWarlock,
 } from './models/towers10.js';
 export {
-  makeArtillery, makeBiologist, makeCryomancer, makeElementalist, makeFireworkTech, makeHallowPunk,
+  makeBiologist, makeCryomancer, makeElementalist, makeFireworkTech, makeHallowPunk,
   makeHarvester, makeIceBreaker, makeJester, makeShockTrooper, makeSnowballerFrost, makeSpotlightTech,
   makeWarlock,
 } from './models/towers10.js';

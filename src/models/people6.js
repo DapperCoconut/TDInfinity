@@ -165,7 +165,7 @@ function cryoGun(k, o = {}) {
   k.cyl(0.14, bl, tone(body, 0.85), 0, -0.95 - bl / 2, U + 0.02, { seg: 12 }); // barrel
   const n = o.coils ?? 2;
   for (let i = 0; i < n; i++) k.torus(0.17, 0.045, o.light, 0, -1.05 - (i * (bl - 0.4)) / n, U + 0.02, { rx: PI / 2, seg: 14 });
-  k.cyl(0.16, 0.3, INK, 0, -len + 0.15, U + 0.02, { seg: 14, r2: 0.26 }); // flared nozzle (wide end out)
+  k.cyl(0.26, 0.3, INK, 0, -len + 0.15, U + 0.02, { seg: 14, r2: 0.16 }); // flared nozzle (wide end out)
   k.cyl(0.2, 0.04, o.light, 0, -len - 0.01, U + 0.02, { seg: 14 });
   if (o.crystal) shard(k, 0, U + 0.2, -0.4, 0.5, 0.14, o.crystal, { rx: 0 });
   if (o.can) {
