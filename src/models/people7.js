@@ -593,7 +593,7 @@ export function makeArtillery(level, bottom = false) {
 // ------------------------------------------------------------------ Flamethrower
 
 /** A gas mask: face plate, two round lenses, a filter can and straps (head space). */
-function gasMask(k, col, lens) {
+export function gasMask(k, col, lens) {
   band(k, 0.69, 0.08, 0.75, 2.4, col, 0.55);
   for (const s of [-1, 1]) {
     k.cyl(0.2, 0.12, INK, s * 0.26, 0.76, 0.68, { axis: 'z', seg: 14 });
@@ -605,7 +605,7 @@ function gasMask(k, col, lens) {
 }
 
 /** Fuel tanks on a back frame: `xs` bottles of radius r and height hh, with valves and a hose to the hand (torso space). */
-function fuelTanks(k, xs, r, hh, col, o = {}) {
+export function fuelTanks(k, xs, r, hh, col, o = {}) {
   const z = -0.6 - r;
   k.box(xs.length * r * 2 + 0.3, hh * 0.9, 0.12, INK, 0, o.y ?? 0, -0.6); // back plate
   for (const x of xs) {
@@ -623,7 +623,7 @@ function fuelTanks(k, xs, r, hh, col, o = {}) {
 }
 
 /** A flame wand on the fist (gun space): rear grip and valve, a long tube and a shrouded tip with a pilot light. Returns the tip y. */
-function flameWand(k, pilot, o = {}) {
+export function flameWand(k, pilot, o = {}) {
   const len = o.len ?? 2.0;
   const U = UP;
   k.box(0.22, 0.26, 0.5, INK, 0, 0.1, U - 0.32, { rx: -0.3, r: 0.04 });

@@ -105,7 +105,7 @@ function neckScarf(k, col) {
 }
 
 /** A hard hat: shell, brim, centre ridge and a lamp on the front (head space). */
-function hardHat(k, col, lamp) {
+export function hardHat(k, col, lamp) {
   dome(k, 0.76, 0.62, col, 0, 0.95, 0);
   k.cyl(0.9, 0.06, col, 0, 0.95, 0.05, { seg: 22, sz: 1.08 });
   k.box(0.2, 0.12, 1.3, tone(col, 0.85), 0, 1.5, 0, { r: 0.05 });

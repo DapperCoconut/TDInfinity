@@ -26,7 +26,7 @@ export function boonie(k, col, o = {}) {
 }
 
 /** A beret tipped to one side, with a badge (head space). */
-function beret(k, col, badge) {
+export function beret(k, col, badge) {
   k.cyl(0.66, 0.12, tone(col, 0.7), 0, 1.0, 0, { seg: 20 });
   k.ball(0.78, col, 0.14, 1.14, -0.04, { sy: 0.3, seg: 18, rows: 8, rz: -0.18 });
   k.ball(0.06, tone(col, 0.6), 0.2, 1.38, -0.04, { seg: 6, rows: 4 });

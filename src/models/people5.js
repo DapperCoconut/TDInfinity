@@ -21,7 +21,7 @@ const LEAF = [0x556b2f, 0x6b8e23, 0x3d5229, 0x7a8b45, 0x5d5a33];
 // ------------------------------------------------------------------ shared bits for this batch
 
 /** See-through material (visors, riot shield windows), kept on the model like glow parts. */
-function glassMat(h, color, opacity = 0.55) {
+export function glassMat(h, color, opacity = 0.55) {
   const m = new THREE.MeshLambertMaterial({ color, transparent: true, opacity, depthWrite: false });
   h.mats.push(m);
   return m;
@@ -109,7 +109,7 @@ function ammoCan(k, x, z, col = 0x4b5320) {
 }
 
 /** A peaked guard / police cap: flat-topped crown, band, shiny peak and a badge (head space). */
-function peakedCap(k, col, bandCol, badge) {
+export function peakedCap(k, col, bandCol, badge) {
   k.cyl(0.72, 0.36, col, 0, 1.12, 0, { seg: 22, r2: 0.84 });
   k.cyl(0.84, 0.05, tone(col, 0.85), 0, 1.31, 0, { seg: 22 });
   k.cyl(0.74, 0.16, bandCol, 0, 1.02, 0, { seg: 22 });
@@ -119,7 +119,7 @@ function peakedCap(k, col, bandCol, badge) {
 }
 
 /** A riot helmet: shell, neck guard and a see-through visor (head space). */
-function riotHelmet(k, col, visor) {
+export function riotHelmet(k, col, visor) {
   dome(k, 0.8, 0.7, col, 0, 0.8, -0.02);
   band(k, 0.78, 0.07, 0.75, 3.5, col, 0.48, { ry: PI }); // sides and back
   k.box(1.3, 0.32, 0.18, tone(col, 0.8), 0, 0.2, -0.78, { r: 0.05 }); // neck guard

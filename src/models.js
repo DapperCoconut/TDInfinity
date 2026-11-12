@@ -91,11 +91,12 @@ export {
   makeRocketeerTrooper, makeRocketeerTrooperBottom,
 } from './models/people7.js';
 import {
-  makePlasma, makePlasmaPulse, makeShotgunner,
-} from './models/towers02.js';
+  makeElectro, makePlasma, makePlasmaPulse, makePyromancer, makeShotgunner, makeShotgunnerCombat,
+  makeShotgunnerCombatBottom, makeShotgunnerPump,
+} from './models/people8.js';
 export {
-  makePlasma, makePlasmaPulse, makeShotgunner,
-} from './models/towers02.js';
+  makeElectro, makePlasma, makePlasmaPulse, makePyromancer, makeShotgunner, makeShotgunnerCombat, makeShotgunnerPump,
+} from './models/people8.js';
 import {
   goldShine, makeAnarchist, makeCommander, makeCommanderClassic, makeDJ, makeDJBooth, makeGoldCommander,
 } from './models/towers03.js';
@@ -104,20 +105,20 @@ export {
   makeGoldCommander,
 } from './models/towers03.js';
 import {
-  makeAssassin, makeBoomerang, makeBrawler, makeMachineGunner, makeMachineGunnerBottom, makeShotgunnerCombat,
-  makeShotgunnerCombatBottom, makeShotgunnerPump, makeSlime,
+  makeAssassin, makeBoomerang, makeBrawler, makeMachineGunner, makeMachineGunnerBottom,
+  makeSlime,
 } from './models/towers04.js';
 export {
-  makeAssassin, makeBoomerang, makeBrawler, makeMachineGunner, makeShotgunnerCombat, makeShotgunnerPump, makeSlime,
+  makeAssassin, makeBoomerang, makeBrawler, makeMachineGunner, makeSlime,
 } from './models/towers04.js';
 import {
-  makeEDJ, makeEDJBottom, makeElectro,
-  makeMedic, makeMedicBeam, makeMedicBeamBottom, makeMineLayer, makeMineLayerBottom, makePyromancer,
+  makeEDJ, makeEDJBottom,
+  makeMedic, makeMedicBeam, makeMedicBeamBottom, makeMineLayer, makeMineLayerBottom,
   makeTrapper,
 } from './models/towers05.js';
 export {
-  makeAcePlane, makeEDJ, makeElectro, makeMedic, makeMedicBeam,
-  makeMineLayer, makePyromancer, makeTrapper,
+  makeAcePlane, makeEDJ, makeMedic, makeMedicBeam,
+  makeMineLayer, makeTrapper,
 } from './models/towers05.js';
 import {
   makeCrookBoss, makeMobster, makeMobsterBottom,

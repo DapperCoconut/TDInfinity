@@ -1,8 +1,7 @@
 // Tower models, file 4 of 12. Each makeX(level) builds one tower's look.
 // In here:
-// (Classic Soldier, Ranger, Operator, Hunter: people2.js.) Machine Gunner,
-// Boomerang, Slime, Assassin, Brawler, Shotgunner Pump,
-// Shotgunner Combat. (Freezer and Cryo Ranger: people6.js.)
+// (Classic Soldier, Ranger, Operator, Hunter: people2.js; Freezer and Cryo Ranger: people6.js;
+// Pump and Combat Shotgunner: people8.js.) Machine Gunner, Boomerang, Slime, Assassin, Brawler.
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
 
 import * as THREE from 'three';
@@ -201,97 +200,4 @@ export function makeBrawler(level) {
 }
 
 // ------------------------------------------------------------------ alternate forms & new towers (set 2)
-
-/**
- * Pump Shotgunner (alternate Shotgunner form): an enforcer in a cap with a pump shotgun.
- * Lv 2 shell belt, Lv 3 a vest, Lv 4 a helmet and heavier gun, Lv 5 a tactical drum shotgun.
- */
-export function makeShotgunnerPump(level) {
-  const tac = level >= 4;
-  const shirt = tac ? 0x1c2833 : 0x37474f;
-  const h = makeHumanoid({ skin: 0xd2a679, shirt, pants: tac ? 0x111a22 : 0x263238, arms: shirt, face: 'agent' });
-  const { M } = h;
-  if (level >= 3) helmet(h, tac ? 0x0d1b2a : 0x263238);
-  else {
-    const cap = M(0x0d47a1);
-    part(h.head, boxGeo(1.35, 0.4, 1.35), cap, 0, 1.25, 0);
-    part(h.head, boxGeo(1.3, 0.12, 0.5), cap, 0, 1.08, 0.75);
-  }
-  if (level >= 1) {
-    part(h.torso, boxGeo(2.1, 0.3, 1.1), M(0x3e2723), 0, -0.85, 0);
-    for (const x of [-0.7, -0.35, 0, 0.35, 0.7]) part(h.torso, boxGeo(0.15, 0.3, 0.15), M(0xd32f2f), x, -0.7, 0.6);
-  }
-  if (level >= 2) part(h.torso, boxGeo(2.15, 1.7, 1.15), M(tac ? 0x263238 : 0x455a64), 0, 0.05, 0); // vest
-  const len = tac ? 2.0 : level >= 3 ? 1.8 : 1.6;
-  const gun = holdLongGun(h, len, M(0x212121));
-  part(gun, boxGeo(0.42, 0.5, 0.52), M(0x5d4037), 0, -0.9, 0.05); // pump
-  part(gun, boxGeo(0.3, 0.5, 0.4), M(tac ? 0x37474f : 0x4e342e), 0, 0.2, -0.05); // stock
-  if (tac) {
-    part(gun, boxGeo(0.6, 0.6, 0.6), M(0x424242), 0, -0.45, -0.5); // drum
-    part(gun, boxGeo(0.2, 0.25, 0.25), glow(h, 0xff1744), 0, -1.2, 0.34);
-  }
-  h.tracer = 0xffab40;
-  return h;
-}
-
-/**
- * Combat Shotgunner (alternate Shotgunner, two paths). Top: Gloves, a Padded Vest, a Militant
- * beret, Advanced Goggles and a drum-fed AA-12 with a medkit. Bottom: a bandolier, an Officer's
- * cap, SWAT gear and the bulky DB-12.
- */
-export function makeShotgunnerCombat(level, bottom = false) {
-  const top = !bottom;
-  const swat = bottom && level >= 4;
-  const shirt = swat ? 0x1b1f24 : bottom && level >= 3 ? 0x1a237e : 0x556b2f;
-  const h = makeHumanoid({ skin: 0xc68642, shirt, pants: swat ? 0x15181c : 0x3e4a2a, arms: shirt, face: 'soldier' });
-  const { M } = h;
-  if (level >= 1) {
-    if (top) for (const arm of [h.rightArm, h.leftArm]) part(arm, boxGeo(0.95, 0.5, 0.95), M(0x212121), 0, -1.85, 0); // gloves
-    else {
-      const strap = part(h.torso, boxGeo(0.35, 2.6, 1.12), M(0x4e342e), 0, 0, 0);
-      strap.rotation.z = -0.75;
-    }
-  }
-  if (top && level >= 2) part(h.torso, boxGeo(2.15, 1.7, 1.15), M(0x6b7b3a), 0, 0.05, 0); // padded vest
-  if (swat) {
-    helmet(h, 0x111111);
-    part(h.torso, boxGeo(2.2, 1.75, 1.2), M(0x263238), 0, 0.05, 0);
-    const visor = part(h.head, boxGeo(1.25, 0.45, 0.08), M(0x90caf9), 0, 0.7, 0.74);
-    visor.material.transparent = true;
-    visor.material.opacity = 0.6;
-  } else if (bottom && level >= 3) {
-    // Officer: peaked cap with a gold badge
-    part(h.head, boxGeo(1.4, 0.45, 1.4), M(0x0d1b4c), 0, 1.25, 0);
-    part(h.head, boxGeo(1.3, 0.1, 0.5), M(0x111111), 0, 1.05, 0.75);
-    part(h.head, boxGeo(0.25, 0.25, 0.06), glow(h, 0xffd54f), 0, 1.3, 0.72);
-  } else if (top && level >= 3) {
-    part(h.head, boxGeo(1.45, 0.35, 1.45), M(0x33691e), 0.1, 1.25, 0); // militant beret
-  }
-  if (top && level >= 4) {
-    // Advanced Goggles
-    part(h.head, boxGeo(1.25, 0.3, 0.12), M(0x212121), 0, 0.72, 0.64);
-    part(h.head, boxGeo(0.4, 0.25, 0.06), glow(h, 0x76ff03), -0.28, 0.72, 0.71);
-    part(h.head, boxGeo(0.4, 0.25, 0.06), glow(h, 0x76ff03), 0.28, 0.72, 0.71);
-  }
-  if (top && level >= 5) {
-    // Health Pack on its back
-    part(h.torso, boxGeo(1.2, 1.1, 0.5), M(0xeeeeee), 0, 0.1, -0.85);
-    part(h.torso, boxGeo(0.7, 0.2, 0.06), M(0xd32f2f), 0, 0.1, -1.12);
-    part(h.torso, boxGeo(0.2, 0.7, 0.06), M(0xd32f2f), 0, 0.1, -1.12);
-  }
-  const big = level >= 5;
-  const gun = holdLongGun(h, big ? 2.0 : 1.6, M(0x212121));
-  part(gun, boxGeo(0.42, 0.5, 0.52), M(0x5d4037), 0, -0.9, 0.05); // pump grip
-  part(gun, boxGeo(0.3, 0.5, 0.4), M(0x4e342e), 0, 0.2, -0.05); // stock
-  if (top && big) part(gun, boxGeo(0.65, 0.65, 0.65), M(0x424242), 0, -0.5, -0.5); // AA-12 drum
-  if (bottom && big) {
-    // DB-12: a chunky bullpup with twin tube magazines on top
-    part(gun, boxGeo(0.6, 1.6, 0.7), M(0x263238), 0, -0.4, 0);
-    for (const x of [-0.18, 0.18]) part(gun, boxGeo(0.2, 1.4, 0.2), M(0x37474f), x, -0.7, 0.42);
-    part(gun, boxGeo(0.2, 0.25, 0.25), glow(h, 0x40c4ff), 0, -1.2, 0.34);
-  }
-  h.tracer = bottom && level >= 4 ? 0xffd740 : 0xffab40;
-  return h;
-}
-export const makeShotgunnerCombatBottom = (level) => makeShotgunnerCombat(level, true);
 

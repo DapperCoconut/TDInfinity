@@ -1,49 +1,12 @@
 // Tower models, file 5 of 12. Each makeX(level) builds one tower's look.
 // In here:
-// Pyromancer, Ace Plane, Medic, Medic Beam, EDJ, Electro,
-// Trapper, Mine Layer. (Missile Rocketeer, Missile Trooper: people7.js.)
+// Ace Plane, Medic, Medic Beam, EDJ, Trapper, Mine Layer.
+// (Missile Rocketeer, Missile Trooper: people7.js; Pyromancer, Electro: people8.js.)
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
 
 import * as THREE from 'three';
 import { boxGeo, makeHumanoid, part } from './kit.js';
 import { cylGeo, glow, helmet, holdLongGun, setMuzzle } from './bits.js';
-
-/**
- * Pyromancer (alternate Flamethrower form): a firefighter-turned-arsonist in a red coat.
- * Lv 2 a respirator and fuel tank, Lv 3 hazard stripes and a second tank, Lv 4 a heavy suit,
- * Lv 5 a blazing horned helmet and glowing napalm tanks.
- */
-export function makePyromancer(level) {
-  const maniac = level >= 4;
-  const coat = maniac ? 0x3e2723 : 0xb71c1c;
-  const h = makeHumanoid({ skin: 0xe0ac69, shirt: coat, pants: 0x212121, arms: coat, face: 'soldier' });
-  const { M } = h;
-  const fire = 0xff6d00;
-  part(h.head, boxGeo(1.45, 0.55, 1.45), M(maniac ? 0x212121 : 0xfdd835), 0, 1.3, 0); // fire helmet
-  part(h.head, boxGeo(1.6, 0.12, 1.7), M(maniac ? 0x212121 : 0xfdd835), 0, 1.05, -0.1); // brim
-  if (maniac) for (const x of [-0.6, 0.6]) part(h.head, boxGeo(0.2, 0.7, 0.2), glow(h, fire), x, 1.8, 0); // horns
-  if (level >= 1) {
-    part(h.head, boxGeo(0.6, 0.55, 0.4), M(0x37474f), 0, 0.35, 0.75); // respirator
-    part(h.head, boxGeo(1.2, 0.35, 0.08), M(0xffa000), 0, 0.8, 0.66); // visor
-  }
-  if (level >= 2) for (const y of [-0.5, 0.3]) part(h.torso, boxGeo(2.08, 0.18, 1.08), M(0xffeb3b), 0, y, 0); // hazard stripes
-  const tank = maniac ? glow(h, fire) : M(0xc62828);
-  const tanks = level >= 2 ? [-0.45, 0.45] : [0];
-  for (const x of tanks) part(h.torso, boxGeo(0.7, 2.0, 0.7), tank, x, 0.2, -0.85);
-  if (level >= 3) part(h.torso, boxGeo(2.2, 1.0, 1.2), M(0x5d4037), 0, 0.6, 0); // heavy suit shoulders
-  const g = new THREE.Group();
-  g.position.set(0, -1.9, 0);
-  h.rightArm.add(g);
-  part(g, boxGeo(0.4, 1.5, 0.45), M(0x424242), 0, -0.75, 0);
-  part(g, boxGeo(0.55, 0.3, 0.55), M(0x212121), 0, -1.55, 0);
-  part(g, boxGeo(0.15, 0.15, 0.15), glow(h, fire), 0, -1.75, 0.2); // pilot light
-  setMuzzle(h, g, 0, -1.85, 0);
-  h.rightArm.rotation.set(-Math.PI / 2, 0, 0.1);
-  h.leftArm.rotation.set(-Math.PI / 2 + 0.15, 0, -0.5);
-  h.pose = { right: -Math.PI / 2, left: -Math.PI / 2 + 0.15, leftRecoil: 0.05 };
-  h.recoilScale = 0.1;
-  return h;
-}
 
 /** The Ace Pilot's plane (faces +Z): a yellow racer, a blue warbird, a grey jet from Lv 4, a gold jet at Lv 5. */
 export function makeAcePlane(h, level) {
@@ -228,39 +191,6 @@ export function makeEDJ(level, bottom = false) {
 }
 export const makeEDJBottom = (level) => makeEDJ(level, true);
 
-
-/**
- * Electroshocker: a lineman with a shock gun and coil pack. Lv 2 rubber gloves and goggles,
- * Lv 3 a Faraday vest, Lv 4 a big Tesla coil pack, Lv 5 a crackling Zeus cannon.
- */
-export function makeElectro(level) {
-  const zeus = level >= 4;
-  const shirt = zeus ? 0x1a237e : 0xf9a825;
-  const h = makeHumanoid({ skin: 0xe0ac69, shirt, pants: 0x37474f, arms: level >= 1 ? 0x212121 : shirt, face: 'soldier' });
-  const { M } = h;
-  const bolt = zeus ? 0xe1f5fe : 0x80d8ff;
-  helmet(h, zeus ? 0x283593 : 0xfdd835);
-  if (level >= 1) {
-    part(h.head, boxGeo(1.25, 0.3, 0.12), M(0x263238), 0, 0.8, 0.63);
-    part(h.head, boxGeo(1.0, 0.18, 0.06), glow(h, bolt), 0, 0.8, 0.7);
-  }
-  if (level >= 2) {
-    // Faraday's Vest: a metal mesh vest
-    part(h.torso, boxGeo(2.15, 1.7, 1.15), M(0x90a4ae), 0, 0.05, 0);
-    for (const y of [-0.5, 0, 0.5]) part(h.torso, boxGeo(2.18, 0.06, 1.18), M(0x546e7a), 0, y, 0);
-  }
-  // Coil pack on the back, taller each level.
-  const coil = level >= 3 ? 2.6 : 1.6;
-  part(h.torso, boxGeo(1.0, coil, 0.7), M(0x455a64), 0, 0.2 + (coil - 1.6) / 2, -0.85);
-  for (let i = 0; i < (level >= 3 ? 4 : 2); i++) part(h.torso, boxGeo(1.2, 0.15, 0.85), M(0xb87333), 0, -0.3 + i * 0.6, -0.85);
-  part(h.torso, boxGeo(0.4, 0.4, 0.4), glow(h, bolt), 0, 0.4 + coil, -0.85);
-  const gun = holdLongGun(h, zeus ? 1.9 : 1.4, M(zeus ? 0x283593 : 0x424242));
-  part(gun, boxGeo(0.5, 0.5, 0.5), M(0xb87333), 0, -0.5, 0); // copper coil
-  part(gun, boxGeo(zeus ? 0.6 : 0.4, 0.3, zeus ? 0.6 : 0.4), glow(h, bolt), 0, zeus ? -1.9 : -1.4, 0);
-  if (zeus) for (const s of [-1, 1]) part(gun, boxGeo(0.12, 0.8, 0.12), glow(h, bolt), s * 0.35, -1.6, 0);
-  h.tracer = bolt;
-  return h;
-}
 
 /**
  * Trapper: a backwoods trapper in a fur hat with a sack of traps. Lv 2 a spike bandolier,
