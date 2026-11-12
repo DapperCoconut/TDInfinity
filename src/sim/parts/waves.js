@@ -2,7 +2,7 @@
 // These are methods of Sim: sim.js puts them on the Sim class, so "this" is the game.
 
 import { ENEMIES, GAME, TOWERS, VERSUS, choicesOf, detection, difficulty, hpCurve, rootType, waveGroups } from '../../config.js';
-import { path } from '../path.js';
+import { BEELINE, path } from '../path.js';
 import { r2, rand } from './shared.js';
 
 export class SimWaves {
@@ -127,6 +127,7 @@ export class SimWaves {
     let dist = at?.dist ?? 0;
     // Maps with several lanes: wave spawns take turns; summons follow whoever summoned them.
     let route = at?.route ?? this.enemies.get(at?.owner)?.route ?? this.nextRoute();
+    if (def.beeline && at?.dist == null) route = BEELINE; // Drakobloxxer: straight for the base
     if (at?.dist == null && def.placeAt) dist = path.length * rand(...def.placeAt); // Viorb: hovers somewhere along the path
     else if (at?.dist == null) {
       let gate = null;

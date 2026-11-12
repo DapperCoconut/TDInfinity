@@ -4,6 +4,9 @@ import { DEFAULT_MAP, mapDef } from './maps.js';
 
 // Just wide enough for one zombie (~4 units wide) to walk single file.
 export const PATH_WIDTH = 4.4;
+// A route number that isn't a lane: the straight line from the first route's start to its end.
+// Enemies with `beeline` (Halloween Night 3's Drakobloxxer) walk it and skip the twisting path.
+export const BEELINE = 99;
 const DEFAULT_BOUNDS = { minX: -104, maxX: 104, minZ: -66, maxZ: 66 };
 // The current map's playable area (most maps use the default; set by setMapPath).
 export const BOUNDS = { ...DEFAULT_BOUNDS };
@@ -59,11 +62,16 @@ export class Path {
     this.length = Math.min(...this.routes.map((r) => r.length));
     for (const r of this.routes) r.k = r.length / this.length; // path distance d is d * k along this route
     this.multi = this.routes.length > 1;
+    const p0 = this.routes[0].points;
+    const a = p0[0];
+    const b = p0[p0.length - 1];
+    this.beeline = layRoute([[a.x, a.z, a.y], [b.x, b.z, b.y]]);
+    this.beeline.k = this.beeline.length / this.length; // < 1: shorter than the lanes
   }
 
   /** Writes x, z, y (height) and direction dx, dz at distance d along route r into `out`. */
   at(d, out = {}, r = 0) {
-    const route = this.routes[r] ?? this.routes[0];
+    const route = r === BEELINE ? this.beeline : this.routes[r] ?? this.routes[0];
     const segs = route.segs;
     d = clamp(d, 0, this.length) * route.k;
     let s = segs[segs.length - 1];

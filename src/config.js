@@ -13,6 +13,7 @@ import { GOLD_TOWERS } from './goldtowers.js';
 import { HARDCORE_WAVES } from './hardcore.js';
 import { HALLOWEEN_TIMERS, HALLOWEEN_WAVES } from './halloween.js';
 import { HALLOWEEN2_TIMERS, HALLOWEEN2_WAVES } from './halloween2.js';
+import { HALLOWEEN3_TIMERS, HALLOWEEN3_WAVES } from './halloween3.js';
 export { BOSS_KNOCK, KNOCK_STUDS, abilityCost, arrowModes, arrowName, timedAbility } from './towers/shared.js';
 import { TOWERS_GUNNERS } from './towers/gunners.js';
 import { TOWERS_HEAVY } from './towers/heavy.js';
@@ -597,13 +598,15 @@ export const DIFFICULTIES = {
   // health doesn't grow with more players (the spec's numbers are for a full server). pot: so the
   // cash is a full server's too, shared between whoever plays: startCash and each wave's bonus are
   // what one of `pot` players gets (solo: 4x, two players: 2x each), and damage cash is split.
-  halloween: { name: 'Halloween Event', icon: '🎃', color: '#ef6c00', boss: 'hwJack', desc: '10 spooky waves on Lantern Hill Cemetery against JACK, the Pumpkin King, or 25 waves of Halloween Night 2 at the carnival against the RINGMASTER and JACK O\' BOT. Or try Halloween Night 3, a crater with two paths. A full server\'s cash is shared between the players: $22,000 to start solo, $5,500 each with four. 100 base health. 3x credits.',
+  halloween: { name: 'Halloween Event', icon: '🎃', color: '#ef6c00', boss: 'hwJack', desc: '10 spooky waves on Lantern Hill Cemetery against JACK, the Pumpkin King, or 25 waves of Halloween Night 2 at the carnival against the RINGMASTER and JACK O\' BOT. Or 35 waves of Halloween Night 3 in the crater against the PRIMORDIAL DRAKOBLOXXER. A full server\'s cash is shared between the players: $22,000 to start solo, $5,500 each with four. 100 base health. 3x credits.',
     waves: HALLOWEEN_WAVES, event: true, map: 'cemetery', maps: ['cemetery', 'carnival', 'nightmare'], cash: 1, dmgCash: 1.5, pot: 4, credits: 3, shards: 3, baseHp: 100, startCash: 5500, groupBonus: 0, flatHp: true,
     mpHp: [0, 0, 0, 0, 0], timers: HALLOWEEN_TIMERS,
     hpCurve: [[1, 1.3], [4, 1.3], [6, 0.9]], bossHp: 0.5,
     // mapModes: a map of the event that plays its own waves. These fields replace the mode's own
     // there (modeFor). Halloween Night 2 (see halloween2.js).
-    mapModes: { carnival: { waves: HALLOWEEN2_WAVES, timers: HALLOWEEN2_TIMERS, boss: 'h2Ringmaster', hpCurve: [[1, 1], [6, 1], [8, 0.7], [14, 0.7], [18, 0.4]], bossHp: 0.6 } } },
+    mapModes: { carnival: { waves: HALLOWEEN2_WAVES, timers: HALLOWEEN2_TIMERS, boss: 'h2Ringmaster', hpCurve: [[1, 1], [6, 1], [8, 0.7], [14, 0.7], [18, 0.4]], bossHp: 0.6 },
+      // Halloween Night 3 (see halloween3.js).
+      nightmare: { waves: HALLOWEEN3_WAVES, timers: HALLOWEEN3_TIMERS, boss: 'n3Drako', hpCurve: [[1, 1], [5, 0.9], [8, 0.7], [14, 0.55], [20, 0.45], [28, 0.4]], bossHp: 0.7 } } },
 };
 export const DEFAULT_DIFFICULTY = 'easy';
 /** The modes on the mode cards, and the special events (each has its own button and its own map). */

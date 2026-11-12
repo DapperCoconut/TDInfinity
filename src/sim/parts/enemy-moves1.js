@@ -348,7 +348,7 @@ export class SimEnemyMoves1 {
         g.t += g.every;
         for (const o of this.enemies.values()) {
           if (o.remains || o.hp >= o.maxHp || (o.x - g.x) ** 2 + (o.z - g.z) ** 2 > g.r * g.r) continue;
-          o.hp = Math.min(o.maxHp, o.hp + g.heal);
+          o.hp = Math.min(o.maxHp, o.hp + g.heal + o.maxHp * (g.pct || 0)); // pct: Blight Walker puddles
         }
       }
       return (g.left -= dt) > 0;

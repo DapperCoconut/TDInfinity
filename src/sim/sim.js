@@ -20,7 +20,7 @@ import {
 } from '../config.js';
 import { canPlace, laneOf, laneOz, mapKey, placeFail, setMap } from './map.js';
 import { pickableMap } from './maps.js';
-import { BOUNDS, path, setTimeWorld } from './path.js';
+import { BEELINE, BOUNDS, path, setTimeWorld } from './path.js';
 import {
   HC_FX, INSANE_FX, MAX_STEP, ORION_FX, ST_AIRBORNE, ST_ARMORED, ST_BIOHAZARD, ST_BURNING, ST_CHARGING, ST_CHILLED,
   ST_CLOAKED, ST_CONFUSED, ST_DANCE, ST_ENRAGED, ST_FLOAT, ST_FROZEN, ST_GASSED, ST_GLITCHED, ST_HACKED, ST_HASTED,
@@ -47,6 +47,7 @@ import { SimAbilities } from './parts/abilities.js';
 import { SimDamage } from './parts/damage.js';
 import { SimWeapons4 } from './parts/weapons4.js';
 import { H2_FX, SimCarnival } from './parts/carnival.js';
+import { N3_FX, SimNightmare } from './parts/nightmare.js';
 
 export class Sim {
   /**
@@ -296,6 +297,7 @@ export class Sim {
       }
       if (HC_FX.has(e.type) && this.hcAttacks(e, def, dt) === 'gone') continue; // Hardcore (a Drop Pod may burst open)
       if (H2_FX.has(e.type)) this.carnivalMoves(e, def, dt); // Halloween Night 2
+      if (N3_FX.has(e.type)) this.nightmareMoves(e, def, dt); // Halloween Night 3
       e.st = (e.stopKind === 'ice' ? ST_FROZEN : e.stopKind === 'stun' ? ST_STUNNED : e.stopKind === 'dance' ? ST_DANCE : e.stopKind === 'float' ? ST_FLOAT : 0) | (e.burn || e.taints?.has('burn') ? ST_BURNING : 0)
         | (e.slime ? ST_SLIMED : 0) | (e.chill ? ST_CHILLED : 0) | (e.hackEv || e.fraud ? ST_HACKED : 0) | (e.gas?.size || e.poison || e.taints?.has('radioactive') ? ST_GASSED : 0) | (e.confT > 0 ? ST_CONFUSED : 0)
         | (e.shockT > 0 ? ST_SHOCKED : 0) | (e.taints?.has('biohazard') ? ST_BIOHAZARD : 0)
@@ -304,7 +306,7 @@ export class Sim {
         | (e.auraArmor ? ST_VOIDAURA : 0) | (e.charging ? ST_CHARGING : 0) | (e.cloak ? ST_CLOAKED : 0) | (e.vShield > 0 ? ST_VOIDARMOR : 0);
       // Confused zombies walk back toward the entrance.
       if (e.confT > 0) e.dist = Math.max(0, e.dist - e.speed * dt);
-      else e.dist += e.speed * dt;
+      else e.dist += (e.speed * dt) / (e.route === BEELINE ? path.beeline.k : 1); // the straight line is shorter
       // Spider Queen: lays spiders behind her (not while frozen or stunned). Some summon several kinds.
       if (e.summonT && !e.stop) {
         [].concat(def.summon).forEach((sm, i) => {
@@ -844,7 +846,7 @@ export class Sim {
 
 // Sim's methods are kept in several files (see the list at the top). This puts them all on Sim,
 // just as if they were written inside the class.
-for (const part of [SimEnemyMoves1, SimEnemyMoves2, SimTowerHealth, SimWaves, SimTowerUpdate, SimWeapons1, SimWeapons2, SimWeapons3, SimUnits, SimAbilities, SimDamage, SimWeapons4, SimCarnival]) {
+for (const part of [SimEnemyMoves1, SimEnemyMoves2, SimTowerHealth, SimWaves, SimTowerUpdate, SimWeapons1, SimWeapons2, SimWeapons3, SimUnits, SimAbilities, SimDamage, SimWeapons4, SimCarnival, SimNightmare]) {
   const props = Object.getOwnPropertyDescriptors(part.prototype);
   delete props.constructor;
   Object.defineProperties(Sim.prototype, props);

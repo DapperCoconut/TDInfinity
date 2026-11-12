@@ -652,6 +652,7 @@ export class SimDamage {
     }
     if (def.necroBurst) this.necroBurst(e, def.necroBurst);
     if (def.deathBlast) this.carnivalBlast(e, def.deathBlast); // Halloween Night 2 Jack O' Lanterns
+    if (def.deathFatigue) this.nightmareDeath(e, def.deathFatigue); // Halloween Night 3 Unknowns
     if (def.deathHaste) {
       // Overcharged: the enemies around it get a big burst of speed.
       const h = def.deathHaste;
