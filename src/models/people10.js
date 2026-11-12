@@ -862,4 +862,4 @@ export const MODELS = {
 };
 
 // Shared with later batches (people17).
-export { cigar, cuffs, fedora, shoes, suitJacket, tommyGun };
+export { cigar, cuffs, fedora, flatCap, shoes, suitJacket, tommyGun };
