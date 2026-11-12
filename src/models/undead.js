@@ -67,7 +67,7 @@ function makeJack() {
 
 // ------------------------------------------------------------------ the skeleton
 
-function makeBones(model, L) {
+export function makeBones(model, L) {
   const h = { mats: [], muzzles: [], size: L.size, tracer: L.eye ?? 0xe0e0e0 };
   h.root = new THREE.Group();
   h.body = new THREE.Group();
@@ -248,7 +248,7 @@ function leg(k, B, dim, side) {
 // ------------------------------------------------------------------ what they wear and hold
 
 /** A torn cloth hanging from a rope round the hips. */
-function rag(k, col) {
+export function rag(k, col) {
   k.torus(0.6, 0.05, LEATHER, 0, 2.35, 0, { rx: PI / 2, seg: 16 });
   const strips = [[-0.4, 0.5, 0.15], [0, 0.65, 0], [0.42, 0.45, -0.12], [-0.25, 0.55, -0.1], [0.3, 0.7, 0.1]];
   strips.forEach(([x, len, rz], i) => {
@@ -356,7 +356,7 @@ function shield(k, h) {
 }
 
 /** A sword pointing down the arm (along -y). Returns the y of its tip. */
-function sword(k, len, w, steel, edge, grip) {
+export function sword(k, len, w, steel, edge, grip) {
   k.cyl(0.07, 0.4, grip, 0, 0.02, 0, { seg: 8 }); // grip
   k.ball(0.1, IRON, 0, 0.26, 0, { seg: 8, rows: 6 }); // pommel
   k.box(0.8, 0.1, 0.16, IRON, 0, -0.22, 0, { r: 0.03 }); // crossguard
@@ -368,7 +368,7 @@ function sword(k, len, w, steel, edge, grip) {
 }
 
 /** A huge femur used as a club. Returns the y of its far end. */
-function femurClub(k, B, dim) {
+export function femurClub(k, B, dim) {
   k.cyl(0.18, 2.2, B, 0, -1.05, 0, { r2: 0.15, seg: 10 });
   for (const s of [-1, 1]) k.ball(0.28, B, s * 0.16, -2.25, 0, { seg: 10, rows: 7 });
   k.ball(0.22, dim, 0, 0.1, 0, { seg: 8, rows: 6 });
@@ -393,7 +393,7 @@ function cursedClub(k, B, h) {
 }
 
 /** A purple ghost-wisp floating over the shoulder (a see-through glowing flame). */
-function wisp(h, color) {
+export function wisp(h, color) {
   const m = glowMat(h, color, 1.0);
   m.transparent = true;
   m.opacity = 0.6;
