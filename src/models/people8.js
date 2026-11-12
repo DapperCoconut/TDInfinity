@@ -586,3 +586,6 @@ export function makeElectro(level) {
   h.tracer = zeus ? 0xe1f5fe : 0x80d8ff;
   return own(h);
 }
+
+// Shared with later batches (people17).
+export { medkit, shellBelt, shellStrap, shotgun };
