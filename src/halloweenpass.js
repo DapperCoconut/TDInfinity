@@ -48,5 +48,5 @@ export const PASS = [
   { at: 1360, mode: 'liminal', name: 'Infinite mode', desc: 'Play the endless Backrooms any time' },
   { at: 1530, tower: 'eldritch' },
   { at: 1710, map: 'backrooms' },
-  { at: 1900, mode: 'remix', name: 'Halloween Remix', desc: 'A 50-wave mode with every Halloween enemy (coming soon)' },
+  { at: 1900, mode: 'remix', name: 'Halloween Remix', desc: '50 waves with every Halloween enemy and all three final bosses' },
 ];

@@ -14,6 +14,7 @@ import { HARDCORE_WAVES } from './hardcore.js';
 import { HALLOWEEN_TIMERS, HALLOWEEN_WAVES } from './halloween.js';
 import { HALLOWEEN2_TIMERS, HALLOWEEN2_WAVES } from './halloween2.js';
 import { HALLOWEEN3_TIMERS, HALLOWEEN3_WAVES } from './halloween3.js';
+import { buildRemix } from './halloweenremix.js';
 export { BOSS_KNOCK, KNOCK_STUDS, abilityCost, arrowModes, arrowName, timedAbility } from './towers/shared.js';
 import { TOWERS_GUNNERS } from './towers/gunners.js';
 import { TOWERS_HEAVY } from './towers/heavy.js';
@@ -613,6 +614,12 @@ export const DIFFICULTIES = {
   // empty. Every number here is a guess.
   liminal: { name: 'Liminal', icon: '🟨', color: '#c9b046', desc: 'Endless waves of random enemies in the Backrooms. Survive 30 waves to finish the contract.',
     waves: [], endless: true, hidden: true, map: 'backrooms', maps: ['backrooms'], cash: 2.5, dmgCash: 1, credits: 3, shards: 3, baseHp: 200, startCash: 900, groupBonus: 100, flatHp: true }, // (2026-11-11: cash 1.6, dmgCash 0.4, start 600 was too hard)
+  // Halloween Remix (the Battle Pass's last reward, see halloweenremix.js): 50 waves mixing the three
+  // nights, on one of their maps picked at random. Hidden like Liminal: its Play button is on the
+  // pass. The rest is the Halloween Event's. waves: filled in below, once modeFor works.
+  remix: { name: 'Halloween Remix', icon: '🎃', color: '#ef6c00', boss: 'n3Drako', desc: '50 waves with every Halloween enemy. JACK on wave 30, the RINGMASTER on 40, the DRAKOBLOXXER on 50.',
+    waves: [], hidden: true, map: 'cemetery', maps: ['cemetery', 'carnival', 'nightmare'], cash: 1, dmgCash: 1.5, pot: 4, credits: 3, shards: 3, baseHp: 100, startCash: 5500, groupBonus: 0, flatHp: true,
+    mpHp: [0, 0, 0, 0, 0] },
 };
 export const DEFAULT_DIFFICULTY = 'easy';
 /** The modes on the mode cards, and the special events (each has its own button and its own map). */
@@ -654,6 +661,8 @@ export function hpCurve(dm, index, boss = false) {
   }
   return c[c.length - 1][1] * b;
 }
+// Halloween Remix's waves (see DIFFICULTIES.remix), made from the three Halloween nights.
+DIFFICULTIES.remix.waves = buildRemix(['cemetery', 'carnival', 'nightmare'].map((m) => modeFor('halloween', m)), hpCurve);
 
 /**
  * Spawn groups for wave `index` (0-based) of `waves`. Past the scripted waves (Versus is endless) it

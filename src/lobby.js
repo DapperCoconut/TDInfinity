@@ -109,8 +109,10 @@ export class Lobby {
     // Contracts (Halloween panel): accept or drop one.
     $('event-contracts').addEventListener('click', (e) => {
       const b = e.target.closest('[data-contract]');
-      if (e.target.closest('[data-hwplay]')) {
+      const play = e.target.closest('[data-hwplay]');
+      if (play) {
         audio.unlock();
+        if (play.dataset.hwplay === 'remix') return this.startRemix(); // Halloween Remix (Battle Pass)
         return this.startLiminal(); // Infinite mode (Battle Pass): the endless Backrooms, any time
       }
       if (!b) return;
@@ -331,6 +333,14 @@ export class Lobby {
     this.client.start(new LocalSession(this.name, PLAYER_COLORS[0], 'liminal', profile.evoLevels(), 'backrooms', null));
   }
 
+  /** Halloween Remix (Battle Pass): 50 waves on one of the three Halloween nights' maps, at random. Solo. */
+  startRemix() {
+    const maps = DIFFICULTIES.remix.maps;
+    this.inGame = true;
+    this.show(null);
+    this.client.start(new LocalSession(this.name, PLAYER_COLORS[0], 'remix', profile.evoLevels(), maps[Math.floor(Math.random() * maps.length)], null));
+  }
+
   /**
    * Mysterious Call contract: you answered the phone by the cemetery chapel. You leave the game (and
    * its room) and pick a class; then the haunted mansion (call/game.js) borrows the game's screen.
@@ -476,7 +486,7 @@ export class Lobby {
         name = r.name;
         small = r.desc;
       }
-      const play = got && r.mode === 'liminal' ? '<button class="btn small" data-hwplay="liminal">▶ Play</button>' : '';
+      const play = got && r.mode ? `<button class="btn small" data-hwplay="${r.mode}">▶ Play</button>` : '';
       return `<div class="hw-tier${got ? ' got' : ''}${i === next ? ' hw-next' : ''}" title="${esc(`${name} (${small}): ${num(r.at)} Candy Corn`)}">
         <span class="hw-at">🌽 ${num(r.at)}</span>${pic}<small>${esc(small)}</small><b>${esc(name)}</b>${got ? '<span class="ev-won">✔</span>' : ''}${play}</div>`;
     });
