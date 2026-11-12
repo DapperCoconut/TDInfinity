@@ -18,7 +18,7 @@ const BRASS = 0xc9a227;
 // ------------------------------------------------------------------ shared bits for this batch
 
 /** A bandana tied over the top of the head, with its knot and tails at the back (head space). */
-function bandana(k, col) {
+export function bandana(k, col) {
   dome(k, 0.7, 0.46, col, 0, 0.93, -0.02);
   k.cyl(0.67, 0.14, tone(col, 0.85), 0, 0.98, 0, { seg: 22 });
   k.ball(0.14, tone(col, 0.8), 0, 1.0, -0.7, { seg: 8, rows: 6 });

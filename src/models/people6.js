@@ -88,7 +88,7 @@ function nadeStrap(k, side, col, nade = OLIVE) {
 }
 
 /** A satchel on the hip with a flap, buckles and its strap over the other shoulder (torso space). */
-function satchel(k, col, side = -1) {
+export function satchel(k, col, side = -1) {
   sash(k, tone(col, 0.7), -side, 0.22);
   const x = side * 1.12;
   k.box(0.36, 0.8, 0.95, col, x, -0.8, 0, { r: 0.08 });
@@ -97,7 +97,7 @@ function satchel(k, col, side = -1) {
 }
 
 /** A neck scarf with two tails hanging down the chest (torso space). */
-function neckScarf(k, col) {
+export function neckScarf(k, col) {
   k.torus(0.62, 0.17, col, 0, 0.92, 0, { rx: PI / 2, seg: 18 });
   k.ball(0.2, tone(col, 0.9), 0.3, 0.8, 0.55, { seg: 10, rows: 7 }); // knot
   k.box(0.3, 0.8, 0.1, col, 0.38, 0.35, 0.6, { r: 0.04, rz: -0.1 });
@@ -119,7 +119,7 @@ function icicle(k, x, y, z, len, mat) {
 }
 
 /** A standing ice crystal: two six-sided cones (any space; its foot at y). */
-function shard(k, x, y, z, hgt, r, mat, o = {}) {
+export function shard(k, x, y, z, hgt, r, mat, o = {}) {
   k.cyl(r, hgt * 0.75, mat, x, y + hgt * 0.375, z, { seg: 6, r2: r * 0.8, ...o });
   k.cyl(r * 0.8, hgt * 0.25, mat, x, y + hgt * 0.875, z, { seg: 6, r2: 0.0001, ...o });
 }
@@ -177,7 +177,7 @@ function cryoGun(k, o = {}) {
 }
 
 /** Arms up for a throw: the thrower's pose all the grenadiers share. */
-function throwPose(h) {
+export function throwPose(h) {
   h.rightArm.rotation.set(-2.8, 0, 0.2);
   h.leftArm.rotation.set(-1.0, 0, -0.3);
   h.pose = { right: -2.8, left: -1.0, leftRecoil: 0 };
@@ -185,7 +185,7 @@ function throwPose(h) {
 }
 
 /** The left hand's spare (Double Pin / Double Pack): its own fist group so the rig sees it as held. */
-function spare(h, key, build) {
+export function spare(h, key, build) {
   const g = fist(h.leftArm, -1.9, 1.1);
   const k = wear(h, g, `${key}:spare`);
   build(k);

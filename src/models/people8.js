@@ -123,13 +123,13 @@ function fireHelmet(k, col, shield) {
 }
 
 /** A copper coil: a stack of windings round a core (any space; centred on x, y, z, along y). */
-function coil(k, x, y, z, r, hh, n, core = 0x37474f) {
+export function coil(k, x, y, z, r, hh, n, core = 0x37474f) {
   k.cyl(r * 0.6, hh, core, x, y, z, { seg: 12 });
   for (let i = 0; i < n; i++) k.torus(r * 0.8, r * 0.22, COPPER, x, y - hh / 2 + (i + 0.5) * (hh / n), z, { rx: PI / 2, seg: 14 });
 }
 
 /** A crooked lightning arc between two points (glow tube). */
-function arc(k, a, b, mat, jag = 0.18, seed = 1) {
+export function arc(k, a, b, mat, jag = 0.18, seed = 1) {
   const pts = [a];
   for (let i = 1; i < 4; i++) {
     const t = i / 4;
@@ -141,7 +141,7 @@ function arc(k, a, b, mat, jag = 0.18, seed = 1) {
 }
 
 /** Thick rubber gloves up to the elbow (arm space). */
-function rubberGloves(h, key, col, sleeve) {
+export function rubberGloves(h, key, col, sleeve) {
   hands(h, key, col, sleeve, (a) => a.box(1.1, 0.5, 1.1, col, 0, -1.25, 0, { r: 0.08 }));
 }
 
