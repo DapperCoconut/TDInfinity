@@ -56,6 +56,9 @@ import { SimLiminal } from './parts/liminal.js';
 // `damage` (the number a leak would take off the base). Both are guesses.
 const GATE_HIT = 10;
 const GATE_HIT_EVERY = 1;
+/** Frostgate Citadel: the owner of the Sentries by the gate (not a player) and their level. */
+export const CITADEL = 'citadel';
+const CITADEL_SENTRY_LEVEL = 3;
 
 export class Sim {
   /**
@@ -137,6 +140,16 @@ export class Sim {
     this.initContract(opts.contract); // Contracts (lastlaugh.js): Last Laugh's wheel and open court
     this.events = []; // drained by whoever runs the sim
     this.tmp = {};
+    // Frostgate Citadel: two level 3 Sentries by the gate that belong to no player.
+    if (!this.vs) {
+      for (const [x, z] of mapInfo.sentries ?? []) {
+        const t = this.newTower(CITADEL, 'sentry', x, z, 0, 0);
+        t.level = CITADEL_SENTRY_LEVEL;
+        t.yaw = -Math.PI / 2; // facing west, down the corridor
+        this.setTowerLevelHp(t);
+        t.hp = t.maxHp;
+      }
+    }
   }
 
   removePlayer(id) {
@@ -627,6 +640,18 @@ export class Sim {
         p.cash += value;
         this.removeTower(t, 'sell', { value });
         this.sellSacrifice(t);
+        return null;
+      }
+      case 'repair': {
+        // Frostgate Citadel: pay to mend the gate.
+        const r = mapInfo.repair;
+        if (!r || this.vs) return null;
+        if (this.baseHp >= this.maxBaseHp) return 'The gate is already at full health';
+        if (p.cash < r.cost) return `Need $${r.cost} to repair the gate`;
+        p.cash -= r.cost;
+        const hp = Math.min(r.hp, this.maxBaseHp - this.baseHp);
+        this.baseHp += hp;
+        this.events.push({ k: 'repair', by: pid, hp });
         return null;
       }
       case 'defuse': {

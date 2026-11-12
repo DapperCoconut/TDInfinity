@@ -71,6 +71,7 @@ export class UI {
       panel: $('panel'),
       toast: $('toast'),
       skip: $('skip-btn'),
+      repair: $('repair-btn'),
       speed: $('speed-btn'),
       mute: $('mute-btn'),
       music: $('music-btn'),
@@ -90,6 +91,7 @@ export class UI {
     this.lastCash = null;
 
     this.el.skip.onclick = handlers.onSkip;
+    this.el.repair.onclick = handlers.onRepair;
     this.el.speed.innerHTML = SPEEDS.map((v) => `<option value="${v}">${v}x</option>`).join('');
     this.el.speed.onchange = () => {
       handlers.onSpeed(Number(this.el.speed.value));
@@ -267,6 +269,16 @@ export class UI {
     this.el.baseFill.style.background =
       r > 0.5 ? 'linear-gradient(#66bb6a,#388e3c)' : r > 0.25 ? 'linear-gradient(#ffca28,#f9a825)' : 'linear-gradient(#ef5350,#c62828)';
     this.el.baseText.textContent = `❤ ${Math.max(0, Math.ceil(hp))} / ${max}`;
+  }
+
+  /** Frostgate Citadel: the Repair Gate button (`r` = the map's repair cost and health, or null to hide it). */
+  setRepair(r, hurt) {
+    this.el.repair.classList.toggle('hidden', !r);
+    if (!r) return;
+    const text = `🔧 Repair Gate $${r.cost}`;
+    if (this.el.repair.textContent !== text) this.el.repair.textContent = text;
+    this.el.repair.disabled = !hurt;
+    this.el.repair.title = `Give the gate back ${r.hp.toLocaleString()} health`;
   }
 
   setWave(st, mp, spectating) {

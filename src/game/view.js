@@ -7,8 +7,8 @@ import { audio } from '../audio.js';
 import { subInfo } from '../substats.js';
 import { clamp } from '../utils.js';
 import { WORLD_SCALE } from '../scale.js';
-import { heightAt } from '../sim/map.js';
-import { borrowsHidden, buffOf, computeBuffs, mediCharge, medicShields, nextUpgrade, spyCircles } from '../sim/sim.js';
+import { heightAt, mapInfo } from '../sim/map.js';
+import { CITADEL, borrowsHidden, buffOf, computeBuffs, mediCharge, medicShields, nextUpgrade, spyCircles } from '../sim/sim.js';
 import { CAM_GROUND_GAP, CAM_PITCH_MIN, EMPTY, innerRings, ringRadius } from './shared.js';
 
 export class GameView {
@@ -205,7 +205,9 @@ export class GameView {
     const s = this.session;
     const st = s.state;
     this.ui.setCash(this.myCash);
-    this.ui.setBase(this.versus ? (this.me?.baseHp ?? 0) : st.baseHp, this.versus ? GAME.baseHp : difficulty(st.mode).baseHp ?? GAME.baseHp);
+    const gate = !this.versus && mapInfo?.gate; // Frostgate Citadel: the gate's health is the base's
+    this.ui.setBase(this.versus ? (this.me?.baseHp ?? 0) : st.baseHp, this.versus ? GAME.baseHp : gate || (difficulty(st.mode).baseHp ?? GAME.baseHp));
+    this.ui.setRepair(gate && !this.spectating ? mapInfo.repair : null, st.baseHp < gate);
     this.ui.setWave(st, s.mp, this.spectating);
     this.ui.setSpeed(st.speed, s.isHost);
     if (st.versus) {
@@ -237,7 +239,7 @@ export class GameView {
       else if (TOWERS[sel.type].levels[sel.level].shields) {
         for (const m of medicShields(st.towers.values()).values()) if (m.id === sel.id) boosting++;
       } else for (const o of st.towers.values()) if (o.type !== sel.type && (o.x - sel.x) ** 2 + (o.z - sel.z) ** 2 <= aura * aura) boosting++;
-      this.ui.updatePanel(sel, { myId: s.myId, cash: this.myCash, mp: s.mp, versus: this.versus, borrowed, buff, upCost, upCostB, upTop, upBot, boosting, upgradeLock: (type, next) => this.upgradeLock(type, next), ownerName: st.players.get(sel.owner)?.name ?? 'a player who left' });
+      this.ui.updatePanel(sel, { myId: s.myId, cash: this.myCash, mp: s.mp, versus: this.versus, borrowed, buff, upCost, upCostB, upTop, upBot, boosting, upgradeLock: (type, next) => this.upgradeLock(type, next), ownerName: st.players.get(sel.owner)?.name ?? (sel.owner === CITADEL ? 'the Citadel' : 'a player who left') });
       const smoked = sel.fx & 1 && !TOWERS[sel.type].kind && !TOWERS[sel.type].orbit;
       const r = ringRadius(sel.type, sel.level, buff, sel.x, sel.z) * (smoked ? VERSUS.smokeRange : 1);
       if (this.aiming) {

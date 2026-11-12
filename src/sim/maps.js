@@ -1383,6 +1383,7 @@ const CG_ROUTES = Array.from({ length: CG_LANES }, (_, i) => {
   const z = -11 + i * 2; // 2 units apart: one wide band of lanes down the middle
   return [[-63, z], [46, z]];
 });
+CG_ROUTES.push([[-63, 0], [46, 0]]); // lane 13, right in the middle: bosses only (see `bossLane`)
 
 function cgFixed() {
   const out = [];
@@ -1732,12 +1733,15 @@ export const MAPS = {
     icon: '🏰',
     desc: 'Christmas Night 2: a walled snowy corridor at night. Enemies march out of the fog on 12 lanes and attack the citadel gate. The gate has 27,000 health: keep them off it!',
     path: CG_ROUTES[0],
-    routes: CG_ROUTES, // 12 straight lanes, west to east
+    routes: CG_ROUTES, // 12 straight lanes west to east, plus the bosses' lane in the middle
     spawn: { x: 8, z: -18 },
     base: 'gate', // no castle: the citadel gate (cgGate) is the base
     baseAt: [CG_GATE_X, 0],
     baseR: 3,
     gate: 27000, // the gate's health (instead of the mode's base health); enemies that reach it hit it
+    repair: { cost: 250, hp: 2500 }, // a player can pay `cost` to give the gate back `hp` health
+    sentries: [[44, -17], [44, 17]], // two Sentries (level 3) by the gate that belong to no player
+    bossLane: 12, // bosses walk the middle lane; everyone else takes turns on the other 12
     portal: false, // enemies come out of the fog bank (cgFog)
     event: 'christmas', // the Christmas Event's second map (see DIFFICULTIES.christmas.maps)
     citadel: true, // lighting in game.js

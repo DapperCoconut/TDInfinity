@@ -3,6 +3,7 @@
 
 import { ENEMIES, GAME, TOWERS, VERSUS, choicesOf, detection, difficulty, hpCurve, rootType, waveGroups } from '../../config.js';
 import { BEELINE, path } from '../path.js';
+import { mapInfo } from '../map.js';
 import { r2, rand } from './shared.js';
 
 export class SimWaves {
@@ -123,7 +124,8 @@ export class SimWaves {
   /** The lane the next fresh enemy takes (they take turns on maps with several). */
   nextRoute() {
     if (!path.multi) return 0;
-    this.routeN = ((this.routeN ?? -1) + 1) % path.routes.length;
+    const n = path.routes.length - (mapInfo.bossLane != null ? 1 : 0); // Frostgate Citadel: the last lane is the bosses'
+    this.routeN = ((this.routeN ?? -1) + 1) % n;
     return this.routeN;
   }
 
@@ -139,6 +141,7 @@ export class SimWaves {
     let dist = at?.dist ?? 0;
     // Maps with several lanes: wave spawns take turns; summons follow whoever summoned them.
     let route = at?.route ?? (at?.mods?.route != null && path.multi ? at.mods.route % path.routes.length : null) ?? this.enemies.get(at?.owner)?.route ?? this.nextRoute(); // mods.route: a wave group's own lane (Christmas)
+    if (def.boss && mapInfo.bossLane != null && at?.route == null && !at?.owner) route = mapInfo.bossLane; // Frostgate Citadel: bosses use their own lane
     if (def.beeline && at?.dist == null) route = BEELINE; // Drakobloxxer: straight for the base
     if (at?.dist == null && def.placeAt) dist = path.length * rand(...def.placeAt); // Viorb: hovers somewhere along the path
     else if (at?.dist == null) {

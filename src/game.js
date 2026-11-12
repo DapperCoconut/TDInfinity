@@ -166,6 +166,7 @@ export class GameClient {
 
     this.ui = new UI({
       onSkip: () => this.session?.send({ a: 'skip' }),
+      onRepair: () => this.session?.send({ a: 'repair' }),
       onSpeed: (v) => this.session?.send({ a: 'speed', v }),
       onMute: () => this.ui.setMuted(audio.toggleMute()),
       onMusic: () => this.ui.setMusic(audio.toggleMusic()),

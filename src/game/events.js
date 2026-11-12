@@ -1672,6 +1672,13 @@ export class GameEvents {
           if (!this.versus || ev.L === this.myLane) this.effects.baseHit(new THREE.Vector3(path.end.x, 0, path.end.z + laneOz(ev.L ?? 0)));
           break;
         }
+        case 'repair': {
+          // Frostgate Citadel: someone paid to mend the gate.
+          this.effects.puff(new THREE.Vector3(path.end.x + 2, 8, path.end.z), 0x66bb6a, 14, 0.6, 10);
+          const who = ev.by === this.session.myId ? 'You' : this.state.players.get(ev.by)?.name ?? 'Someone';
+          this.ui.toast(`${who} repaired the gate (+${ev.hp.toLocaleString()})`, 1600);
+          break;
+        }
         case 'gateHit': {
           // Frostgate Citadel: an enemy at the gate hits it (a spark on the gate, a thud now and then).
           this.effects.puff(new THREE.Vector3(ev.x + 1.5, 3, ev.z), 0xff6f8f, 5, 0.4, 5);
