@@ -117,7 +117,7 @@ export const ENEMIES = {
     intro: '💣 Elite Grenadier! Its grenades land far down the path and burst into bosses.' },
   revivedAbomination: { name: 'Revived Abomination', hp: 6000, speed: 27, reward: 300, damage: 250, scale: 2.4, skin: 0x7d8a76, shirt: 0x5a5a5a, pants: 0x444444, mlook: 'abomination',
     intro: '☣️ A Revived Abomination! Very tough and VERY fast.' },
-  mEradicator: { name: 'Eradicator', hp: 140000, speed: 7.2, reward: 0, damage: 1000, scale: 3.6, skin: 0x1a1a1a, shirt: 0x1a1a1a, pants: 0x141414, mlook: 'eradicator',
+  mEradicator: { name: 'Eradicator', hp: 140000, speed: 4.8, reward: 0, damage: 1000, scale: 3.6, skin: 0x1a1a1a, shirt: 0x1a1a1a, pants: 0x141414, mlook: 'eradicator',
     boss: true, statusImmune: true, burnable: true, collisionResist: 0.3,
     mAttacks: [
       { slam: { range: 12, stun: 3, spin: true }, first: 3, every: 45, name: 'Spin Slash' },
