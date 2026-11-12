@@ -71,7 +71,7 @@ export const GAME = {
   restealth: 5,
   loadoutSize: 6, // towers a player can bring into a game
   // Credits earned at the end of a game (spent in the Loadout & Shop on new towers).
-  credits: (wavesCleared, win) => wavesCleared * 40 + (win ? 600 : 0),
+  credits: (wavesCleared, win) => wavesCleared * 20 + (win ? 300 : 0), // (2026-11-11: halved, was 40 / 600)
   mpHpScale: 0.5, // in multiplayer, enemy HP is multiplied by 1 + this * (players - 1)
   // Hard mode wave modifiers (guessed): Bloated = this much more health, Nimble = this much faster,
   // Health Regen = heals this share of max health per second (2% every 2 s).
@@ -97,7 +97,7 @@ export const VERSUS = {
   // Endless waves get tougher fast after the scripted ones run out, so matches end.
   hpMult: (index) => (1 + index * 0.07) * 1.07 ** Math.max(0, index - 11),
   // Credits: per wave survived, plus a bonus by finishing place (1st, 2nd, 3rd, 4th).
-  credits: (waves, place) => waves * 40 + ([0, 800, 300, 120, 0][place] ?? 0),
+  credits: (waves, place) => waves * 20 + ([0, 400, 150, 60, 0][place] ?? 0), // (2026-11-11: halved, was 40 / 800, 300, 120)
   shards: (place) => (place === 1 ? 1 : 0), // Dimension Shards for winning the battle
   // Zombies you can buy and send to an opponent's map. n per purchase, `gap` seconds apart.
   // minWave: the first wave (1-based) this send unlocks on.
