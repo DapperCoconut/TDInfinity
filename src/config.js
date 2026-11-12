@@ -618,7 +618,7 @@ export const DIFFICULTIES = {
     mpHp: [0, 0, 0, 0, 0],
     hpCurve: [[1, 1], [8, 0.8], [11, 0.6], [14, 0.4], [15, 0.3]], bossHp: 0.6,
     // Christmas Night 2 on Frostgate Citadel (see christmas2.js).
-    mapModes: { citadel: { waves: CHRISTMAS2_WAVES, timers: CHRISTMAS2_TIMERS, boss: 'xcExoSanta', hpCurve: [[1, 0.5], [6, 0.4], [10, 0.3], [16, 0.25], [20, 0.2]], bossHp: 0.35 } } },
+    mapModes: { citadel: { waves: CHRISTMAS2_WAVES, timers: CHRISTMAS2_TIMERS, boss: 'xcExoSanta', hpCurve: [[1, 0.4], [6, 0.3], [10, 0.2], [13, 0.12], [20, 0.1]], bossHp: 0.25 } } },
   // Liminal contract (2026-11-11 spec, see lastlaugh.js): the endless mode in the Backrooms. Not on
   // the mode cards or an event button (`hidden`): you get here by walking into Sunken Canyon's
   // glitchy pit. `endless`: its waves are made up as you go (sim/parts/liminal.js), so `waves` is

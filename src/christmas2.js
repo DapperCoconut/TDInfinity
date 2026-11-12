@@ -66,7 +66,7 @@ const NEW = {
   xcGiftBox: E('Gift Box', 100, 4, 'mystery', 0x8e24aa, {
     deathSpawn: { fixed: [['xcToy', 7]] },
     intro: '🎁 Gift Boxes burst into 7 fast Toys!' }),
-  xcToy: E('Toy', 18, 13.5, 'snowy', 0xff7043, { reward: 0, explosiveResist: 0.27, scale: 0.6 }),
+  xcToy: E('Toy', 18, 13.5, 'snowy', 0xff7043, { reward: 0, damage: 1, explosiveResist: 0.27, scale: 0.6 }),
   xcSnowHead: E('Snowman Head', 1000, 3, 'golem', 0xfafafa, { ...ICE, scale: 1.2 }),
   // Boss: a Giant Top every 10 s.
   xcToymaker: E('Toymaker', 100000, 2, 'necro', 0x6d4c41, { boss: true, bar: true, barName: 'THE TOYMAKER', scale: 1.9,
