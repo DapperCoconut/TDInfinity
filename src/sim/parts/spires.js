@@ -11,9 +11,13 @@ import { buffOf, r2 } from './shared.js';
 /** Enemies that use spiresMoves (sim.js checks this set every tick). */
 export const XS_FX = new Set(Object.keys(ENEMIES).filter((k) => {
   const d = ENEMIES[k];
-  return d.zap || d.calmHeal || d.giveShield || d.medic || d.lord || d.portalLife || d.touch || d.downgrade || d.unitShot || d.arbiter;
+  return d.zap || d.calmHeal || d.giveShield || d.medic || d.lord || d.portalLife || d.touch || d.downgrade || d.unitShot || d.arbiter
+    || d.slip || d.rangeAura || d.dmgAura || d.thrusters || d.archangel;
 }));
 const isHero = (t) => !!HERO_TOWERS[t.type];
+/** How much further an enemy reaches (Scout Bot aura) and how hard it hits (Commander, Kritz). */
+const reach = (e) => (e.rangeUpT > 0 ? 1 + e.rangeUp : 1);
+export const dmgMult = (e) => (e.dmgUpT > 0 ? 1 + e.dmgUp : 1);
 
 export class SimSpires {
 
@@ -69,19 +73,62 @@ export class SimSpires {
       e.hp = Math.min(e.maxHp, e.hp + lo.heal * k * dt);
     }
     if (def.arbiter) this.arbiterFight(e, def.arbiter, T, dt);
+    // Tanuki: now and then it slips past (can't be hit, runs faster). A stun resets the timer.
+    const sl = def.slip;
+    if (sl) {
+      if (T.slipOn > 0) {
+        T.slipOn -= dt;
+        e.speed *= sl.speed;
+        if (T.slipOn <= 0) e.noTarget = false;
+      } else if (e.stop) T.slip = sl.every;
+      else if ((T.slip = (T.slip ?? sl.every) - dt) <= 0) {
+        T.slip = sl.every;
+        T.slipOn = sl.time;
+        e.noTarget = true;
+        this.events.push({ k: 'dash', e: e.id });
+        this.events.push({ k: 'chaos', x: r2(e.x), z: r2(e.z), text: '🦝 Slipped past!', color: '#bcaaa4' });
+      }
+    }
+    // Councilman: Thruster Wings (speed bursts while his shield holds) and Archangel (shield back).
+    const th = def.thrusters;
+    if (th) {
+      if (T.wingsOn > 0) {
+        T.wingsOn -= dt;
+        if (e.osh > 0 && !e.stop) e.speed *= th.speed;
+      } else if ((T.wings = (T.wings ?? th.every) - dt) <= 0 && e.osh > 0 && !e.stop) {
+        T.wings = th.every;
+        T.wingsOn = th.time;
+        this.events.push({ k: 'dash', e: e.id });
+      }
+    }
+    const aa = def.archangel;
+    if (aa && e.oshMax > 0 && ((T.angel = (T.angel ?? aa.every) - dt) <= 0)) {
+      T.angel = aa.every;
+      e.osh = Math.min(e.oshMax, (e.osh || 0) + e.oshMax * aa.pct);
+      this.events.push({ k: 'eBlast', x: r2(e.x), z: r2(e.z), r: 4, c: 0xfff59d });
+    }
+    // Scout Bot and Commander Bot auras: longer reach / more damage for the enemies around it.
+    for (const [au, key] of [[def.rangeAura, 'rangeUp'], [def.dmgAura, 'dmgUp']]) {
+      if (!au) continue;
+      for (const o of this.enemies.values()) {
+        if (o === e || o.remains || (o.x - e.x) ** 2 + (o.z - e.z) ** 2 > au.radius * au.radius) continue;
+        o[key] = Math.max(o[`${key}T`] > 0 ? o[key] : 0, au.amt);
+        o[`${key}T`] = Math.max(o[`${key}T`] || 0, 0.5);
+      }
+    }
     if (e.stop) return; // stunned or frozen: no attacks
     // Shoots the nearest tower: damage, stun, slower firing or weaker damage.
     const z = def.zap;
     if (z && ((T.zap ??= z.every * 0.5), (T.zap -= dt) <= 0)) {
-      const t = this.nearestTower(e.x, e.z, z.range);
+      const t = this.nearestTower(e.x, e.z, z.range * reach(e));
       if (!t) T.zap = 0.5;
       else {
         T.zap = z.every;
         const r = z.radius ?? 0.5;
         const only = z.radius ? null : (o) => o === t;
         if (z.dmg) {
-          if (z.radius) this.hurtTowers(t.x, t.z, r, z.dmg, true);
-          else this.hurtTower(t, z.dmg, true);
+          if (z.radius) this.hurtTowers(t.x, t.z, r, z.dmg * dmgMult(e), true);
+          else this.hurtTower(t, z.dmg * dmgMult(e), true);
         }
         if (z.stun) this.hexTowers(t.x, t.z, r, 'stun', z.stun, true, only);
         if (z.slow) this.slowTowers(t.x, t.z, r, z.slow, z.time, true);
@@ -101,7 +148,7 @@ export class SimSpires {
     const us = def.unitShot;
     if (us && ((T.unit ??= us.every), (T.unit -= dt) <= 0)) {
       T.unit = us.every;
-      this.hurtUnitsNear(e.x, e.z, us.range, us.dmg);
+      this.hurtUnitsNear(e.x, e.z, us.range * reach(e), us.dmg * dmgMult(e));
     }
     // Officer: puts a shield on the nearest ally that has none.
     const gs = def.giveShield;
@@ -137,6 +184,14 @@ export class SimSpires {
           T.uber = md.uber.every;
           best.invulnT = Math.max(best.invulnT || 0, md.uber.time);
           this.events.push({ k: 'chaos', x: r2(best.x), z: r2(best.z), text: '⛑️ UBERCHARGE! Invulnerable', color: '#ff5252' });
+        }
+        // Kritz Bot: the strongest enemy does much more damage for a while.
+        const kz = md.kritz;
+        if (kz && ((T.kritz ??= kz.every * 0.5), (T.kritz -= dt) <= 0)) {
+          T.kritz = kz.every;
+          best.dmgUp = Math.max(best.dmgUpT > 0 ? best.dmgUp : 0, kz.amt);
+          best.dmgUpT = Math.max(best.dmgUpT || 0, kz.time);
+          this.events.push({ k: 'chaos', x: r2(best.x), z: r2(best.z), text: '💥 KRITZKRIEG! +200% damage', color: '#40c4ff' });
         }
       }
     }
@@ -183,12 +238,16 @@ export class SimSpires {
     if (e.stop) return;
     const l = a.light;
     if ((T.light ??= l.every * 0.5, T.light -= dt) <= 0) {
-      const list = [...this.towers.values()].filter((t) => t.hp > 0 && !this.stealthy(t) && (t.x - e.x) ** 2 + (t.z - e.z) ** 2 <= l.range * l.range)
+      const lr = l.range * reach(e);
+      const list = [...this.towers.values()].filter((t) => t.hp > 0 && !this.stealthy(t) && (t.x - e.x) ** 2 + (t.z - e.z) ** 2 <= lr * lr)
         .sort((p, q) => ((p.x - e.x) ** 2 + (p.z - e.z) ** 2) - ((q.x - e.x) ** 2 + (q.z - e.z) ** 2)).slice(0, l.n);
       if (!list.length) T.light = 1;
       else {
         T.light = l.every;
+        this.events.push({ k: 'warp', x: r2(e.x), z: r2(e.z) });
         for (const t of list) {
+          // He flashes to each tower, strikes it, and is back on the path in a blink.
+          this.events.push({ k: 'warp', x: r2(t.x), z: r2(t.z) });
           this.hexTowers(t.x, t.z, 0.5, 'stun', l.stun, true, (o) => o === t);
           this.events.push({ k: 'eShot', e: e.id, kind: 'laser', fx: r2(e.x), fz: r2(e.z), x: r2(t.x), z: r2(t.z), d: 0, c: 0xfff59d });
         }

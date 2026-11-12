@@ -4,7 +4,7 @@
 //
 // From the spec: every health, shield ("+"), speed with a number, defense, damage cap, hidden,
 // flying, what spawns on death, the summons, and the Arbiter's five moves with this mode's limits
-// (4 towers per Speed of Light, 3 swords, a 400 cap). The spec's three tables are used as they are.
+// (4 towers per Speed of Light, 3 swords, a 400 cap), the Ardent's resist to the Elite tower. The spec's three tables are used as they are.
 // Speeds given only as words are guesses (first table: Slow 2.4, Below average 3, Average 3.6,
 // Above average 4.2, Fast 5). Every other guess (timers, ranges, tower damage, resist amounts...)
 // is in the memory notes. How they act: src/sim/parts/spires.js (and the older shared moves).
@@ -17,6 +17,7 @@ const dmg = (hp) => Math.max(1, Math.round(hp ** 0.5 / 2));
 const E = (name, hp, speed, look, skin, extra = {}) => ({ name, hp, speed, reward: reward(hp + (extra.osh ?? 0)), damage: dmg(hp + (extra.osh ?? 0)), scale: 1, xm: look, skin, shirt: skin, pants: skin, face: 'blank', ...(extra.osh ? { oshCurve: true } : {}), ...extra });
 const NOFREEZE = { freezeImmune: true }; // "resists freeze"
 const BLAST = { explosiveResist: 0.5 }; // "resists blast"
+const WINGS = { thrusters: { every: 15, time: 3, speed: 2.5 }, archangel: { every: 20, pct: 0.1 } }; // the Councilman's
 
 const NEW = {
   // ------------------------------------------------------------ first table (waves 1-14)
@@ -50,17 +51,18 @@ const NEW = {
   xsCrusaderLord: E('Crusader Lord', 20000, 2.4, 'hero', 0xffd700, { osh: 24000, defense: 16, scale: 1.9, boss: true, bar: true, barName: 'CRUSADER LORD',
     lord: { defense: 8, speed: 3.6, heal: 50 },
     intro: '⚔️ BOSS: the CRUSADER LORD! When his shield breaks he speeds up and heals.' }),
-  xsArdent: E('Ardent', 400, 24, 'hero', 0xff7043, { osh: 60, defense: 2, maxHit: 350, scale: 0.9,
+  xsArdent: E('Ardent', 400, 24, 'hero', 0xff7043, { osh: 60, defense: 2, maxHit: 350, scale: 0.9, towerResist: { prefix: 'phaserElite', amt: 0.5 },
     intro: '💨 Ardents are EXTREMELY fast, and no hit does more than 350 to them.' }),
   xsCourier: E('Courier', 5000, 2.4, 'angel', 0xfff59d, { osh: 2000, flying: true, defense: 5, ...NOFREEZE, scale: 1.5,
     deathSpawn: { fixed: [['xsOfficer', 2], ['xsAvarian', 2], ['xsDarkPriest', 1]] },
     intro: '📦 Couriers fly, and drop Officers, Avarian Constructs and a Dark Priest when they die!' }),
-  // Boss (wave 28): Portals every 20 s. Thruster Wings and Archangel shield gains are not built.
-  xsCouncilman: E('Councilman', 30000, 1.8, 'spirit', 0xf5f5f5, { osh: 40000, ...NOFREEZE, bulletResist: 0.5, scale: 2, boss: true, bar: true, barName: 'THE COUNCILMAN',
+  // Boss (wave 28): Portals every 20 s. Thruster Wings: a burst of speed every 15 s, only while
+  // shielded. Archangel: gets back 10% of its full shield every 20 s.
+  xsCouncilman: E('Councilman', 30000, 1.8, 'spirit', 0xf5f5f5, { osh: 40000, ...NOFREEZE, bulletResist: 0.5, scale: 2, boss: true, bar: true, barName: 'THE COUNCILMAN', ...WINGS,
     summon: { type: 'xsPortal', n: 1, every: 20, here: true, noCash: true },
     intro: '🌀 BOSS: THE COUNCILMAN! His Portals keep sending enemies. Break them!' }),
   // The 2021 Councilman (waves 33 and 35): more health, a tiny shield.
-  xsCouncilman2: E('Councilman', 50000, 1.8, 'spirit', 0xe0e0e0, { osh: 1000, ...NOFREEZE, bulletResist: 0.5, scale: 2, bar: true, barName: 'THE COUNCILMAN',
+  xsCouncilman2: E('Councilman', 50000, 1.8, 'spirit', 0xe0e0e0, { osh: 1000, ...NOFREEZE, bulletResist: 0.5, scale: 2, bar: true, barName: 'THE COUNCILMAN', ...WINGS,
     summon: { type: 'xsPortal', n: 1, every: 20, here: true, noCash: true } }),
   // Stands still and sends a random enemy every 6 s. Its shield fades; after 45 s it closes.
   xsPortal: E('Portal', 1, 0, 'unstable', 0xffeb3b, { osh: 4000, reward: 0, scale: 1.4,
@@ -80,8 +82,9 @@ const NEW = {
   // ------------------------------------------------------------ second table
   xsTwig: E('Tiny Twig', 20, 2.5, 'snowy', 0x8d6e63, { scale: 0.6 }),
   xsBabyTanuki: E('Baby Tanuki', 150, 1.4, 'snowy', 0xa1887f, { scale: 0.75 }),
-  xsTanuki: E('Tanuki', 700, 5, 'snowy', 0x795548,
-    { intro: '🦝 Tanukis are fast. Stun them before they slip past!' }),
+  // Every 8 s it slips past: 1.5 s that can't be hit, at double speed. A stun resets the timer.
+  xsTanuki: E('Tanuki', 700, 5, 'snowy', 0x795548, { slip: { every: 8, time: 1.5, speed: 2 },
+    intro: '🦝 Tanukis slip past your towers now and then. Stun them to stop it!' }),
   xsGreenBarrel: E('Green Barrel Boy', 700, 5, 'packed', 0x43a047),
   xsBarrel: E('Barrel Boy', 1500, 2, 'packed', 0x8d6e63, { scale: 1.2, deathSpawn: { fixed: [['xsGreenBarrel', 1]] },
     intro: '🛢️ Barrel Boys drop a Green Barrel Boy when they die.' }),
@@ -106,7 +109,9 @@ const NEW = {
   // ------------------------------------------------------------ third table (robots)
   xsTargetBot: E('Target Bot', 150, 4.2, 'invader', 0xef5350, { bulletResist: 0.1 }),
   xsRangerBot: E('Ranger Bot', 250, 3.4, 'invader', 0x689f38, { unitShot: { every: 2, range: 20, dmg: 15 } }),
-  xsScoutBot: E('Scout Bot', 175, 6, 'invader', 0x90a4ae, { osh: 175, scale: 0.85 }),
+  // Enemies near it reach 30% further with their shots.
+  xsScoutBot: E('Scout Bot', 175, 6, 'invader', 0x90a4ae, { osh: 175, scale: 0.85, rangeAura: { radius: 12, amt: 0.3 },
+    intro: '📡 Scout Bots make the enemies near them shoot 30% further.' }),
   xsMissileBot: E('Missile Bot', 450, 3.2, 'invader', 0xff8a65, { osh: 100, explosiveResist: 0.55,
     zap: { every: 6, range: 25, dmg: 40, c: 0xff6d00, text: '🚀' },
     intro: '🚀 Missile Bots shoot your towers!' }),
@@ -119,10 +124,11 @@ const NEW = {
     healPulse: { every: 8, radius: 12, pct: 0.02 }, bell: { every: 8, radius: 12, speed: 0.5, time: 6 },
     intro: '🎧 DJ Bots heal enemies and speed them up!' }),
   // Before wave 23 it calls only the 6 Scout Bots.
-  xsCommanderBot: E('Commander Bot', 8250, 1.9, 'ravager', 0x455a64, { osh: 5000, armor: 0.25, scale: 1.6,
+  // Enemies near it do 35% more damage (to the base and with their shots).
+  xsCommanderBot: E('Commander Bot', 8250, 1.9, 'ravager', 0x455a64, { osh: 5000, armor: 0.25, scale: 1.6, dmgAura: { radius: 12, amt: 0.35 },
     summon: { type: 'xsMiniScout', n: 6, every: 35, noCash: true },
     intro: '🎖️ MINI-BOSS: the COMMANDER BOT! It calls more robots.' }),
-  xsCommanderBot2: E('Commander Bot', 8250, 1.9, 'ravager', 0x37474f, { osh: 5000, armor: 0.25, scale: 1.6,
+  xsCommanderBot2: E('Commander Bot', 8250, 1.9, 'ravager', 0x37474f, { osh: 5000, armor: 0.25, scale: 1.6, dmgAura: { radius: 12, amt: 0.35 },
     summon: [{ type: 'xsMiniScout', n: 6, every: 35, noCash: true }, { type: 'xsJuggernautBot', n: 5, every: 35, noCash: true }, { type: 'xsRailBot', n: 3, every: 35, noCash: true }] }),
   xsMiniScout: E('Scout Bot', 835, 8.5, 'invader', 0xb0bec5, { reward: 0, scale: 0.8 }),
   // Heals the strongest enemy 250 a second; Ubercharge makes it unhittable for 5 s.
@@ -134,7 +140,8 @@ const NEW = {
   xsSniperBot: E('Sniper Bot', 1000, 2.2, 'mist', 0x33691e, { osh: 500, hidden: true,
     intro: '🎯 Sniper Bots are HIDDEN.' }),
   xsJuggernautBot: E('Juggernaut Bot', 2200, 1.8, 'ravager', 0x616161, { osh: 1200, bulletResist: 0.3, explosiveResist: 0.5, scale: 1.3 }),
-  xsKritzBot: E('Kritz Bot', 1000, 2.7, 'invader', 0x1e88e5, { osh: 500, medic: { range: 25, heal: 150 } }),
+  // Heals the strongest enemy 150 a second; every 15 s it gives it +200% damage for 7 s.
+  xsKritzBot: E('Kritz Bot', 1000, 2.7, 'invader', 0x1e88e5, { osh: 500, medic: { range: 25, heal: 150, kritz: { every: 15, time: 7, amt: 2 } } }),
   xsGrenadierBot: E('Sgrenadier Bot', 3000, 3, 'ravager', 0x8d6e63, { osh: 2500, scale: 1.2,
     zap: { every: 10, range: 25, slow: 0.8, time: 5, c: 0x795548, text: '💥 Reloading...' } }),
   xsM202Bot: E('M202 Bot', 3000, 2.4, 'ravager', 0x827717, { osh: 3000, explosiveResist: 0.9, scale: 1.2 }),

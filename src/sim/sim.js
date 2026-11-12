@@ -49,7 +49,7 @@ import { SimWeapons4 } from './parts/weapons4.js';
 import { H2_FX, SimCarnival } from './parts/carnival.js';
 import { N3_FX, SimNightmare } from './parts/nightmare.js';
 import { SimChristmas, XM_FX } from './parts/christmas.js';
-import { SimSpires, XS_FX } from './parts/spires.js';
+import { SimSpires, XS_FX, dmgMult } from './parts/spires.js';
 import { SimContract } from './parts/contract.js';
 import { SimLiminal } from './parts/liminal.js';
 
@@ -326,6 +326,8 @@ export class Sim {
       if (N3_FX.has(e.type)) this.nightmareMoves(e, def, dt); // Halloween Night 3
       if (XM_FX.has(e.type)) this.christmasMoves(e, def, dt); // Christmas Night 1
       if (XS_FX.has(e.type) && this.spiresMoves(e, def, dt) === 'gone') continue; // Christmas Night 3 (a Portal may close)
+      if (e.rangeUpT > 0) e.rangeUpT -= dt; // Night 3 Scout Bot aura
+      if (e.dmgUpT > 0) e.dmgUpT -= dt; // Night 3 Commander / Kritz damage boost
       if (def.jester) this.jesterMoves(e, def, dt); // Last Laugh contract's JESTER
       e.st = (e.stopKind === 'ice' ? ST_FROZEN : e.stopKind === 'stun' ? ST_STUNNED : e.stopKind === 'dance' ? ST_DANCE : e.stopKind === 'float' ? ST_FLOAT : 0) | (e.burn || e.taints?.has('burn') ? ST_BURNING : 0)
         | (e.slime ? ST_SLIMED : 0) | (e.chill ? ST_CHILLED : 0) | (e.hackEv || e.fraud ? ST_HACKED : 0) | (e.gas?.size || e.poison || e.taints?.has('radioactive') ? ST_GASSED : 0) | (e.confT > 0 ? ST_CONFUSED : 0)
@@ -406,7 +408,7 @@ export class Sim {
         e.gateT = (e.gateT ?? 0) - dt;
         if (e.gateT <= 0) {
           e.gateT = GATE_HIT_EVERY;
-          const dmg = def.damage * GATE_HIT;
+          const dmg = Math.round(def.damage * dmgMult(e)) * GATE_HIT;
           this.baseHp = Math.max(0, this.baseHp - dmg);
           this.events.push({ k: 'gateHit', e: e.id, d: dmg, x: r2(e.x), z: r2(e.z) });
           if (this.baseHp <= 0) return this.end(false);
@@ -414,7 +416,7 @@ export class Sim {
       }
       if (e.dist >= path.length && !(mapInfo.gate && !this.vs)) {
         this.enemies.delete(e.id);
-        const dmg = def.leakHp ? Math.ceil(e.hp * def.leakHp) : def.damage; // Mr. Saw: double the health he has left
+        const dmg = def.leakHp ? Math.ceil(e.hp * def.leakHp) : Math.round(def.damage * dmgMult(e)); // Mr. Saw: double the health he has left; Night 3 boosts
         this.baseHp = Math.max(0, this.baseHp - dmg);
         this.events.push({ k: 'leak', e: e.id, d: dmg });
         if (this.baseHp <= 0) return this.end(false);
