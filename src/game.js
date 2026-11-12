@@ -13,16 +13,16 @@ import * as THREE from 'three';
 import { GAME, TOWERS, VERSUS, difficulty, towerCost, towerLimit } from './config.js';
 import { profile } from './profile.js';
 import { buildTimeWorld, buildVersusLinks, buildWorld, versusWalkable } from './world.js';
-import { Player } from './player.js';
+import { Player, fitColliders } from './player.js';
 import { makeNameTag } from './views.js';
 import { Effects } from './effects.js';
 import { audio } from './audio.js';
 import { UI } from './ui.js';
 import { towerIcon } from './icons.js';
-import { MODEL_SCALE, WORLD_SCALE } from './scale.js';
+import { WORLD_SCALE } from './scale.js';
 import { BOUNDS, PLAYER_SPAWN, path, setTimeWorld } from './sim/path.js';
 import {
-  CASTLE, CLIFFS, MAP, brookWalkable, courtWalkable, emberWalkable, gridWalkable, heightAt, laneOz, mapInfo, mapKey,
+  CASTLE, CLIFFS, MAP, brookWalkable, courtWalkable, emberWalkable, gridWalkable, laneOz, mapInfo, mapKey,
   mapVersion, nexusWalkable, rampartWalkable, rigWalkable, setMap,
 } from './sim/map.js';
 import { baseKey } from './sim/maps.js';
@@ -36,6 +36,7 @@ import { GameTowers } from './game/towers.js';
 // (MAP.obstacles is coarser: it's for tower placement and decoration spacing). Rebuilt for each map.
 let CASTLE_COLLIDERS = [];
 let LANE_COLLIDERS = [];
+let PROP_COLLIDERS = []; // trees, rocks and the map's colliders: fitted to the drawn map by fitLane
 function buildColliders() {
   CASTLE_COLLIDERS = mapInfo.nexus || mapInfo.base || mapInfo.court || mapInfo.ember || mapInfo.rampart || mapInfo.brook || mapInfo.rig ? [] : [ // Twilight Nexus has no castle; a map with its own `base` (cave, car, computer) has none; Shattered Court's castle is off the tiles
     { x: CASTLE.x, z: CASTLE.z, hx: 5, hz: 7, h: 10 }, // keep
@@ -46,22 +47,34 @@ function buildColliders() {
     ]),
   ];
   const round = mapInfo.tree === 'round';
-  LANE_COLLIDERS = [
+  PROP_COLLIDERS = [
     ...MAP.trees.flatMap(({ x, z, s }) =>
       round
         ? [
-          { x, z, r: 2.3 * s, h: 6.9 * s }, // leaves (the player is taller than the trunk under them)
-          { x, z, r: 1.5 * s, h: 8.6 * s }, // top tuft
+          { x, z, r: 2.3 * s, h: 6.9 * s, fixed: true }, // leaves (the player is taller than the trunk under them)
+          { x, z, r: 1.5 * s, h: 8.6 * s, fixed: true }, // top tuft
         ]
-        : [{ x, z, r: 0.9 * s, h: Infinity }], // pines, cacti, palms, crystals: bump into the trunk
+        : [{ x, z, r: 0.9 * s, h: Infinity }], // pines, cacti, palms, crystals: their real height comes from fitLane
     ),
     ...MAP.rocks.map(({ x, z, s }) => ({ x, z, r: 0.9 * s, h: 1.3 * s })),
-    ...MAP.colliders,
+    ...MAP.colliders.map((c) => ({ ...c })),
+  ];
+  setLaneColliders();
+}
+/** LANE_COLLIDERS from the prop colliders, the castle and the cliffs. */
+function setLaneColliders() {
+  LANE_COLLIDERS = [
+    ...PROP_COLLIDERS,
     ...CASTLE_COLLIDERS,
     ...CLIFFS.map((c) => ({ x: c.x, z: c.z, r: c.r, h: c.h })),
   ];
 }
 buildColliders();
+/** Gives the prop colliders the heights of the map as drawn (`world`, from buildWorld). */
+function fitLane(world) {
+  PROP_COLLIDERS = fitColliders(PROP_COLLIDERS, world);
+  setLaneColliders();
+}
 const POS_SEND_INTERVAL = 1 / 15;
 
 export class GameClient {
@@ -126,6 +139,7 @@ export class GameClient {
     this.sun = sun; // follows the camera so every Versus map gets shadows
 
     this.baseWorld = buildWorld(scene);
+    fitLane(this.baseWorld);
     this.mapVersion = mapVersion; // which map baseWorld shows
     this.applyLighting();
     this.laneWorlds = []; // Versus maps, built on first use and kept for later games
@@ -260,6 +274,7 @@ export class GameClient {
     buildColliders();
     this.scene.remove(this.baseWorld);
     this.baseWorld = buildWorld(this.scene);
+    fitLane(this.baseWorld);
     for (const w of this.laneWorlds) this.scene.remove(w);
     this.laneWorlds = [];
     if (this.timeWorld) this.scene.remove(this.timeWorld); // its path ends where this map's does
@@ -576,10 +591,8 @@ export class GameClient {
       const gdt = st.over ? 0 : realDt * st.speed;
       if (this.fps) this.updateFps(realDt);
       if (!this.ended && !this.fps) {
-        const colliders = this.staticColliders.concat(
-          [...st.towers.values()].map((t) => ({ x: t.x, z: t.z, r: 1.7 * MODEL_SCALE, h: heightAt(t.x, t.z) + (this.towerViews.get(t.id)?.top ?? 3 * MODEL_SCALE) })),
-        );
-        this.player.update(realDt, this.ui.chatOpen ? new Set() : this.keys, this.cam.yaw, colliders);
+        // Towers don't block players: you walk straight through them.
+        this.player.update(realDt, this.ui.chatOpen ? new Set() : this.keys, this.cam.yaw, this.staticColliders);
       }
       if (s.mp) {
         this.posTimer -= realDt;

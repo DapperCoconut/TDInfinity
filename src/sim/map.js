@@ -51,9 +51,47 @@ export function placeFail(def, article = '') {
 const TOWER_SIZE = 1; // keep equal to MODEL_SCALE
 const CLIFF_INSET = 2.1 * TOWER_SIZE; // a tower's center must be this far inside the cliff edge
 
+// Raised flat tops (mesas, roofs, rock blocks, the Night 3 hill): colliders marked `top` in
+// MAP.colliders. They work like cliffs: cliff towers go on them, ground towers can't.
+const TOP_INSET = 1.4; // a tower's center must be this far inside a top's edge
+
+/** Is (x, z) inside collider o's footprint, `pad` in from its edge? */
+function inside(o, x, z, pad = 0) {
+  if (o.hx !== undefined) return Math.abs(x - o.x) <= o.hx - pad && Math.abs(z - o.z) <= o.hz - pad;
+  return Math.hypot(x - o.x, z - o.z) <= o.r - pad;
+}
+
+/** The highest raised top at (x, z), if any (map-local coordinates). */
+export function topAt(x, z) {
+  if (path.time || !MAP.tops) return null;
+  let best = null;
+  for (const t of MAP.tops) if (t.h > (best?.h ?? -Infinity) && inside(t, x, z)) best = t;
+  return best;
+}
+
+/** May a cliff tower stand at (x, z) on top `t`? Whole footprint on it, nothing taller standing there. */
+function topFits(t, x, z) {
+  if (!inside(t, x, z, TOP_INSET)) return false;
+  if (x < BOUNDS.minX + 2 || x > BOUNDS.maxX - 2 || z < BOUNDS.minZ + 2 || z > BOUNDS.maxZ - 2) return false;
+  const r = 1.6 * TOWER_SIZE;
+  return !MAP.colliders.some((o) => !o.top && o.h > t.h + 0.5 && (o.hx !== undefined
+    ? Math.hypot(Math.max(0, Math.abs(x - o.x) - o.hx), Math.max(0, Math.abs(z - o.z) - o.hz)) < r
+    : Math.hypot(x - o.x, z - o.z) < o.r + r));
+}
+
+/** Twilight Nexus: the raised central platform (P and E cells) is a cliff top. */
+const nexusTop = (ch) => ch === 'P' || ch === 'E';
+
 /** The cliff at (x, z), if any (map-local coordinates). */
 export function cliffAt(x, z) {
   if (path.time) return null; // the time dimension is flat
+  const top = topAt(x, z);
+  if (top) return top;
+  if (mapInfo?.nexus) return nexusTop(nexusAt(x, z)) ? { x, z, r: NEXUS_CELL, h: NEXUS_PLATFORM } : null;
+  if (mapInfo?.brook) {
+    const rock = brookRock(x, z);
+    if (rock) return { x, z, r: BROOK_CELL, h: rock.h };
+  }
   if (mapInfo?.brook) {
     const [c, i] = brookIdx(x, z);
     return brookKind(c, i) === 'cliff' ? { x, z, r: BROOK_CELL, h: brookH(c, i) } : null;
@@ -76,6 +114,8 @@ const nexusH = (ch) => NEXUS_H[ch] ?? 0;
 /** Ground height at world (x, z): cliff tops are raised (and Twilight Nexus's decks). Works on every Versus lane. */
 export function heightAt(x, z) {
   z = foldZ(z);
+  const top = topAt(x, z);
+  if (top) return top.h;
   if (mapInfo?.nexus && !path.time) return nexusH(nexusAt(x, z));
   if (mapInfo?.grid && !path.time) return Math.max(0, crossH(...crossIdx(x, z)));
   if (mapInfo?.rampart && !path.time) return Math.max(0, rampartH(...rampartIdx(x, z)));
@@ -118,12 +158,21 @@ function nexusColliders() {
       if (h > 0) {
         const x0 = (c - 15) * NEXUS_CELL;
         const x1 = (e + 1 - 15) * NEXUS_CELL;
-        out.push({ x: (x0 + x1) / 2, z: (row - 10 + 0.5) * NEXUS_CELL, hx: (x1 - x0) / 2, hz: NEXUS_CELL / 2, h });
+        out.push({ x: (x0 + x1) / 2, z: (row - 10 + 0.5) * NEXUS_CELL, hx: (x1 - x0) / 2, hz: NEXUS_CELL / 2, h, terrain: true });
       }
       c = e + 1;
     }
   });
   return out;
+}
+
+/** Twilight Nexus: may a cliff tower stand at (x, z)? Its whole footprint on the central platform. */
+function nexusTopFits(x, z) {
+  const r = 1.5 * TOWER_SIZE;
+  for (const [dx, dz] of [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r], [r, r], [-r, r], [r, -r], [-r, -r]]) {
+    if (!nexusTop(nexusAt(x + dx * 0.8, z + dz * 0.8))) return false;
+  }
+  return true;
 }
 
 /** Twilight Nexus: where players may walk (the deck, bridges and platform; not the open edges or the void). */
@@ -170,7 +219,7 @@ function gridGenerate() {
       if (h > 0) {
         const x0 = (c - 20) * C;
         const x1 = (e + 1 - 20) * C;
-        colliders.push({ x: (x0 + x1) / 2, z: crossCell(0, i + 1)[1], hx: (x1 - x0) / 2, hz: C / 2, h });
+        colliders.push({ x: (x0 + x1) / 2, z: crossCell(0, i + 1)[1], hx: (x1 - x0) / 2, hz: C / 2, h, terrain: true });
       }
       c = e + 1;
     }
@@ -254,9 +303,9 @@ function emberPlaceable(x, z) {
   return true;
 }
 
-/** Ember Keep: may players walk at (x, z)? On the island, the drawbridge, the gate and the base (not lava, not the keep). */
+/** Ember Keep: may players walk at (x, z)? On the island, the drawbridge, the gate, the base and the keep's rock (not lava). */
 export function emberWalkable(x, z) {
-  return '.#V=SB'.includes(emberCh(...emberIdx(x, foldZ(z))));
+  return '.#V=SBC'.includes(emberCh(...emberIdx(x, foldZ(z))));
 }
 
 /**
@@ -281,6 +330,16 @@ function emberGenerate() {
     props.push({ kind: 'post', x, z });
     obstacles.push({ x, z, r: 1.6 });
     colliders.push({ x, z, hx: 1, hz: 1, h: 4 });
+  }
+  // The dark keep (emberworld.js): its flat roof between the five towers is a cliff top, out of reach of players.
+  {
+    const kx = emberCell(3, 8)[0] + EMBER_CELL / 2; // the keep's east face
+    const [, kz] = emberCell(0, 8.5);
+    colliders.push({ x: kx - 24, z: kz, hx: 24, hz: 18, h: 1.75, terrain: true }); // the rock mass it stands on
+    colliders.push({ x: kx - 8, z: kz, hx: 8, hz: 13, h: 23.75, top: true });
+    for (const [tx, tz, w, h] of [[-4, -13, 6, 30], [-4, 13, 6, 30], [-14, -8, 7, 36], [-14, 8, 7, 36], [-10, 0, 8, 42]]) {
+      colliders.push({ x: kx + tx, z: kz + tz, hx: w / 2, hz: w / 2, h: 1.75 + h });
+    }
   }
   for (const [c, r, pr] of EMBER_POOLS) {
     const [x, z] = emberCell(c, r);
@@ -354,7 +413,7 @@ function rampartGenerate() {
       if (h > 0) {
         const x0 = (c - 14) * C;
         const x1 = (e + 1 - 14) * C;
-        colliders.push({ x: (x0 + x1) / 2, z: at(0, i + 1)[1], hx: (x1 - x0) / 2, hz: C / 2, h });
+        colliders.push({ x: (x0 + x1) / 2, z: at(0, i + 1)[1], hx: (x1 - x0) / 2, hz: C / 2, h, terrain: true });
       }
       c = e + 1;
     }
@@ -396,8 +455,8 @@ function rampartGenerate() {
     for (const s of [-1, 1]) colliders.push({ x: x0 + 0.4 + t, z: cz + s * 3.5, hx: t, hz: 2.1, h: wh }); // the west wall either side of the door
   }
   // The dark L-shaped building (Y21-AA23): its north-east corner is cut away.
-  box(24, 22, 26, 23, Infinity);
-  box(24, 21, 25, 21, Infinity);
+  box(24, 22, 26, 23, 5.1).top = true; // its flat roof is a cliff top
+  box(24, 21, 25, 21, 5.1);
   // The two blue armoured vehicles (U-W 25-27).
   box(20, 25, 22, 25.9, 3.2, 0.5);
   box(20, 26.6, 22, 27, 3.2, 0.5);
@@ -461,6 +520,12 @@ function rampartGenerate() {
  * footprint must be on cells of the same kind and height.
  */
 function brookSpot(x, z) {
+  const rock = brookRock(x, z);
+  if (rock) {
+    const r = 1.6 * TOWER_SIZE * 0.8;
+    const all = [[r, 0], [-r, 0], [0, r], [0, -r], [r, r], [-r, r], [r, -r], [-r, -r]].every(([dx, dz]) => brookRock(x + dx, z + dz) === rock);
+    return all ? 'cliff' : null;
+  }
   const [c, i] = brookIdx(x, z);
   const kind = brookKind(c, i);
   if (!kind) return null;
@@ -498,7 +563,7 @@ function brookGenerate() {
       if (h > 0) {
         const x0 = (c - 12) * C;
         const x1 = (e + 1 - 12) * C;
-        colliders.push({ x: (x0 + x1) / 2, z: brookCell(0, i + 1)[1], hx: (x1 - x0) / 2, hz: C / 2, h });
+        colliders.push({ x: (x0 + x1) / 2, z: brookCell(0, i + 1)[1], hx: (x1 - x0) / 2, hz: C / 2, h, terrain: true });
       }
       c = e + 1;
     }
@@ -567,7 +632,9 @@ function rigGenerate() {
     const [x0, z0] = at(c0 - 0.5, r0 - 0.5);
     const [x1, z1] = at(c1 + 0.5, r1 + 0.5);
     props.push({ kind: 'rigBox', x: (x0 + x1) / 2, z: (z0 + z1) / 2, w: x1 - x0, d: z1 - z0, h, ...extra });
-    colliders.push({ x: (x0 + x1) / 2, z: (z0 + z1) / 2, hx: (x1 - x0) / 2, hz: (z1 - z0) / 2, h });
+    // A building's flat roof (its rim stands 0.4 above h) is a cliff top; the derrick base and machinery aren't.
+    const roof = !extra.role || extra.role === 'spawn';
+    colliders.push({ x: (x0 + x1) / 2, z: (z0 + z1) / 2, hx: (x1 - x0) / 2, hz: (z1 - z0) / 2, h: roof ? h + 0.4 : h, ...(roof ? { top: true } : {}) });
   };
   // Buildings (dark charcoal; trims per the spec).
   box(17, 1, 23, 4, 14, { role: 'spawn' }); // the two-storey spawn building (R1-X4)
@@ -597,6 +664,7 @@ function rigGenerate() {
     const [x, z] = at(32.5, r);
     props.push({ kind: 'rigTank', x, z, r: 4.6, h: 9, sides: 8 });
     colliders.push({ x, z, r: 4.6, h: 9 });
+    colliders.push({ x, z, r: 4.2, h: 9.9, top: true }); // the flat lid: a cliff top
   }
   // White tanks lying on their sides (axis along z): three at O14-P16 (one stacked on the other
   // two), two capsules by the helipad bridge (J23-K25), five silver ones on the north edge (AC10-AG10).
@@ -745,7 +813,10 @@ function generate(def) {
     } else if (f.kind === 'mesa') {
       props.push({ ...f });
       obstacles.push({ x: f.x, z: f.z, r: f.r + 0.5 });
-      colliders.push({ x: f.x, z: f.z, r: f.r, h: Infinity });
+      // Layered steps like the model (world.js); the flat top is a cliff top.
+      colliders.push({ x: f.x, z: f.z, r: f.r, h: f.h / 3, fixed: true });
+      colliders.push({ x: f.x, z: f.z, r: f.r * 0.91, h: (f.h * 2) / 3, fixed: true });
+      colliders.push({ x: f.x, z: f.z, r: f.r * 0.82 - 0.4, h: f.h + 0.25, top: true });
     } else if (f.kind === 'crater' || f.kind === 'pit') {
       // A hole in the ground: nothing can be built in it, and players can't walk into it
       // (except along the road, which crosses on a bridge).
@@ -756,7 +827,7 @@ function generate(def) {
           const x = f.x + dx;
           const z = f.z + dz;
           obstacles.push({ x, z, r: 2.4 });
-          if (path.distanceTo(x, z) > PATH_WIDTH / 2 + 2.6) colliders.push({ x, z, r: 2.2, h: Infinity });
+          if (path.distanceTo(x, z) > PATH_WIDTH / 2 + 2.6) colliders.push({ x, z, r: 2.2, h: Infinity, hole: true }); // the hole's edge: nothing to stand on
         }
       }
       if (f.rx < 3 || f.rz < 3) obstacles.push({ x: f.x, z: f.z, r: Math.max(f.rx, f.rz) });
@@ -769,6 +840,7 @@ function generate(def) {
         if (f.box) colliders.push({ x: f.x, z: f.z, hx: f.box[0], hz: f.box[1], h: f.box[2] });
         else colliders.push({ x: f.x, z: f.z, r: f.block * 0.85, h: f.bh ?? Infinity });
       }
+      if (f.top) colliders.push({ x: f.x, z: f.z, hx: f.top[0], hz: f.top[1], h: f.top[2], top: true }); // a flat raised top (cliff towers)
       if (f.kind === 'sign') obstacles.push({ x: f.x, z: f.z, r: 1.6 });
       if (f.kind === 'nxBox') {
         obstacles.push({ x: f.x, z: f.z, r: 1.8 });
@@ -866,6 +938,7 @@ export function setMap(key, reroll = false) {
   POOLS.length = 0;
   POOLS.push(...def.pools.map((p) => ({ ...p })));
   Object.assign(MAP, generate(def));
+  MAP.tops = MAP.colliders.filter((c) => c.top);
 }
 setMap(DEFAULT_MAP);
 
@@ -877,6 +950,9 @@ setMap(DEFAULT_MAP);
 export function canPlace(x, z, towers, placement = 'ground') {
   if (!Number.isFinite(x) || !Number.isFinite(z)) return false;
   for (const t of towers) if (Math.hypot(t.x - x, t.z - z) < 4 * TOWER_SIZE) return false;
+  const top = topAt(x, z);
+  if (top) return (placement === 'cliff' || placement === 'any') && topFits(top, x, z);
+  if (mapInfo.nexus && !path.time && nexusTop(nexusAt(x, z))) return (placement === 'cliff' || placement === 'any') && nexusTopFits(x, z);
   const pool = poolAt(x, z);
   if (mapInfo.court && !path.time) {
     if (placement !== 'ground' && placement !== 'any') return false; // no cliffs or water here

@@ -8,7 +8,7 @@ import { TOWER_MODELS, setEmissive, setOpacity } from '../models.js';
 import { clamp } from '../utils.js';
 import { MODEL_SCALE, WORLD_SCALE } from '../scale.js';
 import { path } from '../sim/path.js';
-import { CLIFFS, canPlace, heightAt, laneOf, laneOz, mapInfo, placeFail } from '../sim/map.js';
+import { CLIFFS, MAP, canPlace, heightAt, laneOf, laneOz, mapInfo, placeFail } from '../sim/map.js';
 import { ABILITY_KEYS, CAM_PITCH_MIN, FPS_LOOK, innerRings, ringRadius } from './shared.js';
 
 export class GameInput {
@@ -229,12 +229,15 @@ export class GameInput {
     let best = Infinity;
     this.hasGround = false;
     const lanes = this.versus ? this.state.lanes : 1;
-    for (let i = 0; i < (path.time ? 0 : lanes * CLIFFS.length); i++) {
-      const c = CLIFFS[i % CLIFFS.length];
-      const cz = c.z + laneOz(Math.floor(i / CLIFFS.length));
+    // Cliffs and raised tops (mesas, roofs, hills): round ones have r, boxes hx / hz.
+    const tops = CLIFFS.concat(MAP.tops ?? []);
+    for (let i = 0; i < (path.time ? 0 : lanes * tops.length); i++) {
+      const c = tops[i % tops.length];
+      const cz = c.z + laneOz(Math.floor(i / tops.length));
       this.cliffPlane ??= new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
       this.cliffPlane.constant = -c.h;
-      if (!ray.intersectPlane(this.cliffPlane, hit) || Math.hypot(hit.x - c.x, hit.z - cz) >= c.r) continue;
+      if (!ray.intersectPlane(this.cliffPlane, hit)) continue;
+      if (c.hx !== undefined ? Math.abs(hit.x - c.x) > c.hx || Math.abs(hit.z - cz) > c.hz : Math.hypot(hit.x - c.x, hit.z - cz) >= c.r) continue;
       const d = hit.distanceToSquared(ray.origin);
       if (d < best) {
         best = d;

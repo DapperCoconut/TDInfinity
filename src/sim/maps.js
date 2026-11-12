@@ -706,7 +706,7 @@ export function brookKind(c, i) {
   return null;
 }
 /** Every floor height a tower can stand on (highest first), for mouse picking. */
-export const BROOK_FLOORS = [...BROOK_HIGH, ...BROOK_LOW].sort((a, b) => b - a);
+export const BROOK_FLOORS = [...new Set([...BROOK_HIGH, ...BROOK_LOW, ...BROOK_ROCKS.map((k) => k.h)])].sort((a, b) => b - a);
 
 /**
  * Brook Hollow's path (centre line of the 2-cell path): out of the north cave (Q1-R1), west on
@@ -1074,9 +1074,9 @@ function nmFixed() {
   // The corrupted supercomputer (AX15-BB19): the base.
   out.push({ kind: 'nmComputer', ...nxz(51, 16) });
   out.push({ kind: 'nmBlock', ...nxz(51, 16), box: [4.2, 7.2, 15] });
-  // The hexagonal hill (AB14-AH18): about 3 high, players can walk on it, no towers on it.
+  // The hexagonal hill (AB14-AH18): about 3 high, players can walk on it; its flat top is a cliff top.
   const hill = nxz(30, 16);
-  out.push({ kind: 'nmHill', ...hill });
+  out.push({ kind: 'nmHill', ...hill, top: [6.5, 6, 3] });
   for (let dx = -12; dx <= 12; dx += 3) {
     for (let dz = -9; dz <= 9; dz += 3) {
       if (Math.abs(dz) / 9 + Math.abs(dx) / 24 > 1.05) continue;

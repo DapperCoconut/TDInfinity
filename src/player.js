@@ -52,6 +52,81 @@ function pushOut(o, pos, rad) {
   else pos.z = o.z + Math.sign(pos.z - o.z || 1) * (o.hz + rad);
 }
 
+/**
+ * Gives colliders the height of what is really drawn there, so nothing is an invisible wall and
+ * everything can be jumped onto: it looks straight down at the built map (`world`, in sim units
+ * inside its parent) over each collider. Big colliders are cut into small boxes first, so a tent
+ * or a cone gets steps that follow its shape. Colliders marked `top` (cliff tops), `terrain`
+ * (grid ground), `hole` (a pit's edge) or `fixed` (shaped by hand) are left alone.
+ * Returns the new list.
+ */
+export function fitColliders(list, world) {
+  const frame = world.parent ?? world;
+  frame.updateMatrixWorld(true);
+  const meshes = [];
+  const k = frame.getWorldScale(new THREE.Vector3()).x; // drawn units per sim unit
+  world.traverse((o) => {
+    if (!o.isMesh || o.material?.transparent || !o.geometry) return;
+    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+    const box = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
+    if (box.max.x - box.min.x > 120 * k || box.max.z - box.min.z > 120 * k) return; // the ground, sea and sky: nothing to stand on
+    meshes.push({ o, box });
+  });
+  const above = meshes.reduce((y, m) => Math.max(y, m.box.max.y), 0) + 1; // start rays above everything
+  // Meshes bucketed by where they stand, so each ray only tests the ones near it.
+  const B = 6 * k;
+  const buckets = new Map();
+  for (const m of meshes) {
+    for (let bx = Math.floor(m.box.min.x / B); bx <= Math.floor(m.box.max.x / B); bx++) {
+      for (let bz = Math.floor(m.box.min.z / B); bz <= Math.floor(m.box.max.z / B); bz++) {
+        const k = `${bx},${bz}`;
+        if (!buckets.has(k)) buckets.set(k, []);
+        buckets.get(k).push(m);
+      }
+    }
+  }
+  const ray = new THREE.Raycaster();
+  const from = new THREE.Vector3();
+  const down = new THREE.Vector3(0, -1, 0);
+  const local = new THREE.Vector3();
+  /** Height (sim units) of the highest drawn thing at map point (x, z). */
+  const topAt = (x, z) => {
+    from.set(x, 0, z);
+    frame.localToWorld(from);
+    const cands = (buckets.get(`${Math.floor(from.x / B)},${Math.floor(from.z / B)}`) ?? []).filter((m) => from.x >= m.box.min.x && from.x <= m.box.max.x && from.z >= m.box.min.z && from.z <= m.box.max.z).map((m) => m.o);
+    if (!cands.length) return 0;
+    from.y = above;
+    ray.set(from, down);
+    const hit = ray.intersectObjects(cands, false)[0];
+    return hit ? frame.worldToLocal(local.copy(hit.point)).y : 0;
+  };
+  const CELL = 2; // the size of the small boxes big colliders are cut into
+  const out = [];
+  for (const o of list) {
+    if (o.top || o.terrain || o.hole || o.fixed) {
+      out.push(o);
+      continue;
+    }
+    const hx = o.hx ?? o.r;
+    const hz = o.hz ?? o.r;
+    const nx = Math.max(1, Math.round((hx * 2) / CELL));
+    const nz = Math.max(1, Math.round((hz * 2) / CELL));
+    for (let i = 0; i < nx; i++) {
+      for (let j = 0; j < nz; j++) {
+        const cx = o.x - hx + ((i + 0.5) * 2 * hx) / nx;
+        const cz = o.z - hz + ((j + 0.5) * 2 * hz) / nz;
+        if (o.hx === undefined && nx * nz > 1 && Math.hypot(cx - o.x, cz - o.z) > o.r) continue; // a corner of a round one
+        const sx = hx / nx;
+        const sz = hz / nz;
+        const h = Math.max(...[[0, 0], [0.5, 0.5], [-0.5, 0.5], [0.5, -0.5], [-0.5, -0.5]].map(([a, b]) => topAt(cx + a * sx, cz + b * sz)));
+        if (h < 0.3) continue; // nothing drawn here: no wall
+        out.push(nx * nz === 1 ? { ...o, h } : { x: cx, z: cz, hx: sx, hz: sz, h });
+      }
+    }
+  }
+  return out;
+}
+
 export class Player {
   constructor(scene, pos, color = 0x1e88e5) {
     this.scene = scene;
