@@ -13,6 +13,7 @@ import { UNIT_MODELS_H } from '../newmodels/h.js';
 import { UNIT_MODELS_I } from '../newmodels/i.js';
 import { axle, wheel } from '../vehicles.js';
 import { VEHICLE_UNITS } from '../vehicleunits.js';
+import { UNDEAD_MODELS, makeUndeadUnit } from './undead.js';
 import { boxGeo, makeHumanoid, part, setOpacity } from './kit.js';
 import {
   addHalo, addPistol, addTommyGun, addWings, boxRow, fedora, glow, glowThing, goldify, gunMuzzle, helmet, holdLongGun,
@@ -108,6 +109,7 @@ const GOONS = ['pistolgoon', 'tommygoon', 'dongoon', 'mgoon', 'mgoon2', 'mgoon3'
  */
 export function makeUnit(model, count = 1) {
   if (VEHICLE_UNITS[model]) return VEHICLE_UNITS[model](model); // the mechanical summons: jeeps, trucks, tanks, mechs, trains (vehicleunits.js)
+  if (UNDEAD_MODELS.includes(model)) return makeUndeadUnit(model); // Graveyard undead (undead.js)
   const extra = UNIT_MODELS_A[model] ?? UNIT_MODELS_B[model] ?? UNIT_MODELS_C[model] ?? UNIT_MODELS_D[model] ?? UNIT_MODELS_E[model] ?? UNIT_MODELS_F[model] ?? UNIT_MODELS_G[model] ?? UNIT_MODELS_H[model] ?? UNIT_MODELS_I[model]; // wave 7-10 units
   if (extra) {
     const m = extra(count);
@@ -683,13 +685,11 @@ export function makeMerc(model) {
 }
 
 /**
- * A skeleton raised by the Necromancer: skel, skelsword, skelsword2, skelgiant, skelknight,
- * skelhallow, skelexec. Graveyard (event) undead: skelmini, skelcursed, skelgiantcursed,
- * skelhaunted, skelhallowknight, skeljack.
+ * A skeleton raised by the Necromancer: skel, skelsword, skelsword2, skelknight, skelhallow,
+ * skelexec. The Giant Skeleton and the Graveyard's undead are built in undead.js.
  */
 export function makeSkeleton(model) {
-  const cursed = model === 'skelcursed' || model === 'skelgiantcursed';
-  const bone = model === 'skelhallow' ? 0xb3e5fc : cursed ? 0xb39ddb : model === 'skelhaunted' ? 0xa5d6a7 : 0xe8e4d0;
+  const bone = model === 'skelhallow' ? 0xb3e5fc : 0xe8e4d0;
   const h = makeHumanoid({ skin: bone, shirt: bone, pants: bone, arms: bone, face: 'skull' });
   const { M } = h;
   const dark = M(0x3e3a30);
@@ -709,57 +709,7 @@ export function makeSkeleton(model) {
   h.rightArm.rotation.set(-1.2, 0, 0.1);
   h.leftArm.rotation.set(-0.5, 0, 0);
   h.tracer = 0xe0e0e0;
-  if (model === 'skelmini' || model === 'skelcursed') {
-    // Graveyard Skeleton: small and unarmed (Cursed ones glow purple)
-    if (cursed) part(h.head, boxGeo(1.0, 0.2, 0.08), glow(h, 0xd500f9), 0, 0.75, 0.62);
-    h.rightArm.rotation.set(-1.4, 0, 0.1);
-    h.leftArm.rotation.set(-1.4, 0, -0.1);
-    const m = new THREE.Object3D();
-    m.position.set(0, -2.2, 0);
-    h.rightArm.add(m);
-    h.muzzles = [m];
-    h.size = 0.8;
-  } else if (model === 'skelgiantcursed') {
-    part(h.torso, boxGeo(2.4, 0.5, 1.3), M(0x311b92), 0, -0.8, 0);
-    part(h.rightArm, boxGeo(0.7, 2.2, 0.7), glow(h, 0x7c4dff), 0, -2.8, 0);
-    part(h.head, boxGeo(1.0, 0.2, 0.08), glow(h, 0xd500f9), 0, 0.75, 0.62);
-    const m = new THREE.Object3D();
-    m.position.set(0, -3.9, 0);
-    h.rightArm.add(m);
-    h.muzzles = [m];
-    h.size = 1.9;
-  } else if (model === 'skelhaunted' || model === 'skelhallowknight') {
-    // Haunted Knight (green ghost-fire) / Hallow Knight (orange, bigger): armor and a sword
-    const hallow = model === 'skelhallowknight';
-    const fire = glow(h, hallow ? 0xff9100 : 0x76ff03);
-    helmet(h, hallow ? 0x212121 : 0x455a64, false);
-    part(h.head, boxGeo(1.0, 0.18, 0.1), fire, 0, 0.8, 0.66);
-    part(h.torso, boxGeo(2.2, 1.8, 1.2), M(hallow ? 0x263238 : 0x546e7a), 0, 0.05, 0);
-    part(h.torso, boxGeo(0.5, 0.5, 0.08), fire, 0, 0.4, 0.62);
-    blade(hallow ? 2.2 : 1.8, 0.35, fire);
-    h.tracer = hallow ? 0xff9100 : 0x76ff03;
-    h.size = hallow ? 1.3 : 1.1;
-  } else if (model === 'skeljack') {
-    // Jack: a towering pumpkin-headed king with a crown and a glowing scythe
-    part(h.head, boxGeo(1.6, 1.4, 1.6), M(0xef6c00), 0, 0.7, 0);
-    for (const x of [-0.35, 0.35]) part(h.head, boxGeo(0.3, 0.25, 0.05), glow(h, 0xffab00), x, 0.85, 0.81);
-    part(h.head, boxGeo(0.9, 0.15, 0.05), glow(h, 0xffab00), 0, 0.4, 0.81);
-    const gold = M(0xffc107);
-    part(h.head, boxGeo(1.4, 0.3, 1.4), gold, 0, 1.55, 0);
-    for (const x of [-0.5, 0, 0.5]) part(h.head, boxGeo(0.25, 0.45, 0.25), gold, x, 1.9, 0.55);
-    part(h.torso, boxGeo(2.3, 3.2, 0.15), M(0x4a148c), 0, -0.6, -0.6); // royal cape
-    const g = new THREE.Group();
-    g.position.set(0, -1.9, 0);
-    h.rightArm.add(g);
-    part(g, boxGeo(0.25, 4.0, 0.25), M(0x212121), 0, -1.0, 0);
-    part(g, boxGeo(0.15, 0.3, 2.2), glow(h, 0xff9100), 0, -3.0, 1.0); // scythe blade
-    const m = new THREE.Object3D();
-    m.position.set(0, -3.0, 1.2);
-    g.add(m);
-    h.muzzles = [m];
-    h.size = 2.4;
-    h.tracer = 0xff9100;
-  } else if (model === 'skel') {
+  if (model === 'skel') {
     // Plain skeleton: a bone club
     part(h.rightArm, boxGeo(0.3, 1.4, 0.3), M(0xd7ccc8), 0, -2.4, 0);
     const m = new THREE.Object3D();
@@ -794,14 +744,6 @@ export function makeSkeleton(model) {
     h.muzzles = [m];
     h.size = 1.2;
     h.tracer = 0x40c4ff;
-  } else if (model === 'skelgiant') {
-    part(h.torso, boxGeo(2.4, 0.5, 1.3), M(0x5d4037), 0, -0.8, 0); // belt
-    part(h.rightArm, boxGeo(0.7, 2.2, 0.7), M(0x8d6e63), 0, -2.8, 0); // big bone club
-    const m = new THREE.Object3D();
-    m.position.set(0, -3.9, 0);
-    h.rightArm.add(m);
-    h.muzzles = [m];
-    h.size = 1.9;
   } else {
     // Executioner: a black hood and a huge red-glowing axe
     part(h.head, boxGeo(1.4, 1.4, 1.4), M(0x111111), 0, 0.68, -0.1);
