@@ -441,6 +441,8 @@ export class Sim {
       if (v && o.hp > 0 && !(o.stunT > 0)) this.slowVulns.push({ x: o.x, z: o.z, r: TOWERS[o.type].levels[o.level].range * buffOf(this.buffs, o.id).range, v });
     }
     this.medicRepair(dt);
+    this.towerRegen(dt);
+    if (mapInfo.pathTowers) this.trample(dt);
     this.updateHealZones(dt);
     for (const t of this.towers.values()) {
       t.dil = dils && !TOWERS[t.type].levels[t.level].dilate ? this.dilationAt(t.x, t.z, dils) : null;

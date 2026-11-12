@@ -60,6 +60,7 @@ export const GAME = {
   // nothing at `towerHpShortRange[1]`. A tower at 0 health is knocked out (stops working) until a
   // Medic or Health Pack heals it.
   towerHp: 100,
+  towerRegen: 0.002, // working towers heal this share of their max health a second (8+ minutes from empty to full)
   towerHpPerLevel: 30,
   towerHpShort: 0.5,
   towerHpShortRange: [10.6, 40], // was [8, 30] before the 33% range pass (see RANGE_BOOST)

@@ -1745,6 +1745,7 @@ export const MAPS = {
     portal: false, // enemies come out of the fog bank (cgFog)
     event: 'christmas', // the Christmas Event's second map (see DIFFICULTIES.christmas.maps)
     citadel: true, // lighting in game.js
+    pathTowers: { radius: 2.5, hurt: 1 }, // towers may go on the lanes; enemies walking through one hurt it (`hurt` x their damage a second)
     bounds: { minX: -78, maxX: 47, minZ: -38, maxZ: 42 },
     cliffs: [],
     pools: [],

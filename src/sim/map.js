@@ -1014,7 +1014,7 @@ export function canPlace(x, z, towers, placement = 'ground') {
   if (mapInfo.nexus && !path.time && !nexusPlaceable(x, z)) return false;
   if (x < BOUNDS.minX + 2 || x > BOUNDS.maxX - 2 || z < BOUNDS.minZ + 2 || z > BOUNDS.maxZ - 2) return false;
   const pad = 1.6 * TOWER_SIZE;
-  if (path.distanceTo(x, z) < PATH_WIDTH / 2 + pad) return false;
+  if (!mapInfo.pathTowers && path.distanceTo(x, z) < PATH_WIDTH / 2 + pad) return false; // Frostgate Citadel: towers may stand on the lanes
   // The time dimension has no trees, rocks or cliffs: only the castle is in the way.
   if (path.time) return Math.hypot(CASTLE.x - x, CASTLE.z - z) >= 9 + pad;
   if (CLIFFS.some((c) => Math.hypot(c.x - x, c.z - z) < c.r + pad)) return false;

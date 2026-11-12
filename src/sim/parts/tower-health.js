@@ -1,7 +1,8 @@
 // Towers getting hurt: enemy shots landing, stealth, knock-outs, and the medics that heal towers.
 // These are methods of Sim: sim.js puts them on the Sim class, so "this" is the game.
 
-import { GAME, TOWERS } from '../../config.js';
+import { ENEMIES, GAME, TOWERS } from '../../config.js';
+import { mapInfo } from '../map.js';
 import { SEE_ALL, beamHealable, buffOf, mediCharge, r2 } from './shared.js';
 
 export class SimTowerHealth {
@@ -181,6 +182,26 @@ export class SimTowerHealth {
     t.hp = Math.min(t.maxHp, t.hp + amount);
     if (was <= 0 && t.hp > 0) this.events.push({ k: 'towerUp', id: t.id, owner: t.owner, x: t.x, z: t.z });
     return t.hp - was;
+  }
+
+  /** Every working tower heals a tiny bit by itself (GAME.towerRegen of its max health a second). Knocked-out ones still need a Medic. */
+  towerRegen(dt) {
+    for (const t of this.towers.values()) {
+      if (t.hp > 0 && t.hp < t.maxHp && !TOWERS[t.type].noHeal) this.healTower(t, t.maxHp * GAME.towerRegen * dt);
+    }
+  }
+
+  /** Frostgate Citadel: towers standing on the lanes are hurt by the ground enemies walking through them. */
+  trample(dt) {
+    const pt = mapInfo.pathTowers;
+    const r2max = pt.radius * pt.radius;
+    for (const e of this.enemies.values()) {
+      if (e.flying || e.remains || e.hp <= 0) continue;
+      const hit = ENEMIES[e.type].damage * pt.hurt * dt;
+      for (const t of this.towers.values()) {
+        if (t.hp > 0 && (t.x - e.x) ** 2 + (t.z - e.z) ** 2 <= r2max) this.hurtTower(t, hit, true);
+      }
+    }
   }
 
   /** Medics repair damaged towers inside their aura (any owner's, not other Medics) every second. */
