@@ -148,7 +148,7 @@ export function beamGun(k, o = {}) {
  * round them, the bolt channel glowing between. o: len, body, glow (material), coils, scope,
  * cell (a power cell). Returns the bore point [y, z].
  */
-function railRifle(k, o = {}) {
+export function railRifle(k, o = {}) {
   const len = o.len ?? 3.0;
   const body = o.body ?? 0x263238;
   const U = UP;
