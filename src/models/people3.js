@@ -96,7 +96,7 @@ function armPlate(k, col) {
  * its own y, the barrel line). o: s (scale), len (barrel length), r (barrel ring), n, body,
  * barrel (a colour or a glow material), glow (glow trim). Adds the muzzle.
  */
-function minigun(h, arm, key, o = {}) {
+export function minigun(h, arm, key, o = {}) {
   const g = fist(arm, -1.9, o.s ?? 1.2);
   const k = wear(h, g, key);
   const body = o.body ?? GUNMETAL;

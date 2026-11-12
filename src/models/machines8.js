@@ -44,7 +44,7 @@ function jack(k, size, x, y, z, lit) {
 }
 
 /** A straw skep (dome beehive) of radius r standing on (x, y, z), its door toward +z. */
-function skep(k, r, x, y, z, door = 0x3e2410) {
+export function skep(k, r, x, y, z, door = 0x3e2410) {
   const n = 6;
   const STRAW = 0xe0b050;
   let top = y;
@@ -65,7 +65,7 @@ function skep(k, r, x, y, z, door = 0x3e2410) {
 const FUR = 0xd9822b;
 
 /** A round fuzzy bee, about 2.6 tall at scale 1, facing +z: stripes, a face, curly antennae, see-through wings. */
-function bee(k, wing) {
+export function bee(k, wing) {
   k.ball(1, FUR, 0, 1, 0, { sz: 0.95, seg: 16, rows: 12 });
   for (const dy of [-0.55, -0.18]) k.torus(Math.sqrt(1 - dy * dy) * 0.99, 0.1, INK, 0, 1 + dy, 0, { rx: PI / 2, seg: 22 });
   for (let i = 0; i < 3; i++) k.cyl(0.08, 0.3, tone(FUR, 1.15), (i - 1) * 0.12, 2.05, 0.05, { r2: 0.0, seg: 5, rz: (i - 1) * -0.4 }); // tuft
