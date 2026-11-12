@@ -125,6 +125,7 @@ export class Lobby {
     $('loadout-btn').onclick = () => this.show('loadout');
     this.loadoutScreen = new LoadoutScreen(this);
     profile.onChange(() => {
+      this.renderContracts(); // (a contract finished in a game: its card and red buttons change)
       this.renderInventory();
       this.loadoutScreen.render();
       this.net.send({ type: 'loadout', towers: profile.battleLoadout(), evo: profile.evoLevels() });
@@ -169,6 +170,12 @@ export class Lobby {
       if (bot) quickChange(() => (this.quick.bots += Number(bot.dataset.qbot)));
     });
     $('quick-go').onclick = () => {
+      // Inhuman contract: 1 seat and 1 bot starts the game against the glitchy bot, in this browser only.
+      if (this.inhumanReady) {
+        this.setBusy('Something is waiting for you…');
+        this.net.offline({ type: 'room.create', name: 'Inhuman', isPublic: false, mode: 'versus', difficulty: this.playMode, map: this.playMap, seats: 2, bots: 1, contract: 'inhuman' });
+        return;
+      }
       this.setBusy('Looking for a game…');
       net.send({ type: 'room.quick', mode: this.quick.mode, difficulty: this.playMode, map: this.playMap, seats: this.quick.seats, bots: this.quick.bots, name: `${this.name}'s game` });
     };
@@ -309,6 +316,8 @@ export class Lobby {
 
   /** The Halloween panel's contracts: a card each with its picture, what to do, and Accept / Drop. */
   renderContracts() {
+    $('mp-btn').classList.toggle('ct-red', this.inhumanOn); // Inhuman contract: the red trail starts here
+    if (this.quick) this.renderQuick();
     const el = $('event-contracts');
     if (this.event !== 'halloween') {
       el.innerHTML = '';
@@ -551,17 +560,38 @@ export class Lobby {
     return (this.quick.mode !== 'versus' && DIFFICULTIES[this.playMode]?.maxPlayers) || MP.maxRoomPlayers;
   }
 
+  /** Inhuman contract accepted (lastlaugh.js): the red buttons lead to 1 seat and 1 bot. */
+  get inhumanOn() {
+    return profile.contracts.accepted.includes('inhuman');
+  }
+
+  /** ... and the counters are there: Find a Game starts the fight against the glitchy bot. */
+  get inhumanReady() {
+    return this.inhumanOn && this.quick.seats === 1 && this.quick.bots === 1;
+  }
+
   /** The Quick Play card: what it would play, and the seat and bot counters (kept in range). */
   renderQuick() {
     const q = this.quick;
-    q.seats = Math.max(q.mode === 'versus' ? VERSUS.minPlayers : 1, Math.min(this.quickMax, q.seats));
-    q.bots = Math.max(0, Math.min(q.seats - 1, q.bots));
+    const ih = this.inhumanOn;
+    q.seats = Math.max(q.mode === 'versus' && !ih ? VERSUS.minPlayers : 1, Math.min(this.quickMax, q.seats));
+    q.bots = Math.max(0, Math.min(ih && q.seats === 1 ? 1 : q.seats - 1, q.bots)); // (Inhuman: 1 seat may hold a bot)
+    // Inhuman: red buttons show the way down to 1 seat and 1 bot, then to Find a Game.
+    const red = (sel, on) => document.querySelector(sel)?.classList.toggle('ct-red', !!on);
+    red('[data-qseat="-1"]', ih && q.seats > 1);
+    red('[data-qbot="-1"]', ih && q.bots > 1);
+    red('[data-qbot="1"]', ih && q.seats === 1 && q.bots < 1);
+    red('#quick-go', this.inhumanReady);
     mark($('quick-mode'), 'qmode', q.mode);
     $('quick-seats').textContent = q.seats;
     $('quick-bots').textContent = q.bots;
     const d = difficulty(this.playMode);
     const m = mapDef(this.playMap);
     const humans = q.seats - q.bots;
+    if (this.inhumanReady) {
+      $('quick-sub').innerHTML = `👾 <b>1 seat, 1 bot.</b> That shouldn't be possible... Something is waiting for you.`;
+      return;
+    }
     $('quick-sub').innerHTML = `${q.mode === 'versus' ? '⚔ Versus' : `${d.icon} ${esc(d.name)}`} · ${esc(m.name)} · <b>${q.seats}</b> seat${q.seats === 1 ? '' : 's'}: up to ${humans} player${humans === 1 ? '' : 's'}${q.bots ? ` + ${q.bots} bot${q.bots === 1 ? '' : 's'}` : ''}${q.mode === 'versus' && q.bots ? ' (bots fight for their own base)' : ''}`;
   }
 

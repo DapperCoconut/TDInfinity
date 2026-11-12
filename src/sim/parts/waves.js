@@ -70,9 +70,9 @@ export class SimWaves {
     this.events.push({ k: 'waveStart', i: w.index, ...(this.waves[w.index]?.note ? { note: this.waves[w.index].note } : {}), ...(this.waves[w.index]?.glow ? { glow: 1 } : {}) }); // glow: Halloween Night 3's portal lights up
   }
 
-  /** Versus: zombies another player sent here, `n` of them `gap` seconds apart. */
-  queueSent(type, n, gap) {
-    for (let i = 0; i < n; i++) this.queue.push({ t: this.wave.t + 0.3 + i * gap, type });
+  /** Versus: zombies another player sent here, `n` of them `gap` seconds apart. `glitch`: the Inhuman contract's bot sent them. */
+  queueSent(type, n, gap, glitch = null) {
+    for (let i = 0; i < n; i++) this.queue.push({ t: this.wave.t + 0.3 + i * gap, type, ...(glitch ? { glitch } : {}) });
     this.queue.sort((a, b) => a.t - b.t);
     this.wave.left = this.queue.length;
   }
@@ -90,6 +90,12 @@ export class SimWaves {
       mods = { ...mods, boss: true };
     }
     if (mods?.boss) this.bossSeen.add(q.type);
+    if (q.glitch) {
+      // Inhuman contract: dark, glitchy and tougher. It jumps down the path instead of walking (sim.js).
+      const e = this.spawn(q.type, { hp: q.hp, mods, wave: true, hpScale: q.glitch.sendHp });
+      if (e) e.glitch = { jump: q.glitch.jump, t: 0, bank: 0 };
+      return e;
+    }
     return this.spawn(q.type, { hp: q.hp, mods, wave: true, ...(q.dist != null ? { dist: q.dist, noCash: !!q.noCash } : {}) }); // (Void Caster portals: from her)
   }
 

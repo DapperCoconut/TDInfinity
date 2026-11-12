@@ -63,6 +63,7 @@ export const ST_SHOCKED = 524288; // Byte: shocked (slowed by electricity)
 export const ST_BIOHAZARD = 1048576; // Dumpster Child Biohazard
 export const ST_CLOAKED = 2097152; // Hard mode: turned hidden mid-game (wave mod, Fallen Summoner)
 export const ST_VOIDARMOR = 4194304; // Void mode: wearing void armor (shield, armor, slower, tendrils)
+export const ST_INHUMAN = 8388608; // Inhuman contract: sent by the glitchy bot (dark, jumps down the path)
 
 export const BUILD_SPOTS = 24; // random spots an Engineer tries when looking for room for a sentry
 export const RANG_HIT = 1.8; // how close a boomerang or knife must pass to hit a zombie

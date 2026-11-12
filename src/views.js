@@ -10,7 +10,7 @@ import { lerpAngle } from './utils.js';
 import { kickGun, newState, poseEnemy, poseTower, settleGuns } from './anim.js';
 import { MODEL_SCALE as K, PLAYER_SCALE, WORLD_SCALE } from './scale.js';
 import { FX, shade } from './effects.js';
-import { orbitOf, FLY_HEIGHT, ST_VOIDAURA, ST_CHARGING, ST_ARMORED, ST_GLITCHED, ST_HASTED, ST_SMOKED, ST_AIRBORNE, ST_ENRAGED, ST_SHROOM, ST_BURNING, ST_CHILLED, ST_CONFUSED, ST_DANCE, ST_FLOAT, ST_FROZEN, ST_GASSED, ST_HACKED, ST_SLIMED, ST_STUNNED, ST_SHOCKED, ST_BIOHAZARD, ST_CLOAKED, ST_VOIDARMOR } from './sim/sim.js';
+import { orbitOf, FLY_HEIGHT, ST_INHUMAN, ST_VOIDAURA, ST_CHARGING, ST_ARMORED, ST_GLITCHED, ST_HASTED, ST_SMOKED, ST_AIRBORNE, ST_ENRAGED, ST_SHROOM, ST_BURNING, ST_CHILLED, ST_CONFUSED, ST_DANCE, ST_FLOAT, ST_FROZEN, ST_GASSED, ST_HACKED, ST_SLIMED, ST_STUNNED, ST_SHOCKED, ST_BIOHAZARD, ST_CLOAKED, ST_VOIDARMOR } from './sim/sim.js';
 
 const tmp = new THREE.Vector3();
 const tmpPt = {};
@@ -905,7 +905,7 @@ const SLIME_NAME = /slime|ooze|blob|goo|jelly|sludge/i;
 const GHOST_NAME = /ghost|spirit|shadow|wraith|phantom|soul|spectre|specter|shade|void|wisp|banshee|reaper/i;
 const CRYSTAL_NAME = /crystal|shard|glass|rune|fragment|prism/i;
 const FIRE_NAME = /molten|lava|magma|fire|flame|inferno|ember|burn|blaze/i;
-const STATUS_FX = ST_BURNING | ST_FROZEN | ST_CHILLED | ST_SHOCKED | ST_HACKED | ST_GLITCHED | ST_GASSED | ST_BIOHAZARD | ST_SLIMED;
+const STATUS_FX = ST_BURNING | ST_FROZEN | ST_CHILLED | ST_SHOCKED | ST_HACKED | ST_GLITCHED | ST_GASSED | ST_BIOHAZARD | ST_SLIMED | ST_INHUMAN;
 const STYLES = new Map();
 function deathStyle(def) {
   let s = STYLES.get(def);
@@ -1059,6 +1059,12 @@ export class EnemyView {
     this.lift += (lift - this.lift) * Math.min(1, dt * 3);
     this.pos.set(tmpPt.x, this.ground + this.lift + this.floatY, tmpPt.z + (e.oz || 0)).add(this.off);
     this.root.position.copy(this.pos);
+    if (e.st & ST_INHUMAN) {
+      // Inhuman contract: it glitches, flicking sideways and blinking out for a frame.
+      if (Math.random() < 0.1) this.root.position.x += (Math.random() - 0.5) * 1.2 * K;
+      if (Math.random() < 0.1) this.root.position.z += (Math.random() - 0.5) * 1.2 * K;
+      this.root.visible = Math.random() > 0.04;
+    }
     const back = e.st & ST_CONFUSED ? Math.PI : 0; // confused zombies turn around and walk back
     this.root.rotation.y = lerpAngle(this.root.rotation.y, Math.atan2(tmpPt.dx, tmpPt.dz) + back, Math.min(1, dt * 8));
 
@@ -1248,7 +1254,14 @@ export class EnemyView {
                   : st & ST_GLITCHED ? (Math.sin(performance.now() / 50) > 0.3 ? 0x00626e : 0x000000)
                     : st & ST_CHARGING ? (Math.sin(performance.now() / 60) > 0 ? 0x7c00b8 : 0x26003a)
                       : st & ST_VOIDAURA ? (Math.sin(performance.now() / 300 + this.phase) > 0 ? 0x3d0057 : 0x1a0026)
-                        : st & ST_HASTED ? 0x2a0045 : 0x000000;
+                        : st & ST_HASTED ? 0x2a0045
+                          : st & ST_INHUMAN ? (Math.random() < 0.06 ? 0x00838f : 0x000000) // Inhuman: a cyan flicker now and then
+                            : 0x000000;
+    if (st & ST_INHUMAN && !this.darkened) {
+      // Inhuman contract: sent by the glitchy bot, so it goes nearly black.
+      this.darkened = true;
+      for (const mt of this.model.mats ?? []) mt.color?.multiplyScalar(0.12);
+    }
     if (color !== this.flashOn) {
       setEmissive(this.model, color);
       this.flashOn = color;
@@ -1270,6 +1283,7 @@ export class EnemyView {
       if (st & (ST_SHOCKED | ST_HACKED | ST_GLITCHED)) FX.statusFx('shock', p.x, y, p.z, s);
       if (st & (ST_GASSED | ST_BIOHAZARD)) FX.statusFx('poison', p.x, y, p.z, s);
       if (st & ST_SLIMED) FX.statusFx('slime', p.x, y, p.z, s);
+      if (st & ST_INHUMAN) FX.statusFx('glitch', p.x, y, p.z, s);
     } else if (this.def.boss && this.height > 7 && !this.def.flying && !this.lift && !(st & ST_STUNNED)) {
       // Something that heavy shakes dust loose with every step.
       if ((this.dustT = (this.dustT ?? 0.3) - dt) > 0) return;

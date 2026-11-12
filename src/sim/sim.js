@@ -23,13 +23,13 @@ import { pickableMap } from './maps.js';
 import { BEELINE, BOUNDS, path, setTimeWorld } from './path.js';
 import {
   HC_FX, INSANE_FX, MAX_STEP, ORION_FX, ST_AIRBORNE, ST_ARMORED, ST_BIOHAZARD, ST_BURNING, ST_CHARGING, ST_CHILLED,
-  ST_CLOAKED, ST_CONFUSED, ST_DANCE, ST_ENRAGED, ST_FLOAT, ST_FROZEN, ST_GASSED, ST_GLITCHED, ST_HACKED, ST_HASTED,
+  ST_CLOAKED, ST_CONFUSED, ST_DANCE, ST_INHUMAN, ST_ENRAGED, ST_FLOAT, ST_FROZEN, ST_GASSED, ST_GLITCHED, ST_HACKED, ST_HASTED,
   ST_SHOCKED, ST_SHROOM, ST_SLIMED, ST_SMOKED, ST_STUNNED, ST_VOIDARMOR, ST_VOIDAURA, VB_FX, VOID_FX, buffOf, cdSnap,
   computeBuffs, nextUpgrade, r2, spyCircles,
 } from './parts/shared.js';
 export {
   FLY_HEIGHT, FPS_BACK, ST_AIRBORNE, ST_ARMORED, ST_BIOHAZARD, ST_BURNING, ST_CHARGING, ST_CHILLED, ST_CLOAKED,
-  ST_CONFUSED, ST_DANCE, ST_ENRAGED, ST_FLOAT, ST_FROZEN, ST_GASSED, ST_GLITCHED, ST_HACKED, ST_HASTED, ST_SHOCKED,
+  ST_CONFUSED, ST_DANCE, ST_ENRAGED, ST_FLOAT, ST_FROZEN, ST_GASSED, ST_GLITCHED, ST_HACKED, ST_HASTED, ST_SHOCKED, ST_INHUMAN,
   ST_SHROOM, ST_SLIMED, ST_SMOKED, ST_STUNNED, ST_VOIDARMOR, ST_VOIDAURA, beamHealable, bladePos, borrowsHidden,
   buffOf, computeBuffs, droneMode, droneModes, mediCharge, medicShields, modeStats, nextUpgrade, orbitOf, planePos,
   spyCircles, upgradeCost,
@@ -308,10 +308,19 @@ export class Sim {
         | (e.shockT > 0 ? ST_SHOCKED : 0) | (e.taints?.has('biohazard') ? ST_BIOHAZARD : 0)
         | (e.airT > 0 ? ST_AIRBORNE : 0) | (e.shroom ? ST_SHROOM : 0) | (e.enraged || e.raged ? ST_ENRAGED : 0)
         | (e.smoked ? ST_SMOKED : 0) | (e.armorUp ? ST_ARMORED : 0) | (e.hasted ? ST_HASTED : 0) | (e.glitchT > 0 ? ST_GLITCHED : 0)
-        | (e.auraArmor ? ST_VOIDAURA : 0) | (e.charging ? ST_CHARGING : 0) | (e.cloak ? ST_CLOAKED : 0) | (e.vShield > 0 ? ST_VOIDARMOR : 0);
+        | (e.auraArmor ? ST_VOIDAURA : 0) | (e.charging ? ST_CHARGING : 0) | (e.cloak ? ST_CLOAKED : 0) | (e.vShield > 0 ? ST_VOIDARMOR : 0) | (e.glitch ? ST_INHUMAN : 0);
       // Confused zombies walk back toward the entrance.
       if (e.confT > 0) e.dist = Math.max(0, e.dist - e.speed * dt);
-      else e.dist += (e.speed * dt) / (e.route === BEELINE ? path.beeline.k : 1); // the straight line is shorter
+      else if (e.glitch) {
+        // Inhuman contract: it stands still, then jumps to where it would have walked.
+        const g = e.glitch;
+        g.bank += e.speed * dt;
+        if ((g.t -= dt) <= 0) {
+          e.dist += g.bank;
+          g.bank = 0;
+          g.t = g.jump[0] + Math.random() * (g.jump[1] - g.jump[0]);
+        }
+      } else e.dist += (e.speed * dt) / (e.route === BEELINE ? path.beeline.k : 1); // the straight line is shorter
       // Spider Queen: lays spiders behind her (not while frozen or stunned). Some summon several kinds.
       if (e.summonT && !e.stop) {
         [].concat(def.summon).forEach((sm, i) => {
@@ -837,7 +846,8 @@ export class Sim {
       tr: [...this.traps.values()].map((tr) => [tr.id, tr.tower, tr.kind, r2(tr.x), r2(tr.z), tr.land > 0 ? 0 : 1, tr.lvl ?? 0, r2(tr.yaw ?? 0), tr.maxHp ? r2(tr.hp / tr.maxHp) : 1, tr.stunT > 0 ? 1 : 0, tr.kind === 'thermite' || tr.kind === 'gas' || tr.kind === 'thorns' || tr.kind === 'goo' ? tr.radius : 0]),
       // Units: free ones (crows, bees, Volt Points) also send where they are, [x, z].
       u: [...this.units.values()].map((u) => [u.id, u.tower, u.model, Math.ceil(u.hp), u.maxHp, r2(u.dist), r2(u.lateral), u.alive, r2(u.speed), r2(u.yaw), u.def.free ? [r2(u.x), r2(u.z)] : 0, u.route || 0]),
-      e: [...this.enemies.values()].map((e) => [e.id, e.type, e.hp, e.maxHp, r2(e.dist), r2(e.speed), r2(e.lateral), e.st, e.route || 0]),
+      // (Inhuman contract jumpers send speed 0 so the client doesn't slide them.)
+      e: [...this.enemies.values()].map((e) => [e.id, e.type, e.hp, e.maxHp, r2(e.dist), e.glitch ? 0 : r2(e.speed), r2(e.lateral), e.st, e.route || 0]),
       // Insane mode: the time dimension, and Beholder time bombs [id, x, z, seconds left].
       ...(this.timeWorld ? { tw: 1 } : {}),
       // Contract (Last Laugh): [key, spins, next spin's price, flags, jester x, z, route tile ids, fence tile ids, fence price].

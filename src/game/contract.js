@@ -52,6 +52,25 @@ export class GameContract {
     return { key, def: CONTRACTS[key], spins, cost, open: !!(flags & 1), gone: !!(flags & 2), armed: !!(flags & 4), boost: !!(flags & 8), done: !!(flags & 16), x, z, route: route || [], fences, fenceCost };
   }
 
+  /**
+   * Every frame, Inhuman contract (st.inhuman = [lane, bot id]): black glitchy specks on the
+   * glitchy bot's towers and around the bot itself, and a warning when the game starts.
+   */
+  syncInhuman(dt) {
+    const ih = this.state.inhuman;
+    if (!ih) return;
+    if (!this.ihShown) {
+      this.ihShown = true;
+      this.ui.toast(`👾 ${CONTRACTS.inhuman.botName} is not like the other bots. Its towers are stronger and the enemies it sends glitch down the path. Beat it to win the contract!`, 6000);
+    }
+    if ((this.ihT = (this.ihT ?? 0) - dt) > 0) return;
+    this.ihT = 0.1;
+    const id = ih[1];
+    for (const t of this.state.towers.values()) if (t.owner === id && Math.random() < 0.6) this.effects.statusFx('glitch', t.x, 2.5, t.z, 1.4);
+    const a = this.session.remotePos.get(id);
+    if (a) this.effects.statusFx('glitch', a.x, (a.y ?? 0) + 2.5, a.z, 1.1);
+  }
+
   /** Every frame: the jester, the gold route, the fences and the fence slot follow the game. */
   syncContract(dt) {
     const ct = (this.ct = this.contractInfo());

@@ -1487,6 +1487,16 @@ export class Effects {
       case 'slime':
         this.lit.spawn(px, y + rnd(-0.5, 1.2) * s, pz, 0, -1, 0, rnd(0.45, 0.7), 0.6 * K, 0.3 * K, 0x76ff03, 0x64dd17, 0x33691e, STATUS_DRIP);
         break;
+      case 'glitch': {
+        // Inhuman contract: black specks, now and then a cyan glitch line.
+        this.lit.spawn(px, y + rnd(-1.2, 2.2) * s, pz, rnd(-1.2, 1.2), rnd(0.4, 2.2), rnd(-1.2, 1.2), rnd(0.35, 0.7), rnd(0.35, 0.6) * s * K, 0.1 * s * K, 0x000000, 0x0a0a0a, 0x1a0026, STATUS_DRIFT);
+        if (Math.random() < 0.18) {
+          _a.set(px, y + rnd(-1, 2) * s, pz);
+          _b.copy(_a).add(_c.set(rnd(-1, 1), 0, rnd(-1, 1)).multiplyScalar(1.6 * s));
+          this.streaks.spawn(_a, _b, BEAM, 0.12 * K, 0xffffff, 0x00e5ff, { fade: 0.08 });
+        }
+        break;
+      }
       case 'dust':
         this.lit.spawn(px, y, pz, rnd(-1.5, 1.5), rnd(1, 2.5), rnd(-1.5, 1.5), rnd(0.4, 0.7), 0.3 * s * K, 0.75 * s * K, 0xb0a698, 0xa1958a, 0x8d8171, TRAIL_SMOKE);
         break;

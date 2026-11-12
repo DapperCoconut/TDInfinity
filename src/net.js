@@ -150,7 +150,7 @@ export class Net {
       l.conn?.close();
     }
     l.timers.terminate?.();
-    l.peer.destroy();
+    l.peer?.destroy(); // (an offline room has none)
     if (dropped && l.inRoom) this.emit({ type: 'close' });
   }
 
@@ -248,6 +248,23 @@ export class Net {
     peer.on('disconnected', () => {
       if (this.link === link && !peer.destroyed) peer.reconnect();
     });
+  }
+
+  /**
+   * A room only this browser plays in: the hub runs here and no one else can join (no PeerJS, no
+   * internet needed). The Inhuman contract's game against the glitchy bot uses it.
+   */
+  offline(createMsg) {
+    if (this.link) return this.emit({ type: 'error', msg: 'You are already in a room' });
+    const timers = workerTimers();
+    const hub = createHub(timers);
+    const link = { kind: 'host', peer: null, hub, timers, guests: new Set(), ready: true, inRoom: false };
+    this.link = link;
+    const me = hub.connect((msg) => queueMicrotask(() => this.link === link && this.emit(msg)));
+    link.send = (msg) => me.receive(msg);
+    me.receive({ type: 'hello', name: this.name });
+    if (this.loadout) me.receive(this.loadout);
+    me.receive(createMsg);
   }
 
   // ---------------------------------------------------------------- joining

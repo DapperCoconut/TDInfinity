@@ -122,7 +122,7 @@ export class SimTowerUpdate {
     if (t.parryT > 0) return; // Gladiator: recovering from a parry
     // Slowed towers (and ones the Beholder's sword has nerfed for good) do everything slower.
     // Time Dilator bubble: faster or slower (spawners only from Paradox Limiters).
-    const tempo = (t.slowT > 0 ? 1 - t.slowAmt : 1) * (t.nerf ?? 1) * (t.dil && (def.kind !== 'spawner' || t.dil.spawn) ? t.dil.scale : 1) * (this.contract?.boost ? this.llBoost.rate : 1); // Last Laugh boost
+    const tempo = (t.slowT > 0 ? 1 - t.slowAmt : 1) * (t.nerf ?? 1) * (t.dil && (def.kind !== 'spawner' || t.dil.spawn) ? t.dil.scale : 1) * (this.contract?.boost ? this.llBoost.rate : 1) * (this.inhumanPow?.rate ?? 1); // Last Laugh boost, Inhuman bot's towers
     if (tempo !== 1) dt *= tempo;
     if (t.dpT > 0) t.dpT = Math.max(0, t.dpT - dt); // Bugler Directed Power
     // Abilities with `auto` (Gunslinger Reinforcements) use themselves when ready during a wave.

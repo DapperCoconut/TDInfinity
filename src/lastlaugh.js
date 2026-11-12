@@ -23,6 +23,26 @@ export const CONTRACTS = {
     bossHp: 2, // his health is the final boss's he replaces, times this
     boost: { at: 0.25, dmg: 2, rate: 1.5 }, // once he is 25% of the way: towers hit 2x as hard and 1.5x as fast
   },
+  // Contract 2, Inhuman (2026-11-11 spec): the Multiplayer button turns red, then the buttons that
+  // get you to 1 seat and 1 bot (usually not allowed), then Find a Game. That starts a Versus game
+  // against one dark, glitchy bot. Its towers are stronger, its base has more health, and the
+  // enemies it sends you are glitchy (they jump down the path) and tougher. Beat it to finish.
+  // Played offline in your own browser (net.js offline). The Sim code is in sim/versus.js.
+  inhuman: {
+    name: 'Inhuman',
+    icon: '👾',
+    color: '#37474f',
+    pvp: true, // not a map's contract: it is its own Versus game
+    pic: 'hacker',
+    desc: 'Follow the red buttons in Multiplayer, all the way down to 1 seat and 1 bot. Then beat the glitchy bot in Versus.',
+    botName: '👾 N̷U̷L̷L̷',
+    // Every number here is a guess (the spec gives none).
+    baseHp: 2, // its base has this many times the normal health
+    towerDmg: 1.5, // its towers hit this much harder...
+    towerRate: 1.25, // ... and this much faster
+    sendHp: 1.75, // the enemies it sends you have this much more health
+    jump: [0.35, 0.8], // they stand still, then jump to where they would have walked, every 0.35-0.8 s
+  },
 };
 export const CONTRACT_KEYS = Object.keys(CONTRACTS);
 

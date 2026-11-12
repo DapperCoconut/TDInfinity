@@ -160,7 +160,7 @@ export function createHub(timers = {}) {
       return bot ? { id, name: bot.name, color, loadout: null, evo: null } : { id, name: clients.get(id)?.name ?? '?', color, loadout: clients.get(id)?.loadout, evo: clients.get(id)?.evo ?? {} };
     });
     // Versus: everyone gets their own map and fights to outlast the others.
-    r.sim = r.mode === 'versus' ? new VersusSim(players, r.map) : new Sim(players, { mode: r.difficulty, map: r.map, contract: r.contract });
+    r.sim = r.mode === 'versus' ? new VersusSim(players, r.map, { inhuman: r.contract === 'inhuman' ? r.bots[0]?.id : null }) : new Sim(players, { mode: r.difficulty, map: r.map, contract: r.contract });
     r.tick = 0;
     r.later = [];
     // The bots' brains: each plays its own lane in Versus, the shared map in co-op.
@@ -276,6 +276,12 @@ export function createHub(timers = {}) {
       c.room = r.code;
       r.members.push(c.id);
       if (Number.isFinite(m.bots)) setBots(r, m.bots);
+      // Inhuman contract (lastlaugh.js): you against one glitchy bot, right away.
+      if (r.contract === 'inhuman' && r.mode === 'versus' && r.bots.length === 1) {
+        r.bots[0].name = CONTRACTS.inhuman.botName;
+        pushRoom(r);
+        return startGame(r);
+      }
       pushRoom(r);
       pushRoomList();
     },

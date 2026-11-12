@@ -7,7 +7,7 @@
 //   send(action)              (player action: place, upgrade, sell, target, skip, speed)
 //   sendPos(p), remotePos     (multiplayer avatar sync)
 //   onError(msg)              (set by the client to show rejected actions)
-import { Sim, ST_CONFUSED } from './sim/sim.js';
+import { Sim, ST_CONFUSED, ST_INHUMAN } from './sim/sim.js';
 import { COURT_FENCES, laneOz, setMap } from './sim/map.js';
 import { setMapRoutes, setTimeWorld } from './sim/path.js';
 import { courtPoints } from './sim/maps.js';
@@ -91,6 +91,7 @@ export class NetSession {
     st.speed = s.sp;
     st.over = s.o;
     st.timeWorld = !!s.tw; // Insane mode: the Beholder's time dimension
+    st.inhuman = s.ih ?? null; // Inhuman contract: [the glitchy bot's lane, its id]
     st.ct = s.ct ?? null; // Last Laugh contract (see GameClient.contractInfo)
     if (s.ct) {
       // The open court: lay the host's route here too, and know where the fences are.
@@ -179,6 +180,7 @@ export class NetSession {
       e.target += v;
       e.dist += v;
       e.dist += (e.target - e.dist) * Math.min(1, dt * 8);
+      if (e.st & ST_INHUMAN) e.dist = e.target; // Inhuman contract: it jumps, so no sliding
     }
     for (const u of st.units.values()) {
       u.target -= u.speed * step;

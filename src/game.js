@@ -562,6 +562,7 @@ export class GameClient {
     for (const v of this.beamViews?.values() ?? []) v.dispose();
     this.beamViews?.clear();
     this.clearContract(); // Last Laugh: the jester, fences, the wheel window
+    this.ihShown = false; // Inhuman: its warning shows again next game
     this.lasering = null;
     this.effects.setVoid(0);
     this.ui.bossBar(null);

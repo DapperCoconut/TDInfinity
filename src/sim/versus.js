@@ -10,6 +10,7 @@ import { ENEMIES, GAME, SPEEDS, PLAYER_COLORS, VERSUS, waveGroups } from '../con
 import { Sim } from './sim.js';
 import { laneOz, mapKey, setMap } from './map.js';
 import { pickableMap } from './maps.js';
+import { CONTRACTS } from '../lastlaugh.js';
 
 const MAX_STEP = 0.05;
 const ID_STRIDE = 1_000_000; // lane i's ids start at (i + 1) * ID_STRIDE
@@ -17,7 +18,8 @@ const r2 = (n) => Math.round(n * 100) / 100;
 
 export class VersusSim {
   /** @param {{id: string, name: string, color?: number, loadout?: string[]}[]} players */
-  constructor(players, map) {
+  /** opts.inhuman: the id of the Inhuman contract's bot (lastlaugh.js), if this is that game. */
+  constructor(players, map, opts = {}) {
     this.versus = true;
     setMap(pickableMap(map), true); // every lane plays the same map (never an event's map)
     this.map = mapKey;
@@ -31,6 +33,14 @@ export class VersusSim {
       sim: new Sim([{ ...p, color: p.color ?? PLAYER_COLORS[i % PLAYER_COLORS.length] }], { vs: this, lane: i, idBase: (i + 1) * ID_STRIDE }),
     }));
     this.byId = new Map(this.lanes.map((l) => [l.id, l]));
+    // Inhuman contract: the glitchy bot's base is tougher and its towers hit harder and faster.
+    this.inhuman = this.byId.get(opts.inhuman) ?? null;
+    if (this.inhuman) {
+      const c = CONTRACTS.inhuman;
+      const sim = this.inhuman.sim;
+      sim.maxBaseHp = sim.baseHp = Math.round(sim.maxBaseHp * c.baseHp);
+      sim.inhumanPow = { dmg: c.towerDmg, rate: c.towerRate };
+    }
     for (const l of this.lanes) l.target = this.nextTarget(l)?.id ?? null;
     this.speed = 1;
     this.over = 0;
@@ -147,6 +157,7 @@ export class VersusSim {
       this.wave.state = 'over';
       const places = Object.fromEntries(this.lanes.map((o) => [o.id, o.place]));
       const bonus = winner.sim.winCredits(); // Oil Derrick US Military Budget
+      if (this.inhuman && winner !== this.inhuman) this.events.push({ k: 'contractDone', key: 'inhuman' }); // beat the glitchy bot
       this.events.push({ k: 'end', versus: 1, winner: winner.id, places, wave: this.wave.index + 1, ...(bonus ? { bonus } : {}) });
     } else if (this.skipVotes.size && this.skipVotes.size >= this.votesNeeded) this.wave.countdown = 0;
   }
@@ -194,7 +205,7 @@ export class VersusSim {
     if (!p) return null;
     if (p.cash < def.cost) return `Need $${def.cost} to send ${def.n > 1 ? `${def.n} ${name}s` : `a ${name}`}`;
     p.cash -= def.cost;
-    to.sim.queueSent(type, def.n, def.gap);
+    to.sim.queueSent(type, def.n, def.gap, l === this.inhuman ? CONTRACTS.inhuman : null); // (Inhuman: glitchy and tougher)
     this.events.push({ k: 'sent', from: l.id, to: to.id, type, n: def.n });
     return null;
   }
@@ -266,6 +277,7 @@ export class VersusSim {
     return {
       vs: 1,
       mk: this.map,
+      ...(this.inhuman ? { ih: [this.inhuman.i, this.inhuman.id] } : {}), // Inhuman contract: the glitchy bot's lane and id
       L: this.lanes.length,
       w: [w.state, w.index, Math.round(w.countdown * 10) / 10, 0, w.votes, this.votesNeeded],
       b: 0,
