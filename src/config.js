@@ -612,7 +612,7 @@ export const DIFFICULTIES = {
   // glitchy pit. `endless`: its waves are made up as you go (sim/parts/liminal.js), so `waves` is
   // empty. Every number here is a guess.
   liminal: { name: 'Liminal', icon: '🟨', color: '#c9b046', desc: 'Endless waves of random enemies in the Backrooms. Survive 30 waves to finish the contract.',
-    waves: [], endless: true, hidden: true, map: 'backrooms', maps: ['backrooms'], cash: 1.6, dmgCash: 0.4, credits: 3, shards: 3, baseHp: 200, startCash: 600, groupBonus: 100, flatHp: true },
+    waves: [], endless: true, hidden: true, map: 'backrooms', maps: ['backrooms'], cash: 2.5, dmgCash: 1, credits: 3, shards: 3, baseHp: 200, startCash: 900, groupBonus: 100, flatHp: true }, // (2026-11-11: cash 1.6, dmgCash 0.4, start 600 was too hard)
 };
 export const DEFAULT_DIFFICULTY = 'easy';
 /** The modes on the mode cards, and the special events (each has its own button and its own map). */

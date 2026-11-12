@@ -63,12 +63,12 @@ export const CONTRACTS = {
     pickEvery: 10, // a new tower to pick after this many waves
     maxTowers: 10, // loadout size in the Backrooms
     // A wave's total enemy health: base x grow^wave, growing slower (late) after `lateFrom`.
-    budget: { base: 150, grow: 1.2, late: 1.15, lateFrom: 30 },
+    budget: { base: 110, grow: 1.12, late: 1.09, lateFrom: 40 }, // (2026-11-11: was 150, 1.2, 1.15 from 30: too hard)
     perEnemy: 18, // a wave has about this many enemies' worth of health (picks how tough the kinds are)
     groups: [1, 3], // kinds of enemy in a wave
     maxCount: 30, // most of one kind in a wave (more health each instead)
     // Mutated enemies: this much more health; the chance grows each wave up to `max`.
-    mutant: { hp: 2, chance: 0.03, grow: 0.008, max: 0.5 },
+    mutant: { hp: 2, chance: 0.02, grow: 0.004, max: 0.35 },
     // Blessings and curses on picked towers: [smallest, biggest] change (0.2 = 20%).
     bless: { dmg: [0.15, 0.4], rate: [0.1, 0.3], range: [0.1, 0.3], cost: [0.1, 0.3] },
     curse: { dmg: [0.1, 0.3], rate: [0.1, 0.25], range: [0.1, 0.25], cost: [0.15, 0.4] },
