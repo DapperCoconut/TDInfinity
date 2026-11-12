@@ -24,7 +24,7 @@ const ICE = 0x80d8ff;
 // ------------------------------------------------------------------ shared bits for this batch
 
 /** A glowing see-through material (wings, halos of light) that keeps its look when towers fade. */
-function glowGlass(h, color, op = 0.7) {
+export function glowGlass(h, color, op = 0.7) {
   const m = glowMat(h, color, 0.6);
   m.transparent = true;
   m.opacity = op;
@@ -46,7 +46,7 @@ function featherPts(x0, y0, a, len, w) {
  * under it, with a row of short covert feathers over their roots. `mat` is the feather
  * material, `edge` the bone / covert colour. o.size scales them.
  */
-function featherWings(h, key, mat, edge, o = {}) {
+export function featherWings(h, key, mat, edge, o = {}) {
   const sz = o.size ?? 1;
   for (const s of [-1, 1]) {
     const wg = new THREE.Group();
@@ -82,7 +82,7 @@ function featherWings(h, key, mat, edge, o = {}) {
  * and a blade with a fuller and a pointed tip. `blade` is a colour or material; o.segs gives a
  * list of materials to stack along the blade instead (a glowing gradient). Returns the tip y.
  */
-function sword(k, bl, bw, blade, o = {}) {
+export function sword(k, bl, bw, blade, o = {}) {
   const metal = o.metal ?? 0x78909c;
   k.cyl(0.12, 0.6, o.grip ?? 0x263238, 0, 0.05, 0, { seg: 8 });
   for (let i = 0; i < 3; i++) k.torus(0.12, 0.022, INK, 0, 0.22 - i * 0.17, 0, { rx: PI / 2, seg: 8 });
