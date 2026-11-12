@@ -113,7 +113,7 @@ function gift(k, x, y, z, s, col, ribbon, o = {}) {
 }
 
 /** A firework rocket standing on y: body, a band, a cone nose and a stick below (any space). */
-function firework(k, x, y, z, r, len, col, nose) {
+export function firework(k, x, y, z, r, len, col, nose) {
   k.cyl(0.025, len * 0.8, 0x8d6e63, x + r * 0.9, y - len * 0.3, z, { seg: 5 }); // stick
   k.cyl(r, len, col, x, y + len / 2, z, { seg: 10 });
   k.cyl(r * 1.04, len * 0.14, 0xfafafa, x, y + len * 0.7, z, { seg: 10 });
@@ -125,7 +125,7 @@ function firework(k, x, y, z, r, len, col, nose) {
  * A jack-o'-lantern: a ribbed body, a curly stem with a leaf, and a carved face (triangle eyes and
  * nose, a jagged grin) that glows. Centred on (x, y, z), r across half, facing +z.
  */
-function pumpkin(k, x, y, z, r, lit, o = {}) {
+export function pumpkin(k, x, y, z, r, lit, o = {}) {
   const col = o.col ?? 0xef6c00;
   k.ball(r * 0.82, tone(col, 0.85), x, y, z, { sy: 0.85, seg: 14, rows: 9 });
   for (let i = 0; i < 8; i++) {
