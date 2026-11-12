@@ -860,3 +860,6 @@ export const MODELS = {
   toxicnatorSaboteur: makeSaboteur,
   necromancer: makeNecromancer,
 };
+
+// Shared with later batches (people17).
+export { cigar, cuffs, fedora, shoes, suitJacket, tommyGun };
