@@ -279,7 +279,7 @@ export function makeHuntsman(level) {
  * two curved limbs, the string pulled back and a nocked arrow. o: wood, tips, wrap, flame.
  * Returns the arrow tip y.
  */
-function bow(k, o) {
+export function bow(k, o) {
   const wood = o.wood;
   k.cyl(0.11, 0.6, o.wrap, 0, 0, 0, { axis: 'z', seg: 10 }); // grip
   for (const zz of [-0.2, 0, 0.2]) k.torus(0.115, 0.02, tone(o.wrap, 0.7), 0, 0, zz, { seg: 10 });
