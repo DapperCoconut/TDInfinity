@@ -338,36 +338,10 @@ const TIERS = {
     }
   },
 
-  // Keith (boomerang farmer): blue overalls -> green overalls -> a rack of boomerangs on his back ->
-  // purple overalls with golden boomerangs circling him.
+  // Keith: his overalls colours, back rack and golden boomerangs are in his model (people23.js);
+  // here he only grows a bit at max level.
   boomerangKeith(h, lv) {
-    if (lv === 2 || lv === 3) paint(h, { 0x1e88e5: 0x2e7d32 });
-    if (lv >= 4) paint(h, { 0x1e88e5: 0x6a1b9a });
-    const boomer = (parent, m, x, y, z, rz) => {
-      const g = new THREE.Group();
-      g.position.set(x, y, z);
-      g.rotation.z = rz;
-      parent.add(g);
-      const a = part(g, boxGeo(0.9, 0.22, 0.1), m, 0.35, 0, 0);
-      a.rotation.z = 0.5;
-      const b = part(g, boxGeo(0.9, 0.22, 0.1), m, -0.35, 0, 0);
-      b.rotation.z = -0.5;
-      return g;
-    };
-    if (lv >= 3) {
-      const wood = mat(h, 0xa1887f);
-      for (let i = 0; i < 3; i++) boomer(h.torso, wood, -0.4 + i * 0.4, 0.3 - i * 0.15, -0.62, 0.3 * (i - 1));
-    }
-    if (lv >= 4) {
-      const g = drifter(h, h.root, 2.6, 2.0, 0.2);
-      const gold = mat(h, 0xffc107, true);
-      around(g, 3, 2.4, (i, a) => {
-        const b = boomer(g, gold, 0, 0, 0, 0);
-        b.rotation.set(Math.PI / 2, 0, a);
-        return b;
-      });
-      grow(h, 1.1);
-    }
+    if (lv >= 4) grow(h, 1.1);
   },
 
   // Bunny: white bunny -> a pink vest -> pastel egg shoulder pads -> a gold vest with painted eggs
@@ -420,26 +394,7 @@ const TIERS = {
     }
   },
 
-  // Chaos Jester: pink motley -> purple motley -> red and black motley with playing cards circling
-  // him -> the jack-in-the-box stage (base model) in royal purple.
-  jesterChaos(h, lv) {
-    if (lv === 2) paint(h, { 0xec407a: 0x8e24aa });
-    if (lv === 3) paint(h, { 0xec407a: 0xc62828, 0xf8bbd0: 0x424242 });
-    if (lv >= 4) paint(h, { 0xec407a: 0x6a1b9a, 0xf8bbd0: 0xffd54f });
-    if (lv >= 3) {
-      const g = drifter(h, h.root, 3.6, 0.9, 0.25);
-      const card = mat(h, 0xfafafa);
-      const suit = [mat(h, 0xd50000), mat(h, 0x212121)];
-      around(g, lv >= 4 ? 8 : 5, lv >= 4 ? 3.0 : 2.5, (i, a) => {
-        const c = new THREE.Group();
-        g.add(c);
-        c.rotation.y = -a;
-        part(c, boxGeo(0.06, 0.8, 0.56), card, 0, 0, 0);
-        part(c, boxGeo(0.08, 0.22, 0.22), suit[i % 2], 0, 0, 0).rotation.x = Math.PI / 4;
-        return c;
-      });
-    }
-  },
+  // Chaos Jester: his level colours and circling cards are in his model (people23.js).
 
   // Nuki Launcher: orbiting leaves and a bigger crew at max (the sandbags and gold bands are in
   // its model, machines8.js).

@@ -28,7 +28,7 @@ const TRACKS = [0xb388ff, 0x69f0ae, 0xff5252]; // DJ Booth: Purple, Green, Red t
 // ------------------------------------------------------------------ shared bits for this batch
 
 /** Big DJ headphones: a band over the head and round cups with a light ring (head space). */
-function headphones(k, col, ring, o = {}) {
+export function headphones(k, col, ring, o = {}) {
   const R = o.r ?? 0.8;
   k.torus(R, 0.07, col, 0, 0.7, 0, { arc: PI, seg: 18 });
   k.box(0.5, 0.1, 0.22, tone(col, 0.7), 0, 0.7 + R, 0, { r: 0.04 }); // padding on top
@@ -41,7 +41,7 @@ function headphones(k, col, ring, o = {}) {
 }
 
 /** T-shirt sleeves on bare arms (and gloves if `glov`), plus whatever `extra` adds to each arm. */
-function sleeves(h, key, shirt, glov, extra) {
+export function sleeves(h, key, shirt, glov, extra) {
   hands(h, key, glov, tone(shirt, 0.85), (a, s) => {
     a.box(1.06, 0.66, 1.06, shirt, 0, -0.35, 0, { r: 0.05 });
     extra?.(a, s);
