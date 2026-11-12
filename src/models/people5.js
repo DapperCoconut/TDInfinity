@@ -132,7 +132,7 @@ export function riotHelmet(k, col, visor) {
  * A riot shield on the left arm (arm space): a curved slab facing along the arm, a window and a
  * stripe. `mark` is drawn in the middle (a material or colour, or null).
  */
-function riotShield(k, col, window, stripe, mark) {
+export function riotShield(k, col, window, stripe, mark) {
   k.box(2.0, 0.14, 3.0, col, 0, -1.8, 0.6, { r: 0.05, rx: 0.1 });
   k.box(2.1, 0.18, 0.12, INK, 0, -1.8, -0.9, { rx: 0.1 }); // rims
   k.box(2.1, 0.18, 0.12, INK, 0, -1.65, 2.1, { rx: 0.1 });
