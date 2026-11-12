@@ -9,9 +9,10 @@ import { CONTRACTS } from '../lastlaugh.js';
 import { LEAP_TIME } from '../views.js';
 import { audio } from '../audio.js';
 import { NM_STATE } from '../nightmareworld.js';
+import { FR_STATE } from '../frostworld.js';
 import { MODEL_SCALE } from '../scale.js';
 import { BOUNDS, path } from '../sim/path.js';
-import { CASTLE, laneOf, laneOz, mapKey } from '../sim/map.js';
+import { CASTLE, laneOf, laneOz, mapInfo, mapKey } from '../sim/map.js';
 import { candyFor } from '../halloweenpass.js';
 import { ICE_NADE, ORDINAL } from './shared.js';
 
@@ -1666,6 +1667,13 @@ export class GameEvents {
             break;
           }
           if (ev.glow) NM_STATE.glow = 1; // Halloween Night 3: the portal starts to glow
+          if (mapInfo.frost && ev.i >= 20 && !FR_STATE.spring) {
+            // Frostwatch Basin: the season is restored after wave 20 (snow melts, the portal goes dark).
+            FR_STATE.spring = 1;
+            this.applyLighting();
+            this.setSky(0x6f8584);
+            this.ui.toast('The season is restored!', 3000);
+          }
           const note = ev.note ?? difficulty(st.mode).waves[ev.i]?.note;
           audio.waveStart();
           this.ui.toast(note ? `Wave ${ev.i + 1}: ${note}` : `Wave ${ev.i + 1}`, note ? 3200 : 1500);

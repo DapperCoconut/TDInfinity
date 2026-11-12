@@ -1189,6 +1189,163 @@ function nmFixed() {
   return out;
 }
 
+/**
+ * Frostwatch Basin (Christmas Night 1, 2026-11-11 user spec, with its own layout): a snowy basin
+ * sunk in a canyon, 26 x 16 grid (columns A-Z, rows 1-16, north = top), 1 cell = 7 units.
+ * Column index c is 0 for A; r is the row number. Four paths leave the blue portal (E9) on one
+ * wide stub, split at I9 into a north pair and a south pair that wind round the pond, cross once
+ * in the stone yard (S10) and leave by two tunnels in the north rim: the north pair by the east
+ * tunnel (V2), the south pair by the west tunnel (Q2). Each band carries two paths side by side.
+ * When wave 21 starts, the snow melts into spring (frostworld.js, FR_STATE).
+ *
+ *     ABCDEFGHIJKLMNOPQRSTUVWXYZ
+ *  2  ^^^=============T====T=^^^
+ *  3  ^^^=.W..........#....#=^^^
+ *  4  ^^^=....####..o.#..o.#=^^^
+ *  5  ^^^=....#..#....#....#=^^^
+ *  6  ^^^=..@.#.p#....#....#=^^^
+ *  7  ^^^=....#..####.###..#=^^^
+ *  8  ^^^=....#.....#...#..#=^^^
+ *  9  ^^^=P####..~~.#...#..#=^^^
+ * 10  ^^^=....#..~~.########=^^^
+ * 11  ^^^=....#.....::::|::.=^^^
+ * 12  ^^^=.o..#..########::.=^^^
+ * 13  ^^^=....#..#..........=^^^
+ * 14  ^^^=....####...HEH...K=^^^
+ * 15  ^^^====================^^^
+ *
+ * # path band, P portal, T tunnel, ~ pond, o hexagon boulder mound (cliff spot), W watchtower,
+ * p black pipes, | beacon, : stone yard, H gate houses, E entrance, K shelter, @ player spawn.
+ */
+export const FR_CELL = 7;
+/** World [x, z] of grid cell (c, r) (fractions allowed). */
+export const frCell = (c, r) => [(c - 12.5) * FR_CELL, (r - 8.5) * FR_CELL];
+const fxz = (c, r) => {
+  const [x, z] = frCell(c, r);
+  return { x, z };
+};
+// The two pairs' centre lines as corner cells.
+const FR_NORTH = [[5.2, 9], [8, 9], [8, 4], [11, 4], [11, 7], [14, 7], [14, 10], [21, 10], [21, 2.2]];
+const FR_SOUTH = [[5.2, 9], [8, 9], [8, 14], [11, 14], [11, 12], [18, 12], [18, 7], [16, 7], [16, 2.2]];
+// Two paths side by side on each band: the centre line moved `off` units to the walker's left.
+// (All corners are square, so a corner moves by both of its sides' normals.)
+function sideBySide(cells, off) {
+  const pts = cells.map(([c, r]) => frCell(c, r));
+  const nrm = (a, b) => {
+    const dx = b[0] - a[0];
+    const dz = b[1] - a[1];
+    const l = Math.hypot(dx, dz);
+    return [dz / l, -dx / l]; // the walker's left
+  };
+  return pts.map((p, i) => {
+    const n1 = i > 0 ? nrm(pts[i - 1], p) : null;
+    const n2 = i < pts.length - 1 ? nrm(p, pts[i + 1]) : null;
+    const nx = (n1?.[0] ?? 0) + (n2?.[0] ?? 0);
+    const nz = (n1?.[1] ?? 0) + (n2?.[1] ?? 0);
+    const k = n1 && n2 && Math.abs(n1[0] * n2[0] + n1[1] * n2[1]) > 0.99 ? 0.5 : 1; // straight on: average
+    return [p[0] + nx * off * k, p[1] + nz * off * k];
+  });
+}
+const FR_LANE = 1.7;
+// Far Left, Middle Left (north pair, east tunnel), Middle Right, Far Right (south pair, west tunnel).
+const FR_ROUTES = [
+  sideBySide(FR_NORTH, FR_LANE), sideBySide(FR_NORTH, -FR_LANE),
+  sideBySide(FR_SOUTH, FR_LANE), sideBySide(FR_SOUTH, -FR_LANE),
+];
+// Distance in cells from (c, r) to the nearest path band's centre line (to keep props off it).
+function frPathGap(c, r) {
+  let best = Infinity;
+  for (const route of [FR_NORTH, FR_SOUTH]) {
+    for (let i = 0; i < route.length - 1; i++) {
+      const [ax, az] = route[i];
+      const [bx, bz] = route[i + 1];
+      const dx = bx - ax;
+      const dz = bz - az;
+      const t = Math.max(0, Math.min(1, ((c - ax) * dx + (r - az) * dz) / (dx * dx + dz * dz)));
+      best = Math.min(best, Math.hypot(c - (ax + dx * t), r - (az + dz * t)));
+    }
+  }
+  return best;
+}
+
+function frFixed() {
+  const out = [];
+  out.push({ kind: 'frGround' });
+  // The portal (E9): a ring of dark clamps about 16 across, facing east.
+  out.push({ kind: 'frPortal', ...fxz(4, 9) });
+  for (const dz of [-7.5, 7.5]) out.push({ kind: 'frBlock', x: frCell(4, 9)[0], z: frCell(4, 9)[1] + dz, block: 2.4, box: [2, 1.6, 16] });
+  // The two tunnels in the north rim (the exits).
+  for (const c of [16, 21]) out.push({ kind: 'frTunnel', ...fxz(c, 1.6) });
+  // The compound gate: two gate houses with the entrance between them.
+  for (const c of [14.6, 16.9]) out.push({ kind: 'frGateHouse', ...fxz(c, 14.2), block: 4.6, box: [4.6, 3.6, 9] });
+  out.push({ kind: 'frGateDoor', ...fxz(15.75, 14.4) });
+  // The stone yard where the pairs cross, with a little snow island and a beacon pole on it.
+  out.push({ kind: 'frYard', ...fxz(17.5, 11), w: 7 * FR_CELL, d: 3 * FR_CELL });
+  out.push({ kind: 'frBeacon', ...fxz(17.6, 11), island: true, block: 1.6 });
+  out.push({ kind: 'frBeacon', ...fxz(19.6, 13.4), block: 1 });
+  // The pond: dark water with no floor, ringed by hexagon boulders.
+  const pond = fxz(11.3, 9.6);
+  out.push({ kind: 'frPond', ...pond, r: 7.5 });
+  for (let dx = -9; dx <= 9; dx += 3) {
+    for (let dz = -9; dz <= 9; dz += 3) if (Math.hypot(dx, dz) < 8.6) out.push({ kind: 'frBlock', x: pond.x + dx, z: pond.z + dz, block: 2.4 });
+  }
+  [[-0.9, -0.6, 2.2], [1.2, -0.4, 1.8], [1.1, 0.8, 2], [-1.1, 0.7, 1.6]].forEach(([dc, dr, s], i) =>
+    out.push({ kind: 'frBoulder', x: pond.x + dc * 7.5, z: pond.z + dr * 7.5, s, rot: i * 0.7, block: s + 0.6, bh: s * 1.2 }));
+  // Hexagon boulder mounds: their flat tops are cliff spots.
+  [[5.5, 12.4], [13.6, 4.2], [18.6, 4.2]].forEach(([c, r], i) => out.push({ kind: 'frMound', ...fxz(c, r), rot: i * 0.5, block: 5.2, bh: 3, top: [3.4, 3.4, 3.6] }));
+  // The watchtower (F3), the lean-to shelter (V14), the black pipes (K6) and the white duct pipe
+  // that arches over the south pair's band on its way to the west tunnel.
+  out.push({ kind: 'frWatch', ...fxz(5.3, 3.4), block: 3.4, box: [2.8, 2.8, Infinity] });
+  out.push({ kind: 'frShelter', ...fxz(20.8, 13.9), rot: -Math.PI / 2, block: 3 });
+  out.push({ kind: 'frPipes', ...fxz(9.5, 6), block: 2.6, bh: 2 });
+  out.push({ kind: 'frDuct', ...fxz(16, 4.4) });
+  // Low walls with small lights along them.
+  out.push({ kind: 'frWall', ...fxz(13.6, 2.9), len: 3 * FR_CELL, block: 1.4, box: [1.5 * FR_CELL, 0.6, 2] });
+  out.push({ kind: 'frWall', ...fxz(4.1, 6.2), len: 3 * FR_CELL, rot: Math.PI / 2, block: 1.4, box: [0.6, 1.5 * FR_CELL, 2] });
+  // Lampposts (every other one gives real light).
+  [[9.6, 3.2], [12.6, 5.6], [6.1, 10.8], [13.5, 13.4], [19.6, 8.2], [15.1, 8.6], [9.5, 12.8], [22.2, 5.5], [6.5, 7.3], [19.6, 14.1]]
+    .forEach(([c, r], i) => out.push({ kind: 'frLamp', ...fxz(c, r), rot: i * 1.3, lit: i % 2 === 0, block: 1, bh: Infinity }));
+  // Snowy pines round the portal, the watchtower, the tunnels and the south side.
+  const pines = [[4.4, 6.9], [4.5, 11.1], [5.9, 11], [6.6, 4.1], [4.2, 4.5], [6.8, 2.8], [9.5, 2.6], [12, 2.7], [14.6, 2.6],
+    [17.6, 2.6], [19.5, 2.6], [22.3, 3.1], [22.4, 7.4], [22.3, 9.4], [22.2, 11.4], [20.4, 12.4], [12.8, 14.3], [9.6, 14.6],
+    [4.3, 14.3], [6.7, 14.5], [5.3, 13.6], [13.4, 11], [9.8, 8.3], [12.6, 8.3], [16, 9.1], [12.2, 6.1], [19.5, 6.1], [6.6, 5.4],
+    [3.8, 12.8], [22.4, 14.2]];
+  pines.forEach(([c, r], i) => {
+    if (frPathGap(c, r) < 0.9) return; // too near a band
+    out.push({ kind: 'frPine', ...fxz(c, r), s: 0.8 + ((i * 37) % 10) / 22, rot: i * 0.9, block: 1.6 });
+  });
+  // Low snow humps on the islands (flowers in spring).
+  [[6.5, 13], [10, 5.6], [13, 9.5], [17.5, 5.6], [20, 8.6], [14.2, 13.2], [9.5, 10.9], [6, 8], [19.3, 13], [12.9, 12.9]]
+    .forEach(([c, r], i) => {
+      if (frPathGap(c, r) < 0.8) return;
+      out.push({ kind: 'frHump', ...fxz(c, r), s: 1 + (i % 3) * 0.3, rot: i * 1.1 });
+    });
+  // The dark rock rim round the basin (a rounded oval), a lower inner lip on the north and south
+  // sides, and the tall canyon walls beyond it. Gaps leave room for the tunnels.
+  const ring = (a, b, n, make) => {
+    for (let i = 0; i < n; i++) {
+      const t = (i / n) * Math.PI * 2;
+      const c = Math.cos(t);
+      const s = Math.sin(t);
+      // a squarish oval: |x/a|^4 + |z/b|^4 = 1
+      const x = a * Math.sign(c) * Math.abs(c) ** 0.5;
+      const z = b * Math.sign(s) * Math.abs(s) ** 0.5;
+      make(x, z, t, i);
+    }
+  };
+  const tunnelX = [16, 21].map((c) => frCell(c, 2)[0]);
+  ring(70, 50, 64, (x, z, t, i) => {
+    if (z < -40 && tunnelX.some((tx) => Math.abs(x - tx) < 7)) return; // the tunnel mouths
+    const k = Math.abs((Math.sin(i * 12.9898) * 43758.5453) % 1);
+    out.push({ kind: 'frRim', x, z, h: 6 + k * 2.5, w: 9 + k * 3, rot: -t, v: i, block: 4.5 });
+  });
+  ring(98, 76, 48, (x, z, t, i) => {
+    const k = Math.abs((Math.sin(i * 78.233) * 43758.5453) % 1);
+    out.push({ kind: 'frCliff', x, z, h: 20 + k * 12, w: 20 + k * 10, rot: -t, v: i });
+  });
+  return out;
+}
+
 // How hard a map is (MAPS[key].rating): its card in the menus is that color. Judged by eye from
 // the path (long and winding is easy; short, split or random is hard) and how much room there is to build.
 export const MAP_RATINGS = {
@@ -1457,6 +1614,31 @@ export const MAPS = {
       sky: 0xc88a3a, fog: 0xb07a40, fogNear: 100, fogFar: 250, dusk: true,
       leaves: [0x6a4a2a, 0x6a4a2a, 0x6a4a2a], rock: 0xb8643a,
       cliff: [0xb87848, 0x9a6038, 0xc88a58], water: [0x38a3e8, 0x2585d0],
+    },
+  },
+  frost: {
+    name: 'Frostwatch Basin',
+    rating: 'hard',
+    icon: '❄',
+    desc: 'Christmas Night 1: a snowy basin deep in a canyon. Four paths leave a blue portal in pairs, wind round a frozen pond, cross in the stone yard and escape through two tunnels. After wave 20 the snow melts into spring.',
+    path: FR_ROUTES[0],
+    routes: FR_ROUTES, // Far Left, Middle Left (east tunnel), Middle Right, Far Right (west tunnel)
+    spawn: { x: frCell(5.5, 6.2)[0], z: frCell(5.5, 6.2)[1] },
+    base: 'tunnel', // no castle: the paths end in two tunnels (frTunnel)
+    baseAt: FR_ROUTES[0][FR_ROUTES[0].length - 1],
+    baseR: 4,
+    portal: false, // the blue portal is a prop (frPortal)
+    frost: true, // winter until wave 21, then spring (frostworld.js)
+    bounds: { minX: -64, maxX: 66, minZ: -44, maxZ: 44 },
+    cliffs: [],
+    pools: [],
+    trees: 0, tree: 'pine', rocks: 0, border: 'none',
+    fixed: frFixed(),
+    theme: {
+      ground: ['#c9cbd0', '#c4c6cb', '#cfd1d6', '#c0c2c8'], path: ['#5a5848', '#555344', '#5f5d4d', '#525041'],
+      sky: 0x1e2a2c, fog: 0x5a7378, fogNear: 90, fogFar: 230, night: true, snow: true,
+      leaves: [0xe6e8ea, 0xe6e8ea, 0xe6e8ea], rock: 0x2a2c32,
+      cliff: [0x2a2c32, 0x202228, 0x55585e], water: [0x1f4c50, 0x173a3e],
     },
   },
   rig: {

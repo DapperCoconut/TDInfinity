@@ -26,6 +26,7 @@ import {
   mapVersion, nexusWalkable, rampartWalkable, rigWalkable, setMap,
 } from './sim/map.js';
 import { baseKey } from './sim/maps.js';
+import { FR_STATE } from './frostworld.js';
 import { GameEvents } from './game/events.js';
 import { GameWheel } from './game/wheel.js';
 import { GameContract } from './game/contract.js';
@@ -272,6 +273,7 @@ export class GameClient {
 
   /** Rebuilds the scenery, colliders and sky if the session is on a different map than last game. */
   syncMap() {
+    if (FR_STATE.spring) this.mapVersion = -1; // Frostwatch Basin turned to spring last game: rebuild it in winter
     if (this.mapVersion === mapVersion) return;
     this.mapVersion = mapVersion;
     buildColliders();
@@ -442,6 +444,16 @@ export class GameClient {
       this.hemi.color.set(0xd89050);
       this.hemi.groundColor.set(0x6a3a1a);
       this.hemi.intensity = 1.1;
+    }
+    // Frostwatch Basin: a dim cold night in winter, bright grey-teal overcast once spring comes.
+    if (t.frost) {
+      this.sunOff = [-50, 110, 40];
+      const spring = FR_STATE.spring;
+      this.sun.color.set(spring ? 0xf4f2e8 : 0xa8c0d8);
+      this.sun.intensity = spring ? 1.9 : 0.7;
+      this.hemi.color.set(spring ? 0xdfe8ea : 0x7a90a8);
+      this.hemi.groundColor.set(spring ? 0x4e6a3e : 0x5a6470);
+      this.hemi.intensity = spring ? 1.6 : 1.15;
     }
     if (t.sunOff) this.sunOff = t.sunOff; // a map's own sun direction (Brook Hollow: from the east)
     this.root.fog.near = t.fogNear ?? 90; // drawn units
