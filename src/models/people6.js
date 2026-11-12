@@ -97,7 +97,7 @@ function satchel(k, col, side = -1) {
 }
 
 /** A neck scarf with two tails hanging down the chest (torso space). */
-function neckScarf(k, col) {
+export function neckScarf(k, col) {
   k.torus(0.62, 0.17, col, 0, 0.92, 0, { rx: PI / 2, seg: 18 });
   k.ball(0.2, tone(col, 0.9), 0.3, 0.8, 0.55, { seg: 10, rows: 7 }); // knot
   k.box(0.3, 0.8, 0.1, col, 0.38, 0.35, 0.6, { r: 0.04, rz: -0.1 });
@@ -114,18 +114,18 @@ export function hardHat(k, col, lamp) {
 }
 
 /** An icicle hanging point-down (any space). */
-function icicle(k, x, y, z, len, mat) {
+export function icicle(k, x, y, z, len, mat) {
   k.cyl(0.08, len, mat, x, y - len / 2, z, { seg: 6, r2: 0.0001 });
 }
 
 /** A standing ice crystal: two six-sided cones (any space; its foot at y). */
-function shard(k, x, y, z, hgt, r, mat, o = {}) {
+export function shard(k, x, y, z, hgt, r, mat, o = {}) {
   k.cyl(r, hgt * 0.75, mat, x, y + hgt * 0.375, z, { seg: 6, r2: r * 0.8, ...o });
   k.cyl(r * 0.8, hgt * 0.25, mat, x, y + hgt * 0.875, z, { seg: 6, r2: 0.0001, ...o });
 }
 
 /** A coolant tank on the back: round bottle(s) with caps, a frost band and a hose to the right hand. */
-function coolant(k, col, light, o = {}) {
+export function coolant(k, col, light, o = {}) {
   const n = o.n ?? 1;
   const r = o.r ?? 0.45;
   const hh = o.h ?? 1.5;
@@ -151,7 +151,7 @@ function coolant(k, col, light, o = {}) {
  * and a flared nozzle. o: len, body, light, coils, crystal (a glow material for a core on top),
  * can (a side canister). Returns the nozzle tip y.
  */
-function cryoGun(k, o = {}) {
+export function cryoGun(k, o = {}) {
   const len = o.len ?? 2.0;
   const body = o.body ?? 0xeceff1;
   const U = UP;
