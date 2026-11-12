@@ -622,7 +622,7 @@ export const DIFFICULTIES = {
     // Christmas Night 2 on Frostgate Citadel (see christmas2.js).
     mapModes: { citadel: { waves: CHRISTMAS2_WAVES, timers: CHRISTMAS2_TIMERS, boss: 'xcExoSanta', hpCurve: [[1, 0.4], [6, 0.3], [10, 0.2], [13, 0.12], [20, 0.1]], bossHp: 0.25 },
       // Christmas Night 3 on Goldcloud Spires (see christmas3.js).
-      spires: { waves: CHRISTMAS3_WAVES, timers: CHRISTMAS3_TIMERS, boss: 'xsArbiter', hpCurve: [[1, 0.4], [8, 0.3], [11, 0.2], [14, 0.15], [21, 0.12], [28, 0.1]], bossHp: 0.5 } } },
+      spires: { waves: CHRISTMAS3_WAVES, timers: CHRISTMAS3_TIMERS, boss: 'xsArbiter', hpCurve: [[1, 0.4], [8, 0.3], [11, 0.15], [21, 0.12], [28, 0.1]], bossHp: 0.5 } } },
   // Liminal contract (2026-11-11 spec, see lastlaugh.js): the endless mode in the Backrooms. Not on
   // the mode cards or an event button (`hidden`): you get here by walking into Sunken Canyon's
   // glitchy pit. `endless`: its waves are made up as you go (sim/parts/liminal.js), so `waves` is
