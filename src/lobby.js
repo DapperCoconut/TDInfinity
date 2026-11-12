@@ -7,6 +7,7 @@ import { abilityText, boostText, cannonText, damageText, detectText, dpsText, ex
 import { LocalSession, NetSession } from './session.js';
 import { DEFAULT_MAP, MAPS, mapDef, mapRating } from './sim/maps.js';
 import { enemyIcon, towerIcon } from './icons.js';
+import { ALL_CONTRACTS_REWARD, CONTRACT_REWARDS, NIGHT_REWARDS, PASS } from './halloweenpass.js';
 import { CONTRACTS, CONTRACT_KEYS, contractFor } from './lastlaugh.js';
 import { setMap } from './sim/map.js';
 
@@ -65,7 +66,7 @@ export class Lobby {
     this.renderDifficulty();
 
     // Map (same deal: Solo picks on the title screen, the host picks in a room).
-    this.map = MAP_ORDER.includes(localStorage.getItem('td.map')) ? localStorage.getItem('td.map') : DEFAULT_MAP;
+    this.map = this.mapOrder().includes(localStorage.getItem('td.map')) ? localStorage.getItem('td.map') : DEFAULT_MAP;
     $('map-row').addEventListener('click', (e) => {
       const b = e.target.closest('[data-map]');
       if (!b) return;
@@ -97,13 +98,25 @@ export class Lobby {
       const b = e.target.closest('[data-map]');
       if (b && this.room?.host === net.id) net.send({ type: 'room.map', map: b.dataset.map });
     });
+    // Halloween panel tabs: Nights, Contracts, Battle Pass.
+    $('event-tabs').addEventListener('click', (e) => {
+      const tab = e.target.closest('[data-hwtab]');
+      if (!tab) return;
+      this.hwTab = tab.dataset.hwtab;
+      this.renderContracts();
+    });
     // Contracts (Halloween panel): accept or drop one.
     $('event-contracts').addEventListener('click', (e) => {
       const b = e.target.closest('[data-contract]');
+      if (e.target.closest('[data-hwplay]')) {
+        audio.unlock();
+        return this.startLiminal(); // Infinite mode (Battle Pass): the endless Backrooms, any time
+      }
       if (!b) return;
       profile.toggleContract(b.dataset.contract);
       this.renderContracts();
     });
+    profile.halloweenRewards(); // contracts finished before the rewards existed still give theirs
     this.renderEvent();
     this.renderMap();
 
@@ -328,25 +341,98 @@ export class Lobby {
     return this.event ? null : contractFor(profile.contracts.accepted, this.playMap);
   }
 
-  /** The Halloween panel's contracts: a card each with its picture, what to do, and Accept / Drop. */
+  /**
+   * The Halloween panel, under the event's banner: three tabs. Nights (the banner with its maps, and
+   * the tower each night gives), Contracts (accept / drop, and what each gives), and the Battle Pass
+   * (Candy Corn from any game fills a track of rewards).
+   */
   renderContracts() {
     $('mp-btn').classList.toggle('ct-red', this.inhumanOn); // Inhuman contract: the red trail starts here
     if (this.quick) this.renderQuick();
     const el = $('event-contracts');
     if (this.event !== 'halloween') {
       el.innerHTML = '';
+      $('event-tabs').innerHTML = '';
+      $('event-banner').classList.remove('hidden');
       return;
     }
-    el.innerHTML = `<div class="pick-head"><b>📜</b> Contracts</div>${CONTRACT_KEYS.map((k) => {
+    const tab = this.hwTab ?? 'nights';
+    $('event-banner').classList.toggle('hidden', tab !== 'nights');
+    const tabs = [['nights', '🎃', 'Nights'], ['contracts', '📜', 'Contracts'], ['pass', '🌽', 'Battle Pass']];
+    const head = `<div class="hw-tabs">${tabs.map(([k, i, n]) => `<button class="hw-tab${k === tab ? ' on' : ''}" data-hwtab="${k}">${i} ${n}</button>`).join('')}
+      <span class="hw-candy" title="Candy Corn: earn it in any game. It fills the Battle Pass.">🌽 ${num(profile.hw.candy)}</span></div>`;
+    $('event-tabs').innerHTML = head;
+    el.innerHTML = (tab === 'contracts' ? this.hwContracts() : tab === 'pass' ? this.hwPass() : this.hwNights());
+    const track = el.querySelector('.hw-track');
+    const next = el.querySelector('.hw-next');
+    if (track && next) track.scrollLeft = next.offsetLeft - track.clientWidth / 2 + next.offsetWidth / 2; // the next reward in the middle
+  }
+
+  /** A reward tile: a tower's portrait and name, with a tick once you own it. */
+  hwReward(t, label) {
+    const def = TOWERS[t];
+    const own = def.altOf ? profile.ownsForm(t) : profile.owns(t);
+    return `<div class="hw-reward${own ? ' got' : ''}" title="${esc(`${label}: ${def.name}${def.altOf ? ` (${TOWERS[def.altOf].name} variant)` : ''}`)}">
+      <img src="${towerIcon(t)}" alt="" draggable="false">${own ? '<span class="ev-won">✔</span>' : ''}
+      <small>${esc(label)}</small><b>${esc(def.name)}</b></div>`;
+  }
+
+  hwNights() {
+    return `<div class="hw-row">${NIGHT_REWARDS.map((n) => this.hwReward(n.tower, `Beat ${n.name}`)).join('')}</div>
+      <p class="hw-note">Win a night on its own map to get its tower.</p>`;
+  }
+
+  hwContracts() {
+    const cards = CONTRACT_KEYS.map((k) => {
       const c = CONTRACTS[k];
       const on = profile.contracts.accepted.includes(k);
       const done = profile.contracts.done.includes(k);
       return `<div class="contract-card${on ? ' on' : ''}" style="--c:${c.color}">
         <img src="${towerIcon(c.pic)}" alt="" draggable="false">
         <div class="cc-text"><h4>${c.icon} ${esc(c.name)}${done ? ' <span class="ev-won" title="You finished this contract">✔</span>' : ''}</h4><p>${esc(c.desc)}</p></div>
+        ${CONTRACT_REWARDS[k] ? this.hwReward(CONTRACT_REWARDS[k], 'Reward') : ''}
         <button class="btn small" data-contract="${k}">${on ? 'Drop it' : done ? 'Play again' : 'Accept'}</button>
       </div>`;
-    }).join('')}`;
+    });
+    // Contract 4 isn't built yet: a locked card for it.
+    if (!CONTRACTS.call) cards.push(`<div class="contract-card soon" style="--c:#37474f"><span class="cc-lock">📞</span>
+        <div class="cc-text"><h4>📞 Mysterious Call</h4><p>Coming soon: a phone rings in the cemetery church…</p></div>${this.hwReward(CONTRACT_REWARDS.call, 'Reward')}</div>`);
+    return `${cards.join('')}<div class="hw-all">🏆 Finish every contract: ${this.hwReward(ALL_CONTRACTS_REWARD, 'All contracts')}</div>`;
+  }
+
+  hwPass() {
+    const candy = profile.hw.candy;
+    const next = PASS.findIndex((r) => r.at > candy);
+    const tiles = PASS.map((r, i) => {
+      const got = candy >= r.at;
+      let pic, name, small;
+      if (r.tower) {
+        const def = TOWERS[r.tower];
+        pic = `<img src="${towerIcon(r.tower)}" alt="" draggable="false">`;
+        name = def.name;
+        small = def.altOf ? `${TOWERS[def.altOf].name} variant` : 'Tower';
+      } else if (r.credits) {
+        pic = '<span class="hw-big">🪙</span>';
+        name = `${r.credits} credits`;
+        small = 'Credits';
+      } else if (r.map) {
+        pic = `<span class="hw-map">${this.mapArt(r.map)}</span>`;
+        name = mapDef(r.map).name;
+        small = 'Map for every mode';
+      } else {
+        pic = `<span class="hw-big">${r.mode === 'liminal' ? '♾️' : '🎃'}</span>`;
+        name = r.name;
+        small = r.desc;
+      }
+      const play = got && r.mode === 'liminal' ? '<button class="btn small" data-hwplay="liminal">▶ Play</button>' : '';
+      return `<div class="hw-tier${got ? ' got' : ''}${i === next ? ' hw-next' : ''}" title="${esc(`${name} (${small}): ${num(r.at)} Candy Corn`)}">
+        <span class="hw-at">🌽 ${num(r.at)}</span>${pic}<small>${esc(small)}</small><b>${esc(name)}</b>${got ? '<span class="ev-won">✔</span>' : ''}${play}</div>`;
+    });
+    const prev = next > 0 ? PASS[next - 1].at : 0;
+    const pct = next < 0 ? 100 : Math.round(((candy - prev) / (PASS[next].at - prev)) * 100);
+    return `<div class="hw-bar"><span style="width:${pct}%"></span><b>${next < 0 ? 'Battle Pass complete!' : `${num(PASS[next].at - candy)} more Candy Corn to the next reward`}</b></div>
+      <div class="hw-track">${tiles.join('')}</div>
+      <p class="hw-note">Earn Candy Corn in any game: 1 per wave, 10 for a win, double in Halloween modes.</p>`;
   }
 
   /** A locked mode (Hardcore before every other mode is beaten): says what's missing. Returns true if locked. */
@@ -466,8 +552,12 @@ export class Lobby {
       <span class="pc-name">${esc(m.name)}</span>
     </button>`;
   }
+  /** The maps on the map cards: the normal ones, then the event maps the Halloween Battle Pass unlocked. */
+  mapOrder() {
+    return [...MAP_ORDER, ...Object.keys(MAPS).filter((k) => MAPS[k].unlockable && profile.hasMap(k))];
+  }
   mapCards() {
-    return MAP_ORDER.map((key, i) => this.mapCard(key, i)).join('');
+    return this.mapOrder().map((key, i) => this.mapCard(key, i)).join('');
   }
 
   /**
@@ -539,7 +629,7 @@ export class Lobby {
   renderMap() {
     this.previewMap(this.playMap); // a picked event shows its own map
     const row = $('map-row');
-    fill(row, 'maps', () => this.mapCards());
+    fill(row, `maps|${this.mapOrder().length}`, () => this.mapCards());
     mark(row, 'map', this.map);
     this.mapHint();
   }

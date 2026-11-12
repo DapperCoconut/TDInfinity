@@ -2726,3 +2726,191 @@ input:focus {
   height: 44px;
   display: block;
 }
+/* Halloween panel (lobby.js renderContracts): tabs, reward tiles, the Battle Pass track */
+.hw-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.hw-tab {
+  padding: 7px 16px;
+  border: 3px solid #4a1d00;
+  border-radius: 10px 10px 4px 4px;
+  background: #7a3300;
+  color: #ffcc80;
+  font: 800 15px 'Segoe UI', Arial, sans-serif;
+  cursor: pointer;
+}
+.hw-tab:hover {
+  background: #9a4300;
+}
+.hw-tab.on {
+  background: #ef6c00;
+  color: #fff;
+  border-color: #ffd740;
+  box-shadow: 0 0 8px rgba(255, 215, 64, 0.6);
+}
+.hw-candy {
+  margin-left: auto;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #ffe082;
+  font: 800 16px 'Segoe UI', Arial, sans-serif;
+}
+.hw-row {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+}
+.hw-note {
+  margin: 6px 0 0;
+  font-size: 13px;
+  opacity: 0.85;
+  text-align: center;
+}
+.hw-reward,
+.hw-tier {
+  position: relative;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 110px;
+  padding: 6px;
+  border: 3px solid #3e2723;
+  border-radius: 10px;
+  background: #261a14;
+  color: #fff;
+  text-align: center;
+  filter: saturate(0.5) brightness(0.8);
+}
+.hw-reward.got,
+.hw-tier.got {
+  border-color: #66bb6a;
+  filter: none;
+}
+.hw-reward img,
+.hw-tier img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
+.hw-reward small,
+.hw-tier small {
+  color: #ffcc80;
+  font-size: 11px;
+  line-height: 1.2;
+}
+.hw-reward b,
+.hw-tier b {
+  font-size: 13px;
+  line-height: 1.2;
+}
+.hw-reward .ev-won,
+.hw-tier .ev-won {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+}
+.contract-card .hw-reward {
+  width: 92px;
+  padding: 4px;
+}
+.contract-card .hw-reward img {
+  width: 44px;
+  height: 44px;
+  border-radius: 0;
+  background: none;
+}
+.contract-card.soon {
+  opacity: 0.75;
+}
+.cc-lock {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  font-size: 40px;
+}
+.hw-all {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 8px;
+  font: 800 16px 'Segoe UI', Arial, sans-serif;
+}
+.hw-bar {
+  position: relative;
+  height: 24px;
+  border: 3px solid #4a1d00;
+  border-radius: 999px;
+  background: #261a14;
+  overflow: hidden;
+}
+.hw-bar span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(#ffca28, #ef6c00);
+}
+.hw-bar b {
+  position: relative;
+  display: block;
+  font: 800 13px/18px 'Segoe UI', Arial, sans-serif;
+  text-align: center;
+  text-shadow: 0 1px 0 #000;
+}
+.hw-track {
+  position: relative;
+  display: flex;
+  gap: 10px;
+  padding: 14px 6px 8px;
+  overflow-x: auto;
+}
+.hw-tier {
+  width: 120px;
+  min-height: 150px;
+}
+.hw-tier.hw-next {
+  border-color: #ffd740;
+  box-shadow: 0 0 10px #ffd740;
+  filter: none;
+}
+.hw-at {
+  margin-bottom: 4px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #000;
+  color: #ffe082;
+  font: 800 12px 'Segoe UI', Arial, sans-serif;
+}
+.hw-big {
+  display: grid;
+  place-items: center;
+  height: 64px;
+  font-size: 42px;
+}
+.hw-map {
+  display: block;
+  width: 96px;
+  height: 64px;
+  overflow: hidden;
+  border-radius: 6px;
+}
+.hw-map > * {
+  position: static;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+#event-tabs {
+  width: min(880px, 88vw);
+  margin: 0 auto;
+}
+.hw-tier .btn {
+  margin-top: 4px;
+}

@@ -2,6 +2,7 @@
 // which form each tower uses, golden perks they own / have switched on, tower XP (tower levels and
 // evolution levels), and their loadout (hotbar). Stored in localStorage, so it is per browser.
 import { CONTRACTS } from './lastlaugh.js';
+import { ALL_CONTRACTS_REWARD, CONTRACT_REWARDS, NIGHT_REWARDS, PASS } from './halloweenpass.js';
 import { BASE_TOWERS, DIFFICULTIES, EVENT_TOWERS, EVOLVED_TOWERS, GAME, HARDCORE_NEEDS, STARTER_TOWERS, TOWERS, TOWER_MAX_LEVEL, goldOf, xpKey, xpToNext } from './config.js';
 
 const KEY = 'td.profile';
@@ -69,7 +70,10 @@ function load() {
   // Contracts (lastlaugh.js): the ones accepted (they change the games they fit) and the ones finished.
   const cl = (v) => (Array.isArray(v) ? [...new Set(v.filter((k) => CONTRACTS[k]))] : []);
   const contracts = { accepted: cl(data.contracts?.accepted), done: cl(data.contracts?.done) };
-  return { contracts, credits: readCount(data.credits), shards: readCount(data.shards), gems: readCount(data.gems), owned: [...owned], loadout, ownedForms, forms, ownedGold, goldOn, xp, perks, beaten: [...new Set(beaten)] };
+  // Halloween (halloweenpass.js): Candy Corn earned in all, the nights won (their maps), and how
+  // many Battle Pass rewards were already given out.
+  const hw = { candy: readCount(data.hw?.candy), nights: Array.isArray(data.hw?.nights) ? data.hw.nights.filter((m) => NIGHT_REWARDS.some((n) => n.map === m)) : [], claimed: readCount(data.hw?.claimed) };
+  return { hw, contracts, credits: readCount(data.credits), shards: readCount(data.shards), gems: readCount(data.gems), owned: [...owned], loadout, ownedForms, forms, ownedGold, goldOn, xp, perks, beaten: [...new Set(beaten)] };
 }
 
 export const profile = {
@@ -93,6 +97,7 @@ export const profile = {
         xp: this.xp,
         perks: this.perks,
         contracts: this.contracts,
+        hw: { ...this.hw, candy: writeCount(this.hw.candy) },
       }),
     );
     for (const fn of this.listeners) fn(this);
@@ -168,6 +173,55 @@ export const profile = {
     if (!this.contracts.done.includes(key)) this.contracts.done.push(key);
     this.save();
     return true;
+  },
+
+  // ---- Halloween rewards and the Battle Pass (halloweenpass.js)
+
+  /** Remembers a Halloween night won (its map). */
+  winNight(map) {
+    if (!NIGHT_REWARDS.some((n) => n.map === map) || this.hw.nights.includes(map)) return;
+    this.hw.nights.push(map);
+    this.save();
+  },
+
+  /** Gives the towers for nights won and contracts finished that you don't own yet. Returns their names. */
+  halloweenRewards() {
+    const got = [];
+    const give = (t) => this.grant(t) && got.push(TOWERS[t].name);
+    for (const n of NIGHT_REWARDS) if (this.hw.nights.includes(n.map)) give(n.tower);
+    for (const [k, t] of Object.entries(CONTRACT_REWARDS)) if (this.contracts.done.includes(k)) give(t);
+    if (Object.keys(CONTRACT_REWARDS).every((k) => this.contracts.done.includes(k))) give(ALL_CONTRACTS_REWARD);
+    return got;
+  },
+
+  /** Adds Candy Corn and gives every Battle Pass reward it reaches. Returns the new rewards. */
+  addCandy(n) {
+    if (!(n > 0)) return [];
+    this.hw.candy += n;
+    const got = [];
+    while (this.hw.claimed < PASS.length && PASS[this.hw.claimed].at <= this.hw.candy) {
+      const r = PASS[this.hw.claimed++];
+      if (r.tower) this.grant(r.tower);
+      if (r.credits) this.credits += r.credits;
+      got.push(r);
+    }
+    this.save();
+    return got;
+  },
+
+  /** Battle Pass reward `r` (a PASS entry) is reached. */
+  passHas(r) {
+    return this.hw.candy >= r.at;
+  },
+
+  /** Event map `key` is unlocked by the Battle Pass for every mode. */
+  hasMap(key) {
+    return PASS.some((r) => r.map === key && this.passHas(r));
+  },
+
+  /** Halloween mode `key` (Infinite mode, Remix) is unlocked by the Battle Pass. */
+  hasMode(key) {
+    return PASS.some((r) => r.mode === key && this.passHas(r));
   },
 
   /** Gives a tower or alternate form for free (mode win rewards). Returns true if it was new. */

@@ -1392,6 +1392,7 @@ export const MAPS = {
   cemetery: {
     name: 'Lantern Hill Cemetery',
     event: 'halloween', // the Halloween Event's own map: only that event plays it (see pickableMap)
+    unlockable: true, // the Halloween Battle Pass can open it for every mode
     rating: 'medium',
     icon: '🎃',
     desc: 'Halloween night in a fenced graveyard. One long winding path past gravestones, a lantern-lit chapel and a pile of jack-o\'-lanterns.',
@@ -1412,6 +1413,7 @@ export const MAPS = {
   carnival: {
     name: 'Halloween Night 2',
     event: 'halloween', // the Halloween Event's second map (see DIFFICULTIES.halloween.maps)
+    unlockable: true, // the Halloween Battle Pass can open it for every mode
     rating: 'medium',
     icon: '🎡',
     desc: 'A spooky carnival at night. Enemies come out of the big circus tent, loop round past the Ferris wheel, cross their own path and run to a blue car.',
@@ -1434,6 +1436,7 @@ export const MAPS = {
   nightmare: {
     name: 'Halloween Night 3',
     event: 'halloween', // the Halloween Event's third map (see DIFFICULTIES.halloween.maps)
+    unlockable: true, // the Halloween Battle Pass can open it for every mode
     rating: 'hard',
     icon: '🌀',
     desc: 'A sandy crater at dusk. Enemies pour out of the Nightmare Realm portal, split into two twisting paths that cross each other four times, and meet again before the corrupted supercomputer.',
@@ -1481,6 +1484,7 @@ export const MAPS = {
   backrooms: {
     name: 'The Backrooms',
     event: 'liminal', // not on the map list: you get here by walking into Sunken Canyon's glitchy pit
+    unlockable: true, // the Halloween Battle Pass can open it for every mode
     rating: 'hard',
     icon: '🟨',
     desc: 'Endless yellow rooms that hum. The rooms shift every 25 waves.',
@@ -1516,7 +1520,8 @@ export const mapKeyOf = (key) => {
   return MAPS[b].random && seedOf(key) != null ? `${b}:${seedOf(key)}` : b;
 };
 /** `key` as a map any mode can play: an event's own map (MAPS[key].event) becomes the default map. */
-export const pickableMap = (key) => (mapDef(key).event ? DEFAULT_MAP : mapKeyOf(key));
+// `unlockable`: an event map the Halloween Battle Pass can open for every mode (the menus only offer it once it's unlocked).
+export const pickableMap = (key) => (mapDef(key).event && !mapDef(key).unlockable ? DEFAULT_MAP : mapKeyOf(key));
 /** Map `key`'s definition for its seed (random maps get that game's route). */
 export function seededDef(key) {
   const def = mapDef(key);

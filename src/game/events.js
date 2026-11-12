@@ -11,7 +11,8 @@ import { audio } from '../audio.js';
 import { NM_STATE } from '../nightmareworld.js';
 import { MODEL_SCALE } from '../scale.js';
 import { BOUNDS, path } from '../sim/path.js';
-import { CASTLE, laneOf, laneOz } from '../sim/map.js';
+import { CASTLE, laneOf, laneOz, mapKey } from '../sim/map.js';
+import { candyFor } from '../halloweenpass.js';
 import { ICE_NADE, ORDINAL } from './shared.js';
 
 // What an order from the wheel says on the map (the hub puts the same words in chat).
@@ -391,7 +392,11 @@ export class GameEvents {
           break;
         case 'contractDone': {
           const def = CONTRACTS[ev.key];
-          if (profile.finishContract(ev.key)) this.ui.toast(`🏆 Contract complete: ${def?.name ?? 'Contract'}!${ev.endless ? ' The Backrooms go on forever: how far can you get?' : ''}`, 4500);
+          if (profile.finishContract(ev.key)) {
+            this.ui.toast(`🏆 Contract complete: ${def?.name ?? 'Contract'}!${ev.endless ? ' The Backrooms go on forever: how far can you get?' : ''}`, 4500);
+            const got = profile.halloweenRewards();
+            if (got.length) setTimeout(() => this.ui.toast(`🎁 Halloween reward: ${got.join(', ')}!`, 4500), 4600);
+          }
           break;
         }
         case 'lmShift':
@@ -2032,6 +2037,7 @@ export class GameEvents {
             const shards = VERSUS.shards(place);
             profile.addCredits(credits);
             profile.addShards(shards);
+            this.halloweenPay(waves, win, false);
             this.ui.showVersusEnd(place, st.players.get(ev.winner)?.name ?? '?', win ? ev.wave : this.elimWave + 1, credits, shards, derrick);
             break;
           }
@@ -2050,6 +2056,8 @@ export class GameEvents {
           // Win rewards: a tower or variant (Easy, Medium, Hard, Void) or an upgrade perk (Insane).
           let unlocked = ev.win && diff.unlock && profile.grant(diff.unlock) ? (TOWERS[diff.unlock].altOf ? `${TOWERS[diff.unlock].name} (${TOWERS[TOWERS[diff.unlock].altOf].name} variant)` : TOWERS[diff.unlock].name) : null;
           if (ev.win && diff.perk && profile.grantPerk(diff.perk)) unlocked = PERK_NAMES[diff.perk];
+          if (ev.win && st.mode === 'halloween') profile.winNight(String(mapKey).split(':')[0]); // a Halloween night won
+          this.halloweenPay(ev.win ? st.wave.total : st.wave.index, ev.win, !!(diff.event || diff.hidden));
           if (opened && !unlocked) unlocked = `${DIFFICULTIES[opened].icon} ${DIFFICULTIES[opened].name} mode`; // every mode beaten: Hardcore is open
           else if (opened) unlocked += ` and ${DIFFICULTIES[opened].icon} ${DIFFICULTIES[opened].name} mode`;
           this.ui.showEnd(ev.win, st.wave.index + 1, this.session.mp, credits, shards, st.wave.total, st.mode, unlocked, gems, derrick);
@@ -2057,5 +2065,13 @@ export class GameEvents {
         }
       }
     }
+  }
+
+  /** Halloween: Candy Corn for a game that ended (Battle Pass rewards it reaches), and the night / contract towers earned. */
+  halloweenPay(waves, win, isEvent) {
+    const candy = candyFor(waves, win, isEvent);
+    const pass = profile.addCandy(candy);
+    const got = [...profile.halloweenRewards(), ...pass.map((r) => (r.tower ? TOWERS[r.tower].name : r.credits ? `${r.credits} credits` : r.map ? 'a new map' : r.name))];
+    if (candy) setTimeout(() => this.ui.toast(`🌽 +${candy} Candy Corn${got.length ? `. 🎁 Unlocked: ${got.join(', ')}!` : ''}`, 5000), 1200);
   }
 }
