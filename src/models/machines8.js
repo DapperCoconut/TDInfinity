@@ -27,7 +27,7 @@ function grp(parent, x, y, z, s = 1, ry = 0) {
 }
 
 /** A ribbed jack-o'-lantern `size` wide centred on (x, y, z), its carved face (material `lit`) toward +z. */
-function jack(k, size, x, y, z, lit) {
+export function jack(k, size, x, y, z, lit) {
   const R = size / 2;
   k.ball(R * 0.92, 0xef6c00, x, y, z, { sy: 0.85, seg: 14, rows: 10 });
   for (let i = 0; i < 8; i++) {
@@ -591,7 +591,7 @@ export function makeBalloonPal(level) {
 // ------------------------------------------------------------------ Scarecrow
 
 /** A small perched crow facing +z, about 1.4*s long. */
-function crow(k, x, y, z, s) {
+export function crow(k, x, y, z, s) {
   const BLACK = 0x1c1c22;
   k.ball(0.45 * s, BLACK, x, y + 0.6 * s, z, { sx: 0.9, sy: 0.85, sz: 1.4, seg: 10, rows: 7 });
   k.ball(0.32 * s, BLACK, x, y + 1.05 * s, z + 0.55 * s, { seg: 10, rows: 7 });
@@ -612,7 +612,7 @@ function bale(k, x, y, z, ry) {
 }
 
 /** A bunch of straw ends sticking out along direction (dx, dy) from (x, y, z). */
-function strawTuft(k, x, y, z, dx, dy) {
+export function strawTuft(k, x, y, z, dx, dy) {
   const a = Math.atan2(dx, dy);
   for (let i = 0; i < 5; i++) {
     const t = a + (i - 2) * 0.22;
