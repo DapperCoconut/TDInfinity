@@ -244,7 +244,7 @@ function railMount(h, key, o) {
 }
 
 /** Sits the gunner on a stool behind the mounted gun, hands forward on the handles. */
-function seatBehind(h, key, steel) {
+export function seatBehind(h, key, steel) {
   const k = wear(h, h.root, `${key}:seat`);
   k.cyl(0.18, 0.7, steel, 0, 0.35, -0.3, { seg: 10 });
   k.box(1.6, 0.3, 1.4, steel, 0, 0.82, -0.3, { r: 0.08 });
@@ -259,7 +259,7 @@ function seatBehind(h, key, steel) {
 }
 
 /** Both arms forward onto a mounted gun's handles. */
-function gripMount(h) {
+export function gripMount(h) {
   h.rightArm.rotation.set(-PI / 2 + 0.2, 0, 0.2);
   h.leftArm.rotation.set(-PI / 2 + 0.2, 0, -0.2);
   h.pose = { right: -PI / 2 + 0.2, left: -PI / 2 + 0.2, leftRecoil: 0.35 };
@@ -568,7 +568,7 @@ export function makeAccelerator(level) {
 // ------------------------------------------------------------------ Railgunner
 
 /** The cap with a glowing targeting monocle both railgunners wear (head space). */
-function monocleCap(k, col, lens) {
+export function monocleCap(k, col, lens) {
   cap(k, col);
   k.torus(0.17, 0.04, INK, -0.26, 0.7, 0.66, { seg: 14 });
   k.cyl(0.14, 0.04, lens, -0.26, 0.7, 0.67, { axis: 'z', seg: 14 });

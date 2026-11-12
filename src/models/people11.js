@@ -38,7 +38,7 @@ function megaphone(k, body, bell) {
 }
 
 /** A row of medals on ribbons (torso space, left side of the chest). */
-function medals(k, cols, x0 = 0.35, y = 0.42) {
+export function medals(k, cols, x0 = 0.35, y = 0.42) {
   cols.forEach((c, i) => {
     const x = x0 + i * 0.25;
     k.box(0.18, 0.2, 0.04, c, x, y + 0.14, 0.53);
@@ -48,7 +48,7 @@ function medals(k, cols, x0 = 0.35, y = 0.42) {
 }
 
 /** Gold shoulder boards with a fringe (torso space). */
-function epaulettes(k, col, fringe = true) {
+export function epaulettes(k, col, fringe = true) {
   for (const s of [-1, 1]) {
     k.box(0.55, 0.12, 0.9, col, s * 0.78, 1.04, 0, { r: 0.04 });
     k.cyl(0.07, 0.06, tone(col, 0.7), s * 0.62, 1.1, 0.25, { seg: 8 });

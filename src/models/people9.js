@@ -40,7 +40,7 @@ export function overhand(h, right = -2.6, left = -0.8, swing = 1.8) {
 }
 
 /** A spiky trap plate (gun space, spikes along -y): o.n spikes a side, o.len spike length, o.plate colour. */
-function spikePlate(k, o = {}) {
+export function spikePlate(k, o = {}) {
   const n = o.n ?? 3;
   const w = o.w ?? 0.95;
   k.box(w, 0.14, w, o.plate ?? WOOD, 0, -0.35, 0, { r: 0.04 });
@@ -55,7 +55,7 @@ function spikePlate(k, o = {}) {
 }
 
 /** A bear trap lying flat (any space; centred on x, y, z, jaws open across x). */
-function bearTrap(k, x, y, z, s = 1, col = 0x78909c) {
+export function bearTrap(k, x, y, z, s = 1, col = 0x78909c) {
   k.cyl(0.28 * s, 0.08, tone(col, 0.7), x, y, z, { seg: 14 }); // pan
   k.torus(0.62 * s, 0.05 * s, col, x, y, z, { rx: PI / 2, seg: 22 }); // frame ring
   for (const side of [-1, 1]) {
@@ -73,7 +73,7 @@ function bearTrap(k, x, y, z, s = 1, col = 0x78909c) {
 }
 
 /** A land mine (any space; a disc along y, its pressure plate up). o.r radius, o.body, o.stripe, o.light, o.handle. */
-function mine(k, x, y, z, o = {}) {
+export function mine(k, x, y, z, o = {}) {
   const r = o.r ?? 0.5;
   const body = o.body ?? OLIVE;
   const d = o.flip ? -1 : 1; // flip: the pressure plate faces -y
