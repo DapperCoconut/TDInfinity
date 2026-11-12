@@ -239,6 +239,9 @@ import { MODELS as PEOPLE_24 } from './models/people24.js';
 import { MODELS as HEROES_1 } from './models/heroes1.js';
 import { MODELS as HEROES_2 } from './models/heroes2.js';
 import { MODELS as HEROES_3 } from './models/heroes3.js';
+import { CROSS as CROSS_1 } from './models/cross1.js';
+import { CROSS as CROSS_2 } from './models/cross2.js';
+import { CROSS as CROSS_3 } from './models/cross3.js';
 import { declip } from './models/declip.js';
 export { declip } from './models/declip.js';
 export { fallenParts, hardParts, mediumParts, moltenParts } from './models/enemies-medium.js';
@@ -508,7 +511,8 @@ blitzUpgrades(TOWER_MODELS);
 // Crosspath towers (wave 8): every Top / Bottom combo type draws its form's model for that combo.
 for (const [type, def] of Object.entries(TOWERS)) {
   if (!def.cross) continue;
-  const make = CROSS_MODELS[def.branchOf ?? type];
+  const root = def.branchOf ?? type;
+  const make = CROSS_1[root] ?? CROSS_2[root] ?? CROSS_3[root] ?? CROSS_MODELS[root]; // rebuilt ones (models/cross1-3.js) first
   if (!make) continue;
   TOWER_MODELS[type] = (level) => {
     const [a, b] = def.combos[Math.min(level, def.combos.length - 1)];
