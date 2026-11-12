@@ -435,7 +435,7 @@ export function makeRaider(level) {
 // ------------------------------------------------------------------ Plunder
 
 /** A tricorn hat: a crown on a triangle of upturned brims, point to the front (head space). */
-function tricorn(k, col, trim, o = {}) {
+export function tricorn(k, col, trim, o = {}) {
   const y = 1.0;
   k.cyl(0.68, 0.5, col, 0, y + 0.22, -0.02, { seg: 20, r2: 0.62 });
   dome(k, 0.62, 0.22, col, 0, y + 0.47, -0.02);

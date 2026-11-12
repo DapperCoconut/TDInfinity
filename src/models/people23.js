@@ -26,7 +26,7 @@ import { limb } from './people15.js';
 import { cape, crossPatch } from './people18.js';
 import { flagPole } from './machines2.js';
 import { spinner } from './machines5.js';
-import { student } from '../newmodels/h.js';
+import { student } from './summons7.js';
 
 const PI = Math.PI;
 const RED = 0xd32f2f;
