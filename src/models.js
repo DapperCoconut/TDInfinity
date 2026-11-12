@@ -236,6 +236,7 @@ import { MODELS as PEOPLE_21 } from './models/people21.js';
 import { MODELS as PEOPLE_22 } from './models/people22.js';
 import { MODELS as PEOPLE_23 } from './models/people23.js';
 import { MODELS as PEOPLE_24 } from './models/people24.js';
+import { MODELS as PEOPLE_25 } from './models/people25.js';
 import { MODELS as HEROES_1 } from './models/heroes1.js';
 import { MODELS as HEROES_2 } from './models/heroes2.js';
 import { MODELS as HEROES_3 } from './models/heroes3.js';
@@ -503,8 +504,8 @@ export const TOWER_MODELS = {
   // Wave 10 (newmodels/i.js): last, so its knifer rework wins.
   ...TOWER_MODELS_I,
 };
-// The rebuilt people and heroes (models/people9-24.js, models/heroes1-3.js) win over the older builders above.
-for (const m of [PEOPLE_9, PEOPLE_10, PEOPLE_11, PEOPLE_12, PEOPLE_13, PEOPLE_14, PEOPLE_15, PEOPLE_16, PEOPLE_17, PEOPLE_18, PEOPLE_19, PEOPLE_20, PEOPLE_21, PEOPLE_22, PEOPLE_23, PEOPLE_24, HEROES_1, HEROES_2, HEROES_3]) Object.assign(TOWER_MODELS, m);
+// The rebuilt people and heroes (models/people9-25.js, models/heroes1-3.js) win over the older builders above.
+for (const m of [PEOPLE_9, PEOPLE_10, PEOPLE_11, PEOPLE_12, PEOPLE_13, PEOPLE_14, PEOPLE_15, PEOPLE_16, PEOPLE_17, PEOPLE_18, PEOPLE_19, PEOPLE_20, PEOPLE_21, PEOPLE_22, PEOPLE_23, PEOPLE_24, PEOPLE_25, HEROES_1, HEROES_2, HEROES_3]) Object.assign(TOWER_MODELS, m);
 // Hero towers (wave 9): per-level outfits, signature pieces and max-level effects (see blitzup.js).
 blitzUpgrades(TOWER_MODELS);
 
