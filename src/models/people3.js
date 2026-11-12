@@ -96,7 +96,7 @@ function armPlate(k, col) {
  * its own y, the barrel line). o: s (scale), len (barrel length), r (barrel ring), n, body,
  * barrel (a colour or a glow material), glow (glow trim). Adds the muzzle.
  */
-function minigun(h, arm, key, o = {}) {
+export function minigun(h, arm, key, o = {}) {
   const g = fist(arm, -1.9, o.s ?? 1.2);
   const k = wear(h, g, key);
   const body = o.body ?? GUNMETAL;
@@ -140,7 +140,7 @@ function minigun(h, arm, key, o = {}) {
 }
 
 /** A compact SMG (gun space): short body, folded stock, a mag, a front grip. o.glow: energy strip. Returns [tip, z]. */
-function smg(k, o = {}) {
+export function smg(k, o = {}) {
   const body = o.body ?? 0x263238;
   const U = UP;
   k.box(0.3, 1.1, 0.4, body, 0, -0.45, U, { r: 0.06 });
