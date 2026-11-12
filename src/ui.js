@@ -219,6 +219,28 @@ export class UI {
     });
   }
 
+  /**
+   * Last Laugh: the fence slot after the towers (key 7). `info`: { cost, on, poor }, or null to hide
+   * it. `onClick` picks fences up / puts them away.
+   */
+  fenceSlot(info, onClick) {
+    let b = this.el.hotbar.querySelector('.fence-slot');
+    if (!info) return b?.remove();
+    if (!b) {
+      b = document.createElement('button');
+      b.className = 'slot fence-slot';
+      b.title = 'Fence: blocks a tile, so enemies have to walk round it. Click a fence while placing to take it away.';
+      b.innerHTML = '<div class="fence-pic">🚧</div><div class="slot-key">7</div><div class="slot-count">Fence</div><div class="slot-cost"></div>';
+      this.el.hotbar.appendChild(b);
+    }
+    b.onclick = onClick;
+    const cost = `$${info.cost}`;
+    const el = b.querySelector('.slot-cost');
+    if (el.textContent !== cost) el.textContent = cost;
+    b.classList.toggle('active', !!info.on);
+    b.classList.toggle('poor', !!info.poor);
+  }
+
   updateHotbar(cash, counts, placing, off = false) {
     this.el.hotbar.classList.toggle('off', off);
     this.el.hotbar.querySelectorAll('[data-tower]').forEach((b) => {

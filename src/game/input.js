@@ -10,6 +10,7 @@ import { MODEL_SCALE, WORLD_SCALE } from '../scale.js';
 import { path } from '../sim/path.js';
 import { CLIFFS, MAP, canPlace, heightAt, laneOf, laneOz, mapInfo, placeFail } from '../sim/map.js';
 import { ABILITY_KEYS, CAM_PITCH_MIN, FPS_LOOK, innerRings, ringRadius } from './shared.js';
+import { FENCE } from './contract.js';
 
 export class GameInput {
 
@@ -42,6 +43,7 @@ export class GameInput {
       const slot = /^Digit([1-9])$/.exec(e.code);
       const type = slot && this.loadout[Number(slot[1]) - 1];
       if (type) this.placing === type ? this.cancelPlace() : this.beginPlace(type);
+      else if (slot && slot[1] === '7' && this.ct?.open && !this.versus) this.placing === FENCE ? this.cancelPlace() : this.beginFence(); // Last Laugh: fences
       if (e.code === 'Escape' || e.code === 'KeyQ') {
         this.ui.hideWheel();
         if (this.ordering) {
@@ -171,6 +173,8 @@ export class GameInput {
     // Beholder time bombs: clicking one defuses it (even while placing or aiming).
     const bomb = this.pickBomb();
     if (bomb != null) return this.session.send({ a: 'defuse', id: bomb });
+    if (this.placing === FENCE) return this.tryFence(); // Last Laugh fences
+    if (!this.placing && !this.aiming && !this.ordering && this.pickNpc()) return this.openWheel(); // Last Laugh: the little jester's wheel
     if (this.ordering) return this.tryOrder();
     if (this.placing) return this.tryPlace();
     if (this.aiming) return this.tryAim();
@@ -365,11 +369,13 @@ export class GameInput {
     }
     this.ghost = null;
     this.placing = null;
+    if (this.fenceGhost) this.fenceGhost.visible = false; // Last Laugh fences
     if (this.selectedId == null) this.ring.visible = false;
     if (this.cone) this.cone.visible = false;
   }
 
   updateGhost() {
+    if (this.placing === FENCE) return this.updateFenceGhost(); // Last Laugh fences
     if (this.ordering) {
       // "Move it…": a blue ring follows the mouse until the spot is clicked.
       this.pickGround();

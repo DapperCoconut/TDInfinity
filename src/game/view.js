@@ -17,6 +17,7 @@ export class GameView {
   reconcile(realDt, gdt) {
     const st = this.state;
     if (!!st.timeWorld !== !!this.timeShown) this.showTimeWorld(st.timeWorld);
+    this.syncContract(realDt); // Contracts (Last Laugh): the little jester, fences, the open court's route
     // Beholder time bombs stuck to towers.
     this.bombViews ??= new Map();
     const bombs = st.bombs ?? [];

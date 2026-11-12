@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { DIFFICULTIES, ENEMIES, GAME, PERK_NAMES, TOWERS, TRACKS, VERSUS, WAVES, difficulty, rootType } from '../config.js';
 import { profile } from '../profile.js';
+import { CONTRACTS } from '../lastlaugh.js';
 import { LEAP_TIME } from '../views.js';
 import { audio } from '../audio.js';
 import { NM_STATE } from '../nightmareworld.js';
@@ -371,6 +372,39 @@ export class GameEvents {
           audio.lob('grenadierAssaultBottom');
           break;
         }
+        case 'wheel': {
+          // Last Laugh: someone spun the little jester's wheel.
+          this.spinWheelFx(ev.win);
+          const who = ev.by === myId ? 'You' : st.players.get(ev.by)?.name ?? 'Someone';
+          if (ev.win) {
+            this.ui.toast(`🟨 YELLOW! ${who} hit the jackpot and the jester vanished. The final boss will be the JESTER!`, 4000);
+            audio.waveStart();
+          } else {
+            this.ui.toast(`🟥 Red! ${who} spun the wheel: ${ev.extra} more enemies are coming.`, 2200);
+            if (ev.open) setTimeout(() => this.ui.toast('🧭 The board is open! Enemies take the shortest way to the base now. Build fences (key 7) to make it longer.', 5000), 2300);
+          }
+          break;
+        }
+        case 'jesterBoost':
+          this.ui.toast('🃏 The JESTER is a quarter of the way down your path: your towers hit much harder and faster!', 3500);
+          audio.waveStart();
+          break;
+        case 'contractDone': {
+          const def = CONTRACTS[ev.key];
+          if (profile.finishContract(ev.key)) this.ui.toast(`🏆 Contract complete: ${def?.name ?? 'Contract'}!`, 4500);
+          break;
+        }
+        case 'dice': {
+          // Last Laugh: the JESTER's exploding dice.
+          const at = new THREE.Vector3(ev.x, 0.3, ev.z);
+          this.effects.pulse(at, ev.r, 0.45, 0xffffff);
+          this.effects.puff(at.clone().setY(1.5), 0xe040fb, 16, 0.6, 12);
+          this.effects.text(at.clone().setY(5), `🎲 ${ev.roll}`, '#ffffff', 2);
+          audio.boom(3);
+          break;
+        }
+        case 'courtRoute':
+          break; // (the route is redrawn by syncContract)
         case 'chaos':
           // Chaos Jester outcomes, Oddport revives, Kart Kid stars.
           this.effects.text(new THREE.Vector3(ev.x, 8 * MODEL_SCALE, ev.z), ev.text, ev.color, 2.6);

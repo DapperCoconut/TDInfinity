@@ -6,6 +6,7 @@ import { HC_CREATURES, hcParts } from '../newmodels/hc.js';
 import { hwParts } from '../newmodels/halloween.js';
 import { H2_CREATURES, hw2Parts } from '../newmodels/halloween2.js';
 import { N3_CREATURES, hw3Parts } from '../newmodels/halloween3.js';
+import { LL_CREATURES } from '../newmodels/jester.js';
 import { rigify } from '../rig.js';
 import { gaitFor, shapeEnemy } from '../visuals.js';
 import { boxGeo, makeHumanoid, part, setOpacity } from './kit.js';
@@ -135,6 +136,7 @@ const CREATURES = {
   ...HC_CREATURES, // Hardcore creatures (newmodels/hc.js)
   ...H2_CREATURES, // Halloween Night 2 creatures (newmodels/halloween2b.js)
   ...N3_CREATURES, // Halloween Night 3 creatures (newmodels/halloween3.js)
+  ...LL_CREATURES, // the Last Laugh contract's JESTER (newmodels/jester.js)
 };
 
 /** Builds the model for an enemy definition (Easy mode creatures, or a zombie). */

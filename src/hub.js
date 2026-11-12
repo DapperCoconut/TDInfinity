@@ -8,6 +8,7 @@
 //   client.close();                                       // that player disconnected
 import { DEFAULT_DIFFICULTY, DIFFICULTIES, GAME, eventMap, MP, PLAYER_COLORS, TOWERS, VERSUS } from './config.js';
 import { Sim } from './sim/sim.js';
+import { CONTRACTS } from './lastlaugh.js';
 import { VersusSim } from './sim/versus.js';
 import { setMap } from './sim/map.js';
 import { DEFAULT_MAP, MAPS, pickableMap } from './sim/maps.js';
@@ -159,7 +160,7 @@ export function createHub(timers = {}) {
       return bot ? { id, name: bot.name, color, loadout: null, evo: null } : { id, name: clients.get(id)?.name ?? '?', color, loadout: clients.get(id)?.loadout, evo: clients.get(id)?.evo ?? {} };
     });
     // Versus: everyone gets their own map and fights to outlast the others.
-    r.sim = r.mode === 'versus' ? new VersusSim(players, r.map) : new Sim(players, { mode: r.difficulty, map: r.map });
+    r.sim = r.mode === 'versus' ? new VersusSim(players, r.map) : new Sim(players, { mode: r.difficulty, map: r.map, contract: r.contract });
     r.tick = 0;
     r.later = [];
     // The bots' brains: each plays its own lane in Versus, the shared map in co-op.
@@ -258,6 +259,7 @@ export function createHub(timers = {}) {
         mode: m.mode === 'versus' ? 'versus' : 'coop',
         difficulty: DIFFICULTIES[m.difficulty] ? m.difficulty : DEFAULT_DIFFICULTY,
         map: eventMap(m.difficulty, m.map) === m.map ? m.map : pickableMap(m.map), // an event's own map only with that event
+        contract: CONTRACTS[m.contract] ? m.contract : null, // the host's accepted contract (lastlaugh.js), used if it fits the map
         seats: 0,
         bots: [],
         members: [],

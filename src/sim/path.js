@@ -148,6 +148,13 @@ export function setTimeWorld(on) {
   path.setRoutes(on ? [timePoints()] : PATH_ROUTES);
 }
 
+/** Re-lays the current map's routes (the Last Laugh contract's open court changes its one route). */
+export function setMapRoutes(list) {
+  PATH_ROUTES = list;
+  PATH_POINTS = list[0];
+  if (!path.time) path.setRoutes(list);
+}
+
 /** Lays out map `def` (from maps.js): its path and the player spawn. Leaves the time dimension. */
 export function setMapPath(def) {
   PATH_ROUTES = def.routes ?? [def.path];

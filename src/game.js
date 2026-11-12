@@ -28,6 +28,7 @@ import {
 import { baseKey } from './sim/maps.js';
 import { GameEvents } from './game/events.js';
 import { GameWheel } from './game/wheel.js';
+import { GameContract } from './game/contract.js';
 import { GameView } from './game/view.js';
 import { GameInput } from './game/input.js';
 import { GameTowers } from './game/towers.js';
@@ -560,6 +561,7 @@ export class GameClient {
     this.orbViews?.clear();
     for (const v of this.beamViews?.values() ?? []) v.dispose();
     this.beamViews?.clear();
+    this.clearContract(); // Last Laugh: the jester, fences, the wheel window
     this.lasering = null;
     this.effects.setVoid(0);
     this.ui.bossBar(null);
@@ -674,7 +676,7 @@ export class GameClient {
 
 // GameClient's methods are kept in several files (see the list at the top). This puts them all on
 // GameClient, just as if they were written inside the class.
-for (const part of [GameEvents, GameView, GameInput, GameTowers, GameWheel]) {
+for (const part of [GameEvents, GameView, GameInput, GameTowers, GameWheel, GameContract]) {
   const props = Object.getOwnPropertyDescriptors(part.prototype);
   delete props.constructor;
   Object.defineProperties(GameClient.prototype, props);

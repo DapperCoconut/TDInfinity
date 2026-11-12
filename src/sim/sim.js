@@ -48,13 +48,15 @@ import { SimDamage } from './parts/damage.js';
 import { SimWeapons4 } from './parts/weapons4.js';
 import { H2_FX, SimCarnival } from './parts/carnival.js';
 import { N3_FX, SimNightmare } from './parts/nightmare.js';
+import { SimContract } from './parts/contract.js';
 
 export class Sim {
   /**
    * @param {{id: string, name: string, color?: number, loadout?: string[], evo?: object}[]} players  (no loadout = any tower;
    *   evo: evolution level of each evolved tower they own, which gates its upgrades; none = no gate)
-   * @param {{vs?: object, lane?: number, idBase?: number}} opts  Versus: the VersusSim running this map,
-   *   which lane it is, and where its ids start (so ids are unique across every lane).
+   * @param {{vs?: object, lane?: number, idBase?: number, contract?: string}} opts  Versus: the VersusSim running this map,
+   *   which lane it is, and where its ids start (so ids are unique across every lane). contract: an
+   *   accepted contract (lastlaugh.js), used if it fits the map.
    */
   constructor(players, opts = {}) {
     this.vs = opts.vs ?? null;
@@ -124,6 +126,7 @@ export class Sim {
     this.lasers = []; // VOID's sky lasers charging up: { left }
     this.finaleT = 0; // VOID is dead: seconds of the finale before the game is won
     setTimeWorld(false);
+    this.initContract(opts.contract); // Contracts (lastlaugh.js): Last Laugh's wheel and open court
     this.events = []; // drained by whoever runs the sim
     this.tmp = {};
   }
@@ -148,6 +151,7 @@ export class Sim {
 
   tick(dt) {
     const w = this.wave;
+    if (this.contract) this.contractTick(dt); // Last Laugh: extra enemies from the wheel, the JESTER's boost
     if (this.vs) {
       // Versus: the VersusSim starts waves on its shared clock; the queue just keeps running.
       if (w.state === 'wave') {
@@ -298,6 +302,7 @@ export class Sim {
       if (HC_FX.has(e.type) && this.hcAttacks(e, def, dt) === 'gone') continue; // Hardcore (a Drop Pod may burst open)
       if (H2_FX.has(e.type)) this.carnivalMoves(e, def, dt); // Halloween Night 2
       if (N3_FX.has(e.type)) this.nightmareMoves(e, def, dt); // Halloween Night 3
+      if (def.jester) this.jesterMoves(e, def, dt); // Last Laugh contract's JESTER
       e.st = (e.stopKind === 'ice' ? ST_FROZEN : e.stopKind === 'stun' ? ST_STUNNED : e.stopKind === 'dance' ? ST_DANCE : e.stopKind === 'float' ? ST_FLOAT : 0) | (e.burn || e.taints?.has('burn') ? ST_BURNING : 0)
         | (e.slime ? ST_SLIMED : 0) | (e.chill ? ST_CHILLED : 0) | (e.hackEv || e.fraud ? ST_HACKED : 0) | (e.gas?.size || e.poison || e.taints?.has('radioactive') ? ST_GASSED : 0) | (e.confT > 0 ? ST_CONFUSED : 0)
         | (e.shockT > 0 ? ST_SHOCKED : 0) | (e.taints?.has('biohazard') ? ST_BIOHAZARD : 0)
@@ -753,6 +758,12 @@ export class Sim {
         this.checkSkip();
         return null;
       }
+      case 'spin': // Last Laugh: the little jester's wheel
+        return this.spinWheel(p);
+      case 'fence': // Last Laugh: a fence on an open court tile
+        return this.placeFence(p, m.c, m.i);
+      case 'unfence':
+        return this.removeFence(p, m.c, m.i);
       case 'konami': // cheat code: infinite cash for the rest of this game
         p.cash = Infinity;
         this.events.push({ k: 'konami', owner: pid });
@@ -829,6 +840,8 @@ export class Sim {
       e: [...this.enemies.values()].map((e) => [e.id, e.type, e.hp, e.maxHp, r2(e.dist), r2(e.speed), r2(e.lateral), e.st, e.route || 0]),
       // Insane mode: the time dimension, and Beholder time bombs [id, x, z, seconds left].
       ...(this.timeWorld ? { tw: 1 } : {}),
+      // Contract (Last Laugh): [key, spins, next spin's price, flags, jester x, z, route tile ids, fence tile ids, fence price].
+      ...(this.contract ? { ct: this.contractSnap() } : {}),
       ...(this.bombs.length ? { tb: this.bombs.map((b) => [b.id, r2(b.x), r2(b.z), r2(b.left)]) } : {}),
       // Void mode: how dark the world is (VOID, VOID Spirit), his marks [id, tower, x, z, left] and magic missiles [id, x, z].
       ...(this.voidLevel ? { vw: this.voidLevel } : {}),
@@ -846,7 +859,7 @@ export class Sim {
 
 // Sim's methods are kept in several files (see the list at the top). This puts them all on Sim,
 // just as if they were written inside the class.
-for (const part of [SimEnemyMoves1, SimEnemyMoves2, SimTowerHealth, SimWaves, SimTowerUpdate, SimWeapons1, SimWeapons2, SimWeapons3, SimUnits, SimAbilities, SimDamage, SimWeapons4, SimCarnival, SimNightmare]) {
+for (const part of [SimEnemyMoves1, SimEnemyMoves2, SimTowerHealth, SimWaves, SimTowerUpdate, SimWeapons1, SimWeapons2, SimWeapons3, SimUnits, SimAbilities, SimDamage, SimWeapons4, SimCarnival, SimNightmare, SimContract]) {
   const props = Object.getOwnPropertyDescriptors(part.prototype);
   delete props.constructor;
   Object.defineProperties(Sim.prototype, props);

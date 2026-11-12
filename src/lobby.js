@@ -6,7 +6,8 @@ import { profile } from './profile.js';
 import { abilityText, boostText, cannonText, damageText, detectText, dpsText, extrasText, gunText, rosterText, spawnerUnits, unitDps, unitName } from './stats.js';
 import { LocalSession, NetSession } from './session.js';
 import { DEFAULT_MAP, MAPS, mapDef, mapRating } from './sim/maps.js';
-import { enemyIcon } from './icons.js';
+import { enemyIcon, towerIcon } from './icons.js';
+import { CONTRACTS, CONTRACT_KEYS, contractFor } from './lastlaugh.js';
 import { setMap } from './sim/map.js';
 
 const $ = (id) => document.getElementById(id);
@@ -96,6 +97,13 @@ export class Lobby {
       const b = e.target.closest('[data-map]');
       if (b && this.room?.host === net.id) net.send({ type: 'room.map', map: b.dataset.map });
     });
+    // Contracts (Halloween panel): accept or drop one.
+    $('event-contracts').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-contract]');
+      if (!b) return;
+      profile.toggleContract(b.dataset.contract);
+      this.renderContracts();
+    });
     this.renderEvent();
     this.renderMap();
 
@@ -127,7 +135,7 @@ export class Lobby {
     // host's browser by its code (see net.js).
     $('room-create').onclick = () => {
       this.setBusy('Creating room…');
-      net.send({ type: 'room.create', name: $('room-name').value, isPublic: false, difficulty: this.playMode, map: this.playMap });
+      net.send({ type: 'room.create', name: $('room-name').value, isPublic: false, difficulty: this.playMode, map: this.playMap, contract: this.playContract });
     };
     const join = () => {
       this.setBusy('Joining room…');
@@ -291,7 +299,31 @@ export class Lobby {
   startSolo() {
     this.inGame = true;
     this.show(null);
-    this.client.start(new LocalSession(this.name, PLAYER_COLORS[0], this.playMode, profile.evoLevels(), this.playMap));
+    this.client.start(new LocalSession(this.name, PLAYER_COLORS[0], this.playMode, profile.evoLevels(), this.playMap, this.playContract));
+  }
+
+  /** The accepted contract the next game plays (one made for the picked map), or null. */
+  get playContract() {
+    return this.event ? null : contractFor(profile.contracts.accepted, this.playMap);
+  }
+
+  /** The Halloween panel's contracts: a card each with its picture, what to do, and Accept / Drop. */
+  renderContracts() {
+    const el = $('event-contracts');
+    if (this.event !== 'halloween') {
+      el.innerHTML = '';
+      return;
+    }
+    el.innerHTML = `<div class="pick-head"><b>📜</b> Contracts</div>${CONTRACT_KEYS.map((k) => {
+      const c = CONTRACTS[k];
+      const on = profile.contracts.accepted.includes(k);
+      const done = profile.contracts.done.includes(k);
+      return `<div class="contract-card${on ? ' on' : ''}" style="--c:${c.color}">
+        <img src="${towerIcon(c.pic)}" alt="" draggable="false">
+        <div class="cc-text"><h4>${c.icon} ${esc(c.name)}${done ? ' <span class="ev-won" title="You finished this contract">✔</span>' : ''}</h4><p>${esc(c.desc)}</p></div>
+        <button class="btn small" data-contract="${k}">${on ? 'Drop it' : done ? 'Play again' : 'Accept'}</button>
+      </div>`;
+    }).join('')}`;
   }
 
   /** A locked mode (Hardcore before every other mode is beaten): says what's missing. Returns true if locked. */
@@ -366,6 +398,7 @@ export class Lobby {
     $('pick-normal').classList.toggle('hidden', !!this.event);
     $('event-panel').classList.toggle('hidden', !this.event);
     if (this.event) fill($('event-banner'), `${this.event}|${this.eventSig}|${this.playMap}`, () => this.eventBanner(this.event, this.eventMap));
+    this.renderContracts();
   }
 
   /**

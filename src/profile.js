@@ -1,6 +1,7 @@
 // The player's saved progress: credits, Dimension Shards, Gems (Hardcore), the modes beaten, towers and alternate forms they own,
 // which form each tower uses, golden perks they own / have switched on, tower XP (tower levels and
 // evolution levels), and their loadout (hotbar). Stored in localStorage, so it is per browser.
+import { CONTRACTS } from './lastlaugh.js';
 import { BASE_TOWERS, DIFFICULTIES, EVENT_TOWERS, EVOLVED_TOWERS, GAME, HARDCORE_NEEDS, STARTER_TOWERS, TOWERS, TOWER_MAX_LEVEL, goldOf, xpKey, xpToNext } from './config.js';
 
 const KEY = 'td.profile';
@@ -65,7 +66,10 @@ function load() {
   // kept: a mode counts as beaten if you own what winning it gives (its tower or upgrade perk).
   let beaten = Array.isArray(data.beaten) ? data.beaten.filter((k) => DIFFICULTIES[k]) : null;
   if (!beaten) beaten = Object.keys(DIFFICULTIES).filter((k) => (DIFFICULTIES[k].unlock && (owned.has(DIFFICULTIES[k].unlock) || ownedForms.includes(DIFFICULTIES[k].unlock))) || (DIFFICULTIES[k].perk && perks.includes(DIFFICULTIES[k].perk)));
-  return { credits: readCount(data.credits), shards: readCount(data.shards), gems: readCount(data.gems), owned: [...owned], loadout, ownedForms, forms, ownedGold, goldOn, xp, perks, beaten: [...new Set(beaten)] };
+  // Contracts (lastlaugh.js): the ones accepted (they change the games they fit) and the ones finished.
+  const cl = (v) => (Array.isArray(v) ? [...new Set(v.filter((k) => CONTRACTS[k]))] : []);
+  const contracts = { accepted: cl(data.contracts?.accepted), done: cl(data.contracts?.done) };
+  return { contracts, credits: readCount(data.credits), shards: readCount(data.shards), gems: readCount(data.gems), owned: [...owned], loadout, ownedForms, forms, ownedGold, goldOn, xp, perks, beaten: [...new Set(beaten)] };
 }
 
 export const profile = {
@@ -88,6 +92,7 @@ export const profile = {
         goldOn: this.goldOn,
         xp: this.xp,
         perks: this.perks,
+        contracts: this.contracts,
       }),
     );
     for (const fn of this.listeners) fn(this);
@@ -144,6 +149,25 @@ export const profile = {
     this.owned.push(...added);
     this.save();
     return added.length;
+  },
+
+  /** Accepts contract `key`, or drops it if it's already accepted. */
+  toggleContract(key) {
+    if (!CONTRACTS[key]) return;
+    const a = this.contracts.accepted;
+    if (a.includes(key)) a.splice(a.indexOf(key), 1);
+    else a.push(key);
+    this.save();
+  },
+
+  /** A contract's goal was reached in a game: it's done (and no longer accepted). True if it was accepted. */
+  finishContract(key) {
+    const a = this.contracts.accepted;
+    if (!a.includes(key)) return false;
+    a.splice(a.indexOf(key), 1);
+    if (!this.contracts.done.includes(key)) this.contracts.done.push(key);
+    this.save();
+    return true;
   },
 
   /** Gives a tower or alternate form for free (mode win rewards). Returns true if it was new. */

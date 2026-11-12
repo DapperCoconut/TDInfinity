@@ -364,5 +364,16 @@ export function buildCourt(parent, { oz = 0, versus = false } = {}) {
     }
   });
   scene.userData.tick = (t) => animated.forEach((f) => f(t));
+  // Last Laugh contract: the board is open and the route changes (ids: col + row index * 40).
+  scene.userData.setRoute = (ids) => {
+    done = true;
+    tiles.forEach(([c, i], k) => tops.setColorAt(k, courtLight(c, i) ? LIGHT : DARK));
+    for (const id of ids) {
+      const k = slot.get(`${id % 40},${Math.floor(id / 40)}`);
+      if (k != null) tops.setColorAt(k, GOLD);
+    }
+    tops.instanceColor.needsUpdate = true;
+    for (const a of arrows) a.mesh.visible = false;
+  };
   return scene;
 }

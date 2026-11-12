@@ -437,6 +437,67 @@ export function courtTiles(seed) {
   return courtDefault();
 }
 
+/** The corner points of a walk over court tiles, from the portal (T1) to the castle gate (T41). */
+export function courtPoints(tiles) {
+  const cells = [[19, 0], ...tiles, [19, 40]];
+  const pts = [];
+  cells.forEach(([c, i], k) => {
+    const prev = cells[k - 1];
+    const next = cells[k + 1];
+    // Keep the ends and every corner.
+    if (!prev || !next || (prev[0] === c) !== (next[0] === c)) pts.push(courtCell(c, i + 1));
+  });
+  return pts;
+}
+
+/** A court tile's number (col + row index * 40). */
+export const courtId = (c, i) => i * 40 + c;
+
+/**
+ * The Last Laugh contract's open court: the shortest walk from T2 to T40 over floor tiles that
+ * aren't props or in `blocked` (a Set of courtId numbers), or null if the base is walled off.
+ * Ties go to the walk with the fewest turns, so the route doesn't zigzag. `dist` (optional,
+ * filled in) gets every tile's steps to T40.
+ */
+export function courtShortest(blocked, dist = null) {
+  const W = 40;
+  const H = COURT_GRID.length;
+  const props = new Set([...COURT_CRYSTALS, ...COURT_CARDS].map(([c, i]) => courtId(c, i)));
+  const open = (c, i) => c >= 0 && c < W && i >= 0 && i < H && courtTile(c, i) && !props.has(courtId(c, i)) && !blocked.has(courtId(c, i));
+  if (!open(...COURT_START) || !open(...COURT_END)) return null;
+  const d = dist ?? new Int16Array(W * H);
+  d.fill(-1);
+  const q = [COURT_END];
+  d[courtId(...COURT_END)] = 0;
+  for (let k = 0; k < q.length; k++) {
+    const [c, i] = q[k];
+    for (const [dc, di] of DIRS) {
+      const c2 = c + dc;
+      const i2 = i + di;
+      if (open(c2, i2) && d[courtId(c2, i2)] < 0) {
+        d[courtId(c2, i2)] = d[courtId(c, i)] + 1;
+        q.push([c2, i2]);
+      }
+    }
+  }
+  if (d[courtId(...COURT_START)] < 0) return null;
+  const out = [COURT_START];
+  let dir = 0; // heading south from the portal
+  for (;;) {
+    const [c, i] = out[out.length - 1];
+    const left = d[courtId(c, i)];
+    if (left === 0) return out;
+    const order = [dir, 0, 1, 2, 3];
+    const k = order.find((n) => {
+      const c2 = c + DIRS[n][0];
+      const i2 = i + DIRS[n][1];
+      return open(c2, i2) && d[courtId(c2, i2)] === left - 1;
+    });
+    dir = k;
+    out.push([c + DIRS[k][0], i + DIRS[k][1]]);
+  }
+}
+
 const courtCache = new Map();
 /**
  * Shattered Court's route for one game: from the portal (T1) over the tiles to the castle gate
@@ -446,14 +507,7 @@ export function courtRoute(seed) {
   if (courtCache.has(seed)) return courtCache.get(seed);
   const tiles = courtTiles(seed);
   const cells = [[19, 0], ...tiles, [19, 40]];
-  const pts = [];
-  cells.forEach(([c, i], k) => {
-    const prev = cells[k - 1];
-    const next = cells[k + 1];
-    // Keep the ends and every corner.
-    if (!prev || !next || (prev[0] === c) !== (next[0] === c)) pts.push(courtCell(c, i + 1));
-  });
-  const out = { tiles, path: pts };
+  const out = { tiles, path: courtPoints(tiles) };
   if (courtCache.size > 32) courtCache.clear();
   courtCache.set(seed, out);
   return out;

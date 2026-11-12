@@ -424,6 +424,7 @@ export class SimDamage {
     const ts0 = t ? TOWERS[t.type]?.levels[t.level] : null;
     const hm = this.hitMods; // a Mechanic turret's or an ability's own defPierce / shieldMult
     if (t && !this.dot && dmg > 0) dmg += buffOf(this.buffs, t.id).dmgAdd || 0; // Bugler Snare Drums, Slinger boosts
+    if (t && this.contract?.boost) dmg *= this.llBoost.dmg; // Last Laugh: the JESTER's boost
     const adapt = ENEMIES[e.type].adapt;
     if (adapt) this.adaptResist(e, kind, dmg, adapt); // Void Colossus: its resistance wears down
     if (kind === 'bullet' && e.bulletResist && !this.ignoresBulletResist(t)) dmg *= 1 - e.bulletResist; // Shielders, Drones...
@@ -579,6 +580,7 @@ export class SimDamage {
       for (const p of this.players.values()) p.cash += reward + this.cashBack(p, reward);
     }
     this.events.push({ k: 'kill', e: e.id, r: reward });
+    if (def.jester) this.jesterDown(); // Last Laugh: the contract is done
     if (e.bounty) {
       // Mobster Place Bounty: the player who placed it cashes in.
       const p = this.players.get(e.bounty.owner);

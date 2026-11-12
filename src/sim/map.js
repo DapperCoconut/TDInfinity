@@ -259,11 +259,15 @@ function gridGenerate() {
 function courtPlaceable(x, z) {
   const r = 1.6 * TOWER_SIZE * 0.8;
   for (const [dx, dz] of [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r], [r, r], [-r, r], [r, -r], [-r, -r]]) {
-    if (!courtTile(...courtIdx(x + dx, z + dz))) return false;
+    const [c, i] = courtIdx(x + dx, z + dz);
+    if (!courtTile(c, i) || COURT_FENCES.has(i * 40 + c)) return false;
   }
   const [c, i] = courtIdx(x, z);
   return !COURT_NOBUILD.some(([nc, ni]) => nc === c && ni === i);
 }
+
+/** Last Laugh contract: open court tiles with a fence on them (tile id col + row index * 40). The sim fills it; clients copy it from the snapshot. */
+export const COURT_FENCES = new Set();
 
 /** Shattered Court: may players walk at (x, z)? On the tiles, the portal cell and the castle's gate cell. */
 export function courtWalkable(x, z) {
@@ -917,6 +921,7 @@ export function setMap(key, reroll = false) {
     key = `${key}:${Math.floor(Math.random() * 2147483647)}`;
   }
   if (key === mapKey) return;
+  COURT_FENCES.clear();
   const def = seededDef(key);
   mapKey = key;
   mapInfo = def;

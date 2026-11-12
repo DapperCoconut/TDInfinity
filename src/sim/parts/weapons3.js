@@ -423,6 +423,7 @@ export class SimWeapons3 {
     this.removeUnitsOf(t.id);
     this.removeTrapsOf(t.id);
     this.events.push({ k, id: t.id, owner: t.owner, x: t.x, z: t.z, ...extra });
+    if (this.contract?.open) this.relayCourt(); // Last Laugh: its tiles are free to walk now
   }
 
   // ---------------------------------------------------------------- slows

@@ -8,16 +8,17 @@
 //   sendPos(p), remotePos     (multiplayer avatar sync)
 //   onError(msg)              (set by the client to show rejected actions)
 import { Sim, ST_CONFUSED } from './sim/sim.js';
-import { laneOz, setMap } from './sim/map.js';
-import { setTimeWorld } from './sim/path.js';
+import { COURT_FENCES, laneOz, setMap } from './sim/map.js';
+import { setMapRoutes, setTimeWorld } from './sim/path.js';
+import { courtPoints } from './sim/maps.js';
 import { TOWERS } from './config.js';
 
 export class LocalSession {
-  constructor(name, color, mode, evo = null, map = null) {
+  constructor(name, color, mode, evo = null, map = null, contract = null) {
     this.myId = 'local';
     this.mp = false;
     this.isHost = true;
-    this.sim = new Sim([{ id: this.myId, name, color, evo }], { mode, map });
+    this.sim = new Sim([{ id: this.myId, name, color, evo }], { mode, map, contract });
     this.state = this.sim; // the sim already has the state shape the client reads
     this.remotePos = new Map();
     this.onError = null;
@@ -90,6 +91,18 @@ export class NetSession {
     st.speed = s.sp;
     st.over = s.o;
     st.timeWorld = !!s.tw; // Insane mode: the Beholder's time dimension
+    st.ct = s.ct ?? null; // Last Laugh contract (see GameClient.contractInfo)
+    if (s.ct) {
+      // The open court: lay the host's route here too, and know where the fences are.
+      const route = s.ct[6];
+      const key = route ? route.join() : '';
+      if (key && key !== this.ctRoute) {
+        this.ctRoute = key;
+        setMapRoutes([courtPoints(route.map((id) => [id % 40, Math.floor(id / 40)]))]);
+      }
+      COURT_FENCES.clear();
+      for (const id of s.ct[7] ?? []) COURT_FENCES.add(id);
+    }
     st.bombs = (s.tb ?? []).map(([id, x, z, left]) => ({ id, x, z, left })); // Beholder time bombs
     st.voidLevel = s.vw ?? 0; // Void mode: how dark VOID has made the world
     st.marks = (s.vm ?? []).map(([id, tower, x, z, left]) => ({ id, tower, x, z, left })); // VOID's marks on towers

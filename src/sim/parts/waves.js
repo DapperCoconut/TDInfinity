@@ -79,6 +79,10 @@ export class SimWaves {
 
   /** A queued wave spawn: { type, hp?, mods? } (hp: the wave's exact health for it; mods: Hard mode modifiers). */
   spawnQueued(q) {
+    if (this.contract?.armed) {
+      const j = this.contractSwap(q); // Last Laugh: the JESTER comes instead of the final boss
+      if (j) return j;
+    }
     let mods = q.mods;
     // Hard mode: the first Fallen Squire / Giant / Shield / Angel of the game is a boss.
     if (ENEMIES[q.type]?.bossFirst && !this.bossSeen.has(q.type)) {
