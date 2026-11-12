@@ -10,6 +10,7 @@ import { enemyIcon, towerIcon } from './icons.js';
 import { ALL_CONTRACTS_REWARD, CONTRACT_REWARDS, NIGHT_REWARDS, PASS } from './halloweenpass.js';
 import { CONTRACTS, CONTRACT_KEYS, contractFor } from './lastlaugh.js';
 import { setMap } from './sim/map.js';
+import { CallGame, pickClass } from './call/game.js';
 
 const $ = (id) => document.getElementById(id);
 const hex = (n) => '#' + n.toString(16).padStart(6, '0');
@@ -330,6 +331,60 @@ export class Lobby {
     this.client.start(new LocalSession(this.name, PLAYER_COLORS[0], 'liminal', profile.evoLevels(), 'backrooms', null));
   }
 
+  /**
+   * Mysterious Call contract: you answered the phone by the cemetery chapel. You leave the game (and
+   * its room) and pick a class; then the haunted mansion (call/game.js) borrows the game's screen.
+   */
+  startCall() {
+    const mp = this.client.session?.mp;
+    this.client.stop();
+    if (mp) this.net.send({ type: 'room.leave' });
+    this.inGame = true;
+    this.show(null);
+    pickClass((cls) => {
+      const c = this.client;
+      c.call = new CallGame(c.renderer, c.canvas, cls, {
+        onEnd: (won, wave) => setTimeout(() => this.callEnd(won, wave), 1500),
+        onQuit: () => this.callLeave(),
+      });
+    }, () => this.callLeave());
+  }
+
+  /** The mansion is over: won (the contract is done) or lost. */
+  callEnd(won, wave) {
+    let got = [];
+    let first = false;
+    if (won) {
+      first = profile.finishContract('call');
+      if (first) got = profile.halloweenRewards();
+    }
+    const el = document.createElement('div');
+    el.id = 'call-pick';
+    el.innerHTML = `<h2>${won ? '🏆 You survived the mansion!' : '👻 The ghosts got you...'}</h2>
+      <p>${won ? (first ? 'Contract complete: Mysterious Call!' : 'You beat all 10 waves again.') : `You made it to wave ${wave}.`}</p>
+      ${got.length ? `<p>🎁 Halloween reward: ${got.map(esc).join(', ')}!</p>` : ''}
+      <div><button class="btn" data-again>📞 Play again</button> <button class="btn" data-menu>Back to the menu</button></div>`;
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('[data-again]')) {
+        el.remove();
+        this.callLeave(true);
+      } else if (e.target.closest('[data-menu]')) {
+        el.remove();
+        this.callLeave();
+      }
+    });
+    document.body.appendChild(el);
+  }
+
+  /** Leaves the mansion: back to the class pick (`again`) or to the menu. */
+  callLeave(again) {
+    this.client.call?.dispose();
+    this.client.call = null;
+    if (again) return this.startCall();
+    this.inGame = false;
+    this.show('title');
+  }
+
   startSolo() {
     this.inGame = true;
     this.show(null);
@@ -394,9 +449,6 @@ export class Lobby {
         <button class="btn small" data-contract="${k}">${on ? 'Drop it' : done ? 'Play again' : 'Accept'}</button>
       </div>`;
     });
-    // Contract 4 isn't built yet: a locked card for it.
-    if (!CONTRACTS.call) cards.push(`<div class="contract-card soon" style="--c:#37474f"><span class="cc-lock">📞</span>
-        <div class="cc-text"><h4>📞 Mysterious Call</h4><p>Coming soon: a phone rings in the cemetery church…</p></div>${this.hwReward(CONTRACT_REWARDS.call, 'Reward')}</div>`);
     return `${cards.join('')}<div class="hw-all">🏆 Finish every contract: ${this.hwReward(ALL_CONTRACTS_REWARD, 'All contracts')}</div>`;
   }
 

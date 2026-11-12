@@ -2914,3 +2914,205 @@ input:focus {
 .hw-tier .btn {
   margin-top: 4px;
 }
+
+/* Mysterious Call (Contract 4): the class pick and the first-person HUD (call/game.js) */
+#call-pick {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px;
+  background: radial-gradient(circle at 50% 40%, rgba(40, 30, 60, 0.92), rgba(5, 4, 10, 0.97));
+  color: #eee;
+  text-align: center;
+}
+#call-pick h2 {
+  margin: 0;
+  font-size: 34px;
+  color: #ffcc80;
+}
+#call-pick > p {
+  margin: 0;
+  max-width: 600px;
+  font-family: 'Segoe UI', Arial, sans-serif;
+}
+.call-classes {
+  display: grid;
+  grid-template-columns: repeat(3, 220px);
+  gap: 12px;
+}
+.call-class {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 12px 10px;
+  border: 3px solid var(--c);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+  transition: transform 0.1s, background 0.1s;
+}
+.call-class:hover {
+  transform: translateY(-3px);
+  background: color-mix(in srgb, var(--c) 30%, rgba(0, 0, 0, 0.6));
+}
+.call-class .cc-ic {
+  font-size: 34px;
+}
+.call-class b {
+  font-size: 18px;
+}
+.call-class small {
+  color: #ccc;
+}
+.call-class p {
+  margin: 4px 0 0;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #ddd;
+}
+#call-hud {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  color: #fff;
+  text-shadow: 0 1px 3px #000;
+}
+#call-hud .cross {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 1px #000;
+}
+#call-hud .cross.hit {
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  background: none;
+  border: 3px solid #ff5252;
+}
+#call-hud .bar {
+  position: relative;
+  height: 14px;
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+#call-hud .bar span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: #e53935;
+  transition: width 0.1s;
+}
+#call-hud .bar b {
+  position: relative;
+  display: block;
+  font-size: 11px;
+  line-height: 14px;
+  text-align: center;
+}
+.call-top {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 16px;
+  align-items: baseline;
+  font-size: 20px;
+}
+.call-top span {
+  font-size: 15px;
+}
+.call-boss {
+  position: absolute;
+  top: 48px;
+  left: 50%;
+  width: 420px;
+  transform: translateX(-50%);
+  text-align: center;
+}
+.call-boss.hidden {
+  display: none;
+}
+#call-hud .call-boss .bar span {
+  background: #7e57c2;
+}
+.call-me {
+  position: absolute;
+  left: 20px;
+  bottom: 60px;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.call-alt {
+  font-size: 14px;
+  color: #bbb;
+}
+.call-alt.ready {
+  color: #b9f6ca;
+}
+#call-hud .call-heat span {
+  background: #ffb300;
+}
+#call-hud .call-heat.hot span {
+  background: #ff3d00;
+}
+#call-hud .call-heat.hidden {
+  display: none;
+}
+.call-hurt {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background: radial-gradient(circle, transparent 50%, rgba(200, 0, 0, 0.8));
+}
+.call-msg {
+  position: absolute;
+  top: 28%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 30px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.call-msg.show {
+  opacity: 1;
+}
+.call-lock {
+  position: absolute;
+  left: 50%;
+  top: 60%;
+  transform: translateX(-50%);
+  padding: 14px 22px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.7);
+  font-size: 26px;
+  text-align: center;
+}
+.call-lock small {
+  display: block;
+  margin-top: 6px;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  font-size: 13px;
+  color: #ccc;
+}
+.call-lock.hidden {
+  display: none;
+}

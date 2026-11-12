@@ -257,7 +257,7 @@ await section('towers', () => {
 
 // ---------------------------------------------------------------- modes
 
-await section('modes', () => {
+await section('modes', async () => {
   if (!simMods) return 'skipped';
   const out = [];
   const LOADOUT = ['operator', 'plasma', 'sentry', 'turret', 'marksman'];
@@ -311,6 +311,20 @@ await section('modes', () => {
     } catch (err) {
       fail('modes', `${label} wave ${sim ? sim.wave.index + 1 : '?'}`, err);
     }
+  }
+  // Mysterious Call (call/): every class plays the haunted mansion to the end, and can't die.
+  if (picked('call')) {
+    const { CLASS_KEYS } = await import('../src/call/data.js');
+    const { playCall } = await import('./callbot.mjs');
+    for (const cls of CLASS_KEYS) {
+      try {
+        const r = playCall(cls, 1500, true);
+        if (!r.won) fail('modes', `call:${cls} is stuck on wave ${r.wave} after ${r.t} s`);
+      } catch (err) {
+        fail('modes', `call:${cls}`, err);
+      }
+    }
+    out.push(`call ${CLASS_KEYS.length} classes`);
   }
   return out.join(', ');
 });

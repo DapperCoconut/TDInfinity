@@ -414,6 +414,10 @@ export const audio = {
     });
     noise(1.4, { vol: 0.08, freq: 600 });
   },
+  /** An old phone ringing: a fast double bell (Mysterious Call). `vol`: 0..1, quieter far away. */
+  ring(vol = 1) {
+    for (let i = 0; i < 12; i++) tone(i % 2 ? 1250 : 1000, 0.05, { type: 'square', vol: 0.05 * vol, delay: i * 0.05 + (i >= 6 ? 0.2 : 0) });
+  },
   /** A breathy whisper (Halloween Jack's death). */
   whisper() {
     noise(1.8, { vol: 0.16, freq: 3200 });

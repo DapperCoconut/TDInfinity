@@ -73,6 +73,18 @@ export const CONTRACTS = {
     bless: { dmg: [0.15, 0.4], rate: [0.1, 0.3], range: [0.1, 0.3], cost: [0.1, 0.3] },
     curse: { dmg: [0.1, 0.3], rate: [0.1, 0.25], range: [0.1, 0.25], cost: [0.15, 0.4] },
   },
+  // Contract 4, Mysterious Call (2026-11-11 spec): on Lantern Hill Cemetery an old phone rings by
+  // the chapel door. Answer it and you are in a haunted mansion: a first-person game, 10 waves of
+  // ghosts, as one of 6 classes. Beat the 10th wave to finish. Its own little game: call/ (data.js
+  // has the classes, ghosts and waves), the phone in game/phone.js, started by lobby.startCall.
+  call: {
+    name: 'Mysterious Call',
+    icon: '📞',
+    color: '#4527a0',
+    phone: true, // not a map's contract: it puts a ringing phone on the cemetery map
+    pic: 'ghostbuster',
+    desc: 'Play on Lantern Hill Cemetery and answer the phone ringing by the chapel. Survive 10 waves of ghosts in the haunted mansion, in first person.',
+  },
 };
 export const CONTRACT_KEYS = Object.keys(CONTRACTS);
 

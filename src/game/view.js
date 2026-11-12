@@ -20,6 +20,7 @@ export class GameView {
     this.syncContract(realDt); // Contracts (Last Laugh): the little jester, fences, the open court's route
     this.syncInhuman(realDt); // Inhuman contract: the glitchy bot's black specks
     this.syncLiminal(realDt); // Liminal contract: Sunken Canyon's glitchy pit, the Backrooms shifting
+    this.syncPhone(realDt); // Mysterious Call contract: the phone ringing by the cemetery chapel
     // Beholder time bombs stuck to towers.
     this.bombViews ??= new Map();
     const bombs = st.bombs ?? [];

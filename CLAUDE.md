@@ -17,7 +17,7 @@ GitHub Pages by `.github/workflows/deploy.yml` on every push to `main`, so **a p
   - `build` bundles the game, tools and server: syntax errors, bad imports, missing exports
   - `data` waves name real enemies, modes name real bosses / unlocks / maps, no NaN in the tables
   - `towers` places all ~715 tower types in the real Sim, walks both upgrade paths, fires every ability
-  - `modes` plays every mode to its last wave with an unkillable base
+  - `modes` plays every mode to its last wave with an unkillable base (and Mysterious Call with every class)
   - `bots` three bots play the first minutes of every mode and Versus through the hub, taking orders
   - `models` builds every tower model at every level, every enemy, every summoned unit
   - Narrow it while iterating: `node tools/check.mjs towers scout` (0.2 s), `node tools/check.mjs modes void`,
@@ -63,6 +63,9 @@ Game logic (no three.js, no DOM; runs in the browser and in Node):
 - `src/hub.js` (rooms with seats and bot slots + one authoritative Sim; bots play through it),
   `src/net.js` (PeerJS; Quick Play finds or opens a game at the well-known codes `QEASY1`,
   `QEASY2`... with no server), `src/session.js` (solo vs net), `server/index.js` (optional WebSocket host).
+- `src/call/`: Mysterious Call (Halloween Contract 4), a small first-person ghost game of its own, not the
+  Sim: `data.js` (classes, ghosts, waves), `sim.js` (rules, runs in Node; `node tools/callbot.mjs` plays it),
+  `game.js` (drawing; it borrows GameClient's renderer through `client.call`). The phone is `src/game/phone.js`.
 - `src/bot/`: bot teammates. `bot.js` (the brain: walks to where it builds, buys what sees the
   most track, support where it boosts most, farms away from the track, abilities, skips, orders
   from the wheel), `loadouts.js` (six towers per mode and role), `value.js` (tower DPS, what the

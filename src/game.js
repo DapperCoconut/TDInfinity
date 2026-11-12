@@ -30,6 +30,7 @@ import { GameEvents } from './game/events.js';
 import { GameWheel } from './game/wheel.js';
 import { GameContract } from './game/contract.js';
 import { GameLiminal } from './game/liminal.js';
+import { GamePhone } from './game/phone.js';
 import { GameView } from './game/view.js';
 import { GameInput } from './game/input.js';
 import { GameTowers } from './game/towers.js';
@@ -564,6 +565,7 @@ export class GameClient {
     this.beamViews?.clear();
     this.clearContract(); // Last Laugh: the jester, fences, the wheel window
     this.clearLiminal(); // Liminal: the pit, the tower pick window
+    this.clearPhone(); // Mysterious Call: the ringing phone
     this.ihShown = false; // Inhuman: its warning shows again next game
     this.lasering = null;
     this.effects.setVoid(0);
@@ -587,6 +589,7 @@ export class GameClient {
 
   frame() {
     const realDt = Math.min(this.clock.getDelta(), 0.05);
+    if (this.call) return this.call.frame(); // Mysterious Call: the haunted mansion has the screen (call/game.js)
     const s = this.session;
     // Music: the menu tracks, or in a game the map's track (a boss's own while it's alive).
     if (!s || this.ended || s.state.over) audio.musicMenu(s ? 2 : 0);
@@ -679,7 +682,7 @@ export class GameClient {
 
 // GameClient's methods are kept in several files (see the list at the top). This puts them all on
 // GameClient, just as if they were written inside the class.
-for (const part of [GameEvents, GameView, GameInput, GameTowers, GameWheel, GameContract, GameLiminal]) {
+for (const part of [GameEvents, GameView, GameInput, GameTowers, GameWheel, GameContract, GameLiminal, GamePhone]) {
   const props = Object.getOwnPropertyDescriptors(part.prototype);
   delete props.constructor;
   Object.defineProperties(GameClient.prototype, props);
