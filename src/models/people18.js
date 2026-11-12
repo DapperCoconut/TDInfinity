@@ -52,7 +52,7 @@ function camo(k, cols, seed = 1) {
 }
 
 /** A cape from the shoulders, flaring out at the bottom (torso space). o: w, clasp, tatter (points along the hem). */
-function cape(k, col, len, o = {}) {
+export function cape(k, col, len, o = {}) {
   const w = o.w ?? 2.2;
   k.slab(w, len, 0.1, col, 0, 1 - len / 2, -0.62, { bw: 1.25, bz: -0.18 });
   k.box(w + 0.25, 0.3, 0.72, tone(col, 0.85), 0, 0.97, -0.26, { r: 0.12 }); // collar over the shoulders
@@ -68,7 +68,7 @@ function cape(k, col, len, o = {}) {
 }
 
 /** A gauntlet: armour plates down the forearm and a plated glove (arm space). */
-function gauntlet(k, col, trim) {
+export function gauntlet(k, col, trim) {
   k.box(1.08, 0.7, 1.08, col, 0, -1.25, 0, { r: 0.08 });
   k.box(1.12, 0.1, 1.12, trim, 0, -0.92, 0);
   k.box(1.06, 0.42, 1.06, tone(col, 0.8), 0, -1.82, 0, { r: 0.06 });
