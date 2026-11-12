@@ -84,6 +84,26 @@ export function driftFx(m, dt, t) {
   }
 } // seconds a Brawler's Reposition leap takes
 
+// Tower Blitz heroes don't fire bullets: each throws its own thing (effects.shot draws the shapes).
+// `color` left out: the model's own projectile or tracer color.
+const HERO_SHOTS = {
+  scoutWizard: { kind: 'orb' },
+  sparkBranch: { kind: 'seed', color: 0x8d6e63 },
+  mortarVoca: { kind: 'star' },
+  sniperQuinn: { kind: 'arrow' },
+  toxicnatorMaitake: { kind: 'flask', color: 0x76ff03 },
+  ghostbusterLure: { kind: 'wisp' },
+  soldierSparks: { kind: 'laser' },
+  flamethrowerDumpster: { kind: 'wisp', color: 0xff6d00 },
+  warlockWafer: { kind: 'cookie', color: 0xc68642 },
+  goldWafer: { kind: 'cookie', color: 0xffca28 },
+  rocketeerBunny: { kind: 'egg', color: 0xfff8e1 },
+  aviatorBeebo: { kind: 'scoop', color: 0xf8bbd0 },
+  marksmanFracture: { kind: 'gem' },
+  goldFracture: { kind: 'gem', color: 0xffd740 },
+};
+const _land = new THREE.Vector3();
+
 export class TowerView {
   constructor(scene, t, ownerColor) {
     this.scene = scene;
@@ -599,7 +619,19 @@ export class TowerView {
     const from = simPos(muzzle, new THREE.Vector3());
     // Bigger guns (slow, hard hitters) flash bigger.
     const big = m.tracerWidth ? 1.4 : 0.55 + this.kick * 0.22;
-    if (enemyView) {
+    const own = HERO_SHOTS[this.type];
+    if (enemyView && own) {
+      // Heroes throw their own thing (a gem, a cookie, a laser bolt), and the zombie flinches when it lands.
+      const color = own.color ?? m.projectile?.color ?? m.tracer ?? 0xffffff;
+      const time = effects.shot(from, (out) => enemyView.aimPoint(out), own.kind, color);
+      enemyView.aimPoint(tmp);
+      effects.later(time, () => {
+        enemyView.hit();
+        effects.sparks(enemyView.aimPoint(_land), color, 5, 9);
+      });
+      effects.flash(from, color, 0.5);
+      _dir.subVectors(tmp, from).normalize();
+    } else if (enemyView) {
       effects.tracer(from, enemyView.aimPoint(tmp), m.tracer ?? 0xffe066, m.tracerWidth);
       enemyView.hit();
       effects.flash(from, m.tracerWidth ? m.tracer : 0xfff3b0, big);

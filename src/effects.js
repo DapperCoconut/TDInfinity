@@ -869,6 +869,133 @@ export class Effects {
     });
   }
 
+  /**
+   * A hero's own shot (a gem, a cookie, a laser bolt...) flying from `from` to wherever `target()`
+   * is. `kind` picks the shape, `color` its main color. Returns the flight time, so the hit can
+   * wait for it to land.
+   */
+  shot(from, target, kind, color = 0xffffff) {
+    const end = target(new THREE.Vector3());
+    const dist = from.distanceTo(end);
+    const fast = kind === 'laser' || kind === 'bolt';
+    const time = Math.min(fast ? 0.18 : 0.4, Math.max(0.06, dist / ((fast ? 110 : 55) * K)));
+    const size = K;
+    const g = new THREE.Group();
+    const body = new THREE.Group();
+    g.add(body);
+    let spin = 0; // end over end
+    let roll = 0; // round and round, like a coin
+    let glow = 0; // a trail of light behind it
+    let arc = 0.6;
+    const L = litMat;
+    const G = glowMat;
+    if (kind === 'gem') {
+      // A crystal: a tall diamond made of two stacked, turned squares, with a bright core.
+      const c = G(color);
+      block(body, c, 0.5, 0.5, 0.5).rotation.set(0.62, 0, 0.78);
+      block(body, G(shade(color, 1.6)), 0.26, 0.9, 0.26);
+      block(body, L(shade(color, 0.7)), 0.34, 0.34, 0.34, 0, 0.42, 0).rotation.set(0.62, 0, 0.78);
+      block(body, L(shade(color, 0.7)), 0.3, 0.3, 0.3, 0, -0.4, 0).rotation.set(0.62, 0, 0.78);
+      spin = 14;
+      glow = color;
+    } else if (kind === 'laser' || kind === 'bolt') {
+      // A plasma bolt: a long white-hot core in a colored shell.
+      block(body, G(0xffffff), 0.12, 0.12, kind === 'laser' ? 1.6 : 1.1);
+      block(body, G(color), 0.24, 0.24, kind === 'laser' ? 1.3 : 0.9);
+      glow = color;
+      arc = 0;
+    } else if (kind === 'cookie') {
+      // A round cookie with chocolate chips, spinning flat like a frisbee.
+      block(body, L(color), 1, 0.2, 0.7);
+      block(body, L(color), 0.7, 0.2, 1);
+      block(body, L(shade(color, 1.2)), 0.86, 0.22, 0.86).rotation.y = 0.78;
+      const chip = L(0x3e2723);
+      for (const [x, z] of [[0.22, 0.15], [-0.25, 0.2], [0.05, -0.3], [-0.2, -0.12], [0.3, -0.18]]) block(body, chip, 0.13, 0.08, 0.13, x, 0.13, z);
+      roll = 16;
+      arc = 1.4;
+    } else if (kind === 'orb' || kind === 'star') {
+      // Magic: a glowing ball (or a twinkling star) with a white middle.
+      block(body, G(color), 0.6, 0.6, 0.6);
+      block(body, G(0xffffff), 0.32, 0.32, 0.32);
+      if (kind === 'star') {
+        block(body, G(color), 1.1, 0.16, 0.16);
+        block(body, G(color), 0.16, 1.1, 0.16);
+        block(body, G(color), 0.16, 0.16, 1.1);
+      }
+      spin = 9;
+      roll = 7;
+      glow = color;
+    } else if (kind === 'seed') {
+      block(body, L(color), 0.34, 0.34, 0.55);
+      block(body, L(shade(color, 0.7)), 0.24, 0.24, 0.3, 0, 0, 0.26);
+      block(body, L(0x7cb342), 0.08, 0.3, 0.12, 0, 0.2, -0.2); // a little sprout
+      spin = 12;
+      arc = 1;
+    } else if (kind === 'egg') {
+      block(body, L(color), 0.5, 0.7, 0.5);
+      block(body, L(color), 0.62, 0.42, 0.62, 0, -0.06, 0);
+      block(body, L(shade(color, 0.85)), 0.36, 0.2, 0.36, 0, 0.36, 0);
+      spin = 10;
+      arc = 1.6;
+    } else if (kind === 'scoop') {
+      // A scoop of ice cream with a cherry on top.
+      block(body, L(color), 0.62, 0.5, 0.62);
+      block(body, L(shade(color, 1.15)), 0.74, 0.18, 0.74, 0, -0.2, 0);
+      block(body, L(0xd50000), 0.16, 0.16, 0.16, 0, 0.32, 0);
+      roll = 8;
+      arc = 1.4;
+    } else if (kind === 'flask') {
+      // A round flask with a cork and glowing goo inside.
+      block(body, G(color), 0.5, 0.42, 0.5);
+      block(body, L(0xe0f7fa), 0.18, 0.3, 0.18, 0, 0.32, 0);
+      block(body, L(0x8d6e63), 0.14, 0.12, 0.14, 0, 0.5, 0);
+      spin = 11;
+      arc = 1.8;
+    } else if (kind === 'can') {
+      // A soda can: colored sides, silver ends.
+      block(body, L(color), 0.42, 0.62, 0.42);
+      block(body, L(0xcfd8dc), 0.38, 0.08, 0.38, 0, 0.34, 0);
+      block(body, L(0xcfd8dc), 0.38, 0.08, 0.38, 0, -0.34, 0);
+      block(body, L(0xffffff), 0.44, 0.14, 0.44);
+      spin = 12;
+      arc = 1.8;
+    } else if (kind === 'arrow') {
+      block(body, L(0x8d6e63), 0.1, 0.1, 1.7);
+      block(body, L(color), 0.22, 0.22, 0.34, 0, 0, 0.9); // the head
+      block(body, L(0xfafafa), 0.32, 0.04, 0.34, 0, 0, -0.72); // the feathers
+      block(body, L(0xfafafa), 0.04, 0.32, 0.34, 0, 0, -0.72);
+      arc = 0.4;
+    } else if (kind === 'wisp') {
+      // A little ghost flame: a glowing blob with a tail.
+      block(body, G(color), 0.5, 0.5, 0.5);
+      block(body, G(shade(color, 1.4)), 0.3, 0.3, 0.6, 0, 0.05, -0.35);
+      block(body, G(0xffffff), 0.12, 0.12, 0.12, 0.12, 0.08, 0.24);
+      block(body, G(0xffffff), 0.12, 0.12, 0.12, -0.12, 0.08, 0.24);
+      glow = color;
+      arc = 0.3;
+    } else {
+      block(body, L(color), 0.5, 0.5, 0.5);
+      spin = 10;
+    }
+    g.scale.setScalar(size);
+    g.position.copy(from);
+    const start = from.clone();
+    const prev = new THREE.Vector3();
+    const st = {};
+    this.add(g, time, null, (it, k, dt) => {
+      const f = 1 - k;
+      target(end);
+      prev.copy(g.position);
+      g.position.lerpVectors(start, end, f);
+      g.position.y += Math.sin(f * Math.PI) * arc * K * Math.min(1, dist / (8 * K));
+      if (g.position.distanceToSquared(prev) > 1e-6) g.lookAt(prev.lerp(g.position, 2));
+      body.rotation.x += spin * dt;
+      body.rotation.y += roll * dt;
+      if (glow && (st.flip = !st.flip)) this.halo.spawn(g.position.x, g.position.y, g.position.z, 0, 0, 0, 0.14, size * 0.7, 0.02, glow, glow, 0x000000, HALO);
+    });
+    return time;
+  }
+
   /** A thrown grenade or mortar shell flying in an arc from `from` to `to` over `time` seconds. */
   lob(from, to, time, { color = 0x33691e, size = 0.5, arc = 4, glowing = false } = {}) {
     size *= K;
