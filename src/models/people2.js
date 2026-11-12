@@ -34,7 +34,7 @@ export function beret(k, col, badge) {
 }
 
 /** Round wire glasses (head space). */
-function specs(k, frame, lens, y = 0.72) {
+export function specs(k, frame, lens, y = 0.72) {
   for (const s of [-1, 1]) {
     k.torus(0.15, 0.025, frame, s * 0.25, y, 0.63, { seg: 14 });
     k.cyl(0.14, 0.02, lens, s * 0.25, y, 0.62, { axis: 'z', seg: 14 });
