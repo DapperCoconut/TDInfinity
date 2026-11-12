@@ -128,7 +128,7 @@ function healTank(k, s, col, light) {
 }
 
 /** A stethoscope round the neck (torso space). */
-function stethoscope(k) {
+export function stethoscope(k) {
   for (const s of [-1, 1]) k.tube([[s * 0.42, 1.0, -0.1], [s * 0.5, 0.75, 0.5], [s * 0.3, 0.2, 0.6], [0.1, -0.2, 0.6]], 0.035, 0x37474f, { seg: 16, sides: 5 });
   k.cyl(0.14, 0.06, STEEL, 0.1, -0.3, 0.62, { axis: 'z', seg: 12 });
   k.cyl(0.1, 0.03, 0xcfd8dc, 0.1, -0.3, 0.66, { axis: 'z', seg: 12 });

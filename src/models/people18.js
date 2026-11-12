@@ -30,7 +30,7 @@ const _n = new THREE.Vector3();
 // ------------------------------------------------------------------ shared bits for this batch
 
 /** A round patch with a cross on it, facing +z turned by o.rx / o.ry (any space). */
-function crossPatch(k, x, y, z, r, bg, fg, o = {}) {
+export function crossPatch(k, x, y, z, r, bg, fg, o = {}) {
   _n.set(0, 0, 1).applyEuler(_e.set(o.rx ?? 0, o.ry ?? 0, 0));
   const rot = { rx: o.rx ?? 0, ry: o.ry ?? 0 };
   k.cyl(r, 0.04, bg, x, y, z, { axis: 'z', seg: 16, ...rot });

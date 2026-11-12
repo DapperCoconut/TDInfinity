@@ -110,7 +110,7 @@ function inHand(arm, y = -2.1) {
  * tie, black trousers. i: 0 fists, 1 PK (slingshot), 2 Reese (medic satchel), 3 Sticky
  * (blowpipe), 4 Nelly (boxing gloves).
  */
-function student(i) {
+export function student(i) {
   const h = makeHumanoid({ skin: 0xfafafa, shirt: 0x5e35b1, pants: 0x151515, arms: 0x5e35b1 });
   const M = mm(h);
   h.head.remove(h.head.children[0]);

@@ -23,7 +23,7 @@ const OLIVE = 0x33402a;
 // ------------------------------------------------------------------ shared bits for this batch
 
 /** A held thing in the right fist, built by `build(k)` (a kit in gun space). Returns the fist group. */
-function held(h, key, s, build) {
+export function held(h, key, s, build) {
   const g = fist(h.rightArm, -1.9, s);
   const k = wear(h, g, `${key}:held`);
   build(k);
@@ -32,7 +32,7 @@ function held(h, key, s, build) {
 }
 
 /** Arm raised back for an overhand throw (the old thrower pose these towers had). */
-function overhand(h, right = -2.6, left = -0.8, swing = 1.8) {
+export function overhand(h, right = -2.6, left = -0.8, swing = 1.8) {
   h.rightArm.rotation.set(right, 0, 0.2);
   h.leftArm.rotation.set(left, 0, -0.3);
   h.pose = { right, left, leftRecoil: 0 };
@@ -437,7 +437,7 @@ export const makeMineLayerBottom = (level) => makeMineLayer(level, true);
 // ------------------------------------------------------------------ Boomerang
 
 /** A boomerang in gun space: a flat V whose elbow is in the fist, its arms reaching up along -y. */
-function boomerang(k, wood, edge, o = {}) {
+export function boomerang(k, wood, edge, o = {}) {
   const L = o.len ?? 1.15;
   for (const s of [-1, 1]) {
     const a = s * 0.62;
