@@ -170,50 +170,20 @@ function grow(h, k) {
 /* ------------------------------------------------------------------ towers */
 
 const TIERS = {
-  // Wizard: apprentice lavender -> royal blue -> indigo with orbiting orbs -> a midnight archmage
-  // with a white-gold cape, star specks and a rune halo over the hat.
+  // Wizard, Chef and Yasuke: their outfits per level are built in models/people21.js; only the
+  // effects are added here.
+  // Wizard: orbiting orbs from Lv 3, a rune halo over the hat and a bit bigger at max level.
   scoutWizard(h, lv) {
-    if (lv >= 1) paint(h, { 0x7e57c2: 0xffb300 });
-    if (lv === 2) paint(h, { 0xb39ddb: 0x5c6bc0 });
-    if (lv === 3) paint(h, { 0xb39ddb: 0x3949ab });
-    if (lv >= 4) paint(h, { 0xb39ddb: 0x1a237e, 0x4527a0: 0xfff8e1 });
-    const { top } = anchors(h);
     if (lv >= 3) orbit(h, 3.6, 2.6, 3, 0.45, [0x80d8ff, 0xea80fc, 0xffeb3b], 1.1);
     if (lv >= 4) {
-      const star = mat(h, 0xfff59d, true);
-      for (const [x, y, z] of [[-0.6, 0.6, 0.73], [0.5, 1.3, 0.73], [-0.2, 1.9, 0.73], [0.7, 2.3, 0.73]]) part(h.body, boxGeo(0.18, 0.18, 0.05), star, x, y, z).rotation.z = Math.PI / 4;
+      const { top } = anchors(h);
       halo(h, top + 0.4, 1.3, 8, 0xe040fb, 0.25);
       grow(h, 1.1);
     }
   },
 
-  // Chef: line cook -> blue striped apron -> charcoal head-chef jacket -> gold epaulettes and a knife
-  // rack on the back -> a black-and-gold master chef with a gold toque and a ring of fire.
+  // Chef: a ring of fire and orbiting embers at max level.
   enforcerChef(h, lv) {
-    if (lv >= 1) {
-      const blue = mat(h, lv >= 4 ? 0xb71c1c : 0x1565c0);
-      const white = mat(h, 0xfafafa);
-      const ap = new THREE.Group();
-      ap.position.set(0, -0.35, 0.56);
-      h.torso.add(ap);
-      part(ap, boxGeo(1.7, 1.5, 0.06), blue, 0, 0, 0);
-      for (const x of [-0.45, 0, 0.45]) part(ap, boxGeo(0.1, 1.5, 0.07), white, x, 0, 0);
-    }
-    if (lv === 2 || lv === 3) paint(h, { 0xfafafa: 0x37474f }, [h.head]);
-    if (lv >= 4) paint(h, { 0xfafafa: 0x1a1a1a }, [h.head]);
-    if (lv >= 4) paint(h, { 0xfafafa: 0xffd54f });
-    if (lv >= 3) {
-      shoulderPads(h, 0xffc107, 0xff8f00, 1.15);
-      const rack = new THREE.Group();
-      rack.position.set(0, 0.2, -0.6);
-      h.torso.add(rack);
-      part(rack, boxGeo(1.6, 0.9, 0.2), mat(h, 0x5d4037), 0, 0, 0);
-      const steel = mat(h, 0xcfd8dc);
-      for (const x of [-0.5, 0, 0.5]) {
-        part(rack, boxGeo(0.22, 1.4, 0.06), steel, x, 0.9, -0.05);
-        part(rack, boxGeo(0.16, 0.4, 0.16), mat(h, 0x212121), x, 0.05, -0.05);
-      }
-    }
     if (lv >= 4) {
       groundRing(h, 2.6, 12, 0xff6d00, 0.6, 0.8, 0.85);
       orbit(h, 0.9, 2.5, 6, 0.3, [0xffab00, 0xff3d00], 1.4);
@@ -221,18 +191,8 @@ const TIERS = {
     }
   },
 
-  // Yasuke: crimson headband -> dark-rose dragon leggings -> a ring of embers at her feet -> a
-  // crimson dragon warrior wreathed in orbiting flames.
+  // Yasuke: a ring of embers at her feet from Lv 3, orbiting flames at max level.
   kniferYasuke(h, lv) {
-    const { head } = anchors(h);
-    if (lv >= 1 && head) {
-      const red = mat(h, 0xd50000);
-      part(h.head, boxGeo(head.max.x - head.min.x + 0.08, 0.22, head.max.z - head.min.z + 0.08), red, (head.min.x + head.max.x) / 2, head.min.y + (head.max.y - head.min.y) * 0.62, (head.min.z + head.max.z) / 2);
-      const tail = part(h.head, boxGeo(0.12, 0.8, 0.12), red, 0.3, head.min.y + 0.7, head.min.z - 0.15);
-      tail.rotation.x = -0.5;
-    }
-    if (lv >= 2) paint(h, { 0xf48fb1: 0xad1457 });
-    if (lv >= 4) paint(h, { 0x1a1a1a: 0x7f0000, 0x212121: 0x3e0000 });
     if (lv >= 3) groundRing(h, 2.3, 10, 0xff6d00, 0.8, 0.6, 0.8);
     if (lv >= 4) {
       orbit(h, 2.6, 2.4, 5, 0.32, [0xff9100, 0xffd600, 0xff3d00], 1.6);

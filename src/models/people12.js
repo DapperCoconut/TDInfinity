@@ -103,7 +103,7 @@ function partyLight(k, x, y, z, lens, tilt = 0.5) {
 }
 
 /** A wrapped present centred on (x, y, z), s across: box, ribbon cross and a two-loop bow. */
-function gift(k, x, y, z, s, col, ribbon, o = {}) {
+export function gift(k, x, y, z, s, col, ribbon, o = {}) {
   const ry = o.ry ?? 0;
   k.box(s, s, s, col, x, y, z, { r: Math.min(0.06, s * 0.08), ry });
   k.box(s + 0.03, s + 0.03, s * 0.16, ribbon, x, y, z, { ry });
@@ -125,7 +125,7 @@ function firework(k, x, y, z, r, len, col, nose) {
  * A jack-o'-lantern: a ribbed body, a curly stem with a leaf, and a carved face (triangle eyes and
  * nose, a jagged grin) that glows. Centred on (x, y, z), r across half, facing +z.
  */
-function pumpkin(k, x, y, z, r, lit, o = {}) {
+export function pumpkin(k, x, y, z, r, lit, o = {}) {
   const col = o.col ?? 0xef6c00;
   k.ball(r * 0.82, tone(col, 0.85), x, y, z, { sy: 0.85, seg: 14, rows: 9 });
   for (let i = 0; i < 8; i++) {

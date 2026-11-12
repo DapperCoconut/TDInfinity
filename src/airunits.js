@@ -13,7 +13,7 @@ const NAV_L = 0xff1744;
 const NAV_R = 0x00e676;
 
 /** A round body along z through stations [[z, r], ...] (tail to nose). o.sx / o.sy squash it. */
-function hullZ(k, st, col, x, y, o) {
+export function hullZ(k, st, col, x, y, o) {
   for (let i = 0; i < st.length - 1; i++) {
     const [z0, r0] = st[i];
     const [z1, r1] = st[i + 1];
@@ -70,7 +70,7 @@ function rotor(u, parent, x, y, z, R, dir) {
 }
 
 /** A missile along +z: body, seeker nose and tail fins. */
-function missile(k, x, y, z, len, r, col = 0xe0e0e0, nose = 0x9e9e9e) {
+export function missile(k, x, y, z, len, r, col = 0xe0e0e0, nose = 0x9e9e9e) {
   k.cyl(r, len * 0.8, col, x, y, z, { axis: 'z', seg: 8 });
   k.cyl(r, len * 0.2, nose, x, y, z + len * 0.5, { axis: 'z', r2: 0.01, seg: 8 });
   for (const rz of [0, PI / 2]) k.box(r * 4.4, 0.02, len * 0.18, tone(col, 0.6), x, y, z - len * 0.32, { rz });
@@ -78,7 +78,7 @@ function missile(k, x, y, z, len, r, col = 0xe0e0e0, nose = 0x9e9e9e) {
 }
 
 /** A bomb along +z with a coloured band and box fins. */
-function bomb(k, x, y, z, len, r, col = 0x263238, band = 0xfdd835) {
+export function bomb(k, x, y, z, len, r, col = 0x263238, band = 0xfdd835) {
   hullZ(k, [[z - len * 0.5, r * 0.35], [z - len * 0.2, r], [z + len * 0.2, r], [z + len * 0.5, r * 0.2]], col, x, y, { seg: 8 });
   k.cyl(r * 1.03, len * 0.08, band, x, y, z + len * 0.12, { axis: 'z', seg: 8 });
   for (const rz of [0, PI / 2]) k.box(r * 2.4, 0.03, len * 0.2, tone(col, 0.7), x, y, z - len * 0.42, { rz });

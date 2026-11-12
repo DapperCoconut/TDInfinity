@@ -34,7 +34,7 @@ function leatherCap(k, col, lens) {
 }
 
 /** A round flight helmet with a visor, ear pods and a ridge (head space). o.mask: an oxygen mask and hose. */
-function flightHelmet(k, col, visor, o = {}) {
+export function flightHelmet(k, col, visor, o = {}) {
   dome(k, 0.78, 0.68, col, 0, 0.8, 0);
   k.cyl(0.78, 0.6, col, 0, 0.5, 0, { seg: 22, open: true });
   band(k, 0.8, 0.08, 0.12, 2.0, tone(col, 0.8), 1.08); // visor housing
@@ -54,7 +54,7 @@ function flightHelmet(k, col, visor, o = {}) {
 }
 
 /** A sci-fi helmet: round shell, a wide glowing visor in a frame, ear pods and a crest (head space). */
-function visorHelmet(k, col, visor, o = {}) {
+export function visorHelmet(k, col, visor, o = {}) {
   dome(k, 0.77, 0.66, col, 0, 0.78, 0);
   k.cyl(0.77, 0.62, col, 0, 0.48, 0, { seg: 22, open: true });
   band(k, 0.79, 0.09, 0.42, 2.1, tone(col, 0.6), 0.74); // visor frame
@@ -68,7 +68,7 @@ function visorHelmet(k, col, visor, o = {}) {
 }
 
 /** A neck scarf with a knot and a tail blowing out to the side (torso space). */
-function scarf(k, col) {
+export function scarf(k, col) {
   k.torus(0.5, 0.15, col, 0, 1.0, 0.02, { rx: PI / 2, seg: 16 });
   k.ball(0.18, tone(col, 0.92), 0.32, 0.86, 0.52, { seg: 10, rows: 7 }); // knot
   k.tube([[0.34, 0.8, 0.58], [0.5, 0.3, 0.64], [0.62, -0.25, 0.6]], 0.11, col, { seg: 10, sides: 6 });
@@ -86,14 +86,14 @@ function jacket(k, col, fur, o = {}) {
 }
 
 /** A ground crew light wand held up in the fist (gun space: it points along -y). */
-function wand(k, light) {
+export function wand(k, light) {
   k.cyl(0.08, 0.36, INK, 0, -0.05, 0.1, { seg: 8 });
   k.cyl(0.11, 0.08, 0x37474f, 0, -0.26, 0.1, { seg: 10 });
   k.cyl(0.1, 1.0, light, 0, -0.8, 0.1, { seg: 10, r2: 0.06 });
 }
 
 /** A low bomb trolley on the pad with two bombs on it (root space; x, z: where it stands). */
-function bombCart(k, x, z, bomb = 0x37474f) {
+export function bombCart(k, x, z, bomb = 0x37474f) {
   k.box(1.7, 0.1, 1.0, 0x5d4037, x, 0.42, z, { r: 0.03 }); // bed
   for (const s of [-1, 1]) k.box(1.7, 0.16, 0.08, 0x4e342e, x, 0.52, z + s * 0.48); // side rails
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {

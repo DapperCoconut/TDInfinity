@@ -32,7 +32,7 @@ const _e = new THREE.Euler();
 const _Y = new THREE.Vector3(0, 1, 0);
 
 /** A tapered rod from point a (radius r1) to point b (radius r2), any direction (any space). */
-function limb(k, a, b, r1, r2, col, seg = 8) {
+export function limb(k, a, b, r1, r2, col, seg = 8) {
   _v.set(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
   const len = _v.length();
   _q.setFromUnitVectors(_Y, _v.normalize());
