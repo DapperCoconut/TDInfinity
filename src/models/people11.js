@@ -135,7 +135,7 @@ function stethoscope(k) {
 }
 
 /** A lab coat: long panels to the knees and lapels (torso space). */
-function labCoat(k, col, trim) {
+export function labCoat(k, col, trim) {
   k.slab(2.16, 1.5, 0.14, col, 0, -1.35, -0.58, { bw: 1.1 });
   for (const s of [-1, 1]) {
     k.slab(0.26, 1.5, 1.1, col, s * 1.0, -1.35, 0, { bw: 1.15 });

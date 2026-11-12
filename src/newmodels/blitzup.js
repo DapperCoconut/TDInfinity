@@ -200,28 +200,7 @@ const TIERS = {
     }
   },
 
-  // Maitake: plum witch -> moss-green dress -> glowing toadstools sprouting around her -> a night
-  // purple witch with a toxic glowing hem standing in a bubbling green puddle.
-  toxicnatorMaitake(h, lv) {
-    if (lv === 2 || lv === 3) paint(h, { 0x4a1942: 0x33691e, 0x38102f: 0x1b5e20 });
-    if (lv >= 4) paint(h, { 0x4a1942: 0x311b92, 0x38102f: 0x76ff03 });
-    if (lv >= 3) {
-      const caps = [0x76ff03, 0xd500f9, 0x00e5ff];
-      const stem = mat(h, 0xf1f8e9);
-      for (let i = 0; i < 6; i++) {
-        const a = (i / 6) * Math.PI * 2 + 0.3;
-        const r = 2.2 + (i % 2) * 0.4;
-        const s = 0.7 + (i % 3) * 0.2;
-        part(h.root, boxGeo(0.18 * s, 0.6 * s, 0.18 * s), stem, Math.cos(a) * r, 0.3 * s, Math.sin(a) * r);
-        part(h.root, boxGeo(0.6 * s, 0.25 * s, 0.6 * s), mat(h, caps[i % 3], true), Math.cos(a) * r, 0.65 * s, Math.sin(a) * r);
-      }
-    }
-    if (lv >= 4) {
-      part(h.root, boxGeo(3.6, 0.05, 3.6), mat(h, 0x64dd17, true, 0.55), 0, 0.04, 0);
-      orbit(h, 1.2, 1.9, 6, 0.28, [0x76ff03, 0xb2ff59], 0.9, 0.85);
-      grow(h, 1.1);
-    }
-  },
+  // Maitake, Scientist, Stella, Wafer and Sparks: their level looks are built into models/people22.js.
 
   // Branch: thorny sprout -> roots spreading over the ground -> bark-brown head with a crown of
   // leaves -> an ancient glowing tree spirit with leaves circling it.
@@ -255,25 +234,6 @@ const TIERS = {
     }
   },
 
-  // Scientist: lab coat -> goggles (base model) -> a yellow hazmat coat -> a dark mad-scientist
-  // coat with glowing circuit lines -> glowing hair, orbiting plasma balls and a lightning halo.
-  railgunnerScientist(h, lv) {
-    if (lv === 2) paint(h, { 0xfafafa: 0xfdd835 }, [h.head]);
-    if (lv >= 3) {
-      paint(h, { 0xfafafa: 0x263238 }, [h.head]);
-      const line = mat(h, 0xb388ff, true);
-      for (const x of [-0.75, 0.75]) part(h.torso, boxGeo(0.08, 1.6, 0.05), line, x, -0.2, 0.55);
-      part(h.torso, boxGeo(1.6, 0.08, 0.05), line, 0, -0.95, 0.55);
-    }
-    if (lv >= 4) {
-      paint(h, { 0xf48fb1: 0xea80fc }, [h.torso, h.rightArm, h.leftArm, h.rightLeg, h.leftLeg]);
-      const { top } = anchors(h);
-      orbit(h, 3.4, 2.5, 4, 0.5, [0xb388ff, 0x40c4ff], 1.3, 0.9);
-      halo(h, top + 0.35, 1.1, 6, 0x40c4ff, 0.3);
-      grow(h, 1.1);
-    }
-  },
-
   // Specter (ghost guitarist): white ghost -> music notes floating around -> purple scarf and glowing
   // notes -> on stage (base model) with a spotlight ring.
   commanderSpecter(h, lv) {
@@ -294,37 +254,6 @@ const TIERS = {
     if (lv >= 4) groundRing(h, 2.9, 14, 0xe040fb, 0.5, 0.9, 0.85);
   },
 
-  // Stella: painter -> palette (base) -> paint splats on her smock -> a pink beret and paint blobs
-  // floating around her -> a rainbow arch behind her.
-  engineerStella(h, lv) {
-    const splat = [0xe53935, 0x1e88e5, 0xfdd835, 0x43a047, 0x8e24aa];
-    if (lv >= 2) {
-      for (let i = 0; i < 5; i++) part(h.torso, boxGeo(0.32 + (i % 2) * 0.15, 0.28, 0.05), mat(h, splat[i]), -0.7 + i * 0.35, -0.8 + ((i * 0.53) % 1) * 1.4, 0.55);
-    }
-    if (lv >= 3) {
-      paint(h, { 0x111111: 0xd81b60 }, [h.torso, h.rightArm, h.leftArm, h.rightLeg, h.leftLeg]);
-      orbit(h, 3.2, 2.4, 5, 0.38, splat, 0.8);
-    }
-    if (lv >= 4) {
-      // A rainbow arch over her back, from shoulder height on one side to the other.
-      const arch = new THREE.Group();
-      arch.position.set(0, 2.4, -1.3);
-      h.root.add(arch);
-      const bands = [0xe53935, 0xff9800, 0xfdd835, 0x43a047, 0x1e88e5, 0x8e24aa];
-      bands.forEach((c, k) => {
-        const m = mat(h, c, true);
-        const r = 3.0 - k * 0.22;
-        const n = 12;
-        for (let i = 0; i <= n; i++) {
-          const a = (i / n) * Math.PI;
-          const s = part(arch, boxGeo(0.24, (Math.PI * r) / n + 0.06, 0.12), m, Math.cos(a) * r, Math.sin(a) * r, (i % 2) * 0.03); // staggered so joints don't z-fight
-          s.rotation.z = a;
-        }
-      });
-      grow(h, 1.08);
-    }
-  },
-
   // Byte: cream computer -> silver case -> sparks circling it -> a dark chrome case with purple
   // glowing trim and an electric ring on the ground.
   electroByte(h, lv) {
@@ -337,37 +266,6 @@ const TIERS = {
       part(h.body, boxGeo(box.max.x - box.min.x > 3 ? 2.6 : 2.2, 0.12, 0.12), trim, 0, 0.9, 1.25);
       groundRing(h, 2.6, 12, 0x7c4dff, 1.0, 0.8, 0.85);
       grow(h, 1.1);
-    }
-  },
-
-  // Wafer (gingerbread): plain cookie -> white icing cap -> candy-cane shoulder pads -> darker bake
-  // and a gumdrop crown -> a chocolate-dipped cookie with sprinkles circling it.
-  warlockWafer(h, lv) {
-    const { head } = anchors(h);
-    if (lv >= 1 && head) {
-      const icing = mat(h, 0xfffaf0);
-      const w = head.max.x - head.min.x + 0.1;
-      part(h.head, boxGeo(w, 0.25, head.max.z - head.min.z + 0.1), icing, (head.min.x + head.max.x) / 2, head.max.y - 0.1, (head.min.z + head.max.z) / 2);
-      for (const x of [-0.4, 0, 0.4]) part(h.head, boxGeo(0.2, 0.35, 0.1), icing, x, head.max.y - 0.35, head.max.z + 0.02);
-    }
-    if (lv >= 2) {
-      for (const arm of [h.rightArm, h.leftArm]) {
-        part(arm, boxGeo(1.2, 0.5, 1.2), mat(h, 0xfafafa), 0, -0.05, 0);
-        for (const y of [0.1, -0.2]) part(arm, boxGeo(1.24, 0.12, 1.24), mat(h, 0xe53935), 0, y, 0);
-      }
-    }
-    if (lv === 3) paint(h, { 0xe8a46a: 0xc8783c });
-    if (lv >= 4) paint(h, { 0xe8a46a: 0x6d3b1f });
-    if (lv >= 3 && head) {
-      const g = new THREE.Group();
-      g.position.set((head.min.x + head.max.x) / 2, head.max.y + 0.15, (head.min.z + head.max.z) / 2);
-      h.head.add(g);
-      const gum = [0xe53935, 0x43a047, 0xfdd835, 0x8e24aa, 0x1e88e5];
-      around(g, 5, 0.45, (i) => part(g, boxGeo(0.32, 0.38, 0.32), mat(h, gum[i]), 0, 0.12, 0));
-    }
-    if (lv >= 4) {
-      orbit(h, 2.4, 2.3, 10, 0.18, [0xff4081, 0x40c4ff, 0xffeb3b, 0x69f0ae], 1.0);
-      grow(h, 1.12);
     }
   },
 
@@ -388,24 +286,6 @@ const TIERS = {
       part(c, boxGeo(1.1, 0.25, 1.1), gold, 0, 0.12, 0);
       for (const [x, z] of [[-0.45, -0.45], [0.45, -0.45], [-0.45, 0.45], [0.45, 0.45]]) part(c, boxGeo(0.18, 0.35, 0.18), gold, x, 0.4, z);
       orbit(h, 3.0, 2.3, 4, 0.45, [0xb388ff, 0x18ffff], 0.9, 0.8);
-      grow(h, 1.1);
-    }
-  },
-
-  // Sparks: pink outfit -> violet stage outfit -> a star hair clip and sparkles -> a gold idol
-  // outfit with a halo of stars.
-  soldierSparks(h, lv) {
-    if (lv === 2 || lv === 3) paint(h, { 0xec407a: 0x7c4dff, 0x880e4f: 0x311b92, 0xc2185b: 0x651fff, 0xad1457: 0x4527a0 });
-    if (lv >= 4) paint(h, { 0xec407a: 0xffc400, 0x880e4f: 0xc51162, 0xc2185b: 0xffab00, 0xad1457: 0xff6d00 });
-    const { head, top } = anchors(h);
-    if (lv >= 3 && head) {
-      const star = mat(h, 0xffeb3b, true);
-      const s = part(h.head, boxGeo(0.45, 0.45, 0.1), star, head.max.x - 0.1, head.max.y - 0.4, 0.3);
-      s.rotation.z = Math.PI / 4;
-      orbit(h, 3.0, 2.3, 6, 0.22, [0xffeb3b, 0xff80ab, 0x80d8ff], 1.2);
-    }
-    if (lv >= 4) {
-      halo(h, top + 0.4, 1.2, 5, 0xffeb3b, 0.32);
       grow(h, 1.1);
     }
   },
