@@ -54,7 +54,7 @@ function torsoShag() {
 }
 
 /** A hood over the head, open at the face, with a stiff peak (head space). */
-function hood(k, col) {
+export function hood(k, col) {
   dome(k, 0.8, 0.62, col, 0, 0.86, -0.04);
   band(k, 0.76, 0.08, 0.95, 3.5, col, 0.42, { ry: PI }); // back and sides
   k.box(1.2, 0.12, 0.3, tone(col, 0.85), 0, 1.3, 0.6, { rx: 0.35, r: 0.04 }); // peak
@@ -63,7 +63,7 @@ function hood(k, col) {
 }
 
 /** Gloved hands with a sleeve band (so the rig sees the glove as a hand, not a held thing). */
-function hands(h, key, glov, sleeve, extra) {
+export function hands(h, key, glov, sleeve, extra) {
   for (const [arm, s] of [[h.rightArm, -1], [h.leftArm, 1]]) {
     const a = wear(h, arm, `${key}:arm${s}`);
     a.box(1.04, 0.16, 1.04, sleeve, 0, -0.7, 0, { r: 0.03 });
@@ -74,7 +74,7 @@ function hands(h, key, glov, sleeve, extra) {
 }
 
 /** Boots on both legs, plus whatever `extra` adds to each leg. */
-function feet(h, key, col, extra) {
+export function feet(h, key, col, extra) {
   for (const leg of [h.rightLeg, h.leftLeg]) {
     const b = wear(h, leg, `${key}:leg`);
     boots(b, col);

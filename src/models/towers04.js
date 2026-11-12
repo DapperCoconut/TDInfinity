@@ -1,8 +1,8 @@
 // Tower models, file 4 of 12. Each makeX(level) builds one tower's look.
 // In here:
-// (Classic Soldier, Ranger, Operator, Hunter: people2.js.) Machine Gunner, Frost Freezer,
+// (Classic Soldier, Ranger, Operator, Hunter: people2.js.) Machine Gunner,
 // Boomerang, Slime, Assassin, Brawler, Shotgunner Pump,
-// Shotgunner Combat, Frost Ranger.
+// Shotgunner Combat. (Freezer and Cryo Ranger: people6.js.)
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
 
 import * as THREE from 'three';
@@ -49,47 +49,6 @@ export function makeMachineGunner(level, bottom = false) {
   return h;
 }
 export const makeMachineGunnerBottom = (level) => makeMachineGunner(level, true);
-
-/**
- * Freezer (alternate Frost Trooper form): a polar explorer with a Frost Ray gun. Lv 2 adds a
- * fur-trimmed hood, Lv 3 a scarf and backpack tank, Lv 4 armor plates, Lv 5 a glowing ice bow-gun.
- */
-export function makeFrostFreezer(level) {
-  const coat = level >= 3 ? 0x1565c0 : 0x29b6f6;
-  const h = makeHumanoid({ skin: 0xf1c27d, shirt: coat, pants: 0x37474f, arms: coat, face: 'soldier' });
-  const { M } = h;
-  const ice = 0x80d8ff;
-  part(h.head, boxGeo(1.32, 0.45, 1.32), M(0xeceff1), 0, 1.3, 0); // wool cap
-  if (level >= 1) {
-    part(h.head, boxGeo(1.55, 1.5, 0.3), M(0xf5f5f5), 0, 0.65, -0.6); // fur hood back
-    part(h.head, boxGeo(1.3, 0.3, 0.12), M(0x263238), 0, 0.8, 0.63); // snow goggles
-    part(h.head, boxGeo(1.0, 0.2, 0.06), glow(h, 0x4fc3f7), 0, 0.8, 0.69);
-  }
-  if (level >= 2) {
-    part(h.torso, boxGeo(2.1, 0.45, 1.15), M(0xc62828), 0, 0.85, 0); // scarf
-    part(h.torso, boxGeo(1.2, 1.6, 0.7), M(0x90a4ae), 0, 0.1, -0.85); // coolant tank
-    part(h.torso, boxGeo(0.8, 0.8, 0.1), glow(h, ice), 0, 0.2, -1.22);
-  }
-  if (level >= 3) {
-    const plate = M(0xb0bec5);
-    part(h.torso, boxGeo(0.7, 0.5, 1.3), plate, -1.35, 0.95, 0);
-    part(h.torso, boxGeo(0.7, 0.5, 1.3), plate, 1.35, 0.95, 0);
-  }
-  const bow = level >= 4;
-  const gun = holdLongGun(h, bow ? 1.9 : 1.5, M(bow ? 0xe1f5fe : 0x546e7a));
-  part(gun, boxGeo(0.3, 0.5, 0.35), M(0x37474f), 0, 0.15, -0.05); // stock
-  part(gun, boxGeo(0.42, 0.42, 0.42), glow(h, ice), 0, -0.4, 0.25); // ice crystal core
-  if (bow) {
-    // Ice bow arms across the front of the gun.
-    const arm = glow(h, ice);
-    part(gun, boxGeo(2.2, 0.15, 0.15), arm, 0, -1.4, 0).rotation.y = 0;
-    part(gun, boxGeo(0.15, 0.15, 0.9), arm, -1.05, -1.4, -0.35);
-    part(gun, boxGeo(0.15, 0.15, 0.9), arm, 1.05, -1.4, -0.35);
-  }
-  h.tracer = ice;
-  h.tracerWidth = 0.22;
-  return h;
-}
 
 /**
  * Boomerang tower: an outback thrower in a wide-brim hat. The boomerang gets a steel edge at
@@ -336,52 +295,3 @@ export function makeShotgunnerCombat(level, bottom = false) {
 }
 export const makeShotgunnerCombatBottom = (level) => makeShotgunnerCombat(level, true);
 
-/**
- * Cryo Ranger (alternate Sleeter with two paths): a ranger in a white-and-blue snow suit
- * with a frosty rifle. Top path: sensor eye at Lv 3, nitrogen tanks at Lv 4, an Ice LMG at Lv 5.
- * Bottom path: grenade belt at Lv 3, an underbarrel M203 at Lv 4, heavy frost armor at Lv 5.
- */
-export function makeFrostRanger(level, bottom = false) {
-  const top = !bottom;
-  const suit = bottom && level >= 5 ? 0x0d47a1 : top && level >= 4 ? 0x01579b : 0xe3f2fd;
-  const h = makeHumanoid({ skin: 0xf1c27d, shirt: suit, pants: 0x546e7a, arms: suit, face: 'soldier' });
-  const { M } = h;
-  const ice = 0x80d8ff;
-  part(h.head, boxGeo(1.4, 0.4, 1.4), M(0x90caf9), 0, 1.25, 0); // knit cap
-  part(h.torso, boxGeo(2.1, 0.35, 1.12), M(0x37474f), 0, -0.85, 0); // belt
-  if (level >= 1) part(h.torso, boxGeo(2.1, 0.4, 1.15), M(0x4fc3f7), 0, 0.85, 0); // ice-blue scarf
-  if (top && level >= 3) {
-    // Stealth Sensor Eye: a glowing monocle scope over one eye
-    part(h.head, boxGeo(0.5, 0.5, 0.2), M(0x263238), 0.3, 0.75, 0.66);
-    part(h.head, boxGeo(0.32, 0.32, 0.06), glow(h, 0x18ffff), 0.3, 0.75, 0.77);
-  }
-  if (top && level >= 4) {
-    // Nitrogen tanks on its back
-    for (const x of [-0.4, 0.4]) part(h.torso, boxGeo(0.6, 1.6, 0.6), M(0xcfd8dc), x, 0.05, -0.85);
-    part(h.torso, boxGeo(1.2, 0.2, 0.1), glow(h, ice), 0, 0.5, -1.17);
-  }
-  if (bottom && level >= 3) {
-    // Grenade belt: frosty grenades across the chest
-    const strap = part(h.torso, boxGeo(0.35, 2.6, 1.14), M(0x455a64), 0, 0, 0);
-    strap.rotation.z = 0.75;
-    for (const [x, y] of [[-0.45, -0.35], [0, 0.05], [0.45, 0.45]]) part(h.torso, boxGeo(0.3, 0.3, 0.2), glow(h, ice), x, y, 0.62);
-  }
-  if (bottom && level >= 5) {
-    // Deep Freeze armor: icy shoulder plates and a helmet
-    helmet(h, 0x1a237e);
-    const plate = glow(h, 0xb3e5fc);
-    part(h.torso, boxGeo(0.7, 0.5, 1.3), plate, -1.35, 0.95, 0);
-    part(h.torso, boxGeo(0.7, 0.5, 1.3), plate, 1.35, 0.95, 0);
-  }
-  const lmg = top && level >= 5;
-  const gun = holdLongGun(h, lmg ? 2.1 : level >= 2 ? 1.8 : 1.5, M(lmg ? 0x37474f : 0x546e7a));
-  part(gun, boxGeo(0.3, 0.5, 0.35), M(0x37474f), 0, 0.15, -0.05); // stock
-  part(gun, boxGeo(0.38, 0.38, 0.38), glow(h, ice), 0, -0.45, 0.25); // ice cell
-  if (lmg) part(gun, boxGeo(0.6, 0.6, 0.6), M(0x263238), 0, -0.6, -0.45); // box magazine
-  if (bottom && level >= 4) part(gun, boxGeo(0.34, 0.9, 0.34), M(0x263238), 0, -0.9, -0.38); // M203 tube
-  h.tracer = ice;
-  h.tracerWidth = 0.16;
-  h.projectile = { color: 0x4fc3f7, size: 0.45, arc: 3.5, glowing: true };
-  return h;
-}
-export const makeFrostRangerBottom = (level) => makeFrostRanger(level, true);

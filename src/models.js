@@ -76,11 +76,17 @@ export {
   makeEnforcer, makePenetrator, makeSlammer, makeSniper, makeSniperClassic, makeSniperTactical, makeWarden,
 } from './models/people5.js';
 import {
-  makeFlamethrower, makeFrost, makeGrenadier, makeGrenadierAssault, makeGrenadierAssaultBottom,
-  makeGrenadierDemo, makeMortar, makePlasma, makePlasmaPulse, makeRocketeer, makeShotgunner,
+  makeFirecracker, makeFrost, makeFrostFreezer, makeFrostRanger, makeFrostRangerBottom, makeGrenadier, makeGrenadierAssault,
+  makeGrenadierAssaultBottom, makeGrenadierDemo,
+} from './models/people6.js';
+export {
+  makeFirecracker, makeFrost, makeFrostFreezer, makeFrostRanger, makeGrenadier, makeGrenadierAssault, makeGrenadierDemo,
+} from './models/people6.js';
+import {
+  makeFlamethrower, makeMortar, makePlasma, makePlasmaPulse, makeRocketeer, makeShotgunner,
 } from './models/towers02.js';
 export {
-  makeFlamethrower, makeFrost, makeGrenadier, makeGrenadierAssault, makeGrenadierDemo, makeMortar, makePlasma, makePlasmaPulse, makeRocketeer, makeShotgunner,
+  makeFlamethrower, makeMortar, makePlasma, makePlasmaPulse, makeRocketeer, makeShotgunner,
 } from './models/towers02.js';
 import {
   goldShine, makeAnarchist, makeCommander, makeCommanderClassic, makeDJ, makeDJBooth, makeGoldCommander,
@@ -90,11 +96,11 @@ export {
   makeGoldCommander,
 } from './models/towers03.js';
 import {
-  makeAssassin, makeBoomerang, makeBrawler, makeFrostFreezer, makeFrostRanger, makeFrostRangerBottom, makeMachineGunner, makeMachineGunnerBottom, makeShotgunnerCombat,
+  makeAssassin, makeBoomerang, makeBrawler, makeMachineGunner, makeMachineGunnerBottom, makeShotgunnerCombat,
   makeShotgunnerCombatBottom, makeShotgunnerPump, makeSlime,
 } from './models/towers04.js';
 export {
-  makeAssassin, makeBoomerang, makeBrawler, makeFrostFreezer, makeFrostRanger, makeMachineGunner, makeShotgunnerCombat, makeShotgunnerPump, makeSlime,
+  makeAssassin, makeBoomerang, makeBrawler, makeMachineGunner, makeShotgunnerCombat, makeShotgunnerPump, makeSlime,
 } from './models/towers04.js';
 import {
   makeEDJ, makeEDJBottom, makeElectro,
@@ -194,10 +200,10 @@ export {
   makeHelicopterModel, makeHelicopterPad, makeMilitaryBase, makeXwm,
 } from './models/machines7.js';
 import {
-  makeBubbleBlower, makeFirecracker, makePsychoSlayer, makeVoidTraitor,
+  makeBubbleBlower, makePsychoSlayer, makeVoidTraitor,
 } from './models/towers12.js';
 export {
-  makeBubbleBlower, makeFirecracker, makePsychoSlayer, makeVoidTraitor,
+  makeBubbleBlower, makePsychoSlayer, makeVoidTraitor,
 } from './models/towers12.js';
 import {
   makeBalloonPal, makeBuzzer, makeKartKid, makeNukiLauncher, makeScarecrow, makeTimeDilator,

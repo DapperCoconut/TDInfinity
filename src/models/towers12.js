@@ -1,7 +1,7 @@
 // Tower models, file 12 of 12. Each makeX(level) builds one tower's look.
 // In here:
-// Void Traitor, Psycho Slayer, Bubble Blower, Firecracker.
-// (MLRS: machines3.js; Darter: people1.js; Quarterer: people2.js; Penetrator: people5.js.)
+// Void Traitor, Psycho Slayer, Bubble Blower.
+// (MLRS: machines3.js; Darter: people1.js; Quarterer: people2.js; Penetrator: people5.js; Firecracker: people6.js.)
 // The list of which tower uses which builder is TOWER_MODELS in ../models.js.
 
 import * as THREE from 'three';
@@ -178,60 +178,6 @@ export function makeBubbleBlower(level) {
   h.muzzles = [muzzle];
   h.tracer = 0xb3e5fc;
   h.tracerWidth = 0.3;
-  return h;
-}
-
-/**
- * Firecracker (free alternate Grenadier form): a festive thrower with a red firecracker and a lit
- * fuse. Lv 1 a sash of firecrackers, Lv 2 a red cap, Lv 3 a second firecracker in the left hand,
- * Lv 4 goggles, Lv 5 a gold dragon-trim jacket and a bundle of three.
- */
-export function makeFirecracker(level) {
-  const finale = level >= 5;
-  const shirt = finale ? 0xb71c1c : 0xe53935;
-  const h = makeHumanoid({ skin: 0xe0ac69, shirt, pants: 0x212121, arms: shirt, face: 'soldier' });
-  const { M } = h;
-  const shard = glow(h, 0xb388ff);
-  const red = M(0xd50000);
-  const gold = M(0xffc107);
-  const fuse = glow(h, 0xffeb3b);
-  part(h.torso, boxGeo(0.35, 0.35, 0.06), shard, 0.55, 0.45, 0.52);
-  const cracker = (parent, x, y) => {
-    part(parent, boxGeo(0.28, 0.75, 0.28), red, x, y, 0);
-    part(parent, boxGeo(0.3, 0.1, 0.3), gold, x, y + 0.3, 0);
-    part(parent, boxGeo(0.05, 0.3, 0.05), fuse, x, y - 0.5, 0);
-  };
-  if (level >= 1) {
-    const sash = part(h.torso, boxGeo(0.3, 2.5, 1.12), gold, 0, 0, 0);
-    sash.rotation.z = -0.7;
-    for (const t of [-0.6, 0, 0.6]) part(h.torso, boxGeo(0.22, 0.45, 0.22), red, t * 0.75, t * 0.8, 0.65);
-  }
-  if (level >= 2) {
-    part(h.head, boxGeo(1.32, 0.45, 1.32), M(0xc62828), 0, 1.3, 0); // cap
-    part(h.head, boxGeo(1.1, 0.12, 0.7), M(0xc62828), 0, 1.1, 0.85);
-    part(h.head, boxGeo(0.3, 0.3, 0.06), shard, 0, 1.32, 0.67);
-  }
-  if (level >= 4) {
-    part(h.head, boxGeo(1.25, 0.28, 0.2), M(0x263238), 0, 0.72, 0.68);
-    for (const x of [-0.27, 0.27]) part(h.head, boxGeo(0.34, 0.2, 0.05), M(0xffb74d), x, 0.72, 0.79);
-  }
-  if (finale) {
-    part(h.torso, boxGeo(2.15, 0.2, 1.15), gold, 0, 0.9, 0); // gold collar
-    part(h.torso, boxGeo(2.15, 0.15, 1.15), gold, 0, -0.95, 0); // gold hem
-    part(h.torso, boxGeo(0.5, 1.2, 0.05), gold, -0.45, 0.1, 0.58); // dragon trim
-  }
-  if (level >= 3) cracker(h.leftArm, 0, -2.3); // Double Pack: a second one ready
-  const hand = new THREE.Group();
-  hand.position.set(0, -2.1, 0);
-  h.rightArm.add(hand);
-  if (finale) for (const x of [-0.3, 0, 0.3]) cracker(hand, x, -0.2);
-  else cracker(hand, 0, -0.2);
-  setMuzzle(h, hand, 0, -0.3, 0);
-  h.rightArm.rotation.set(-2.8, 0, 0.2);
-  h.leftArm.rotation.set(-1.0, 0, -0.3);
-  h.pose = { right: -2.8, left: -1.0, leftRecoil: 0 };
-  h.swing = 1.9;
-  h.projectile = { color: 0xd50000, size: 0.35, arc: 3 };
   return h;
 }
 
