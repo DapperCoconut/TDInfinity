@@ -132,7 +132,7 @@ export function riotHelmet(k, col, visor) {
  * A riot shield on the left arm (arm space): a curved slab facing along the arm, a window and a
  * stripe. `mark` is drawn in the middle (a material or colour, or null).
  */
-function riotShield(k, col, window, stripe, mark) {
+export function riotShield(k, col, window, stripe, mark) {
   k.box(2.0, 0.14, 3.0, col, 0, -1.8, 0.6, { r: 0.05, rx: 0.1 });
   k.box(2.1, 0.18, 0.12, INK, 0, -1.8, -0.9, { rx: 0.1 }); // rims
   k.box(2.1, 0.18, 0.12, INK, 0, -1.65, 2.1, { rx: 0.1 });
@@ -143,7 +143,7 @@ function riotShield(k, col, window, stripe, mark) {
 }
 
 /** A baton on the fist: rubber grip, side handle (tonfa) and a shaft of `len` (gun space). Returns the tip y. */
-function baton(k, len, col, o = {}) {
+export function baton(k, len, col, o = {}) {
   const r = o.r ?? 0.15;
   k.cyl(r + 0.03, 0.62, 0x1f1f1f, 0, -0.15, 0, { seg: 10 }); // grip
   for (let i = 0; i < 4; i++) k.torus(r + 0.03, 0.02, INK, 0, 0.08 - i * 0.14, 0, { rx: PI / 2, seg: 10 });

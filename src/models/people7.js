@@ -53,7 +53,7 @@ function rocket(k, x, y, z, r, len, body, nose) {
 }
 
 /** A frame pack on the back holding `n` spare rockets nose up (torso space). */
-function rocketPack(k, n, body, nose, col = 0x4e342e) {
+export function rocketPack(k, n, body, nose, col = 0x4e342e) {
   k.box(1.5, 1.5, 0.22, col, 0, -0.1, -0.66, { r: 0.05 });
   k.box(1.6, 0.18, 0.7, INK, 0, -0.85, -0.95, { r: 0.04 }); // shelf
   for (const s of [-1, 1]) k.box(0.12, 1.7, 0.12, INK, s * 0.75, -0.05, -1.2); // frame rails
