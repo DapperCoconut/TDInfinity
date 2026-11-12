@@ -94,7 +94,7 @@ const HERO_SHOTS = {
   toxicnatorMaitake: { kind: 'flask', color: 0x76ff03 },
   ghostbusterLure: { kind: 'wisp' },
   soldierSparks: { kind: 'laser' },
-  flamethrowerDumpster: { kind: 'wisp', color: 0xff6d00 },
+  flamethrowerDumpster: { kind: 'flames' }, // a short blast of fire, like a flamethrower
   warlockWafer: { kind: 'cookie', color: 0xc68642 },
   goldWafer: { kind: 'cookie', color: 0xffca28 },
   rocketeerBunny: { kind: 'egg', color: 0xfff8e1 },
@@ -620,7 +620,13 @@ export class TowerView {
     // Bigger guns (slow, hard hitters) flash bigger.
     const big = m.tracerWidth ? 1.4 : 0.55 + this.kick * 0.22;
     const own = HERO_SHOTS[this.type];
-    if (enemyView && own) {
+    if (enemyView && own?.kind === 'flames') {
+      enemyView.aimPoint(tmp);
+      const reach = Math.hypot(tmp.x - from.x, tmp.z - from.z);
+      effects.flames(from, Math.atan2(tmp.x - from.x, tmp.z - from.z), reach, 0.22);
+      enemyView.hit();
+      _dir.subVectors(tmp, from).normalize();
+    } else if (enemyView && own) {
       // Heroes throw their own thing (a gem, a cookie, a laser bolt), and the zombie flinches when it lands.
       const color = own.color ?? m.projectile?.color ?? m.tracer ?? 0xffffff;
       const time = effects.shot(from, (out) => enemyView.aimPoint(out), own.kind, color);
