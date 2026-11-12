@@ -113,7 +113,7 @@ export function gift(k, x, y, z, s, col, ribbon, o = {}) {
 }
 
 /** A firework rocket standing on y: body, a band, a cone nose and a stick below (any space). */
-function firework(k, x, y, z, r, len, col, nose) {
+export function firework(k, x, y, z, r, len, col, nose) {
   k.cyl(0.025, len * 0.8, 0x8d6e63, x + r * 0.9, y - len * 0.3, z, { seg: 5 }); // stick
   k.cyl(r, len, col, x, y + len / 2, z, { seg: 10 });
   k.cyl(r * 1.04, len * 0.14, 0xfafafa, x, y + len * 0.7, z, { seg: 10 });
