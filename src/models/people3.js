@@ -597,4 +597,4 @@ export function makeJuggernaut(level, bottom = false) {
 export const makeJuggernautBottom = (level) => makeJuggernaut(level, true);
 
 // Shared with later batches (people17).
-export { ammoPack, armPlate, core, legs, minigun };
+export { ammoPack, armPlate, core, legs };
