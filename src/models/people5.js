@@ -143,7 +143,7 @@ export function riotShield(k, col, window, stripe, mark) {
 }
 
 /** A baton on the fist: rubber grip, side handle (tonfa) and a shaft of `len` (gun space). Returns the tip y. */
-function baton(k, len, col, o = {}) {
+export function baton(k, len, col, o = {}) {
   const r = o.r ?? 0.15;
   k.cyl(r + 0.03, 0.62, 0x1f1f1f, 0, -0.15, 0, { seg: 10 }); // grip
   for (let i = 0; i < 4; i++) k.torus(r + 0.03, 0.02, INK, 0, 0.08 - i * 0.14, 0, { rx: PI / 2, seg: 10 });
