@@ -465,6 +465,15 @@ export class GameClient {
       this.hemi.groundColor.set(0x4a5478);
       this.hemi.intensity = 1.2;
     }
+    // Goldcloud Spires: bright sunset-gold daylight, warm light bouncing up off the clouds.
+    if (mapInfo.spires) {
+      this.sunOff = [-110, 80, 30];
+      this.sun.color.set(0xfff0d0);
+      this.sun.intensity = 2.3;
+      this.hemi.color.set(0xfff2d8);
+      this.hemi.groundColor.set(0xe0c08a);
+      this.hemi.intensity = 1.8;
+    }
     if (t.sunOff) this.sunOff = t.sunOff; // a map's own sun direction (Brook Hollow: from the east)
     this.root.fog.near = t.fogNear ?? 90; // drawn units
     this.root.fog.far = t.fogFar ?? 200;

@@ -1431,6 +1431,88 @@ function cgFixed() {
   return out;
 }
 
+/**
+ * Goldcloud Spires (Christmas Night 3, 2026-11-11 user spec, with its own name and props): a city
+ * floating in golden sunset haze, 30 x 30 grid (columns A-AD, rows 1-30, north = top), 1 cell = 5
+ * units. One entry lane splits at row 6 into a west and an east route; each runs as two lanes
+ * (F + H, W + Y) over two sets of cloud bridges, past the striped tower in the middle, joins into
+ * one lane at row 23 (G, X), and both meet on row 27 before the exit gate. Towers go on the cream
+ * platforms only: not on the clouds, the lanes or the skyscrapers. The grid is the spec's, as given.
+ *
+ * S spawn, B exit, # lane, = lane on a bridge, . platform, ~ cloud gap, ^ skyscraper,
+ * H striped tower, Y glowing tree, L lit pad.
+ */
+export const SKY_GRID = [
+  '~~~......^^...SS...^^......~~~',
+  '^^^......^^...##...^^......^^^',
+  '^^^...........##...........^^^',
+  '^^^...........##...........^^^',
+  '^^^...........##...........^^^',
+  '~~~..####################..~~~',
+  '~~~..#.#..............#.#..~~~',
+  '~~~..#.#..............#.#..~~~',
+  '~~~~~=~=~~..........~~=~=~~~~~',
+  '~~~~~=~=~~..........~~=~=~~~~~',
+  '~~~~~=~=~~..........~~=~=~~~~~',
+  '~~~~~=~=~~...HHHH...~~=~=~~~~~',
+  '^^^..#.#.....HHHH.....#.#..^^^',
+  '^^^..#.#..L..HHHH..L..#.#..^^^',
+  '^^^..#.#.....HHHH.....#.#..^^^',
+  '^^^..#.#.....HHHH.....#.#..^^^',
+  '~~~~~=~=~~...HHHH...~~=~=~~~~~',
+  '~~~~~=~=~~..........~~=~=~~~~~',
+  '~~~~~=~=~~..........~~=~=~~~~~',
+  '~~~..#.#..............#.#..~~~',
+  '~~~..#.#..........Y...#.#..~~~',
+  '^^^..#.#..............#.#..^^^',
+  '^^^..###..............###..^^^',
+  '^^^...#................#...^^^',
+  '^^^...#................#...^^^',
+  '^^^...#................#...^^^',
+  '~~~...##################...~~~',
+  '~~~...........##...........~~~',
+  '~~~...........##...........~~~',
+  '~~~...........BB...........~~~',
+];
+export const SKY_CELL = 5;
+/** World [x, z] of grid cell (c, r): c is 0 for column A, r is the row number (fractions allowed). */
+export const skyCell = (c, r) => [(c - 14.5) * SKY_CELL, (r - 15.5) * SKY_CELL];
+export const skyCh = (c, r) => SKY_GRID[r - 1]?.[c] ?? '~';
+export const SKY_LANE = '#=SB';
+/** A cloud cell between the two lanes of a bridge: part of the bridge deck. */
+export const skyDeck = (c, r) => skyCh(c, r) === '~' && skyCh(c - 1, r) === '=' && skyCh(c + 1, r) === '=';
+const sxz = (c, r) => {
+  const [x, z] = skyCell(c, r);
+  return { x, z };
+};
+// The four lanes as corner cells: west route (F, H) and its mirror, the east route (Y, W).
+const SKY_F = [[14, 0.4], [14, 5.8], [5, 5.8], [5, 23], [6, 23], [6, 27], [14, 27], [14, 30.6]];
+const SKY_H = [[14.35, 0.4], [14.35, 6.2], [7, 6.2], [7, 23], [6, 23], [6, 27], [14, 27], [14, 30.6]];
+const mirror = (cells) => cells.map(([c, r]) => [29 - c, r]);
+const SKY_ROUTES = [SKY_F, SKY_H, mirror(SKY_H), mirror(SKY_F)].map((r) => r.map(([c, row]) => skyCell(c, row)));
+
+function skyFixed() {
+  const out = [{ kind: 'skyGround' }];
+  // Cloud gaps keep towers and players off; the strip between a bridge's two lanes is deck
+  // (walkable, no towers). Skyscrapers are solid.
+  for (let r = 1; r <= 30; r++) {
+    for (let c = 0; c < 30; c++) {
+      const ch = skyCh(c, r);
+      if (skyDeck(c, r)) out.push({ kind: 'skyBlock', ...sxz(c, r), block: 2.9, bh: 0.01 });
+      else if (ch === '~' || ch === '^') out.push({ kind: 'skyBlock', ...sxz(c, r), block: 2.9, box: [2.5, 2.5, Infinity] });
+    }
+  }
+  out.push({ kind: 'skyTower', ...sxz(14.5, 14.5), block: 10.5, box: [9.4, 9.4, Infinity] }); // N12-Q17
+  out.push({ kind: 'skyShip', ...sxz(14.5, 14.5) });
+  out.push({ kind: 'skyFin', ...sxz(18.6, 12.2), block: 3.6, bh: Infinity }); // beside the tower (S12-T13)
+  for (const c of [10, 19]) out.push({ kind: 'skyPad', ...sxz(c, 14), block: 2.2, bh: 0.5 }); // K14, T14
+  out.push({ kind: 'skyTree', ...sxz(18, 21), block: 1.6 }); // S21
+  out.push({ kind: 'skyArch', ...sxz(14.5, 0.6), s: 0.8 }); // the spawn
+  out.push({ kind: 'skyArch', ...sxz(14.5, 30.4), s: 1, exit: true }); // the exit gate (the base)
+  out.push({ kind: 'skyCars' });
+  return out;
+}
+
 // How hard a map is (MAPS[key].rating): its card in the menus is that color. Judged by eye from
 // the path (long and winding is easy; short, split or random is hard) and how much room there is to build.
 export const MAP_RATINGS = {
@@ -1756,6 +1838,33 @@ export const MAPS = {
       sky: 0x3b4d7a, fog: 0x7088b8, fogNear: 90, fogFar: 230, night: true, snow: true,
       leaves: [0xe6e8ea, 0xe6e8ea, 0xe6e8ea], rock: 0x3a4058,
       cliff: [0x5a6690, 0x3a4058, 0x8a93b0], water: [0x1f4c50, 0x173a3e],
+    },
+  },
+  spires: {
+    name: 'Goldcloud Spires',
+    rating: 'medium',
+    icon: '🏙',
+    desc: 'Christmas Night 3: a golden city floating above the clouds. One lane splits into two routes of two lanes each. They cross cloud bridges on both sides of the striped tower, narrow to one lane each and meet again before the exit gate.',
+    path: SKY_ROUTES[0],
+    routes: SKY_ROUTES, // west route (F, H lanes) and east route (W, Y lanes)
+    spawn: { x: 0, z: 20 },
+    base: 'gate', // no castle: the glowing exit gate (skyArch) is the base
+    baseAt: skyCell(14.5, 30.4),
+    baseR: 3,
+    portal: false, // enemies come out of the spawn arch (skyArch)
+    event: 'christmas', // the Christmas Event's third map (see DIFFICULTIES.christmas.maps)
+    spires: true, // lighting in game.js
+    noGround: true, // world.js draws no ground plane: the platforms float over clouds (skyworld.js)
+    bounds: { minX: -60, maxX: 60, minZ: -75, maxZ: 75 },
+    cliffs: [],
+    pools: [],
+    trees: 0, tree: 'round', rocks: 0, border: 'none',
+    fixed: skyFixed(),
+    theme: {
+      ground: ['#cdb48a', '#c8af85', '#d2b98f', '#c4ab80'], path: ['#e8d9b8', '#e3d4b2', '#ecdec0', '#dfcfac'],
+      sky: 0xd9b985, fog: 0xd9b985, fogNear: 110, fogFar: 300,
+      leaves: [0xfff0a0, 0xfff0a0, 0xfff0a0], rock: 0xc9a675,
+      cliff: [0xcdb48a, 0xc9a675, 0xe8d9b8], water: [0xe9d4a6, 0xd9b985],
     },
   },
   rig: {
