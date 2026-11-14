@@ -1,12 +1,15 @@
 // Wave 11: new towers.
 //   Poacher: the starter cliff tower. One arrow at a time, slow and steady, good on bosses.
 //   Gunner: an alternate Soldier form. Short bursts, cheap, sees hidden zombies from Lv 3.
+//   Future Sniper: an alternate Sniper form. Huge range, slow heavy shots, true damage at Lv 5.
 //
 // New mechanic (see computeBuffs in sim/parts/shared.js):
 //   cliffBoost: { boost, stacks, radius }  Bullseye Support: other cliff towers (placement 'cliff')
 //               within `radius` get `boost` more range. Boosts from different Poachers add up,
 //               up to `stacks` of them. (Poachers don't boost Poachers: towers never boost their
 //               own type.)
+//   trueDmg: true  True damage (see damage in sim/parts/damage.js): no resistance, armor or
+//               defense stops it.
 //
 // Numbers are the spec's. Guessed: Poacher price 0 (owned from the start, it's the starter cliff
 // tower), its inner range (radius 15) and the arrow look; Gunner costs 1 Dimension Shard like most forms.
@@ -52,6 +55,27 @@ export const ELEVENTH_TOWERS = {
       { name: 'Marksman Eye', desc: '+2 range, +1 damage and hidden detection.', cost: 600, damage: 3, burst: 3, cooldown: 1, range: 14, hidden: true },
       { name: 'Burst Pistols', desc: 'Two pistols: +1 range, +2 damage and 4 shots per burst.', cost: 1750, damage: 5, burst: 4, cooldown: 1, range: 15, hidden: true },
       { name: 'Rapidfire Assault', desc: '+4 damage, 6 shots per burst, and the shots in a burst come twice as fast.', cost: 4150, damage: 9, burst: 6, burstGap: 0.1, cooldown: 1, range: 15, hidden: true },
+    ],
+  },
+  // Future Sniper (alternate Sniper form). Its shop perk Sniper Ricochet (one shot hits several
+  // zombies) is not built yet.
+  sniperFuture: {
+    name: 'Future Sniper',
+    altOf: 'sniper',
+    form: 'Future',
+    shards: 1,
+    price: 0,
+    cost: 1250,
+    placement: 'cliff',
+    blurb: 'An alternate Sniper with huge range. Fires one slow, heavy shot at a time. Cliffs only. Sees hidden zombies from Lv 2, and at Lv 5 its shots become true damage that no resistance, armor or defense can stop, which is great against tough bosses.',
+    tip: 'Set it to Strongest. Archers and Programmers near it make it even better.',
+    levels: [
+      { name: 'Future Sniper', desc: 'One slow, heavy shot at a time from very far away.', damage: 15, cooldown: 4, range: 25, hidden: false },
+      { name: 'Steady Aim', desc: '+3 damage and +4 range.', cost: 400, damage: 18, cooldown: 4, range: 29, hidden: false },
+      { name: 'Hidden Sights', desc: '+4 damage and hidden detection.', cost: 450, damage: 22, cooldown: 4, range: 29, hidden: true },
+      { name: 'Marksman Bullets', desc: '+8 damage, +5 range, and it shoots faster (every 3.5s).', cost: 1600, damage: 30, cooldown: 3.5, range: 34, hidden: true },
+      { name: 'Head Hunter', desc: '+15 damage and +4 range.', cost: 2400, damage: 45, cooldown: 3.5, range: 38, hidden: true },
+      { name: 'Future Rifle', desc: '+70 damage, and its shots become true damage: no resistance, armor or defense can stop them.', cost: 9000, damage: 115, cooldown: 3.5, range: 38, hidden: true, trueDmg: true },
     ],
   },
 };

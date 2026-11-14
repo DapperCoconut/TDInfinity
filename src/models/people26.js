@@ -1,5 +1,5 @@
 // Tower models: people, batch 26 (dressed with the vehicle kit in ../vehicles.js).
-// In here: Poacher, Gunner.
+// In here: Poacher, Gunner, Future Sniper.
 // These towers are plain white figures with no face. Only their armor and weapons tell them
 // apart: white too, with accents in one neon colour per tower.
 // MODELS maps tower keys to builders; ../models.js lays it over TOWER_MODELS, so these win.
@@ -260,7 +260,122 @@ export function makeGunner(level) {
   return own(h, pistols ? 0.3 : UP);
 }
 
+// ------------------------------------------------------------------ Future Sniper (neon orange)
+
+const SNIPER_NEON = 0xff7a00;
+
+/**
+ * A long white sniper rifle on the fist (gun space): receiver, a long fluted barrel, muzzle brake,
+ * stock with a cheek rest, grip, box mag and a big scope with a neon lens. o.bipod (Lv 1+) folds
+ * a bipod under the barrel; o.future (Lv 5) turns it into the Future Rifle: neon coils round the
+ * barrel, a glowing energy cell for a mag and a glowing tip. Returns the bore point [y, z].
+ */
+function whiteSniper(k, neon, o = {}) {
+  const U = UP;
+  const len = o.future ? 3.3 : 3.0;
+  k.box(0.3, 1.1, 0.36, W, 0, -0.3, U, { r: 0.05 }); // receiver
+  k.cyl(0.075, len - 1.0, W3, 0, -0.85 - (len - 1.0) / 2, U + 0.04, { seg: 10 }); // barrel
+  for (let i = 0; i < 3; i++) k.box(0.17, 0.42, 0.04, W2, 0, -1.2 - i * 0.5, U + 0.12); // fluting ribs
+  k.box(0.22, 0.3, 0.2, W2, 0, -len + 0.15, U + 0.04, { r: 0.04 }); // muzzle brake
+  for (const s of [-1, 1]) k.box(0.03, 0.06, 0.12, neon, s * 0.12, -len + 0.15, U + 0.04);
+  k.box(0.22, 0.24, 0.52, W2, 0, 0.1, U - 0.36, { rx: -0.32, r: 0.04 }); // grip
+  k.torus(0.1, 0.022, W3, 0, -0.14, U - 0.24, { ry: PI / 2, seg: 10, arc: PI }); // trigger guard
+  k.box(0.26, 0.85, 0.36, W2, 0, 0.62, U - 0.02, { r: 0.06 }); // stock
+  k.box(0.22, 0.42, 0.14, W, 0, 0.55, U + 0.22, { r: 0.04 }); // cheek rest
+  k.box(0.28, 0.1, 0.5, W3, 0, 1.08, U - 0.04, { r: 0.03 }); // butt pad
+  k.box(0.04, 0.6, 0.06, neon, 0.14, 0.62, U); // neon stock line
+  // scope
+  k.cyl(0.12, 1.1, W, 0, -0.3, U + 0.4, { seg: 14 });
+  k.cyl(0.17, 0.26, W2, 0, -0.95, U + 0.4, { seg: 14 });
+  k.cyl(0.14, 0.2, W2, 0, 0.32, U + 0.4, { seg: 14 });
+  k.cyl(0.14, 0.02, neon, 0, -1.09, U + 0.4, { seg: 14 }); // lens
+  k.cyl(0.07, 0.16, W3, 0, -0.3, U + 0.55, { seg: 8 }); // turret
+  for (const y of [-0.6, 0.0]) k.box(0.14, 0.12, 0.2, W3, 0, y, U + 0.25);
+  if (o.future) {
+    // energy cell mag and neon coils round the barrel
+    k.box(0.22, 0.4, 0.5, neon, 0, -0.55, U - 0.4, { r: 0.05 });
+    k.box(0.26, 0.46, 0.1, W3, 0, -0.55, U - 0.66);
+    for (let i = 0; i < 5; i++) k.torus(0.12, 0.025, neon, 0, -1.25 - i * 0.32, U + 0.04, { rx: PI / 2, seg: 10 });
+    k.cyl(0.13, 0.4, W, 0, -len + 0.55, U + 0.04, { seg: 12 }); // emitter
+    k.cyl(0.09, 0.05, neon, 0, -len - 0.02, U + 0.04, { seg: 10 });
+  } else {
+    k.box(0.2, 0.32, 0.4, W2, 0, -0.55, U - 0.3, { r: 0.03 }); // box mag
+  }
+  if (o.bipod) {
+    k.box(0.2, 0.16, 0.12, W3, 0, -1.9, U - 0.08); // bipod mount
+    for (const s of [-1, 1]) k.cyl(0.03, 0.8, W3, s * 0.08, -1.75, U - 0.12, { rx: PI / 2 - 0.15, seg: 6 }); // folded legs
+  }
+  return [-len - 0.05, U + 0.04];
+}
+
+/**
+ * Future Sniper (alternate Sniper): a white marksman in a hood with a long scoped rifle.
+ * Lv 1 Steady Aim: a bipod and knee pads, Lv 2 Hidden Sights: a neon eyepiece and a hood visor,
+ * Lv 3 Marksman Bullets: a bandolier of neon rounds, Lv 4 Head Hunter: shoulder plates and a long
+ * cape, Lv 5 Future Rifle: a helmet with a neon crest, gauntlets and the glowing Future Rifle.
+ */
+export function makeFutureSniper(level) {
+  const h = blank();
+  const key = `fsniper${level}`;
+  const neon = glowMat(h, SNIPER_NEON);
+  const hd = wear(h, h.head, `${key}:head`);
+  const t = wear(h, h.torso, `${key}:torso`);
+  if (level >= 5) {
+    // a sleek helmet with a neon crest and visor
+    dome(hd, 0.78, 0.62, W, 0, 0.9, 0);
+    hd.box(0.12, 0.2, 1.3, neon, 0, 1.52, -0.05, { r: 0.04 });
+    hd.box(1.36, 0.26, 0.12, W2, 0, 0.74, 0.66, { r: 0.05 });
+    hd.box(1.2, 0.07, 0.04, neon, 0, 0.74, 0.73);
+  } else {
+    hood(hd, W2);
+    if (level >= 2) hd.box(1.3, 0.12, 0.08, W3, 0, 0.74, 0.66, { r: 0.03 }); // visor band
+  }
+  if (level >= 2) {
+    // an eyepiece over the right eye
+    hd.cyl(0.16, 0.22, W, 0.32, 0.74, 0.7, { axis: 'z', seg: 12 });
+    hd.cyl(0.12, 0.03, neon, 0.32, 0.74, 0.82, { axis: 'z', seg: 12 });
+  }
+  // a long white coat with a neon seam, belt and pouches
+  t.box(2.16, 1.62, 1.16, W2, 0, 0.1, 0, { r: 0.12 });
+  t.box(0.06, 1.5, 0.05, neon, 0.3, 0.1, 0.6);
+  t.box(2.12, 0.24, 1.14, W3, 0, -0.84, 0, { r: 0.04 });
+  t.box(0.3, 0.2, 0.06, neon, 0, -0.84, 0.59, { r: 0.02 });
+  for (const x of [-0.65, 0.65]) t.box(0.34, 0.36, 0.3, W3, x, -1.0, 0.56, { r: 0.05 });
+  if (level >= 3) {
+    // Marksman Bullets: a bandolier of glowing rounds
+    t.box(0.26, 2.5, 0.1, W3, 0, 0.1, 0.62, { rz: 0.62 });
+    for (let i = 0; i < 6; i++) {
+      const f = -0.5 + i * 0.2;
+      t.cyl(0.05, 0.22, neon, -f * 1.2, 0.1 + f * 1.48, 0.7, { rz: 0.62, seg: 6 });
+    }
+  }
+  if (level >= 4) {
+    shoulderPads(t, W, 0.55);
+    for (const s of [-1, 1]) t.box(0.6, 0.06, 0.06, neon, s * 1.45, 0.98, 0.42);
+    cape(t, W2, 2.8, { clasp: neon });
+  }
+  hd.done();
+  t.done();
+  hands(h, key, W3, W2, (a) => {
+    if (level >= 5) gauntlet(a, W, neon);
+  });
+  feet(h, key, W2, (b) => {
+    b.box(1.12, 0.1, 1.14, neon, 0, -1.3, 0.02); // neon boot tops
+    if (level >= 1) b.box(0.7, 0.5, 0.25, W, 0, -0.75, 0.52, { r: 0.08 }); // knee pad
+  });
+  h.muzzles = [];
+  const g = fist(h.rightArm, -1.9, 1.2);
+  const gk = wear(h, g, `${key}:gun`);
+  const [y, z] = whiteSniper(gk, neon, { bipod: level >= 1, future: level >= 5 });
+  gk.done();
+  muzzle(h, g, y, z);
+  aimLong(h);
+  h.tracer = SNIPER_NEON;
+  return own(h, UP);
+}
+
 export const MODELS = {
   poacher: makePoacher,
   soldierGunner: makeGunner,
+  sniperFuture: makeFutureSniper,
 };

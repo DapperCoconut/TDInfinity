@@ -427,30 +427,31 @@ export class SimDamage {
     if (t && this.contract?.boost) dmg *= this.llBoost.dmg; // Last Laugh: the JESTER's boost
     if (t && this.inhumanPow) dmg *= this.inhumanPow.dmg; // Inhuman contract: the glitchy bot's towers
     if (t?.lm) dmg *= t.lm.dmg; // Liminal contract: the tower's blessing or curse
+    const tru = !this.dot && ts0?.trueDmg; // True damage (Future Sniper Lv 5): no resistance, armor or defense stops it
     const adapt = ENEMIES[e.type].adapt;
-    if (adapt) this.adaptResist(e, kind, dmg, adapt); // Void Colossus: its resistance wears down
-    if (kind === 'bullet' && e.bulletResist && !this.ignoresBulletResist(t)) dmg *= 1 - e.bulletResist; // Shielders, Drones...
+    if (adapt && !tru) this.adaptResist(e, kind, dmg, adapt); // Void Colossus: its resistance wears down
+    if (tru) { /* skips every resistance below */ } else if (kind === 'bullet' && e.bulletResist && !this.ignoresBulletResist(t)) dmg *= 1 - e.bulletResist; // Shielders, Drones...
     else if (kind === 'laser') {
       const lr = Math.max(e.laserResist, e.glitchT > 0 ? e.glitchRes : 0); // Rushers, UFOs; Glitches lend it out
       if (lr) dmg *= 1 - lr;
     } else if (kind === 'explosive' && e.explosiveResist) dmg *= 1 - e.explosiveResist; // Chained
     else if (kind === 'golden' && e.goldResist && !this.ignoresGoldResist(t)) dmg *= 1 - e.goldResist; // Warpers, the Beholder
     const mr = ENEMIES[e.type].meleeResist; // Halloween Night 2 Executioner: melee towers barely hurt it
-    if (mr && t && !this.dot && (TOWERS[t.type]?.melee || ts0?.melee)) dmg *= 1 - mr;
+    if (mr && !tru && t && !this.dot && (TOWERS[t.type]?.melee || ts0?.melee)) dmg *= 1 - mr;
     const tr = ENEMIES[e.type].towerResist; // Christmas Night 3 Ardent: the Elite tower barely hurts it
-    if (tr && t && t.type.startsWith(tr.prefix)) dmg *= 1 - tr.amt;
+    if (tr && !tru && t && t.type.startsWith(tr.prefix)) dmg *= 1 - tr.amt;
     // Armor tops out at 90%, except Hard mode Corpses (100%: only defense piercing gets through).
     const cap = e.armor >= 1 ? 1 : 0.9;
     let armor = Math.min(cap, e.armor + (e.gear || 0) + (e.auraArmor || 0) + (e.blessed || 0) + (e.vShield > 0 ? this.voidArmor.armor : 0) + (e.osh > 0 ? ENEMIES[e.type].shieldArmor ?? 0 : 0)); // Mechanics bolt extra armor on; VOID's aura; Jester Blessed; void armor; Frost Ravager's shield
     // Defense piercing: ignores that share of the armor (negative: armor counts for more).
     const dp = this.dot ? 0 : hm?.defPierce ?? ts0?.defPierce ?? 0;
     if (dp && armor) armor = Math.min(cap, armor * (1 - Math.min(1, dp)));
-    if (armor && !pierceArmor) dmg *= 1 - armor; // Molten Squires, Knights... (Tesla Smite ignores it)
+    if (armor && !pierceArmor && !tru) dmg *= 1 - armor; // Molten Squires, Knights... (Tesla Smite ignores it)
     // Insane: flat Defense blocks part of every direct hit (defense piercing cuts it like armor).
     const block = e.carry?.defense ?? e.defense;
-    if (block && !this.dot && !pierceArmor) dmg = Math.max(0, dmg - block * (1 - Math.min(1, dp)));
+    if (block && !this.dot && !pierceArmor && !tru) dmg = Math.max(0, dmg - block * (1 - Math.min(1, dp)));
     if (e.vuln) dmg *= 1 + e.vuln; // softened up by a DJ Booth's Red Drop the Beat
-    if (e.sacrificing && !this.bloodPass) {
+    if (e.sacrificing && !this.bloodPass && !tru) {
       // Rebirther Blood Sacrifice: almost nothing gets through, except crashes from some units.
       const sac = ENEMIES[e.type].sacrifice;
       if (!(this.crashing && t && sac.rams.includes(rootType(t.type)))) dmg *= 1 - sac.resist;
@@ -465,7 +466,7 @@ export class SimDamage {
     if (e.iceVuln && e.stopKind === 'ice') dmg *= 1 + e.iceVuln; // Cryo Ranger Deep Freeze
     const fw = ENEMIES[e.type].frostWeak; // Fire types: frost towers' hits hurt them more
     if (fw && !this.dot && ts0 && (ts0.chill || ts0.freeze || ts0.chillDps)) dmg *= 1 + fw;
-    if (e.iceResist && !this.dot && ts0 && (ts0.chill || ts0.freeze || ts0.chillDps) && !ts0.ignoreIceResist) dmg *= 1 - e.iceResist; // Medium: ice resistance
+    if (e.iceResist && !this.dot && ts0 && (ts0.chill || ts0.freeze || ts0.chillDps) && !ts0.ignoreIceResist && !tru) dmg *= 1 - e.iceResist; // Medium: ice resistance
     if (t) {
       const ts = TOWERS[t.type].levels[t.level];
       let mult = buffOf(this.buffs, t.id).dmg; // Ubercharge, DJ Booth Red track
