@@ -2,17 +2,34 @@
 //   Poacher: the starter cliff tower. One arrow at a time, slow and steady, good on bosses.
 //   Gunner: an alternate Soldier form. Short bursts, cheap, sees hidden zombies from Lv 3.
 //   Future Sniper: an alternate Sniper form. Huge range, slow heavy shots, true damage at Lv 5.
+//   Ninja: throws bursts of piercing shurikens, saves some up while idle, and has a giant
+//          spinning shuriken (Shirayuki Shuriken) from Lv 2.
 //
 // New mechanic (see computeBuffs in sim/parts/shared.js):
 //   cliffBoost: { boost, stacks, radius }  Bullseye Support: other cliff towers (placement 'cliff')
 //               within `radius` get `boost` more range. Boosts from different Poachers add up,
 //               up to `stacks` of them. (Poachers don't boost Poachers: towers never boost their
 //               own type.)
+//   ninja: { hpBonus, store, refill }  Ninja (see updateTower and ninjaShot in sim/parts/weapons4.js):
+//               hpBonus: basic hits add floor((target health x tower level / 80) ^ 0.4).
+//               store: shurikens it saves up while idle (one per `cooldown`). They all go out at
+//               once when a zombie comes in range, each one adding a throw to the burst, and that
+//               burst's throws come 60% faster. refill: shurikens saved when the zombie it is
+//               targeting dies to it (its ability counts too).
 //   trueDmg: true  True damage (see damage in sim/parts/damage.js): no resistance, armor or
 //               defense stops it.
 //
 // Numbers are the spec's. Guessed: Poacher price 0 (owned from the start, it's the starter cliff
 // tower), its inner range (radius 15) and the arrow look; Gunner costs 1 Dimension Shard like most forms.
+
+// Ninja: Shirayuki Shuriken. A giant shuriken thrown onto the path at its target (or the closest
+// bit of path if there is none). It spins for `time` s, drifting slowly toward the nearest zombie,
+// and hits every zombie within `radius` for `mult` x the tower's damage every `tick` s, ignoring
+// all resistance. Its shop perk Kuroyuki Shuriken (much less damage, reveals hidden zombies for
+// every tower) is not built yet.
+const shirayuki = (mult, cooldown) => ({ key: 'shirayuki', name: 'Shirayuki Shuriken', cooldown, mult, tick: 0.25, radius: 4, time: 9, drift: 1.5,
+  desc: `Throws a giant spinning shuriken onto the path for 9s: ${mult}x the Ninja's damage every 0.25s to every zombie it touches, ignoring all resistance` });
+const ninja = (hpBonus, store, refill) => ({ hpBonus, store, refill });
 
 const bullseye = (boost) => ({ boost, stacks: 3, radius: 15 });
 
@@ -76,6 +93,28 @@ export const ELEVENTH_TOWERS = {
       { name: 'Marksman Bullets', desc: '+8 damage, +5 range, and it shoots faster (every 3.5s).', cost: 1600, damage: 30, cooldown: 3.5, range: 34, hidden: true },
       { name: 'Head Hunter', desc: '+15 damage and +4 range.', cost: 2400, damage: 45, cooldown: 3.5, range: 38, hidden: true },
       { name: 'Future Rifle', desc: '+70 damage, and its shots become true damage: no resistance, armor or defense can stop them.', cost: 9000, damage: 115, cooldown: 3.5, range: 38, hidden: true, trueDmg: true },
+    ],
+  },
+  // Ninja: bursts of shurikens `burstGap` s apart; `pass` = how many more zombies each one pierces.
+  ninja: {
+    name: 'Ninja',
+    price: 1500,
+    cost: 500,
+    burstGap: 0.15,
+    blurb: 'A quick, versatile tower that sees hidden zombies from the start. Throws bursts of shurikens, and its hits do more to zombies with lots of health. From Lv 2 it saves up shurikens while idle and throws them all at once, and it can throw a giant spinning shuriken that ignores all resistance.',
+    tip: 'Let it rest between waves: it saves up shurikens and throws them all as soon as a zombie shows up.',
+    levels: [
+      { name: 'Ninja', desc: 'Throws a shuriken at one zombie at a time. Sees hidden zombies.', damage: 2, cooldown: 0.75, range: 13, burst: 1, hidden: true },
+      { name: 'Ninja Training', desc: '+3 range and 2 shurikens per burst. Hits do extra damage to zombies with lots of health.', cost: 400, damage: 2, cooldown: 0.75, range: 16, burst: 2, hidden: true,
+        ninja: ninja(true, 0, 0) },
+      { name: 'Dummyjitsu', desc: '+2 damage. Saves up 3 shurikens while idle. Unlocks Shirayuki Shuriken.', cost: 1300, damage: 4, cooldown: 0.75, range: 16, burst: 2, hidden: true,
+        ninja: ninja(true, 3, 0), abilities: [shirayuki(2, 40)] },
+      { name: 'Lightweight Shurikens', desc: '+3 range and faster throws (every 0.5s). Gets 1 shuriken back when its target dies.', cost: 1650, damage: 4, cooldown: 0.5, range: 19, burst: 2, hidden: true,
+        ninja: ninja(true, 3, 1), abilities: [shirayuki(2, 40)] },
+      { name: 'Jonin', desc: '+1 damage and shurikens pierce 2 zombies. Shirayuki Shuriken does 3x damage and recharges in 30s.', cost: 1950, damage: 5, cooldown: 0.5, range: 19, burst: 2, pass: 1, hidden: true,
+        ninja: ninja(true, 3, 1), abilities: [shirayuki(3, 30)] },
+      { name: 'Rayedge Shurikens', desc: '+3 damage, 3 shurikens per burst, pierce 3 zombies, saves up 5 shurikens, and gets 3 back when its target dies.', cost: 2550, damage: 8, cooldown: 0.5, range: 19, burst: 3, pass: 2, hidden: true,
+        ninja: ninja(true, 5, 3), abilities: [shirayuki(3, 30)] },
     ],
   },
 };

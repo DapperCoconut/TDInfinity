@@ -965,6 +965,15 @@ export class Effects {
       block(body, L(0xfafafa), 0.32, 0.04, 0.34, 0, 0, -0.72); // the feathers
       block(body, L(0xfafafa), 0.04, 0.32, 0.34, 0, 0, -0.72);
       arc = 0.4;
+    } else if (kind === 'shuriken') {
+      // A ninja star: four white points around a neon middle, spinning flat as it flies.
+      block(body, L(0xffffff), 1, 0.06, 0.18);
+      block(body, L(0xf2f2f2), 0.18, 0.06, 1);
+      block(body, L(0xffffff), 0.42, 0.07, 0.42).rotation.y = 0.78;
+      block(body, G(color), 0.2, 0.1, 0.2);
+      roll = 30;
+      glow = color;
+      arc = 0.2;
     } else if (kind === 'wisp') {
       // A little ghost flame: a glowing blob with a tail.
       block(body, G(color), 0.5, 0.5, 0.5);

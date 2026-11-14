@@ -102,6 +102,7 @@ const HERO_SHOTS = {
   marksmanFracture: { kind: 'gem' },
   goldFracture: { kind: 'gem', color: 0xffd740 },
   poacher: { kind: 'arrow', color: 0x39ff14 },
+  ninja: { kind: 'shuriken', color: 0xbf00ff },
 };
 const _land = new THREE.Vector3();
 
@@ -729,6 +730,9 @@ const trapMats = {
   thorn: new THREE.MeshLambertMaterial({ color: 0x5d4037 }),
   goo: new THREE.MeshBasicMaterial({ color: 0x76ff03, transparent: true, opacity: 0.55, depthWrite: false }),
   gooBlob: new THREE.MeshLambertMaterial({ color: 0x64dd17, emissive: 0x2e7d32, emissiveIntensity: 0.5 }),
+  blade: new THREE.MeshLambertMaterial({ color: 0xffffff }),
+  bladeEdge: new THREE.MeshLambertMaterial({ color: 0xd8d8e0 }),
+  bladeGlow: new THREE.MeshBasicMaterial({ color: 0xbf00ff }),
 };
 const trapGeo = {
   plate: new THREE.BoxGeometry(2.2, 0.15, 2.2),
@@ -740,6 +744,7 @@ const trapGeo = {
   patch: new THREE.CircleGeometry(1, 20),
   ember: new THREE.BoxGeometry(0.25, 0.25, 0.25),
   gasPuff: new THREE.SphereGeometry(1, 8, 6),
+  bladeArm: new THREE.OctahedronGeometry(0.5, 0).scale(1, 0.25, 1), // a flat diamond: one shuriken point
 };
 
 /**
@@ -754,7 +759,7 @@ export class TrapView {
     this.kind = tr.kind;
     this.group = new THREE.Group();
     // Drawn K bigger like towers; thermite / gas patches keep their sim radius.
-    if (tr.kind !== 'thermite' && tr.kind !== 'gas' && tr.kind !== 'thorns' && tr.kind !== 'goo') this.group.scale.setScalar(K);
+    if (tr.kind !== 'thermite' && tr.kind !== 'gas' && tr.kind !== 'thorns' && tr.kind !== 'goo' && tr.kind !== 'blade') this.group.scale.setScalar(K);
     if (tr.kind === 'grave' || tr.kind === 'sentry') {
       this.group.position.set(tr.x, 0, tr.z);
       this.lvl = -1;
@@ -846,6 +851,38 @@ export class TrapView {
         this.group.add(m);
         this.puffs.push(m);
       }
+    } else if (tr.kind === 'blade') {
+      // Ninja Shirayuki Shuriken: a giant white four-pointed shuriken with a neon purple middle,
+      // spinning flat over the path.
+      const r = tr.radius || 4;
+      this.blade = new THREE.Group();
+      this.blade.position.y = 0.7;
+      this.group.add(this.blade);
+      const part = (geo, mat, x, z, ry) => {
+        const m = new THREE.Mesh(geo, mat);
+        m.position.set(x, 0, z);
+        m.rotation.y = ry;
+        m.castShadow = true;
+        this.blade.add(m);
+        return m;
+      };
+      for (let i = 0; i < 4; i++) {
+        const a = (i / 4) * Math.PI * 2;
+        // each point: a long blade, tilted so its edge cuts, with a darker bevel along one side
+        part(trapGeo.bladeArm, trapMats.blade, Math.sin(a) * r * 0.5, Math.cos(a) * r * 0.5, a).scale.set(r * 0.42, 1, r);
+        part(trapGeo.bladeArm, trapMats.bladeEdge, Math.sin(a + 0.16) * r * 0.42, Math.cos(a + 0.16) * r * 0.42, a).scale.set(r * 0.12, 1.3, r * 0.75);
+      }
+      const hub = new THREE.Mesh(trapGeo.mine, trapMats.blade);
+      hub.scale.set(r * 0.32, 1.4, r * 0.32);
+      this.blade.add(hub);
+      const ring = new THREE.Mesh(trapGeo.ring, trapMats.bladeGlow);
+      ring.rotation.x = Math.PI / 2;
+      ring.position.y = 0.3;
+      ring.scale.setScalar(r * 0.28);
+      this.blade.add(ring);
+      const core = new THREE.Mesh(trapGeo.mine, trapMats.bladeGlow);
+      core.scale.set(r * 0.1, 1.7, r * 0.1);
+      this.blade.add(core);
     } else if (tr.kind === 'mine') {
       add(trapGeo.mine, trapMats.mine, 0, 0.15, 0);
       this.light = add(trapGeo.light, trapMats.light, 0, 0.36, 0);
@@ -868,6 +905,12 @@ export class TrapView {
     if (this.embers) for (const m of this.embers) m.position.y = 0.3 + Math.abs(Math.sin(this.t * 5 + m.userData.ph)) * 0.6; // thermite embers
     if (this.puffs) for (const m of this.puffs) m.position.y = 0.8 + Math.sin(this.t * 1.5 + m.userData.ph) * 0.4; // gas puffs
     if (this.puffs) this.group.rotation.y += dt * 0.3;
+    if (this.blade) {
+      // The giant shuriken spins fast and drifts after zombies.
+      this.blade.rotation.y += dt * 14;
+      this.group.position.x += (tr.x - this.group.position.x) * Math.min(1, dt * 8);
+      this.group.position.z += (tr.z - this.group.position.z) * Math.min(1, dt * 8);
+    }
     if (this.bubbles) for (const m of this.bubbles) m.position.y = 0.1 + Math.abs(Math.sin(this.t * 2.5 + m.userData.ph)) * 0.35; // bubbling goo
   }
 

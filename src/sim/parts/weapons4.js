@@ -429,4 +429,73 @@ export class SimWeapons4 {
     this.events.push({ k: 'income', id: t.id, owner: t.owner, v, x: t.x, z: t.z });
     say(pick === 'jackpot' ? '🃏 JACKPOT!' : '🃏 Free cash!', '#ffd740');
   }
+
+  // ---------------------------------------------------------------- Ninja
+
+  /** Ninja Dummyjitsu: while nothing is in range it saves up one shuriken every `cooldown` s, up to `store`. */
+  ninjaRest(t, s, dt) {
+    const max = s.ninja.store || 0;
+    t.stash ||= 0;
+    if (t.stash >= max) {
+      t.stashT = 0;
+      return;
+    }
+    t.stashT = (t.stashT || 0) + dt;
+    while (t.stashT >= s.cooldown && t.stash < max) {
+      t.stashT -= s.cooldown;
+      t.stash++;
+    }
+  }
+
+  /** Ninja Lightweight Shurikens: the zombie it was targeting died to it, so it gets shurikens back. */
+  ninjaKill(t) {
+    const n = TOWERS[t.type]?.levels[t.level]?.ninja;
+    if (n?.refill) t.stash = Math.min(n.store, (t.stash || 0) + n.refill);
+  }
+
+  /** Ninja Shirayuki Shuriken: a giant shuriken lands on the path at its target (or the path closest to it). */
+  throwShirayuki(t, s, ab) {
+    const e = this.findTarget(t, s, t.x, t.z, s.range, null);
+    const p = this.nearestPathPoint(e ? e.x : t.x, e ? e.z : t.z);
+    if (!p) return;
+    const id = this.nextId++;
+    this.traps.set(id, { id, tower: t.id, kind: 'blade', x: p.x, z: p.z, land: 0, radius: ab.radius, left: ab.time,
+      damage: s.damage * ab.mult, tick: ab.tick, next: 0, drift: ab.drift });
+    t.yaw = Math.atan2(p.x - t.x, p.z - t.z);
+  }
+
+  /**
+   * The giant shuriken spins in place, drifting slowly toward the nearest zombie close by, and hits
+   * every zombie under it every `tick` s. Its hits ignore all resistance.
+   */
+  spinBlade(p, dt) {
+    if ((p.left -= dt) <= 0) {
+      this.traps.delete(p.id);
+      this.events.push({ k: 'trapGone', id: p.id, kind: p.kind, x: r2(p.x), z: r2(p.z) });
+      return;
+    }
+    let best = null;
+    let bestD = (p.radius * 3) ** 2;
+    for (const e of this.enemies.values()) {
+      const d = (e.x - p.x) ** 2 + (e.z - p.z) ** 2;
+      if (d < bestD) {
+        best = e;
+        bestD = d;
+      }
+    }
+    if (best && bestD > 0.04) {
+      const d = Math.sqrt(bestD);
+      const step = Math.min(d, p.drift * dt);
+      p.x += ((best.x - p.x) / d) * step;
+      p.z += ((best.z - p.z) / d) * step;
+    }
+    if ((p.next -= dt) > 0) return;
+    p.next += p.tick;
+    const tower = this.towers.get(p.tower) ?? null;
+    this.trueHit = true;
+    for (const e of [...this.enemies.values()]) {
+      if ((e.x - p.x) ** 2 + (e.z - p.z) ** 2 <= p.radius * p.radius) this.damage(tower, e, p.damage);
+    }
+    this.trueHit = false;
+  }
 }

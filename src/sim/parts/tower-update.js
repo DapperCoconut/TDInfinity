@@ -266,10 +266,12 @@ export class SimTowerUpdate {
     if (!target) {
       if (s.charge) t.chargeT = Math.min(s.charge.time, (t.chargeT || 0) + dt); // Mako: charging up while idle
       if (s.shuriken) this.throwShuriken(t, s, dt * b.rate); // Samurai: a shuriken at a zombie just out of reach
+      if (s.ninja) this.ninjaRest(t, s, dt * b.rate); // Ninja: saving up shurikens
       t.aimT = 0; // Hunters have to aim again at the next zombie
       t.revT = Math.max(0, t.revT - dt * b.rate); // Minigunners spin back down
       return;
     }
+    if (s.ninja) t.ninjaE = target.id; // Ninja: shurikens come back when this one dies
     // Minigunner: spins up on a target before the first shot.
     if (s.rev && t.revT < s.rev) {
       t.revT = Math.min(s.rev, t.revT + dt * b.rate);
@@ -292,6 +294,8 @@ export class SimTowerUpdate {
     // A cycle is `burst` shots `burstGap` apart; the cycle restarts after `cooldown`.
     if (t.burstLeft > 0) {
       if (t.gap > 0) return;
+    } else if (t.stash > 0 && t.cooldown > 0) {
+      t.burstLeft = 0; // Ninja: saved shurikens go out right away, even between bursts
     } else {
       if (t.cooldown > 0) return;
       // Javelin: once reloaded, it aims `aimShot` s before every shot.
@@ -312,8 +316,15 @@ export class SimTowerUpdate {
       // Elite Plasma Rifle: fires faster the hotter it gets (the fewer shots before it overheats).
       t.cooldown += s.heatRamp && s.ammo ? s.cooldown + (s.heatRamp.minCd - s.cooldown) * this.heat(t, s) : s.cooldown;
     }
+    if (t.stash > 0) {
+      // Ninja: every saved shuriken adds a throw to this burst, and the burst goes 60% faster.
+      t.burstLeft += t.stash;
+      t.stash = 0;
+      t.quick = true;
+    }
     t.burstLeft--;
-    t.gap = s.burstGap ?? def.burstGap ?? 0;
+    t.gap = (s.burstGap ?? def.burstGap ?? 0) / (t.quick ? 1.6 : 1);
+    if (t.burstLeft <= 0) t.quick = false;
     if (s.bolt) return this.bolt(t, s, target, want);
     if (s.bubble) return this.blowBubbles(t, def, s, target);
     if (s.scrap) t.meter++; // Engineer: every shot collects scrap
@@ -361,6 +372,7 @@ export class SimTowerUpdate {
     // Warden: every `crit.every`th swing is a critical hit (and stuns, unless every hit does).
     // Riot shield: double damage for a while after blocking a stun.
     let dmg = s.hpScale ? this.hpScaled(s, target) : s.damage; // Cyberblade Prototype Archaic
+    if (s.ninja?.hpBonus) dmg += Math.floor((target.hp * t.level / 80) ** 0.4); // Ninja Training: more against tough zombies
     // Wafer: hits harder the closer the zombie is (`damage` at the edge of its range, `nearDmg` point blank).
     // Inside `meleeRange` it's the full candy-cane hit; past it the damage fades out to the edge of its range.
     if (s.nearDmg != null) {

@@ -383,6 +383,10 @@ export class SimWeapons2 {
         this.gasCloud(tr, dt);
         continue;
       }
+      if (tr.kind === 'blade') {
+        this.spinBlade(tr, dt);
+        continue;
+      }
       if (tr.kind === 'thorns') {
         this.thornPatch(tr, dt);
         continue;

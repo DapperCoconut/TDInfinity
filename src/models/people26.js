@@ -1,12 +1,12 @@
 // Tower models: people, batch 26 (dressed with the vehicle kit in ../vehicles.js).
-// In here: Poacher, Gunner, Future Sniper.
+// In here: Poacher, Gunner, Future Sniper, Ninja.
 // These towers are plain white figures with no face. Only their armor and weapons tell them
 // apart: white too, with accents in one neon colour per tower.
 // MODELS maps tower keys to builders; ../models.js lays it over TOWER_MODELS, so these win.
 
 import { glowMat } from '../vehicles.js';
 import { makeHumanoid } from './kit.js';
-import { UP, aimBoth, aimLong, dome, fist, muzzle, own, wear } from './people1.js';
+import { UP, aimBoth, aimLong, band, dome, fist, muzzle, own, wear } from './people1.js';
 import { feet, hands, hood } from './people5.js';
 import { shoulderPads } from './people2.js';
 import { cape, gauntlet } from './people18.js';
@@ -374,8 +374,127 @@ export function makeFutureSniper(level) {
   return own(h, UP);
 }
 
+// ------------------------------------------------------------------ Ninja (neon purple)
+
+const NINJA_NEON = 0xbf00ff;
+
+/**
+ * A shuriken standing up in the x-y plane (thin along z), centred at (x, y, z) with points `r`
+ * long: four blades with pointed tips around a round middle. `mid` colours the middle; o.glow
+ * makes the blades neon too.
+ */
+function star(k, col, mid, x, y, z, r, o = {}) {
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * PI * 2 + (o.turn ?? 0);
+    const c = o.glow ?? col;
+    k.box(r * 0.34, r * 0.7, 0.05, c, x + Math.sin(a) * r * 0.42, y + Math.cos(a) * r * 0.42, z, { rz: -a });
+    k.box(r * 0.24, r * 0.24, 0.05, c, x + Math.sin(a) * r * 0.78, y + Math.cos(a) * r * 0.78, z, { rz: -a + PI / 4 }); // the tip
+  }
+  k.cyl(r * 0.24, 0.09, mid, x, y, z, { axis: 'z', seg: 12 });
+  k.cyl(r * 0.08, 0.12, W3, x, y, z, { axis: 'z', seg: 8 }); // the hole
+}
+
+/**
+ * Ninja: a white masked ninja in a wrapped hood with long scarf tails, throwing shurikens.
+ * Lv 1 Ninja Training: neon arm wraps and a headband. Lv 2 Dummyjitsu: a chest strap with 3 saved
+ * shurikens and a pouch. Lv 3 Lightweight Shurikens: light shoulder guards and longer scarf
+ * tails. Lv 4 Jonin: a chest plate and a neon forehead plate. Lv 5 Rayedge Shurikens: gauntlets,
+ * 5 glowing shurikens on the strap and a glowing star in its hand.
+ */
+export function makeNinja(level) {
+  const h = blank();
+  const key = `ninja${level}`;
+  const neon = glowMat(h, NINJA_NEON);
+  const hd = wear(h, h.head, `${key}:head`);
+  const t = wear(h, h.torso, `${key}:torso`);
+  // a wrapped hood and a face mask, with a neon slit where the eyes would be
+  dome(hd, 0.8, 0.64, W2, 0, 0.88, -0.02);
+  band(hd, 0.76, 0.1, 0.62, 3.0, W3, 0.36); // the mask over the lower face
+  hd.box(1.12, 0.08, 0.06, neon, 0, 0.78, 0.72, { r: 0.02 }); // eye slit
+  if (level >= 1) {
+    // a headband tied at the back, its ends flying
+    hd.cyl(0.79, 0.14, level >= 4 ? W : W3, 0, 1.08, 0, { seg: 22 });
+    hd.ball(0.13, W3, 0, 1.08, -0.78, { seg: 8, rows: 6 });
+    for (const sd of [-1, 1]) hd.box(0.14, 0.6, 0.04, neon, sd * 0.14, 0.86, -0.82, { rz: sd * 0.4, rx: -0.3 });
+  }
+  if (level >= 4) {
+    // Jonin: a forehead plate with a neon mark
+    hd.box(0.62, 0.3, 0.1, W, 0, 1.08, 0.78, { r: 0.04 });
+    hd.box(0.3, 0.06, 0.04, neon, 0, 1.08, 0.84);
+  }
+  // a wrapped jacket, crossed at the front, with a sash belt
+  t.box(2.14, 1.62, 1.14, W2, 0, 0.1, 0, { r: 0.12 });
+  t.box(0.12, 1.3, 0.05, W3, -0.15, 0.3, 0.59, { rz: 0.45 }); // the crossed fold
+  t.box(0.06, 1.25, 0.05, neon, -0.08, 0.3, 0.6, { rz: 0.45 });
+  t.box(2.16, 0.32, 1.16, W3, 0, -0.82, 0, { r: 0.05 }); // sash
+  t.ball(0.16, W, 0.55, -0.82, 0.6, { seg: 10, rows: 6 }); // its knot
+  for (const sd of [-1, 1]) t.box(0.14, 0.55, 0.05, neon, 0.55 + sd * 0.1, -1.15, 0.62, { rz: sd * 0.25 });
+  // a scarf with long tails streaming out behind
+  const tail = level >= 3 ? 1.5 : 1;
+  t.torus(0.62, 0.14, W, 0, 0.98, 0, { rx: PI / 2, seg: 18 });
+  for (const sd of [-1, 1]) {
+    t.tube([[sd * 0.2, 0.95, -0.6], [sd * 0.45, 0.8, -1.0 * tail], [sd * 0.75, 0.95, -1.5 * tail]], 0.09, W2, { seg: 10, sides: 6 });
+    t.ball(0.07, neon, sd * 0.75, 0.95, -1.5 * tail, { seg: 6, rows: 4 });
+  }
+  if (level >= 2) {
+    // Dummyjitsu: a strap across the chest holding saved shurikens, and a pouch
+    t.box(0.24, 2.5, 0.08, W3, 0, 0.1, 0.62, { rz: -0.62 });
+    const n = level >= 5 ? 5 : 3;
+    for (let i = 0; i < n; i++) {
+      const f = (i - (n - 1) / 2) * (level >= 5 ? 0.2 : 0.3);
+      star(t, W, neon, f * 1.2, 0.1 + f * 1.48, 0.7, 0.2, level >= 5 ? { glow: neon, turn: 0.4 } : { turn: 0.4 });
+    }
+    t.box(0.4, 0.36, 0.3, W, -0.62, -1.0, 0.56, { r: 0.05 }); // pouch
+    t.box(0.42, 0.06, 0.32, neon, -0.62, -0.84, 0.56);
+  }
+  if (level >= 3) {
+    // light shoulder guards with neon edges
+    for (const sd of [-1, 1]) {
+      t.box(0.75, 0.16, 1.1, W, sd * 1.35, 0.92, 0, { rz: sd * -0.35, r: 0.05 });
+      t.box(0.75, 0.05, 0.05, neon, sd * 1.37, 0.85, 0.56, { rz: sd * -0.35 });
+    }
+  }
+  if (level >= 4) {
+    // Jonin: a chest plate over the jacket
+    t.box(1.5, 0.9, 0.14, W, 0, 0.42, 0.64, { r: 0.08 });
+    t.box(1.3, 0.05, 0.04, neon, 0, 0.1, 0.72);
+  }
+  hd.done();
+  t.done();
+  hands(h, key, W3, W2, (a) => {
+    if (level >= 5) gauntlet(a, W, neon);
+    else if (level >= 1) {
+      // Ninja Training: wrapped forearms with neon bands
+      a.cyl(0.56, 0.7, W, 0, -1.25, 0, { seg: 12, r2: 0.58 });
+      for (const yy of [-1.05, -1.45]) a.torus(0.58, 0.035, neon, 0, yy, 0, { seg: 14 });
+    }
+  });
+  feet(h, key, W2, (b) => {
+    b.box(1.12, 0.1, 1.14, neon, 0, -1.3, 0.02); // neon boot tops
+    b.cyl(0.55, 0.5, W3, 0, -0.85, 0, { seg: 12 }); // shin wraps
+  });
+  // a shuriken in the throwing hand (gun space: the throw goes along -y)
+  h.muzzles = [];
+  const g = fist(h.rightArm, -1.9, 1.1);
+  const gk = wear(h, g, `${key}:star`);
+  star(gk, W, neon, 0, -0.45, UP * 0.5, level >= 5 ? 0.42 : 0.34, level >= 5 ? { glow: neon } : {});
+  gk.done();
+  muzzle(h, g, -0.45, UP * 0.5);
+  // the other hand ready with the next one
+  const g2 = fist(h.leftArm, -1.9, 1.1);
+  const gk2 = wear(h, g2, `${key}:star2`);
+  star(gk2, W, neon, 0, -0.35, UP * 0.5, 0.28);
+  gk2.done();
+  h.rightArm.rotation.set(-PI / 2, 0, -0.15);
+  h.leftArm.rotation.set(-PI / 2 + 0.5, 0, 0.35);
+  h.pose = { right: -PI / 2, left: -PI / 2 + 0.5, leftRecoil: 0 };
+  h.tracer = NINJA_NEON;
+  return own(h, 0);
+}
+
 export const MODELS = {
   poacher: makePoacher,
   soldierGunner: makeGunner,
   sniperFuture: makeFutureSniper,
+  ninja: makeNinja,
 };

@@ -427,7 +427,7 @@ export class SimDamage {
     if (t && this.contract?.boost) dmg *= this.llBoost.dmg; // Last Laugh: the JESTER's boost
     if (t && this.inhumanPow) dmg *= this.inhumanPow.dmg; // Inhuman contract: the glitchy bot's towers
     if (t?.lm) dmg *= t.lm.dmg; // Liminal contract: the tower's blessing or curse
-    const tru = !this.dot && ts0?.trueDmg; // True damage (Future Sniper Lv 5): no resistance, armor or defense stops it
+    const tru = !this.dot && (ts0?.trueDmg || this.trueHit); // True damage (Future Sniper Lv 5, Shirayuki Shuriken): no resistance, armor or defense stops it
     const adapt = ENEMIES[e.type].adapt;
     if (adapt && !tru) this.adaptResist(e, kind, dmg, adapt); // Void Colossus: its resistance wears down
     if (tru) { /* skips every resistance below */ } else if (kind === 'bullet' && e.bulletResist && !this.ignoresBulletResist(t)) dmg *= 1 - e.bulletResist; // Shielders, Drones...
@@ -565,6 +565,7 @@ export class SimDamage {
     if ((pdef.pair || pdef.rageAt) && this.enemies.has(e.id) && this.pairDeath(e, pdef)) return; // Hardcore Void Reaver / Caster
     if (!this.enemies.delete(e.id)) return; // already dead (no double rewards or double cage monsters)
     if (t) t.kills++;
+    if (t?.ninjaE === e.id) this.ninjaKill(t); // Ninja Lightweight Shurikens
     const hunt = t && TOWERS[t.type]?.levels[t.level]?.hunt;
     if (hunt) t.bank = Math.min(hunt.cap, (t.bank || 0) + e.maxHp * hunt.rate); // Hunter bounties
     this.dropBattery(e); // Star Cannon

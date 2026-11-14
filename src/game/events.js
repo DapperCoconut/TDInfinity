@@ -164,6 +164,8 @@ export class GameEvents {
             this.effects.puff(new THREE.Vector3(ev.x, 0.6, ev.z), 0x424242, 8, 0.4, 5); // burns out in smoke
           } else if (ev.kind === 'thorns') {
             this.effects.puff(new THREE.Vector3(ev.x, 0.6, ev.z), 0x558b2f, 6, 0.4, 4); // thorns wither away
+          } else if (ev.kind === 'blade') {
+            this.effects.puff(new THREE.Vector3(ev.x, 0.8, ev.z), 0xbf00ff, 8, 0.4, 5); // the giant shuriken vanishes in a neon puff
           } else if (ev.kind === 'goo') {
             this.effects.puff(new THREE.Vector3(ev.x, 0.5, ev.z), 0x76ff03, 8, 0.4, 4); // the puddle dries up
           } else if (ev.kind !== 'mine') this.effects.puff(new THREE.Vector3(ev.x, 0.4, ev.z), 0x8d6e63, 6, 0.35, 5);

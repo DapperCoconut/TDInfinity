@@ -899,7 +899,7 @@ export class Sim {
           ? [t.uses || 0, r2(t.costRoll ?? 0.5), t.magic || 0, TOWERS[t.type].levels[t.level].charge ? r2((t.chargeT || 0) / TOWERS[t.type].levels[t.level].charge.time) : 0] : 0,
       ]),
       // Traps, plus Necromancer gravestones and Engineer sentries: [..., level, facing, health left (0-1), stunned, thermite radius].
-      tr: [...this.traps.values()].map((tr) => [tr.id, tr.tower, tr.kind, r2(tr.x), r2(tr.z), tr.land > 0 ? 0 : 1, tr.lvl ?? 0, r2(tr.yaw ?? 0), tr.maxHp ? r2(tr.hp / tr.maxHp) : 1, tr.stunT > 0 ? 1 : 0, tr.kind === 'thermite' || tr.kind === 'gas' || tr.kind === 'thorns' || tr.kind === 'goo' ? tr.radius : 0]),
+      tr: [...this.traps.values()].map((tr) => [tr.id, tr.tower, tr.kind, r2(tr.x), r2(tr.z), tr.land > 0 ? 0 : 1, tr.lvl ?? 0, r2(tr.yaw ?? 0), tr.maxHp ? r2(tr.hp / tr.maxHp) : 1, tr.stunT > 0 ? 1 : 0, tr.kind === 'thermite' || tr.kind === 'gas' || tr.kind === 'thorns' || tr.kind === 'goo' || tr.kind === 'blade' ? tr.radius : 0]),
       // Units: free ones (crows, bees, Volt Points) also send where they are, [x, z].
       u: [...this.units.values()].map((u) => [u.id, u.tower, u.model, Math.ceil(u.hp), u.maxHp, r2(u.dist), r2(u.lateral), u.alive, r2(u.speed), r2(u.yaw), u.def.free ? [r2(u.x), r2(u.z)] : 0, u.route || 0]),
       // (Inhuman contract jumpers send speed 0 so the client doesn't slide them.)

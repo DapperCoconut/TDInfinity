@@ -236,6 +236,7 @@ export class SimAbilities {
     }
     else if (ab.key === 'iceTurret' || ab.key === 'iceShard') this.placeIceTurret(t, ab, Number(m.x), Number(m.z));
     else if (ab.key === 'targetSelect') t.spot = { x: Number(m.x), z: Number(m.z) }; // Artillery
+    else if (ab.key === 'shirayuki') this.throwShirayuki(t, s, ab);
     else if (ab.key === 'thorns') this.growThorns(t, s, ab, Number(m.x), Number(m.z));
     else if (ab.key === 'puddle') this.dropPuddle(t, ab);
     else if (ab.key === 'toxicBlast' || ab.key === 'neuralyze') this.throwToxic(t, s, ab, Number(m.x), Number(m.z));
