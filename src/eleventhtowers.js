@@ -4,6 +4,8 @@
 //   Future Sniper: an alternate Sniper form. Huge range, slow heavy shots, true damage at Lv 5.
 //   Ninja: throws bursts of piercing shurikens, saves some up while idle, and has a giant
 //          spinning shuriken (Shirayuki Shuriken) from Lv 2.
+//   Bomber: an alternate Trapper form. Lobs bombs at zombies, and lays bombs on the path while
+//           nothing is in range. Time Bomb ability at Lv 4.
 //
 // New mechanic (see computeBuffs in sim/parts/shared.js):
 //   cliffBoost: { boost, stacks, radius }  Bullseye Support: other cliff towers (placement 'cliff')
@@ -16,6 +18,12 @@
 //               once when a zombie comes in range, each one adding a throw to the burst, and that
 //               burst's throws come 60% faster. refill: shurikens saved when the zombie it is
 //               targeting dies to it (its ability counts too).
+//   bomber: { bombs, fourth }  Bomber (see updateBomber in sim/parts/weapons4.js): lobs a bomb at
+//               its target that explodes in `radius`. While nothing is in range it lays a bomb on
+//               the path in range instead, up to `bombs` lying there at once; they blow up when a
+//               zombie walks over them. fourth: every 4th bomb deals that many times the damage.
+//   burnMult: { mult, hot, over }  hits on burning zombies deal `mult` x damage (`hot` x when the
+//               burn deals more than `over` a second). Read in damage() in sim/parts/damage.js.
 //   trueDmg: true  True damage (see damage in sim/parts/damage.js): no resistance, armor or
 //               defense stops it.
 //
@@ -30,6 +38,12 @@
 const shirayuki = (mult, cooldown) => ({ key: 'shirayuki', name: 'Shirayuki Shuriken', cooldown, mult, tick: 0.25, radius: 4, time: 9, drift: 1.5,
   desc: `Throws a giant spinning shuriken onto the path for 9s: ${mult}x the Ninja's damage every 0.25s to every zombie it touches, ignoring all resistance` });
 const ninja = (hpBonus, store, refill) => ({ hpBonus, store, refill });
+
+// Bomber: Time Bomb. A big bomb thrown onto the path at its target (or the closest bit of path)
+// that blows up after `fuse` s for `damage` in `radius`.
+const timeBomb = { key: 'timeBomb', name: 'Time Bomb', cooldown: 30, damage: 500, fuse: 5, radius: 6,
+  desc: 'Throws a big bomb onto the path that blows up after 5s for 500 damage' };
+const bomber = (bombs, fourth = 1) => ({ bombs, fourth });
 
 const bullseye = (boost) => ({ boost, stacks: 3, radius: 15 });
 
@@ -115,6 +129,36 @@ export const ELEVENTH_TOWERS = {
         ninja: ninja(true, 3, 1), abilities: [shirayuki(3, 30)] },
       { name: 'Rayedge Shurikens', desc: '+3 damage, 3 shurikens per burst, pierce 3 zombies, saves up 5 shurikens, and gets 3 back when its target dies.', cost: 2550, damage: 8, cooldown: 0.5, range: 19, burst: 3, pass: 2, hidden: true,
         ninja: ninja(true, 5, 3), abilities: [shirayuki(3, 30)] },
+    ],
+  },
+  // Bomber (alternate Trapper form). Bombs don't hit flying zombies. Its shop perk Pumpkin Bomb
+  // and the Shatter bounce are not built yet.
+  trapperBomber: {
+    name: 'Bomber',
+    altOf: 'trapper',
+    form: 'Bomber',
+    shards: 1,
+    price: 0,
+    cost: 700,
+    limit: 8,
+    lead: true,
+    flying: false,
+    fly: 22,
+    blurb: 'An alternate Trapper that loves explosions. Lobs bombs that blow up in an area, and while no zombie is in range it lays bombs on the path that go off when zombies walk over them. Its bombs hurt burning zombies more. Sees hidden zombies from Lv 2, and at Lv 4 it gets the Time Bomb.',
+    tip: 'Put it next to fire towers: burning zombies take 1.5x damage from its bombs (up to 3x at Lv 5).',
+    levels: [
+      { name: 'Bomber', desc: 'Lobs a bomb that explodes in an area. Lays up to 3 bombs on the path when no zombie is in range.', damage: 4, cooldown: 2, radius: 3, range: 11, hidden: false,
+        bomber: bomber(3) },
+      { name: 'More Gunpowder', desc: '+1 damage, and bombs deal 1.5x damage to burning zombies.', cost: 550, damage: 5, cooldown: 2, radius: 3, range: 11, hidden: false,
+        bomber: bomber(3), burnMult: { mult: 1.5 } },
+      { name: 'Explosive Arsenal', desc: '+2 damage, bigger blasts, hidden detection, and it can lay 4 bombs.', cost: 1000, damage: 7, cooldown: 2, radius: 4, range: 11, hidden: true,
+        bomber: bomber(4), burnMult: { mult: 1.5 } },
+      { name: 'Dynamites', desc: '+3 range and +3 damage. Every 4th bomb deals 3x damage.', cost: 3000, damage: 10, cooldown: 2, radius: 4, range: 14, hidden: true,
+        bomber: bomber(4, 3), burnMult: { mult: 1.5 } },
+      { name: 'Timed Detonation', desc: '+5 damage, throws faster (every 1.5s), and unlocks Time Bomb.', cost: 3500, damage: 15, cooldown: 1.5, radius: 4, range: 14, hidden: true,
+        bomber: bomber(4, 3), burnMult: { mult: 1.5 }, abilities: [timeBomb] },
+      { name: 'Critical Explosives', desc: '+7 damage and it can lay 6 bombs. Zombies burning for more than 7 a second take 3x damage.', cost: 6000, damage: 22, cooldown: 1.5, radius: 4, range: 14, hidden: true,
+        bomber: bomber(6, 3), burnMult: { mult: 1.5, hot: 3, over: 7 }, abilities: [timeBomb] },
     ],
   },
 };

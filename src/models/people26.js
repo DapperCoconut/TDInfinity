@@ -1,5 +1,5 @@
 // Tower models: people, batch 26 (dressed with the vehicle kit in ../vehicles.js).
-// In here: Poacher, Gunner, Future Sniper, Ninja.
+// In here: Poacher, Gunner, Future Sniper, Ninja, Bomber.
 // These towers are plain white figures with no face. Only their armor and weapons tell them
 // apart: white too, with accents in one neon colour per tower.
 // MODELS maps tower keys to builders; ../models.js lays it over TOWER_MODELS, so these win.
@@ -492,9 +492,118 @@ export function makeNinja(level) {
   return own(h, 0);
 }
 
+// ------------------------------------------------------------------ Bomber (neon yellow)
+
+const BOMBER_NEON = 0xffea00;
+
+/** A round bomb centred at (x, y, z): a white ball with a neon band, a cap and a fuse. o.glow lights the whole ball. */
+function bomb(k, neon, x, y, z, r, o = {}) {
+  k.ball(r, o.glow ?? W, x, y, z, { seg: 12, rows: 8 });
+  k.torus(r * 0.98, r * 0.12, neon, x, y, z, { rx: PI / 2, seg: 16 });
+  k.cyl(r * 0.36, r * 0.3, W3, x, y + r * 0.95, z, { seg: 10 });
+  k.cyl(r * 0.08, r * 0.5, W2, x + r * 0.12, y + r * 1.3, z, { seg: 6, rz: -0.4 });
+  k.ball(r * 0.14, neon, x + r * 0.26, y + r * 1.55, z, { seg: 6, rows: 4 }); // the spark
+}
+
+/**
+ * Bomber: a white demolition expert in a round helmet with neon goggles, a bandolier of bombs
+ * (one per bomb it can lay) and a bomb ready in its throwing hand.
+ * Lv 1 More Gunpowder: neon gunpowder pouches on the belt. Lv 2 Explosive Arsenal: a bigger
+ * bandolier and a satchel. Lv 3 Dynamites: a bundle of dynamite on its back and knee pads.
+ * Lv 4 Timed Detonation: a chest timer with a neon read-out and shoulder plates. Lv 5 Critical
+ * Explosives: heavy blast armor, a visor, and glowing bombs.
+ */
+export function makeBomber(level) {
+  const h = blank();
+  const key = `bomber${level}`;
+  const neon = glowMat(h, BOMBER_NEON);
+  const hd = wear(h, h.head, `${key}:head`);
+  const t = wear(h, h.torso, `${key}:torso`);
+  // a round blast helmet with goggles pushed down over the eyes
+  dome(hd, 0.82, 0.62, W2, 0, 0.9, 0);
+  hd.cyl(0.84, 0.1, W3, 0, 0.92, 0, { seg: 22 }); // helmet rim
+  hd.box(1.3, 0.12, 0.12, W3, 0, 0.72, 0.6, { r: 0.03 }); // goggle strap
+  for (const sd of [-1, 1]) {
+    hd.cyl(0.2, 0.14, W, sd * 0.3, 0.72, 0.7, { axis: 'z', seg: 12 });
+    hd.cyl(0.15, 0.06, neon, sd * 0.3, 0.72, 0.79, { axis: 'z', seg: 12 }); // neon lenses
+  }
+  if (level >= 5) hd.box(1.2, 0.36, 0.1, neon, 0, 0.72, 0.84, { r: 0.05 }); // Critical Explosives: a full neon visor
+  // a padded jacket with a belt
+  t.box(2.16, 1.64, 1.16, W2, 0, 0.1, 0, { r: 0.14 });
+  t.box(2.18, 0.26, 1.18, W3, 0, -0.82, 0, { r: 0.05 }); // belt
+  t.box(0.36, 0.3, 0.06, neon, 0, -0.82, 0.6); // buckle
+  // the bandolier across the chest: one bomb for every bomb it can lay
+  const n = [3, 3, 4, 4, 4, 6][level];
+  t.box(0.26, 2.6, 0.08, W3, 0, 0.12, 0.62, { rz: -0.62 });
+  for (let i = 0; i < n; i++) {
+    const f = (i - (n - 1) / 2) * (n > 4 ? 0.2 : 0.26);
+    bomb(t, neon, f * 1.2, 0.12 + f * 1.48, 0.78, 0.17, level >= 5 ? { glow: neon } : {});
+  }
+  if (level >= 1) {
+    // More Gunpowder: pouches on the belt with neon flaps
+    for (const sd of [-1, 1]) {
+      t.box(0.42, 0.4, 0.3, W, sd * 0.75, -1.0, 0.56, { r: 0.06 });
+      t.box(0.44, 0.08, 0.32, neon, sd * 0.75, -0.82, 0.56);
+    }
+  }
+  if (level >= 2) {
+    // Explosive Arsenal: a satchel on the hip
+    t.box(0.5, 0.6, 0.6, W, 1.2, -0.95, 0, { r: 0.08 });
+    t.box(0.06, 0.06, 0.62, neon, 1.46, -0.8, 0);
+  }
+  if (level >= 3) {
+    // Dynamites: a bundle of sticks strapped to its back, neon tips
+    for (let i = 0; i < 5; i++) {
+      const xx = (i - 2) * 0.3;
+      t.cyl(0.13, 1.3, W, xx, 0.15, -0.72, { seg: 10 });
+      t.cyl(0.135, 0.12, neon, xx, 0.82, -0.72, { seg: 10 });
+    }
+    t.box(1.7, 0.14, 0.34, W3, 0, 0.15, -0.72, { r: 0.04 }); // the strap round the bundle
+  }
+  if (level >= 4) {
+    // Timed Detonation: a timer on the chest, and shoulder plates
+    t.box(0.7, 0.44, 0.2, W, -0.55, 0.5, 0.66, { r: 0.05 });
+    t.box(0.54, 0.22, 0.04, neon, -0.55, 0.52, 0.77);
+    for (const sd of [-1, 1]) {
+      t.box(0.8, 0.2, 1.16, W, sd * 1.36, 0.92, 0, { rz: sd * -0.35, r: 0.06 });
+      t.box(0.8, 0.05, 0.05, neon, sd * 1.38, 0.84, 0.6, { rz: sd * -0.35 });
+    }
+  }
+  if (level >= 5) {
+    // Critical Explosives: thick blast plates over the front
+    t.box(1.7, 1.0, 0.18, W, 0, 0.0, 0.68, { r: 0.1 });
+    t.box(1.5, 0.05, 0.04, neon, 0, -0.35, 0.78);
+  }
+  hd.done();
+  t.done();
+  hands(h, key, W3, W2, (a) => {
+    a.cyl(0.57, 0.5, W, 0, -1.4, 0, { seg: 12 }); // thick gloves
+    a.torus(0.58, 0.04, neon, 0, -1.18, 0, { seg: 14 });
+  });
+  feet(h, key, W2, (b) => {
+    b.box(1.12, 0.1, 1.14, neon, 0, -1.3, 0.02); // neon boot tops
+    if (level >= 3) b.box(0.7, 0.5, 0.25, W, 0, -0.75, 0.52, { r: 0.08 }); // knee pad
+  });
+  // a bomb in the throwing hand (gun space: the throw goes along -y)
+  h.muzzles = [];
+  const g = fist(h.rightArm, -1.9, 1.1);
+  const gk = wear(h, g, `${key}:bomb`);
+  bomb(gk, neon, 0, -0.5, UP * 0.5, level >= 5 ? 0.42 : 0.36, level >= 5 ? { glow: neon } : {});
+  gk.done();
+  muzzle(h, g, -0.5, UP * 0.5);
+  h.rightArm.rotation.set(-PI / 2 - 0.6, 0, -0.15); // held up, ready to lob
+  h.leftArm.rotation.set(-0.3, 0, 0.2);
+  h.pose = { right: -PI / 2 - 0.6, left: -0.3, leftRecoil: 0 };
+  h.tracer = BOMBER_NEON;
+  h.flight = { color: 0xffffff, size: 0.7, arc: 4, glowing: true };
+  h.projectile = { color: 0xffffff, size: 0.7, arc: 4, glowing: true };
+  return own(h, 0);
+}
+
 export const MODELS = {
   poacher: makePoacher,
   soldierGunner: makeGunner,
   sniperFuture: makeFutureSniper,
   ninja: makeNinja,
+  trapperBomber: makeBomber,
 };

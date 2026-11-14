@@ -209,6 +209,7 @@ export class SimTowerUpdate {
     if (s.buildEvery) this.updateTurrets(t, s, dt); // Mechanic: a temporary turret every `buildEvery` s
     if (s.burn != null) return this.updateFlame(t, def, s, dt);
     if (def.traps) return this.updateTrapper(t, def, s);
+    if (s.bomber) return this.updateBomber(t, def, s); // Bomber: lobs bombs, lays them while idle
     // Ice Apprentice Blizzard: its staff can't attack while it lasts.
     if (t.active > 0 && s.abilities?.some((a) => a.key === 'blizzard')) return this.updateBlizzard(t, s, dt);
     if (s.soul && t.choice?.[0] === 'beam') return this.updateSoulBeam(t, s, dt * b.rate); // Spiritual Advocate Beam mode

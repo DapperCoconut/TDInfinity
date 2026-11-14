@@ -388,6 +388,10 @@ export class SimWeapons1 {
       if (!e) continue;
       const t = this.towers.get(f.tower) ?? null;
       this.events.push({ k: 'impact', e: e.id, t: f.tower, ...(f.ice ? { ice: 1 } : {}) });
+      if (f.boom) {
+        this.explode(t, e.x, e.z, f.boom); // Bomber: the bomb blows up where it lands
+        continue;
+      }
       if (f.ice) {
         // Frost Grenade: freezes the zombie it lands on.
         if (!e.boss) this.stop({}, e, f.ice, 'ice');

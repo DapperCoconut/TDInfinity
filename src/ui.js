@@ -656,6 +656,8 @@ export class UI {
     if (s.econ) row('Tower Economics', `+${Math.round(s.econ.pct * 100)}% of nearby towers' value (up to $${s.econ.max.toLocaleString()})`, 'yes');
     if (s.ninja?.hpBonus) row('Ninja Training', 'extra damage against zombies with lots of health', 'yes');
     if (s.ninja?.store) row('Dummyjitsu', `saves up ${s.ninja.store} shurikens while idle${s.ninja.refill ? `, gets ${s.ninja.refill} back when its target dies` : ''}`, 'yes');
+    if (s.bomber) row('Bombs', `lays up to ${s.bomber.bombs} on the path when no zombie is in range${s.bomber.fourth > 1 ? `, every 4th deals ${s.bomber.fourth}x` : ''}`, 'yes');
+    if (s.burnMult) row('Burning zombies', `take ${s.burnMult.mult}x damage${s.burnMult.hot ? ` (${s.burnMult.hot}x if the burn deals over ${s.burnMult.over}/s)` : ''}`, 'yes');
     if (s.cliffBoost) row('Bullseye Support', `cliff towers within ${s.cliffBoost.radius} get +${Math.round(s.cliffBoost.boost * 100)}% range (stacks ${s.cliffBoost.stacks} times)`, 'yes');
     if (def.noHeal) row('Healing', "Medics can't heal it", 'no');
     if (def.kind === 'spawner' && s.roster) {

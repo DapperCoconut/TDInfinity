@@ -482,6 +482,7 @@ export class SimDamage {
         }
       }
       if (ts.bossMult && e.boss) mult *= ts.bossMult; // Titan special rounds
+      if (ts.burnMult && e.burn > 0 && !this.dot) mult *= ts.burnMult.hot && e.burnDps > ts.burnMult.over ? ts.burnMult.hot : ts.burnMult.mult; // Bomber: burning zombies
       const shm = hm?.shieldMult ?? ts.shieldMult; // Elite Plasma Bombardment, Plasmators, Immolation
       if (shm && ENEMIES[e.type].shield) mult *= shm;
       if (ts.iceBreak && (e.chillT > 0 || e.stopKind === 'ice')) mult *= ts.iceBreak; // Sledger Ice Breaker

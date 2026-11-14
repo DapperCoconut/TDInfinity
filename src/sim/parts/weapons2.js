@@ -395,6 +395,14 @@ export class SimWeapons2 {
         this.gooPuddle(tr, dt);
         continue;
       }
+      if (tr.fuse != null) {
+        // Bomber Time Bomb: blows up when its fuse runs out, whoever is near.
+        if (tr.land > 0) tr.land -= dt;
+        if ((tr.fuse -= dt) > 0) continue;
+        this.explode(this.towers.get(tr.tower) ?? null, tr.x, tr.z, { damage: tr.damage, radius: tr.radius, det: tr.det });
+        tr.uses = 0;
+        tr.land = 0;
+      }
       if (tr.life != null && (tr.life -= dt) <= 0) tr.uses = 0; // Mine Layer mine wore out
       if (tr.land > 0) {
         tr.land -= dt;
@@ -416,7 +424,7 @@ export class SimWeapons2 {
             this.damage(tower, e, tr.damage);
             if (--tr.uses > 0) continue;
           }
-        } else if (tr.kind === 'mine') {
+        } else if (tr.kind === 'mine' || tr.kind === 'bomb') {
           this.explode(tower, tr.x, tr.z, { damage: tr.damage, radius: tr.radius, det: tr.det, burn: tr.burn, burnTime: tr.burnTime, stun: tr.stun }); // Golden S-Mine: stuns
           if (tr.thermite) this.dropThermite(tr);
         } else {

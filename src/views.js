@@ -733,6 +733,9 @@ const trapMats = {
   blade: new THREE.MeshLambertMaterial({ color: 0xffffff }),
   bladeEdge: new THREE.MeshLambertMaterial({ color: 0xd8d8e0 }),
   bladeGlow: new THREE.MeshBasicMaterial({ color: 0xbf00ff }),
+  bomb: new THREE.MeshLambertMaterial({ color: 0xffffff }),
+  bombCap: new THREE.MeshLambertMaterial({ color: 0xe4e4e4 }),
+  bombGlow: new THREE.MeshBasicMaterial({ color: 0xffea00 }),
 };
 const trapGeo = {
   plate: new THREE.BoxGeometry(2.2, 0.15, 2.2),
@@ -744,6 +747,8 @@ const trapGeo = {
   patch: new THREE.CircleGeometry(1, 20),
   ember: new THREE.BoxGeometry(0.25, 0.25, 0.25),
   gasPuff: new THREE.SphereGeometry(1, 8, 6),
+  bomb: new THREE.SphereGeometry(0.5, 14, 10),
+  fuse: new THREE.CylinderGeometry(0.06, 0.06, 0.4, 6),
   bladeArm: new THREE.OctahedronGeometry(0.5, 0).scale(1, 0.25, 1), // a flat diamond: one shuriken point
 };
 
@@ -883,6 +888,23 @@ export class TrapView {
       const core = new THREE.Mesh(trapGeo.mine, trapMats.bladeGlow);
       core.scale.set(r * 0.1, 1.7, r * 0.1);
       this.blade.add(core);
+    } else if (tr.kind === 'bomb' || tr.kind === 'tbomb') {
+      // Bomber: a round white bomb with a neon band and a sparking fuse. The Time Bomb is bigger,
+      // with a ticking neon clock face on top.
+      const big = tr.kind === 'tbomb' ? 1.8 : 1;
+      add(trapGeo.bomb, trapMats.bomb, 0, 0.45 * big, 0).scale.setScalar(big);
+      const band = add(trapGeo.ring, trapMats.bombGlow, 0, 0.45 * big, 0);
+      band.rotation.x = Math.PI / 2;
+      band.scale.set(0.64 * big, 0.64 * big, 0.5 * big);
+      add(trapGeo.light, trapMats.bombCap, 0, 0.92 * big, 0).scale.set(1.2 * big, 1, 1.2 * big);
+      add(trapGeo.fuse, trapMats.bombCap, 0.08 * big, 1.1 * big, 0).rotation.z = -0.4;
+      this.light = add(trapGeo.light, trapMats.bombGlow, 0.18 * big, 1.3 * big, 0);
+      if (tr.kind === 'tbomb') {
+        const face = add(trapGeo.ring, trapMats.bombGlow, 0, 0.45 * big, 0.5 * big);
+        face.scale.setScalar(0.32 * big);
+        this.hand = add(trapGeo.light, trapMats.bombGlow, 0, 0.45 * big, 0.92);
+        this.hand.scale.set(0.3, 2.4, 0.3);
+      }
     } else if (tr.kind === 'mine') {
       add(trapGeo.mine, trapMats.mine, 0, 0.15, 0);
       this.light = add(trapGeo.light, trapMats.light, 0, 0.36, 0);
@@ -901,7 +923,8 @@ export class TrapView {
     if (this.kind === 'grave' || this.kind === 'sentry') return this.syncBuild(tr, dt);
     this.group.visible = !(tr.land > 0);
     this.t += dt;
-    if (this.light) this.light.visible = Math.sin(this.t * 6) > 0; // blinking landmine light
+    if (this.light) this.light.visible = Math.sin(this.t * (this.hand ? 14 : 6)) > 0; // blinking landmine light / bomb fuse spark
+    if (this.hand) this.hand.rotation.z -= dt * 6; // Time Bomb: its clock hand ticks round
     if (this.embers) for (const m of this.embers) m.position.y = 0.3 + Math.abs(Math.sin(this.t * 5 + m.userData.ph)) * 0.6; // thermite embers
     if (this.puffs) for (const m of this.puffs) m.position.y = 0.8 + Math.sin(this.t * 1.5 + m.userData.ph) * 0.4; // gas puffs
     if (this.puffs) this.group.rotation.y += dt * 0.3;

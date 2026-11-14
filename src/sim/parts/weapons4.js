@@ -4,7 +4,7 @@
 
 import { ENEMIES, TOWERS, canHit, unitDetection, waveGroups } from '../../config.js';
 import { path } from '../path.js';
-import { SEE_ALL, TAU, buffOf, r2 } from './shared.js';
+import { SEE_ALL, TAU, TRAP_FLIGHT, buffOf, r2 } from './shared.js';
 
 export class SimWeapons4 {
 
@@ -497,5 +497,63 @@ export class SimWeapons4 {
       if ((e.x - p.x) ** 2 + (e.z - p.z) ** 2 <= p.radius * p.radius) this.damage(tower, e, p.damage);
     }
     this.trueHit = false;
+  }
+
+  // ---------------------------------------------------------------- Bomber
+
+  /**
+   * Bomber: lobs a bomb at its target every `cooldown` s that blows up in `radius` where it lands.
+   * While nothing is in range it lays a bomb on the path in range instead, up to `bomber.bombs`
+   * lying there at once (they go off when a zombie walks over them).
+   */
+  updateBomber(t, def, s) {
+    const target = this.findTarget(t, s, t.x, t.z, s.range, null);
+    if (target) t.yaw = Math.atan2(target.x - t.x, target.z - t.z);
+    if (t.cooldown > 0) return;
+    if (target) {
+      t.cooldown += s.cooldown;
+      const time = this.flyTime(t, s, target);
+      this.flights.push({ tower: t.id, type: t.type, enemy: target.id, time, boom: { damage: this.bombDamage(t, s), radius: s.radius, det: this.detects(t, s) } });
+      this.events.push({ k: 'fly', t: t.id, e: target.id, d: r2(time) });
+      return;
+    }
+    if (t.spotsR !== s.range) {
+      t.spots = this.trapSpots(t, s.range);
+      t.spotsR = s.range;
+    }
+    let laid = 0;
+    for (const tr of this.traps.values()) if (tr.tower === t.id && tr.kind === 'bomb') laid++;
+    if (!t.spots.length || laid >= s.bomber.bombs) {
+      t.cooldown = Math.max(0, t.cooldown);
+      return;
+    }
+    t.cooldown += s.cooldown;
+    const spot = t.spots[Math.floor(Math.random() * t.spots.length)];
+    const lat = (Math.random() - 0.5) * 2;
+    const x = spot.x - spot.dz * lat;
+    const z = spot.z + spot.dx * lat;
+    const id = this.nextId++;
+    this.traps.set(id, { id, tower: t.id, kind: 'bomb', x, z, land: TRAP_FLIGHT, uses: 1, hits: new Set(), damage: this.bombDamage(t, s), radius: s.radius,
+      det: { ...this.detects(t, s), flying: false } });
+    t.yaw = Math.atan2(x - t.x, z - t.z);
+    this.events.push({ k: 'trapThrow', t: t.id, x: r2(x), z: r2(z), d: TRAP_FLIGHT });
+  }
+
+  /** Bomber Dynamites: every 4th bomb (thrown or laid) deals `bomber.fourth` x damage. */
+  bombDamage(t, s) {
+    t.bombN = (t.bombN || 0) + 1;
+    return t.bombN % 4 === 0 ? s.damage * s.bomber.fourth : s.damage;
+  }
+
+  /** Bomber Time Bomb: a big bomb lands on the path at its target (or the path closest to it) and blows up after `fuse` s. */
+  throwTimeBomb(t, s, ab) {
+    const e = this.findTarget(t, s, t.x, t.z, s.range, null);
+    const p = this.nearestPathPoint(e ? e.x : t.x, e ? e.z : t.z);
+    if (!p) return;
+    const id = this.nextId++;
+    this.traps.set(id, { id, tower: t.id, kind: 'tbomb', x: p.x, z: p.z, land: TRAP_FLIGHT, fuse: ab.fuse, uses: 1, hits: new Set(), damage: ab.damage, radius: ab.radius,
+      det: this.detects(t, s) });
+    t.yaw = Math.atan2(p.x - t.x, p.z - t.z);
+    this.events.push({ k: 'trapThrow', t: t.id, x: r2(p.x), z: r2(p.z), d: TRAP_FLIGHT });
   }
 }
