@@ -654,6 +654,7 @@ export class UI {
     if (s.shield && s.towerHeal) row('Repairs', `${s.towerHeal} HP/s to towers in range`, 'yes');
     if (s.crates) row('Crates', `${s.crates} a wave, the first lands ${s.drop}s in`);
     if (s.econ) row('Tower Economics', `+${Math.round(s.econ.pct * 100)}% of nearby towers' value (up to $${s.econ.max.toLocaleString()})`, 'yes');
+    if (s.cliffBoost) row('Bullseye Support', `cliff towers within ${s.cliffBoost.radius} get +${Math.round(s.cliffBoost.boost * 100)}% range (stacks ${s.cliffBoost.stacks} times)`, 'yes');
     if (def.noHeal) row('Healing', "Medics can't heal it", 'no');
     if (def.kind === 'spawner' && s.roster) {
       // Mercenary Base: several kinds of units, trained in queues.

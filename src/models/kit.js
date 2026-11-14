@@ -290,6 +290,8 @@ export function faceTexture(skin, style) {
       g.fillRect(16, 27, 9, 4);
       break;
     // Expert mode (2026-11-09) faces.
+    case 'none': // plain white figures (Poacher...): nothing at all
+      break;
     case 'blank': // cracked figures, Vio enemies, time beings: no face, just a faint crack
       g.strokeStyle = 'rgba(0,0,0,0.25)';
       g.lineWidth = 2;

@@ -101,6 +101,7 @@ const HERO_SHOTS = {
   aviatorBeebo: { kind: 'scoop', color: 0xf8bbd0 },
   marksmanFracture: { kind: 'gem' },
   goldFracture: { kind: 'gem', color: 0xffd740 },
+  poacher: { kind: 'arrow', color: 0x39ff14 },
 };
 const _land = new THREE.Vector3();
 

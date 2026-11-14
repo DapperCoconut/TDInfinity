@@ -10,6 +10,7 @@ import { CROSS_TOWERS } from './crosstowers.js';
 import { HERO_TOWERS } from './herotowers.js';
 import { TENTH_TOWERS } from './tenthtowers.js';
 import { GOLD_TOWERS } from './goldtowers.js';
+import { ELEVENTH_TOWERS } from './eleventhtowers.js';
 import { HARDCORE_WAVES } from './hardcore.js';
 import { HALLOWEEN_TIMERS, HALLOWEEN_WAVES } from './halloween.js';
 import { HALLOWEEN2_TIMERS, HALLOWEEN2_WAVES } from './halloween2.js';
@@ -162,6 +163,8 @@ export const TOWERS = {
   // Good as gold: golden Samurai, Mercenary, Focus, Outlaw, Buccaneer, Enforcement Base, Submerge,
   // Commando and Orbit, plus the Gold Commander. See goldtowers.js.
   ...GOLD_TOWERS,
+  // Wave 11: the Poacher (starter cliff tower). See eleventhtowers.js.
+  ...ELEVENTH_TOWERS,
 };
 
 /**

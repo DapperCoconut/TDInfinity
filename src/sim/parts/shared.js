@@ -122,13 +122,15 @@ export function medicShields(towers) {
  * counts like a DJ's (the biggest discount wins). EDJ range boosts count like Booth range, and
  * its Encore adds to its boosts while on. Medigun Medics: Kritz boosts their patient's damage;
  * Uber makes the Medic and its patient invulnerable (`invuln`, which also blocks stuns).
+ * Poacher Bullseye Support (`cliffBoost`): more range for cliff towers nearby; unlike the rest,
+ * boosts from several Poachers add up (up to `stacks`).
  * Shared by the sim and the client (the client shows boosted range and discounted prices).
  */
 export function computeBuffs(towers) {
   const list = [...towers];
   const out = new Map();
   // (VOID's corrupted towers boost nobody.)
-  const sources = list.filter((o) => { if (o.corrupt) return false; const s = TOWERS[o.type].levels[o.level]; return s.aura || (s.radio && o.radioT > 0) || (o.active > 0 && rageOf(s)) || s.kin || s.radar || s.globalCdCut || s.bizDisc; });
+  const sources = list.filter((o) => { if (o.corrupt) return false; const s = TOWERS[o.type].levels[o.level]; return s.aura || (s.radio && o.radioT > 0) || (o.active > 0 && rageOf(s)) || s.kin || s.radar || s.globalCdCut || s.bizDisc || s.cliffBoost; });
   // (Spectre drones boost damage in Support mode; Glowups boost firerate less the farther away a tower is.)
   if (!sources.length) return out;
   const shields = medicShields(list);
@@ -163,6 +165,8 @@ export function computeBuffs(towers) {
     let goldRate = 0; // Gold Commander: golden towers attack faster
     let ctaD = 0; // Gold Commander Call to Battle: more damage
     let biz = 0, bizCap = 0, bizTier = 0; // Businessman Discount Seeker: stacking upgrade discounts
+    const cliffs = []; // Poacher Bullseye Support: range boosts for cliff towers, the best few add up
+    const isCliff = TOWERS[t.type].placement === 'cliff';
     for (const o of sources) {
       const s = TOWERS[o.type].levels[o.level];
       if (s.kin && o !== t && rootType(o.type) === rootType(t.type) && (t.x - o.x) ** 2 + (t.z - o.z) ** 2 <= s.range * s.range) {
@@ -189,6 +193,7 @@ export function computeBuffs(towers) {
       if (ra && d2 <= ra.radius ** 2) rage = Math.max(rage, ra.boost);
       // Surveyor Radar Drone: more range near the drone (it hovers over the Surveyor until moved).
       if (s.radar && (t.x - (o.rx ?? o.x)) ** 2 + (t.z - (o.rz ?? o.z)) ** 2 <= s.radar.radius ** 2) range = Math.max(range, s.radar.boost);
+      if (s.cliffBoost && isCliff && d2 <= s.cliffBoost.radius ** 2) cliffs.push(s.cliffBoost);
       if (s.bizDisc && d2 <= s.range * s.range) {
         biz += s.bizDisc.pct;
         bizCap = Math.max(bizCap, s.bizDisc.cap);
@@ -226,6 +231,10 @@ export function computeBuffs(towers) {
     const uber = !!(ms && m.active > 0);
     const uberBoost = uber ? (ms.abilities?.find((a) => a.key === 'uber')?.boost ?? 0) : 0;
     biz = Math.min(biz, bizCap);
+    // Bullseye Support: the strongest boosts stack, up to the most `stacks` any of them allows.
+    cliffs.sort((a, b) => b.boost - a.boost);
+    const cliffMax = Math.max(0, ...cliffs.map((c) => c.stacks));
+    const cliffRange = cliffs.slice(0, cliffMax).reduce((n, c) => n + c.boost, 0);
     if (kinN < kinMin) kinRate = kinDmg = kinRange = 0;
     kinRate = Math.min(kinRate, kinRateCap);
     kinDmg = Math.min(kinDmg, kinDmgCap);
@@ -235,9 +244,9 @@ export function computeBuffs(towers) {
       if (discount || sell || invuln || biz || cdCut || costUp) out.set(t.id, { ...NO_BUFF, discount, sell, invuln, biz, bizTier, cdCut, costUp });
       continue;
     }
-    if (range || rate || cta || music || discount || boothRange || boothDmg || merc || radio || rage || m || kritz || invuln || sell || cdCut || dmgAdd || kinRate || kinDmg || kinRange || biz || costUp || dmgLoss || rateLoss || splash || killCash > 1 || goldRate || ctaD) {
+    if (range || cliffRange || rate || cta || music || discount || boothRange || boothDmg || merc || radio || rage || m || kritz || invuln || sell || cdCut || dmgAdd || kinRate || kinDmg || kinRange || biz || costUp || dmgLoss || rateLoss || splash || killCash > 1 || goldRate || ctaD) {
       out.set(t.id, {
-        range: TOWERS[t.type].noRangeBuff ? 1 : (1 + range) * (1 + boothRange) * (1 + radio) * (1 + kinRange), // Slammer: range can't be boosted
+        range: TOWERS[t.type].noRangeBuff ? 1 : (1 + range) * (1 + cliffRange) * (1 + boothRange) * (1 + radio) * (1 + kinRange), // Slammer: range can't be boosted
         rate: (1 + rate + cta) * (1 + music) * (1 + (ms?.shieldRate ?? 0)) * (1 + kinRate) * (1 - rateLoss) * (1 + goldRate),
         discount,
         cta: cta > 0,
