@@ -556,4 +556,47 @@ export class SimWeapons4 {
     t.yaw = Math.atan2(p.x - t.x, p.z - t.z);
     this.events.push({ k: 'trapThrow', t: t.id, x: r2(p.x), z: r2(p.z), d: TRAP_FLIGHT });
   }
+
+  // ---------------------------------------------------------------- Berserker
+
+  /**
+   * Berserker, after each axe hit at `at` ({ x, z, weak }: where its target was, and whether it
+   * had Physical Weakness). Rage: +1 stack (more on weakened zombies), kept while it keeps
+   * hitting. Crushing Blow: every `crush.every`th hit slams the ground there.
+   */
+  berserkHit(t, s, at) {
+    if (s.rage) {
+      t.rage = Math.min(s.rage.max, (t.rage || 0) + (at.weak ? s.rage.weakStacks : 1));
+      t.rageT = s.rage.idle;
+    }
+    t.crushN = (t.crushN || 0) + 1;
+    if (t.crushN % s.crush.every) return;
+    const dmg = Math.round(s.damage * (1 + (s.rage ? s.rage.per * (t.rage || 0) : 0)) * 100) / 100;
+    this.crushSlam(t, s, at.x, at.z, dmg, s.crush.time);
+    // Brutalist Aftershock: at full Rage a second, weaker slam follows a moment later.
+    if (s.crush.after && s.rage && t.rage >= s.rage.max) t.after = { x: at.x, z: at.z, dmg: Math.round(dmg * 50) / 100, time: s.crush.time / 2, left: 0.4 };
+  }
+
+  /** Berserker Crushing Blow: hits every zombie within `crush.radius` of (x, z) and adds Physical Weakness for `time` s. */
+  crushSlam(t, s, x, z, dmg, time) {
+    const c = s.crush;
+    const det = this.detects(t, s);
+    const r2max = c.radius * c.radius;
+    this.events.push({ k: 'quake', x: r2(x), z: r2(z), r: c.radius, c: 0xff2a2a });
+    for (const e of [...this.enemies.values()]) {
+      if (!canHit(det, e) || (e.x - x) ** 2 + (e.z - z) ** 2 > r2max) continue;
+      this.damage(t, e, dmg);
+      if (!this.enemies.has(e.id)) continue;
+      // A Lv 4 Berserker can push it past a lower level's cap; a lower level never brings it down.
+      e.physWeak = Math.max(e.physWeak || 0, Math.min(c.cap, (e.physWeak || 0) + c.weak));
+      e.physWeakT = Math.max(e.physWeakT || 0, time);
+    }
+  }
+
+  /** Berserker Aftershock: the second slam, `t.after` ({ x, z, dmg, time }). */
+  aftershock(t, s) {
+    const a = t.after;
+    t.after = null;
+    if (s.crush) this.crushSlam(t, s, a.x, a.z, a.dmg, a.time);
+  }
 }

@@ -1,5 +1,5 @@
 // Tower models: people, batch 26 (dressed with the vehicle kit in ../vehicles.js).
-// In here: Poacher, Gunner, Future Sniper, Ninja, Bomber.
+// In here: Poacher, Gunner, Future Sniper, Ninja, Bomber, Berserker.
 // These towers are plain white figures with no face. Only their armor and weapons tell them
 // apart: white too, with accents in one neon colour per tower.
 // MODELS maps tower keys to builders; ../models.js lays it over TOWER_MODELS, so these win.
@@ -600,10 +600,126 @@ export function makeBomber(level) {
   return own(h, 0);
 }
 
+// ------------------------------------------------------------------ Berserker (neon red)
+
+const BERSERKER_NEON = 0xff2a2a;
+
+/**
+ * A one-handed axe (gun space: handle along -y from the fist, blade out to +z, its head at hy):
+ * a white haft with a grip, a curved white blade with a neon edge, and a back spike.
+ * o.double: a second blade behind instead of the spike; o.glow: the whole blade glows; o.big: size.
+ */
+function handAxe(k, neon, hy, o = {}) {
+  const b = o.big ?? 1;
+  k.cyl(0.09, 2.0 * b, W2, 0, hy * 0.45, 0, { seg: 10 }); // haft
+  for (let i = 0; i < 4; i++) k.torus(0.1, 0.025, W3, 0, 0.15 - i * 0.1, 0, { rx: PI / 2, seg: 10 }); // wrapped grip
+  k.cyl(0.12, 0.14, W3, 0, 0.3, 0, { seg: 10 }); // pommel
+  k.box(0.24, 0.55 * b, 0.26, W3, 0, hy, 0, { r: 0.04 }); // socket
+  const blade = (dir) => {
+    const p = [[0.1, 0.22], [0.42, 0.3], [0.78, 0.55], [0.92, 0.2], [0.94, -0.22], [0.8, -0.66], [0.42, -0.38], [0.1, -0.24]];
+    const ed = [[0.74, 0.6], [0.86, 0.64], [1.04, 0.2], [1.06, -0.24], [0.9, -0.74], [0.76, -0.7], [0.94, -0.22], [0.92, 0.2]];
+    const pts = (a) => a.map(([z, y]) => [z * dir * b, y * b]);
+    k.prism(dir > 0 ? pts(p) : pts(p).reverse(), 0.12, o.glow ?? W, 0, hy, 0, { bevel: 0.02 });
+    k.prism(dir > 0 ? pts(ed) : pts(ed).reverse(), 0.06, neon, 0, hy, 0);
+  };
+  blade(1);
+  if (o.double) blade(-1);
+  else k.cyl(0.0001, 0.4 * b, W3, 0, hy, -0.3 * b, { axis: 'z', seg: 6, r2: 0.08 }); // back spike
+}
+
+/**
+ * Berserker: a big white brawler with a wild mane and two axes.
+ * Lv 1 Larger Muscles: bulkier arms with neon arm rings. Lv 2 Violent Tendencies: neon war-paint
+ * stripes and a spiked shoulder pad. Lv 3 Brutalist: double-bladed axes and a chest harness with a
+ * plate. Lv 4 Berserker: a horned helmet, a fur cape and glowing axe blades.
+ */
+export function makeBerserker(level) {
+  const h = blank();
+  const key = `berserker${level}`;
+  const neon = glowMat(h, BERSERKER_NEON);
+  const hd = wear(h, h.head, `${key}:head`);
+  const t = wear(h, h.torso, `${key}:torso`);
+  // a wild mane of white hair down the back of the head
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 6 - 0.5) * 2.2;
+    hd.cyl(0.18, 0.7, W3, Math.sin(a) * 0.6, 1.2, -0.35 + Math.cos(a) * -0.2, { seg: 6, r2: 0.0001, rx: -0.5, rz: -a * 0.5 });
+  }
+  dome(hd, 0.8, 0.5, W3, 0, 0.98, -0.06);
+  if (level >= 2) {
+    // Violent Tendencies: neon war paint across where the eyes would be
+    for (const yy of [0.82, 0.66]) hd.box(1.4, 0.07, 0.05, neon, 0, yy, 0.74, { r: 0.02 });
+  }
+  if (level >= 4) {
+    // Berserker: a horned helmet with a neon band
+    dome(hd, 0.84, 0.58, W, 0, 1.02, 0);
+    hd.cyl(0.86, 0.12, neon, 0, 1.02, 0, { seg: 22 });
+    for (const sd of [-1, 1]) hd.tube([[sd * 0.75, 1.25, 0], [sd * 1.15, 1.55, 0.1], [sd * 1.25, 2.05, 0.25]], 0.12, W2, { seg: 10, sides: 8, r2: 0.02 });
+  }
+  // a bare-looking chest (all white) with a heavy belt and a fur kilt
+  t.box(2.3, 1.7, 1.2, W, 0, 0.1, 0, { r: 0.18 });
+  t.box(1.0, 0.5, 0.06, W2, -0.4, 0.5, 0.6, { r: 0.1 }); // chest muscles
+  t.box(1.0, 0.5, 0.06, W2, 0.4, 0.5, 0.6, { r: 0.1 });
+  t.box(2.32, 0.32, 1.22, W3, 0, -0.82, 0, { r: 0.05 });
+  t.box(0.46, 0.4, 0.08, neon, 0, -0.82, 0.62, { r: 0.04 }); // buckle
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * PI * 2;
+    t.box(0.42, 0.55, 0.12, W2, Math.sin(a) * 1.05, -1.2, Math.cos(a) * 0.55, { ry: a, r: 0.04 }); // fur kilt strips
+  }
+  if (level >= 2) {
+    // a spiked shoulder pad on the left
+    t.box(0.9, 0.24, 1.2, W, 1.38, 0.95, 0, { rz: -0.35, r: 0.06 });
+    for (const z of [-0.3, 0.3]) t.cyl(0.11, 0.5, W3, 1.5, 1.3, z, { seg: 6, r2: 0.0001 });
+    t.box(0.9, 0.05, 0.05, neon, 1.4, 0.86, 0.62, { rz: -0.35 });
+  }
+  if (level >= 3) {
+    // Brutalist: leather-style straps crossing the chest and a round plate where they meet
+    for (const sd of [-1, 1]) t.box(0.22, 2.4, 0.08, W3, 0, 0.15, 0.63, { rz: sd * 0.62 });
+    t.cyl(0.3, 0.1, W, 0, 0.15, 0.68, { axis: 'z', seg: 16 });
+    t.cyl(0.16, 0.12, neon, 0, 0.15, 0.7, { axis: 'z', seg: 12 });
+  }
+  if (level >= 4) {
+    // a fur cape over the shoulders with a neon hem
+    t.slab(2.4, 2.8, 0.12, W2, 0, -0.4, -0.66, { bw: 1.3 });
+    t.torus(0.75, 0.24, W3, 0, 0.95, -0.1, { rx: PI / 2, seg: 18 }); // fur collar
+    t.box(3.0, 0.06, 0.05, neon, 0, -1.72, -0.74);
+  }
+  hd.done();
+  t.done();
+  const bulk = level >= 1 ? 0.62 : 0.55;
+  hands(h, key, W3, W2, (a) => {
+    a.cyl(bulk, 0.6, W, 0, -1.3, 0, { seg: 12, r2: bulk + 0.03 }); // thick forearms / bracers
+    if (level >= 1) for (const yy of [-1.1, -1.5]) a.torus(bulk + 0.02, 0.04, neon, 0, yy, 0, { seg: 14 }); // Larger Muscles
+  });
+  feet(h, key, W2, (b) => {
+    b.box(1.12, 0.1, 1.14, neon, 0, -1.3, 0.02); // neon boot tops
+    b.cyl(0.56, 0.5, W3, 0, -0.85, 0, { seg: 12 }); // fur leg wraps
+  });
+  // an axe in each fist, both raised to chop
+  h.muzzles = [];
+  const hy = -1.7;
+  const axe = { double: level >= 3, glow: level >= 4 ? neon : undefined, big: [1, 1, 1.05, 1.15, 1.2][level] ?? 1.2 };
+  const g = fist(h.rightArm, -1.9, level >= 1 ? 1.15 : 1.05);
+  const gk = wear(h, g, `${key}:axeR`);
+  handAxe(gk, neon, hy, axe);
+  gk.done();
+  muzzle(h, g, hy, 0);
+  const g2 = fist(h.leftArm, -1.9, level >= 1 ? 1.15 : 1.05);
+  const gk2 = wear(h, g2, `${key}:axeL`);
+  handAxe(gk2, neon, hy, axe);
+  gk2.done();
+  h.rightArm.rotation.set(-2.5, 0, 0.25);
+  h.leftArm.rotation.set(-2.2, 0, -0.3);
+  h.pose = { right: -2.5, left: -2.2, leftRecoil: 0 };
+  h.tracer = BERSERKER_NEON;
+  h.tracerWidth = 0.3;
+  return own(h, 0);
+}
+
 export const MODELS = {
   poacher: makePoacher,
   soldierGunner: makeGunner,
   sniperFuture: makeFutureSniper,
   ninja: makeNinja,
   trapperBomber: makeBomber,
+  berserker: makeBerserker,
 };

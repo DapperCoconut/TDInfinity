@@ -235,6 +235,7 @@ const TABLE = {
   assassin: 'crane cocked lowered prowl swing',
   brawler: 'bladed boxer - bounce punch',
   brawlerMako: 'sumo overhead sideM hunch chop',
+  berserker: 'widebladed overhead sideM hunch chop',
   goldMako: 'power shoulderM frontM proud chop',
   crookBoss: 'contra underarm shoulderRest proud rattle l:pocket',
   goldCrookBoss: 'leanBack hipshot upright proud rattle',

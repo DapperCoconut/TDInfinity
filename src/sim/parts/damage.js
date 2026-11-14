@@ -451,6 +451,7 @@ export class SimDamage {
     const block = e.carry?.defense ?? e.defense;
     if (block && !this.dot && !pierceArmor && !tru) dmg = Math.max(0, dmg - block * (1 - Math.min(1, dp)));
     if (e.vuln) dmg *= 1 + e.vuln; // softened up by a DJ Booth's Red Drop the Beat
+    if (e.physWeak > 0 && t && !this.dot && kind !== 'laser' && kind !== 'golden') dmg *= 1 + e.physWeak; // Berserker Physical Weakness: physical hits do more
     if (e.sacrificing && !this.bloodPass && !tru) {
       // Rebirther Blood Sacrifice: almost nothing gets through, except crashes from some units.
       const sac = ENEMIES[e.type].sacrifice;

@@ -236,6 +236,7 @@ export class Sim {
       if (!e.beatT) e.beatSlow = 0;
       e.vulnT = Math.max(0, e.vulnT - dt);
       if (!e.vulnT) e.vuln = 0;
+      if (e.physWeakT > 0 && (e.physWeakT -= dt) <= 0) e.physWeak = 0; // Berserker Physical Weakness wore off
       if (e.neuroT) e.neuroT = Math.max(0, e.neuroT - dt);
       if (e.zapT) e.zapT = Math.max(0, e.zapT - dt);
       if (e.injuredT && !(e.injuredT = Math.max(0, e.injuredT - dt))) e.injured = 0;

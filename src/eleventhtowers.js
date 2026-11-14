@@ -6,6 +6,8 @@
 //          spinning shuriken (Shirayuki Shuriken) from Lv 2.
 //   Bomber: an alternate Trapper form. Lobs bombs at zombies, and lays bombs on the path while
 //           nothing is in range. Time Bomb ability at Lv 4.
+//   Berserker: an alternate Slugger form. Chops with two axes; Crushing Blow slams the ground
+//              and makes zombies weaker to physical damage. Fatal Frenzy ability at Lv 4.
 //
 // New mechanic (see computeBuffs in sim/parts/shared.js):
 //   cliffBoost: { boost, stacks, radius }  Bullseye Support: other cliff towers (placement 'cliff')
@@ -24,6 +26,15 @@
 //               zombie walks over them. fourth: every 4th bomb deals that many times the damage.
 //   burnMult: { mult, hot, over }  hits on burning zombies deal `mult` x damage (`hot` x when the
 //               burn deals more than `over` a second). Read in damage() in sim/parts/damage.js.
+//   crush: { every, radius, weak, time, cap, after }  Berserker Crushing Blow (see berserkHit in
+//               sim/parts/weapons4.js): every `every`th hit slams the ground at its target, hitting
+//               every zombie within `radius` for its damage and adding `weak` Physical Weakness
+//               (more damage taken from physical hits: everything but lasers, golden damage and
+//               damage over time) for `time` s, up to `cap`. after: at full Rage a second slam
+//               (Aftershock) follows with half the damage and half the weakness time.
+//   rage: { per, max, weakStacks, idle }  Berserker Rage: +1 stack per hit (`weakStacks` on
+//               weakened zombies), each +`per` Crushing Blow damage, up to `max` stacks; all
+//               lost after `idle` s without a hit.
 //   trueDmg: true  True damage (see damage in sim/parts/damage.js): no resistance, armor or
 //               defense stops it.
 //
@@ -46,6 +57,12 @@ const timeBomb = { key: 'timeBomb', name: 'Time Bomb', cooldown: 30, damage: 500
 const bomber = (bombs, fourth = 1) => ({ bombs, fourth });
 
 const bullseye = (boost) => ({ boost, stacks: 3, radius: 15 });
+
+// Berserker: Fatal Frenzy. Swings 15% faster and can't be stunned for 10s.
+const fatalFrenzy = { key: 'fatalFrenzy', name: 'Fatal Frenzy', cooldown: 40, duration: 10, self: true, rate: 1.15, immune: true,
+  desc: 'For 10s: swings 15% faster and can\'t be stunned' };
+const crush = (cap, after = false) => ({ every: 5, radius: 3, weak: 0.03, time: 15, cap, after });
+const RAGE = { per: 0.05, max: 10, weakStacks: 2, idle: 4 };
 
 export const ELEVENTH_TOWERS = {
   poacher: {
@@ -159,6 +176,32 @@ export const ELEVENTH_TOWERS = {
         bomber: bomber(4, 3), burnMult: { mult: 1.5 }, abilities: [timeBomb] },
       { name: 'Critical Explosives', desc: '+7 damage and it can lay 6 bombs. Zombies burning for more than 7 a second take 3x damage.', cost: 6000, damage: 22, cooldown: 1.5, radius: 4, range: 14, hidden: true,
         bomber: bomber(6, 3), burnMult: { mult: 1.5, hot: 3, over: 7 }, abilities: [timeBomb] },
+    ],
+  },
+  // Berserker (alternate Slugger form, like the Brawler): chops with two axes.
+  berserker: {
+    name: 'Berserker',
+    altOf: 'slugger',
+    form: 'Berserker',
+    shards: 1,
+    price: 0,
+    cost: 750,
+    limit: 10,
+    melee: true,
+    lead: true,
+    flying: false,
+    blurb: 'A melee tower that chops zombies with two axes. From Lv 1, every 5th hit is a Crushing Blow that slams the ground, hurting every zombie near its target and making them weaker to physical damage. It builds up Rage as it fights, and at Lv 4 it gets Fatal Frenzy.',
+    tip: 'Put it where zombies bunch up. Weakened zombies take more damage from your other towers too (not from lasers or golden damage).',
+    levels: [
+      { name: 'Berserker', desc: 'Chops the closest zombie with two axes.', damage: 5, cooldown: 0.8, range: 5, hidden: false },
+      { name: 'Larger Muscles', desc: 'Every 5th hit is a Crushing Blow: it slams the ground, hitting every zombie near its target and giving them Physical Weakness (+3% physical damage taken for 15s, up to 10%).', cost: 600, damage: 5, cooldown: 0.8, range: 5, hidden: false,
+        crush: crush(0.1) },
+      { name: 'Violent Tendencies', desc: '+2 damage and faster swings (every 0.75s). Rage: every hit adds 1 stack (2 on weakened zombies), each +5% Crushing Blow damage, up to 50%. Rage is lost after 4s without a hit.', cost: 1200, damage: 7, cooldown: 0.75, range: 5, hidden: false,
+        crush: crush(0.1), rage: RAGE },
+      { name: 'Brutalist', desc: '+5 damage. At 10 Rage, Crushing Blow adds an Aftershock: a second slam with half the damage and half as long a weakness.', cost: 3000, damage: 12, cooldown: 0.75, range: 5, hidden: false,
+        crush: crush(0.1, true), rage: RAGE },
+      { name: 'Berserker', desc: 'Faster swings (every 0.6s), Physical Weakness goes up to 20%, and unlocks Fatal Frenzy.', cost: 7500, damage: 12, cooldown: 0.6, range: 5, hidden: false,
+        crush: crush(0.2, true), rage: RAGE, abilities: [fatalFrenzy] },
     ],
   },
 };

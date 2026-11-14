@@ -658,6 +658,8 @@ export class UI {
     if (s.ninja?.store) row('Dummyjitsu', `saves up ${s.ninja.store} shurikens while idle${s.ninja.refill ? `, gets ${s.ninja.refill} back when its target dies` : ''}`, 'yes');
     if (s.bomber) row('Bombs', `lays up to ${s.bomber.bombs} on the path when no zombie is in range${s.bomber.fourth > 1 ? `, every 4th deals ${s.bomber.fourth}x` : ''}`, 'yes');
     if (s.burnMult) row('Burning zombies', `take ${s.burnMult.mult}x damage${s.burnMult.hot ? ` (${s.burnMult.hot}x if the burn deals over ${s.burnMult.over}/s)` : ''}`, 'yes');
+    if (s.crush) row('Crushing Blow', `every ${s.crush.every}th hit slams within ${s.crush.radius}: +${Math.round(s.crush.weak * 100)}% Physical Weakness for ${s.crush.time}s (up to ${Math.round(s.crush.cap * 100)}%)${s.crush.after ? ', Aftershock at full Rage' : ''}`, 'yes');
+    if (s.rage) row('Rage', `+${Math.round(s.rage.per * 100)}% Crushing Blow damage per stack (up to ${s.rage.max}), lost after ${s.rage.idle}s without a hit`, 'yes');
     if (s.cliffBoost) row('Bullseye Support', `cliff towers within ${s.cliffBoost.radius} get +${Math.round(s.cliffBoost.boost * 100)}% range (stacks ${s.cliffBoost.stacks} times)`, 'yes');
     if (def.noHeal) row('Healing', "Medics can't heal it", 'no');
     if (def.kind === 'spawner' && s.roster) {

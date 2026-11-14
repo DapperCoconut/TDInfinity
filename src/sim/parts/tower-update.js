@@ -73,6 +73,8 @@ export class SimTowerUpdate {
     t.riotT = Math.max(0, t.riotT - dt);
     t.parryT = Math.max(0, (t.parryT || 0) - dt);
     t.aspectT = Math.max(0, (t.aspectT || 0) - dt);
+    if (t.rageT > 0 && (t.rageT -= dt) <= 0) t.rage = 0; // Berserker: Rage fades after a while without a hit
+    if (t.after && (t.after.left -= dt) <= 0) this.aftershock(t, s); // Berserker Aftershock: the second slam
     t.radioT = Math.max(0, t.radioT - dt);
     if (t.fwT > 0) t.fwT = Math.max(0, t.fwT - dt); // Firework Technician boost
     // Time Dilator Warp Drive: ability cooldowns run on bubble time too.
@@ -404,6 +406,7 @@ export class SimTowerUpdate {
       t.focusE = target.id;
       dmg = Math.round(dmg * (1 + Math.min(s.focus.max, t.focusN * s.focus.per)) * 100) / 100;
     }
+    const berserk = s.crush ? { x: target.x, z: target.z, weak: target.physWeakT > 0 } : null; // Berserker: where it hit, and was it weakened
     if (s.combo) {
       // Brawler: every `hits`th punch is the combo finisher (harder, with knockback). The next
       // combo starts `combo.cooldown` s after it instead of the normal swing time.
@@ -428,6 +431,7 @@ export class SimTowerUpdate {
       this.damage(t, target, dmg);
     } else this.shoot(t, target, dmg);
     if (s.pass) this.passThrough(t, s, target, dmg);
+    if (berserk) this.berserkHit(t, s, berserk); // Berserker: Rage and Crushing Blow
     if (collat) this.collateralBounce(t, s, collat);
     if (s.combine && this.enemies.has(target.id)) this.combinePellet(t, s, target); // Lightbeamer pellets
     // Focus: shots at zombies inside its inner range don't add heat.
