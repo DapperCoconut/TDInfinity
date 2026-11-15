@@ -11,6 +11,7 @@ import { HERO_TOWERS } from './herotowers.js';
 import { TENTH_TOWERS } from './tenthtowers.js';
 import { GOLD_TOWERS } from './goldtowers.js';
 import { ELEVENTH_TOWERS } from './eleventhtowers.js';
+import { TWELFTH_TOWERS } from './twelfthtowers.js';
 import { HARDCORE_WAVES } from './hardcore.js';
 import { HALLOWEEN_TIMERS, HALLOWEEN_WAVES } from './halloween.js';
 import { HALLOWEEN2_TIMERS, HALLOWEEN2_WAVES } from './halloween2.js';
@@ -171,6 +172,8 @@ export const TOWERS = {
   ...GOLD_TOWERS,
   // Wave 11: the Poacher (starter cliff tower). See eleventhtowers.js.
   ...ELEVENTH_TOWERS,
+  // Wave 12: Tempest, Golden Bandit, Phantom, Vanguard, Strawman. See twelfthtowers.js.
+  ...TWELFTH_TOWERS,
 };
 
 /**
@@ -720,6 +723,7 @@ export function waveGroups(index, waves = WAVES) {
 /** A tower's max health at level `level` (see GAME.towerHp): more for higher levels and close range. */
 export function towerMaxHp(type, level) {
   const s = TOWERS[type].levels[level];
+  if (TOWERS[type].exactHp) return s.hp; // Phantom, Vanguard: the spec's health, no short-range bonus
   const base = s.hp ?? GAME.towerHp + GAME.towerHpPerLevel * level;
   const [near, far] = GAME.towerHpShortRange;
   // Judged on the tower's starting range, so upgrades that add range never cost health.

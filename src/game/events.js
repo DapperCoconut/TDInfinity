@@ -238,6 +238,38 @@ export class GameEvents {
           }
           break;
         }
+        case 'tempest': {
+          // Tempest: a Lightning Field around it (big: the first placement's double strike).
+          const at = new THREE.Vector3(ev.x, 0.3, ev.z);
+          const n = ev.big ? 10 : 5;
+          for (let i = 0; i < n; i++) {
+            const a = Math.random() * Math.PI * 2;
+            const d = Math.random() * ev.r;
+            const to = new THREE.Vector3(ev.x + Math.cos(a) * d, 0.3, ev.z + Math.sin(a) * d);
+            setTimeout(() => this.effects.lightning([to.clone().setY(30 + Math.random() * 10), to], 0x00b0ff), i * (ev.big ? 60 : 90));
+          }
+          this.effects.pulse(at, ev.r, 0.6, 0x00b0ff);
+          this.effects.pulse(at, ev.r * 0.6, 0.45, 0xffffff);
+          this.effects.flash(at.clone().setY(2), 0x80d8ff, ev.big ? 2.2 : 1.4);
+          if (ev.big) setTimeout(() => this.effects.pulse(at, ev.r, 0.6, 0x00b0ff), 350); // the second strike
+          audio.shot(0, 'electro');
+          audio.boom(ev.big ? 3 : 2);
+          break;
+        }
+        case 'tField': {
+          // Tempest Lightning Field: little bolts jump from the air around it to the zombies it hurts.
+          const v = this.towerViews.get(ev.t);
+          if (!v) break;
+          const from = v.group.position;
+          for (const id of ev.es) {
+            const e = this.enemyViews.get(id);
+            if (!e) continue;
+            const a = Math.random() * Math.PI * 2;
+            const start = new THREE.Vector3(from.x + Math.cos(a) * 2, 5 + Math.random() * 2, from.z + Math.sin(a) * 2);
+            this.effects.lightning([start, e.aimPoint(new THREE.Vector3())], 0x00b0ff);
+          }
+          break;
+        }
         case 'mageBolt': {
           // Mage Stormbringer: a purple lightning bolt from the sky.
           const to = new THREE.Vector3(ev.x, 0.3, ev.z);

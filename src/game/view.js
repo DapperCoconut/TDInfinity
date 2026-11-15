@@ -56,6 +56,8 @@ export class GameView {
       }
       v.sync(t, gdt);
       v.syncHp(t, this.camera);
+      // Tempest: little lightning arcs crackle round it (lots more while its Lightning Field is up).
+      if (v.model?.sparks && Math.random() < gdt * (t.active > 0 ? 9 : 2.5)) this.sparkArc(v, t);
     }
     for (const [id, v] of this.towerViews) {
       if (st.towers.has(id)) continue;
@@ -206,6 +208,17 @@ export class GameView {
       v.dispose();
       this.remoteViews.delete(id);
     }
+  }
+
+  /** Tempest: one little lightning arc between two random points round its body. */
+  sparkArc(v, t) {
+    const p = v.group.position;
+    const pt = () => {
+      const a = Math.random() * Math.PI * 2;
+      const r = 1.2 + Math.random() * (t.active > 0 ? 3 : 1.6);
+      return new THREE.Vector3(p.x + Math.cos(a) * r, p.y + 1 + Math.random() * 5, p.z + Math.sin(a) * r);
+    };
+    this.effects.lightning([pt(), pt()], v.model.sparks);
   }
 
   updateHud(realDt) {

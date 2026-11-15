@@ -433,6 +433,7 @@ export class SimDamage {
     let v = Math.min(dealt * rate, e.maxHp * rate - e.paid);
     if (v <= 0) return;
     e.paid += v;
+    if (e.gold) v += this.goldCash(t, e, v); // Golden Bandit Gold Shot
     if (e.fraud) v *= 1 + e.fraud; // Hacker Wire Fraud
     if (t && this.towers.has(t.id)) v *= buffOf(this.buffs, t.id).killCash; // Gold Commander Gold Digging
     e.earned += v;
@@ -489,6 +490,7 @@ export class SimDamage {
       this.addShatter(t, ts0, e); // Blaster, Programmer
       if (!this.enemies.has(e.id)) return; // its own Core Blast finished it
     }
+    if (ts0?.gold && !this.dot && dmg > 0) this.goldMark(t, ts0, e); // Golden Bandit Gold Shot
     const hm = this.hitMods; // a Mechanic turret's or an ability's own defPierce / shieldMult
     if (t && !this.dot && dmg > 0) dmg += buffOf(this.buffs, t.id).dmgAdd || 0; // Bugler Snare Drums, Slinger boosts
     if (t && this.contract?.boost) dmg *= this.llBoost.dmg; // Last Laugh: the JESTER's boost
@@ -658,6 +660,8 @@ export class SimDamage {
       reward += extra;
     }
     if (e.hackEv) this.holos.push(e);
+    if (e.gold && !e.noCash && !this.dmgCash) reward += Math.round(this.goldCash(t, e, reward)); // Gold Shot (modes that pay for kills)
+    if (e.gold) this.goldDeath(e); // Golden Bandit: an Afterimage
     if (this.dmgCash) reward = Math.round(e.earned); // already paid, hit by hit (see payDamage): this is only what the kill shows
     else {
       // Gold Commander Gold Digging: kills by towers in its aura pay more.

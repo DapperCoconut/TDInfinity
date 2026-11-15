@@ -144,7 +144,7 @@ export function computeBuffs(towers) {
   const list = [...towers];
   const out = new Map();
   // (VOID's corrupted towers boost nobody.)
-  const sources = list.filter((o) => { if (o.corrupt) return false; const s = TOWERS[o.type].levels[o.level]; return s.aura || s.bless || (s.radio && o.radioT > 0) || (o.active > 0 && rageOf(s)) || s.kin || s.radar || s.globalCdCut || s.bizDisc || s.cliffBoost || s.taser?.link || (s.trick?.knife?.red && o.redN > 0); });
+  const sources = list.filter((o) => { if (o.corrupt) return false; const s = TOWERS[o.type].levels[o.level]; return s.aura || s.bless || (s.radio && o.radioT > 0) || (o.active > 0 && rageOf(s)) || s.kin || s.radar || s.globalCdCut || s.bizDisc || s.cliffBoost || s.taser?.link || (s.trick?.knife?.red && o.redN > 0) || (s.crow?.buff && o.mode); });
   // (Spectre drones boost damage in Support mode; Glowups boost firerate less the farther away a tower is.)
   if (!sources.length) return out;
   const shields = medicShields(list);
@@ -312,6 +312,23 @@ export function computeBuffs(towers) {
       out.set(t.id, { ...tb, dmg: lift(tb.dmg, ob.dmg), rate: lift(tb.rate, ob.rate), range: lift(tb.range, ob.range) });
     }
   }
+  // Strawman: towers in its range get `crow.buff` more (Vengeful) or less (Benevolent) damage,
+  // firerate and range. Two Strawmen add up, so a Benevolent can cancel a Vengeful out.
+  const crows = sources.filter((o) => TOWERS[o.type].levels[o.level].crow?.buff && o.mode);
+  if (crows.length) {
+    for (const t of list) {
+      let add = 0;
+      for (const o of crows) {
+        const s = TOWERS[o.type].levels[o.level];
+        if (o === t || TOWERS[t.type].modePick || (t.x - o.x) ** 2 + (t.z - o.z) ** 2 > s.range * s.range) continue;
+        add += s.crow.buff;
+      }
+      if (!add) continue;
+      const tb = out.get(t.id) ?? NO_BUFF;
+      const m = Math.max(0.1, 1 + add);
+      out.set(t.id, { ...tb, dmg: tb.dmg * m, rate: tb.rate * m, range: tb.range * m });
+    }
+  }
   return out;
 }
 
@@ -347,7 +364,7 @@ export function nextUpgrade(t, path, towers, buffs) {
   if (path === 'bottom' && !branch) return null;
   const type = branch ? def.branch : t.type;
   const next = rolledLevel(TOWERS[type].levels[t.level + 1], t);
-  return next ? { type, next, cost: upgradeCost(next, buff) } : null;
+  return next ? { type, next, cost: Math.max(0, upgradeCost(next, buff) - (t.nextOff || 0)) } : null; // nextOff: Golden Bandit Share Relic
 }
 
 /**

@@ -61,7 +61,10 @@ export class SimTowerUpdate {
 
   updateTower(t, dt) {
     // Hacker clones fade away when their time is up.
-    if (t.holo && (t.holo -= dt) <= 0) return this.removeTower(t, 'holoEnd');
+    if (t.holo && (t.holo -= dt) <= 0) {
+      if (t.afterimg) this.afterimageEnd(t); // Golden Bandit Afterimage: pays out as it fades
+      return this.removeTower(t, 'holoEnd');
+    }
     const def = TOWERS[t.type];
     let s = levelAt(def.levels[t.level], t.x, t.z); // Penetrator: cliff stats on a cliff
     s = modeStats(s, t); // Submerge Submerged mode, Spectre Offense drone
@@ -119,6 +122,7 @@ export class SimTowerUpdate {
       }
       return;
     }
+    if (t.vDown) return this.vanguardDowned(t, def.levels[t.level], dt); // Vanguard: down, healing (it may still swing)
     if (t.stunT > 0 || t.hp <= 0) {
       if (t.stunT > 0 && TOWERS[t.type].levels[t.level].chargeRate) t.beamT = 0; // Prophet: a stun resets its charge
       return; // stunned, or knocked out until healed
@@ -158,6 +162,7 @@ export class SimTowerUpdate {
     if (s.ray) this.updateRay(t, s, b, dt); // Eradicator: Raybreak on its own timer
     if (s.ml) this.updateVindicator(t, s, b, dt); // Vindicator: Slashes and Mass Lethality
     if (s.scare) return this.updateScare(t, def, s, b, dt); // Scarecrow
+    if (s.crow) return this.updateStrawman(t, s, dt); // Strawman
     if (def.bait) return; // bait never attacks
     if (def.kind === 'spawner') return this.updateSpawner(t, def, s, dt);
     if (s.goons && this.updateGoons(t, def, s, dt)) return;
@@ -239,6 +244,8 @@ export class SimTowerUpdate {
     if (s.jug) return this.updateJuggernaut(t, s, dt); // Juggernaut: mace slams, Magnetic Field
     if (s.sm) return this.updateSoulMaster(t, s, dt, rate); // Soul Master: orbiting souls
     if (s.tox) return this.updateToxicator(t, s, dt); // Toxicator: toxic blasts
+    if (s.tempest) return this.updateTempest(t, s, dt); // Tempest: punches, Lightning Fields
+    if (s.phantom || s.van) return this.updatePathTower(t, s, dt); // Phantom / Vanguard
     // Ice Apprentice Blizzard: its staff can't attack while it lasts.
     if (t.active > 0 && s.abilities?.some((a) => a.key === 'blizzard')) return this.updateBlizzard(t, s, dt);
     if (s.soul && t.choice?.[0] === 'beam') return this.updateSoulBeam(t, s, dt * b.rate); // Spiritual Advocate Beam mode

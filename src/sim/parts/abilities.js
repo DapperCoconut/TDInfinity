@@ -40,6 +40,8 @@ export class SimAbilities {
     else if (ab.key === 'bladeStance') this.startBladeStance(t, s, ab); // Shinobi
     else if (ab.key === 'senseless') t.senseless = !t.senseless; // Shinobi: a switch
     else if (ab.key === 'soulRotation') t.dir = -(t.dir || 1); // Soul Master: the souls turn the other way
+    else if (ab.key === 'crowV' || ab.key === 'crowB') this.crowMode(t, ab.pick); // Strawman: Vengeful or Benevolent
+    else if (ab.key === 'supercharge') t.superT = ab.duration; // Vanguard: every swing a 5x Charged Smash
     else if (ab.key === 'magicBoost') t.magic = (t.magic || 0) + ab.add; // Wizard
     else if (ab.key === 'soulSurge') {} // Lure: the use count is the effect (see updateTower)
     else if (ab.key === 'spore') {

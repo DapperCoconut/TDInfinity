@@ -48,6 +48,7 @@ import { SimAbilities } from './parts/abilities.js';
 import { SimDamage } from './parts/damage.js';
 import { SimWeapons4 } from './parts/weapons4.js';
 import { SimWeapons5 } from './parts/weapons5.js';
+import { SimWeapons6 } from './parts/weapons6.js';
 import { H2_FX, SimCarnival } from './parts/carnival.js';
 import { N3_FX, SimNightmare } from './parts/nightmare.js';
 import { SimChristmas, XM_FX } from './parts/christmas.js';
@@ -284,6 +285,11 @@ export class Sim {
       let slow = (1 - (e.burn ? Math.max(e.burnSlow, ENEMIES[e.type].fireSlow ?? 0) : 0)) * (1 - e.slime) * (1 - e.chill * e.chillMax) * (1 - e.beatSlow) * (1 - e.hackSlow) * (1 - e.coldSlow) * (1 - (e.poison ? e.poison.slow : 0)) * (1 - (e.thornSlow || 0)) * (1 - (e.shockT > 0 ? e.shock : 0)) * (1 - (e.paraSlow || 0));
       // Harpoons stack on top, but never take it past `harpoonCap` (unless it already was).
       if (e.harpoonSlow) slow = Math.max(slow * (1 - e.harpoonSlow), Math.min(slow, 1 - e.harpoonCap));
+      if (e.crowT) {
+        // Strawman: Benevolent slows, Vengeful speeds up (while it is in range).
+        if (!(e.crowT = Math.max(0, e.crowT - dt))) e.crowS = e.crowH = 0;
+        slow *= (1 - (e.crowS || 0)) * (1 + (e.crowH || 0));
+      }
       if (e.pushT) e.pushT = Math.max(0, e.pushT - dt); // Bubble Blower push cooldown
       if (e.holdT) e.holdT = Math.max(0, e.holdT - dt); // held up by a blocking unit (Bubble Companion)
       e.speed = e.stop || e.holdT ? 0 : e.baseSpeed * slow;
@@ -360,7 +366,7 @@ export class Sim {
         | (e.slime ? ST_SLIMED : 0) | (e.chill ? ST_CHILLED : 0) | (e.hackEv || e.fraud ? ST_HACKED : 0) | (e.gas?.size || e.poison || e.taints?.has('radioactive') ? ST_GASSED : 0) | (e.confT > 0 ? ST_CONFUSED : 0)
         | (e.shockT > 0 ? ST_SHOCKED : 0) | (e.taints?.has('biohazard') ? ST_BIOHAZARD : 0)
         | (e.airT > 0 ? ST_AIRBORNE : 0) | (e.shroom ? ST_SHROOM : 0) | (e.enraged || e.raged ? ST_ENRAGED : 0)
-        | (e.smoked ? ST_SMOKED : 0) | (e.armorUp ? ST_ARMORED : 0) | (e.hasted ? ST_HASTED : 0) | (e.glitchT > 0 ? ST_GLITCHED : 0)
+        | (e.smoked ? ST_SMOKED : 0) | (e.armorUp ? ST_ARMORED : 0) | (e.hasted || e.crowH > 0 ? ST_HASTED : 0) | (e.glitchT > 0 ? ST_GLITCHED : 0)
         | (e.auraArmor ? ST_VOIDAURA : 0) | (e.charging ? ST_CHARGING : 0) | (e.cloak ? ST_CLOAKED : 0) | (e.vShield > 0 ? ST_VOIDARMOR : 0) | (e.glitch ? ST_INHUMAN : 0) | (e.mut ? ST_MUTANT : 0);
       // Confused zombies walk back toward the entrance.
       if (e.confT > 0) e.dist = Math.max(0, e.dist - e.speed * dt);
@@ -473,6 +479,7 @@ export class Sim {
     }
     this.medicRepair(dt);
     this.towerRegen(dt);
+    this.pathTowerTick(dt); // Phantom / Vanguard block zombies; placement waits; Afterimage cooldowns
     if (mapInfo.pathTowers) this.trample(dt);
     this.updateHealZones(dt);
     for (const t of this.towers.values()) {
@@ -615,6 +622,7 @@ export class Sim {
         const lmMod = p.lmMods?.[m.type]; // Liminal contract: the tower's blessing and curse
         const cost = Math.round(towerCost(def, !!this.vs) * (lmMod?.cost ?? 1));
         if (p.cash < cost) return `Not enough cash! ${def.name} costs $${cost}`;
+        if (p.placeCd?.[m.type] > 0) return `${def.name} can be placed again in ${Math.ceil(p.placeCd[m.type])}s`; // Phantom / Vanguard
         let owned = 0;
         let all = 0;
         for (const t of this.towers.values()) if (t.owner === pid && !t.holo) { all++; if (rootType(t.type) === m.type) owned++; }
@@ -630,6 +638,7 @@ export class Sim {
         const t = this.newTower(pid, m.type, x, z, m.yaw, cost);
         if (lmMod) t.lm = lmMod;
         this.events.push({ k: 'place', id: t.id, owner: pid, x, z });
+        this.onPlaced(t, p); // Tempest Lightning Field, Phantom placing blast, kept levels
         return null;
       }
       case 'upgrade': {
@@ -638,6 +647,13 @@ export class Sim {
         if (t.holo) return "Holograms can't be upgraded";
         if (t.bleedT > 0) return "Bleeding! It can't be upgraded until it stops";
         if (t.corrupt) return 'Corrupted by VOID! It can only be sold now';
+        if (TOWERS[t.type].modePick && !t.mode) {
+          // Strawman: the first upgrade picks the mode if no mode was picked (Top = Vengeful, Bottom = Benevolent).
+          const why = this.crowModeWhy(t, m.path === 'bottom' ? 'b' : 'v');
+          if (why) return why;
+          t.mode = m.path === 'bottom' ? 'b' : 'v';
+        }
+        if (TOWERS[t.type].modePick && t.mode === 'v' && m.path === 'bottom') return 'The Vengeful only goes up the Top path';
         // Upgrade paths: picking the bottom path turns the tower into its branch type; crosspath
         // towers turn into the type of their new Top / Bottom combo.
         const up = nextUpgrade(t, m.path === 'bottom' ? 'bottom' : 'top', this.towers.values(), computeBuffs(this.towers.values()));
@@ -651,6 +667,7 @@ export class Sim {
         const cost = up.cost;
         if (p.cash < cost) return `Need $${cost} to upgrade`;
         p.cash -= cost;
+        t.nextOff = 0; // Golden Bandit Share Relic: the money off is used up
         t.type = up.type;
         t.level++;
         this.setTowerLevelHp(t);
@@ -669,6 +686,7 @@ export class Sim {
           this.spawnUnits(t, next.unit);
           t.spawnT = next.spawnEvery ?? def.spawnEvery;
         }
+        this.onUpgraded(t, next); // Phantom / Vanguard keep their level, Tempest Thunder Break
         this.events.push({ k: 'upgrade', id: t.id, owner: pid, name: next.name, x: t.x, z: t.z });
         return null;
       }
@@ -681,6 +699,7 @@ export class Sim {
         p.cash += value;
         this.removeTower(t, 'sell', { value });
         this.sellSacrifice(t);
+        if (!t.holo) this.setPlaceCd(p, t.type, TOWERS[t.type].placeCd); // Phantom / Vanguard: a wait before placing it again
         return null;
       }
       case 'repair': {
@@ -796,6 +815,10 @@ export class Sim {
         if (ab.key === 'chargedThrow' && ![...this.enemies.values()].some((e) => canHit({ hidden: !!s.hidden, flying: true, lead: true }, e))) return 'No zombie to throw at';
         if (ab.key === 'raise' && !this.buildsOf(t.id, 'grave').length) return 'No gravestones to raise yet';
         if (ab.key === 'senseless' && t.bladeT > 0) return 'Not during Blade Stance';
+        if (ab.key === 'crowV' || ab.key === 'crowB') {
+          const why = this.crowModeWhy(t, ab.pick);
+          if (why) return why;
+        }
         if (ab.key === 'massLethality' && (t.mlOn || !(t.slashes > 0))) return t.mlOn ? 'Mass Lethality is already on' : 'No Slashes saved yet';
         if (ab.key === 'bounty' && !this.bountyTarget(t, s)) return 'No zombie in range to put a bounty on';
         if (ab.key === 'kritz' && !this.chargeTarget(t, s, ab)) return 'No tower in range to Kritz';
@@ -981,7 +1004,7 @@ export class Sim {
 
 // Sim's methods are kept in several files (see the list at the top). This puts them all on Sim,
 // just as if they were written inside the class.
-for (const part of [SimEnemyMoves1, SimEnemyMoves2, SimTowerHealth, SimWaves, SimTowerUpdate, SimWeapons1, SimWeapons2, SimWeapons3, SimUnits, SimAbilities, SimDamage, SimWeapons4, SimWeapons5, SimCarnival, SimNightmare, SimChristmas, SimSpires, SimContract, SimLiminal, SimSandbox]) {
+for (const part of [SimEnemyMoves1, SimEnemyMoves2, SimTowerHealth, SimWaves, SimTowerUpdate, SimWeapons1, SimWeapons2, SimWeapons3, SimUnits, SimAbilities, SimDamage, SimWeapons4, SimWeapons5, SimWeapons6, SimCarnival, SimNightmare, SimChristmas, SimSpires, SimContract, SimLiminal, SimSandbox]) {
   const props = Object.getOwnPropertyDescriptors(part.prototype);
   delete props.constructor;
   Object.defineProperties(Sim.prototype, props);

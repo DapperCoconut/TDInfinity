@@ -103,8 +103,17 @@ export class SimTowerHealth {
     if (buffOf(this.buffs, t.id).invuln || t.invulnT > 0) return; // Medigun Medic Uber / Combat Drone Shield
     const tm = TOWERS[t.type].levels[t.level].takeMult; // Juggernaut Wrecking Ball: takes less damage
     if (tm != null) dmg *= tm;
-    const left = noShield ? dmg : this.soakShield(t, dmg); // Shield Tower shields take the hit first (not Death Angel Pure Pain)
+    let left = noShield ? dmg : this.soakShield(t, dmg); // Shield Tower shields take the hit first (not Death Angel Pure Pain)
     if (left <= 0) return;
+    if (t.vShield > 0) {
+      // Vanguard: its Charged Smash shield takes the hit next.
+      const soak = Math.min(t.vShield, left);
+      t.vShield -= soak;
+      left -= soak;
+      if (left <= 0) return;
+    }
+    if (t.vDown) return; // a downed Vanguard can't be hurt more
+    if (TOWERS[t.type].levels[t.level].van && t.hp - left <= 0) return this.vanguardDown(t); // it falls, but gets back up
     t.calmT = 0; // Doctor: its regen waits again
     const xl = TOWERS[t.type].levels[t.level].extraLife;
     if (xl && t.hp - left <= 0 && !(t.lifeCd > 0)) {
@@ -133,8 +142,9 @@ export class SimTowerHealth {
     const saved = t.reviveT > 0 || (def.rebuilds && t.rebuilt < def.rebuilds) || t.owner === 'citadel'; // Citadel Sentries belong to the map
     this.events.push({ k: 'towerDown', id: t.id, owner: t.owner, x: t.x, z: t.z, ...(saved ? {} : { gone: 1 }) });
     if (saved || !this.towers.has(t.id)) return;
-    const value = t.holo ? 0 : Math.floor((t.spent || 0) * GAME.deathRefund);
+    const value = t.holo || def.noRefund ? 0 : Math.floor((t.spent || 0) * GAME.deathRefund);
     const p = this.players.get(t.owner);
+    if (!t.holo) this.setPlaceCd(p, t.type, def.deathCd); // Phantom: 100s before it can be placed again
     if (p) p.cash += value;
     this.removeTower(t, 'sell', { value });
   }
@@ -204,6 +214,7 @@ export class SimTowerHealth {
   /** Heals a tower by `amount` (up to its max); a knocked-out tower gets back up. */
   /** Heals tower `t` up to `amount`; returns how much it actually healed. */
   healTower(t, amount) {
+    if (amount > 0) this.vanguardExcess(t, amount); // Vanguard Resuscitation: overhealing turns into shield
     if (t.hp >= t.maxHp || amount <= 0) return 0;
     const was = t.hp;
     t.hp = Math.min(t.maxHp, t.hp + amount);

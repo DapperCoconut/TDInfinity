@@ -44,6 +44,7 @@ export function poolAt(x, z) {
 export function placeFail(def, article = '') {
   const name = article ? `${article} ${def.name}` : def.name;
   if (def.placement === 'cliff') return `${name} can only go on top of a cliff!`;
+  if (def.placement === 'path') return `${name} can only go on the path!`;
   if (def.placement === 'water') return `${name} can only go in water!`;
   return "Can't place there!";
 }
@@ -965,6 +966,8 @@ export function canPlace(x, z, towers, placement = 'ground', type = null) {
   if (!Number.isFinite(x) || !Number.isFinite(z)) return false;
   const size = (TOWERS[type]?.size ?? 1) * 2 * TOWER_SIZE;
   for (const t of towers) if (Math.hypot(t.x - x, t.z - z) < size + (TOWERS[t.type]?.size ?? 1) * 2 * TOWER_SIZE) return false;
+  // Phantom / Vanguard: only ON the path (not on a cliff top).
+  if (placement === 'path') return !topAt(x, z) && path.distanceTo(x, z) <= PATH_WIDTH / 2;
   const top = topAt(x, z);
   if (top) return (placement === 'cliff' || placement === 'any') && topFits(top, x, z);
   if (mapInfo.nexus && !path.time && nexusTop(nexusAt(x, z))) return (placement === 'cliff' || placement === 'any') && nexusTopFits(x, z);
