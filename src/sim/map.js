@@ -1,6 +1,7 @@
 // Shared map layout: deterministic decoration placement + tower placement rules.
 // Both the server (validation) and client (rendering) use this, so they always agree.
 import { mulberry32 } from '../utils.js';
+import { TOWERS } from '../config.js';
 import { BOUNDS, PATH_WIDTH, PLAYER_SPAWN, path, setMapPath } from './path.js';
 import { CROSS_CELL, CROSS_GRID, crossCell, crossCh, crossH, crossIdx, crossKind } from './maps.js';
 import { DEFAULT_MAP, NEXUS_CELL, NEXUS_DECK, NEXUS_GRID, NEXUS_PLATFORM, baseKey, mapDef, mapKeyOf, nexusAt, seedOf, seededDef } from './maps.js';
@@ -958,9 +959,12 @@ setMap(DEFAULT_MAP);
  * placement: 'ground' (default), 'cliff' (cliff tops only), 'water' (pools only) or 'any'
  * (ground or cliff, not water).
  */
-export function canPlace(x, z, towers, placement = 'ground') {
+// `type`: the tower being placed. Towers with a `size` below 1 (the Priest) take up less room:
+// two towers must stand 2 x (their sizes added up) apart.
+export function canPlace(x, z, towers, placement = 'ground', type = null) {
   if (!Number.isFinite(x) || !Number.isFinite(z)) return false;
-  for (const t of towers) if (Math.hypot(t.x - x, t.z - z) < 4 * TOWER_SIZE) return false;
+  const size = (TOWERS[type]?.size ?? 1) * 2 * TOWER_SIZE;
+  for (const t of towers) if (Math.hypot(t.x - x, t.z - z) < size + (TOWERS[t.type]?.size ?? 1) * 2 * TOWER_SIZE) return false;
   const top = topAt(x, z);
   if (top) return (placement === 'cliff' || placement === 'any') && topFits(top, x, z);
   if (mapInfo.nexus && !path.time && nexusTop(nexusAt(x, z))) return (placement === 'cliff' || placement === 'any') && nexusTopFits(x, z);

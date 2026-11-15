@@ -594,7 +594,7 @@ export class Sim {
         if (owned >= limit) return `Placement limit reached (${limit})`;
         const x = Number(m.x);
         const z = Number(m.z);
-        if (!canPlace(x, z, this.towers.values(), def.placement)) {
+        if (!canPlace(x, z, this.towers.values(), def.placement, m.type)) {
           return placeFail(def);
         }
         p.cash -= cost;
@@ -747,7 +747,7 @@ export class Sim {
           const z = Number(m.z);
           if (Math.hypot(x - t.x, z - t.z) > ab.reach) return `Too far! ${ab.name} reaches ${ab.reach} studs`;
           const others = [...this.towers.values()].filter((o) => o !== t);
-          if (!canPlace(x, z, others, TOWERS[t.type].placement)) return "It can't land there";
+          if (!canPlace(x, z, others, TOWERS[t.type].placement, t.type)) return "It can't land there";
         }
         if (ab.mode && choicesOf(TOWERS[t.type], s, t.choice)[0] !== ab.mode) return `${ab.name} only works in ${ab.mode === 'fire' ? 'Fire' : 'Frost'} mode`;
         if ((ab.key === 'thorns' || ab.key === 'iceTurret' || ab.key === 'iceShard' || ab.key === 'targetSelect' || ab.key === 'voltPoint') && Math.hypot(Number(m.x) - t.x, Number(m.z) - t.z) > (ab.reach ?? s.range)) return `Too far! ${ab.name} reaches ${ab.reach ?? s.range} studs`;

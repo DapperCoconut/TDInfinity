@@ -243,7 +243,8 @@ export const ELEVENTH_TOWERS = {
     cost: 600,
     limit: 5,
     kind: 'support',
-    blurb: 'Never attacks. Blesses the closest tower in range that attacks: it deals more damage (burns and poisons too). Change Target picks the next tower. At max level the blessed tower sees hidden zombies, and Divine Shield stops stuns. Only one Priest can be maxed.',
+    size: 0.5, // takes up half the room: other towers can stand closer to it
+    blurb: 'Never attacks, and takes up less space than other towers. Blesses the closest tower in range that attacks: it deals more damage (burns and poisons too). Change Target picks the next tower. At max level the blessed tower sees hidden zombies, and Divine Shield stops stuns. Only one Priest can be maxed.',
     tip: 'Bless your strongest tower. At max level, pick a strong tower that cannot see hidden zombies.',
     levels: [
       { name: 'Priest', desc: 'Blesses the closest tower in range: +12% damage.', aura: 8, bless: 0.12, hidden: false,

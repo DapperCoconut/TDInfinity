@@ -404,7 +404,7 @@ export class GameInput {
     const { x, z } = this.groundHit;
     if (Math.hypot(x - t.x, z - t.z) > a.reach) return false;
     if (a.key !== 'reposition' && a.key !== 'teleport' && a.key !== 'jump') return true; // Thorns / Target Select only need to be in reach
-    return canPlace(x, z, [...this.state.towers.values()].filter((o) => o !== t), TOWERS[t.type].placement);
+    return canPlace(x, z, [...this.state.towers.values()].filter((o) => o !== t), TOWERS[t.type].placement, t.type);
   }
 
   /** Puts a placement ghost under the mouse, red where `type` can't go, with its range ring. */
@@ -419,9 +419,9 @@ export class GameInput {
     if (this.versus) {
       // Versus: you can only build on your own map; check against its local layout.
       const oz = laneOz(this.myLane);
-      const mine = [...this.state.towers.values()].filter((t) => laneOf(t.z) === this.myLane).map((t) => ({ x: t.x, z: t.z - oz }));
-      g.valid = laneOf(z) === this.myLane && canPlace(x, z - oz, mine, def.placement);
-    } else g.valid = canPlace(x, z, this.state.towers.values(), def.placement);
+      const mine = [...this.state.towers.values()].filter((t) => laneOf(t.z) === this.myLane).map((t) => ({ x: t.x, z: t.z - oz, type: t.type }));
+      g.valid = laneOf(z) === this.myLane && canPlace(x, z - oz, mine, def.placement, type);
+    } else g.valid = canPlace(x, z, this.state.towers.values(), def.placement, type);
     g.root.position.set(x, heightAt(x, z) + 0.4 * MODEL_SCALE, z);
     // Face the camera; the Gatling Gun faces away from it (its cone points where you look).
     g.root.rotation.y = this.cam.yaw + (this.ghost === g ? this.placeRot : 0) + (facesCone(def) ? Math.PI : 0);
