@@ -1,5 +1,6 @@
 // Tower models: people, batch 27 (dressed with the vehicle kit in ../vehicles.js).
-// In here: Priest, Farmer, Bandit, Eradicator, Shrapnel Grenadier, Warrior, Mage, Snowman.
+// In here: Priest, Farmer, Bandit, Eradicator, Shrapnel Grenadier, Warrior, Mage, Snowman, Infernus,
+// Spearman.
 // Like batch 26 these are plain white figures with no face: only their gear tells them apart,
 // white too, with accents in one neon colour per tower. (The Mage is not one of them: it has
 // normal colours.)
@@ -751,6 +752,157 @@ export function makeSnowman(level) {
   return own(h, 0);
 }
 
+// ------------------------------------------------------------------ Infernus (neon ember)
+
+const INF_NEON = 0xff4f00;
+
+/** A white flame wand on the fist (blade down -y), with a neon pilot light. o.wide: a flared nozzle. Returns the tip y. */
+function whiteFlameWand(k, neon, o = {}) {
+  const len = o.len ?? 2.0;
+  k.box(0.22, 0.26, 0.5, W3, 0, 0.1, UP - 0.32, { rx: -0.3, r: 0.04 }); // rear grip
+  k.cyl(0.14, 0.7, W2, 0, -0.1, UP, { seg: 12 }); // valve body
+  k.cyl(0.18, 0.08, neon, 0.2, -0.1, UP, { axis: 'x', seg: 10 }); // valve wheel
+  k.cyl(0.08, len - 0.7, W, 0, -0.45 - (len - 0.7) / 2, UP, { seg: 10 }); // tube
+  k.box(0.18, 0.2, 0.5, W3, 0, -0.9, UP - 0.3, { r: 0.04 }); // front grip
+  const tip = -len;
+  k.cyl(o.wide ? 0.36 : 0.18, 0.42, W2, 0, tip + 0.2, UP, { seg: 12, r2: o.wide ? 0.24 : 0.15 }); // nozzle
+  k.torus(o.wide ? 0.34 : 0.17, 0.03, neon, 0, tip + 0.02, UP, { rx: PI / 2, seg: 14 }); // glowing rim
+  k.ball(0.07, neon, 0.05, tip + 0.05, UP - 0.2, { seg: 8, rows: 6 }); // pilot light
+  return tip - 0.1;
+}
+
+/**
+ * Infernus (alternate Flamethrower): a white fire-suit with a domed hood, two white fuel tanks
+ * with neon bands and a flame wand. Lv 1 Bigger Flames: a wide nozzle. Lv 2 Napalm Fire: a third
+ * tank. Lv 3 Blazing Arson: shoulder plates with neon vents. Lv 4 The Furnace: a glowing furnace
+ * core on the chest. Lv 5 Absolute Hellfire: horns of fire on the hood and a long coat.
+ */
+export function makeInfernus(level) {
+  const h = blank();
+  const key = `flamethrowerInfernus${level}`;
+  const neon = glowMat(h, INF_NEON);
+  const hd = wear(h, h.head, `${key}:head`);
+  const t = wear(h, h.torso, `${key}:torso`);
+  // a domed fire hood with a wide neon visor
+  hd.box(1.36, 1.36, 1.36, W2, 0, 0.55, 0, { r: 0.4 });
+  hd.box(1.0, 0.34, 0.08, neon, 0, 0.62, 0.66, { r: 0.08 });
+  hd.cyl(0.16, 0.2, W3, 0, 0.12, 0.66, { axis: 'z', seg: 10 }); // breather
+  if (level >= 5) for (const sd of [-1, 1]) hd.cyl(0.14, 0.75, neon, sd * 0.55, 1.6, 0, { seg: 8, r2: 0.01, rz: sd * -0.4 });
+  t.box(2.2, 1.9, 1.18, W, 0, 0.05, 0, { r: 0.12 }); // suit
+  for (const y of [-0.55, 0.3]) t.box(2.24, 0.12, 1.22, W3, 0, y, 0); // reflective bands
+  t.box(2.22, 0.22, 1.2, W3, 0, -0.88, 0, { r: 0.04 }); // belt
+  t.box(0.3, 0.2, 0.06, neon, 0, -0.88, 0.61, { r: 0.02 });
+  if (level >= 3) {
+    shoulderPads(t, W2, 0.62);
+    for (const sd of [-1, 1]) for (const dz of [-0.2, 0, 0.2]) t.box(0.3, 0.05, 0.08, neon, sd * 1.12, 1.15, dz);
+  }
+  if (level >= 4) {
+    // The Furnace: a round grate on the chest with a glowing core
+    t.cyl(0.42, 0.14, W3, 0, 0.35, 0.62, { axis: 'z', seg: 16 });
+    t.cyl(0.3, 0.16, neon, 0, 0.35, 0.64, { axis: 'z', seg: 16 });
+    for (const dx of [-0.16, 0, 0.16]) t.box(0.05, 0.6, 0.06, W2, dx, 0.35, 0.72);
+  }
+  if (level >= 5) cape(t, W2, 2.6, { w: 2.2 });
+  const xs = level >= 2 ? [-0.6, 0, 0.6] : [-0.38, 0.38];
+  for (const x of xs) {
+    t.cyl(0.3, 1.7, W2, x, 0.2, -0.95, { seg: 14 });
+    for (const sd of [-1, 1]) t.ball(0.3, W2, x, 0.2 + sd * 0.85, -0.95, { sy: 0.45, seg: 14, rows: 5 });
+    t.cyl(0.31, 0.14, neon, x, 0.45, -0.95, { seg: 14 });
+    t.cyl(0.07, 0.2, W3, x, 1.2, -0.95, { seg: 8 });
+  }
+  t.box(xs.length * 0.6 + 0.2, 1.5, 0.12, W3, 0, 0.2, -0.62); // back plate
+  t.tube([[-0.3, -0.65, -0.95], [-1.0, -1.0, -0.4], [-1.25, -0.7, 0.2]], 0.07, W3, { seg: 12, sides: 6 }); // hose
+  hd.done();
+  t.done();
+  hands(h, key, W3, W2, (a) => a.box(0.5, 0.06, 0.06, neon, 0, -1.25, 0.6));
+  feet(h, key, W3, (b) => b.box(1.12, 0.1, 1.14, neon, 0, -1.3, 0.02));
+  h.muzzles = [];
+  const g = fist(h.rightArm, -1.9, 1.15);
+  const gk = wear(h, g, `${key}:gun`);
+  const tip = whiteFlameWand(gk, neon, { len: level >= 3 ? 2.2 : 1.9, wide: level >= 1 });
+  gk.done();
+  muzzle(h, g, tip, UP);
+  h.rightArm.rotation.set(-PI / 2, 0, 0.1);
+  h.leftArm.rotation.set(-PI / 2 + 0.15, 0, -0.5);
+  h.pose = { right: -PI / 2, left: -PI / 2 + 0.15, leftRecoil: 0.05 };
+  h.recoilScale = 0.1;
+  h.tracer = INF_NEON;
+  return own(h, 0);
+}
+
+// ------------------------------------------------------------------ Spearman (neon rose)
+
+const SPEAR_NEON = 0xff80ab;
+
+/** A long white spear in the fist (point down -y). o.barb: side barbs; o.glow: a glowing head. Returns the tip y. */
+function whiteSpear(k, neon, o = {}) {
+  const len = o.len ?? 3.6;
+  k.cyl(0.08, len, W2, 0, 0.9 - len / 2, 0, { seg: 10 }); // shaft
+  k.cyl(0.1, 0.14, W3, 0, 0.9, 0, { seg: 10 }); // butt cap
+  for (let i = 0; i < 3; i++) k.torus(0.09, 0.02, neon, 0, 0.3 - i * 0.14, 0, { rx: PI / 2, seg: 8 }); // grip wraps
+  const y0 = 0.9 - len;
+  k.cyl(0.11, 0.16, W3, 0, y0, 0, { seg: 10 }); // collar
+  const head = o.glow ? neon : W;
+  k.slab(0.06, 0.9, 0.34, head, 0, y0 - 0.5, 0, { bd: 0.04 }); // leaf blade
+  if (!o.glow) k.box(0.07, 0.6, 0.04, neon, 0, y0 - 0.4, 0); // neon line down the blade
+  if (o.barb) for (const sd of [-1, 1]) k.box(0.05, 0.36, 0.08, head, 0, y0 - 0.15, sd * 0.22, { rx: sd * 0.6 });
+  return y0 - 0.95;
+}
+
+/**
+ * Spearman (alternate Assassin): a white figure in a hood and mask with a long spear. Lv 1 Steel
+ * Tip: a neon-lined spearhead. Lv 2 Spear Rush: a light chest wrap and arm bands. Lv 3 Piercing
+ * Thorn: barbs on the spear and a neon eye slit. Lv 4 Striking Spear: a longer spear and shoulder
+ * guard. Lv 5 Vicious Cyclone: a glowing spearhead, rings round the shaft and a scarf.
+ */
+export function makeSpearman(level) {
+  const h = blank();
+  const key = `assassinSpearman${level}`;
+  const neon = glowMat(h, SPEAR_NEON);
+  const hd = wear(h, h.head, `${key}:head`);
+  const t = wear(h, h.torso, `${key}:torso`);
+  hood(hd, W2);
+  hd.box(1.12, 0.5, 0.1, W3, 0, 0.32, 0.62, { r: 0.08 }); // mask
+  if (level >= 3) hd.box(0.9, 0.08, 0.05, neon, 0, 0.72, 0.64); // eye slit
+  t.box(2.0, 1.8, 1.1, W, 0, 0.05, 0, { r: 0.12 });
+  t.box(2.04, 0.22, 1.14, W3, 0, -0.86, 0, { r: 0.04 }); // sash
+  t.box(0.3, 0.7, 0.06, neon, 0.6, -1.2, 0.58, { r: 0.02, rz: 0.15 }); // sash tail
+  if (level >= 2) {
+    // a chest wrap across the body
+    t.box(0.3, 2.3, 1.16, W3, 0, 0.1, 0, { r: 0.05, rz: 0.7 });
+    t.box(0.08, 2.0, 0.04, neon, 0, 0.1, 0.6, { rz: 0.7 });
+  }
+  if (level >= 4) {
+    shoulderPads(t, W2, 0.58);
+    t.box(0.5, 0.06, 0.06, neon, 1.05, 1.0, 0.45);
+  }
+  if (level >= 5) {
+    // a long scarf blowing behind
+    t.torus(0.6, 0.18, neon, 0, 0.98, 0, { rx: PI / 2, seg: 16 });
+    t.box(0.34, 1.4, 0.12, neon, -0.3, 0.3, -0.75, { r: 0.05, rx: 0.35 });
+  }
+  hd.done();
+  t.done();
+  hands(h, key, W3, W2, (a) => {
+    if (level >= 2) a.box(0.5, 0.06, 0.06, neon, 0, -1.25, 0.6); // arm bands
+  });
+  feet(h, key, W3, (b) => b.box(1.12, 0.1, 1.14, neon, 0, -1.3, 0.02));
+  h.muzzles = [];
+  const g = fist(h.rightArm, -1.9, 1.15);
+  const gk = wear(h, g, `${key}:gun`);
+  const tipY = whiteSpear(gk, neon, { len: level >= 4 ? 4.2 : 3.6, barb: level >= 3, glow: level >= 5 });
+  if (level >= 5) for (const y of [-0.9, -1.6]) gk.torus(0.24, 0.03, neon, 0, y, 0, { rx: PI / 2, seg: 14 });
+  gk.done();
+  muzzle(h, g, tipY, 0);
+  h.rightArm.rotation.set(-PI / 2, 0, 0.15);
+  h.leftArm.rotation.set(-1.2, 0, -0.35);
+  h.pose = { right: -PI / 2, left: -1.2, leftRecoil: 0 };
+  h.swing = 1.2;
+  h.melee = true;
+  h.tracer = SPEAR_NEON;
+  return own(h, 0);
+}
+
 export const MODELS = {
   eradicator: makeEradicator,
   priest: makePriest,
@@ -759,5 +911,7 @@ export const MODELS = {
   grenadierShrapnel: makeShrapnelGrenadier,
   enforcerWarrior: makeWarrior,
   snowballerSnowman: makeSnowman,
+  flamethrowerInfernus: makeInfernus,
+  assassinSpearman: makeSpearman,
   mage: makeMage,
 };

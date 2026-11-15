@@ -169,7 +169,7 @@ export class SimTowerUpdate {
       t.spinT = Math.max(0, t.spinT - dt * b.rate);
       return;
     }
-    const rangeMult = b.range * (t.smoke > 0 ? VERSUS.smokeRange : 1) * (t.lm?.range ?? 1); // (Liminal blessing/curse)
+    const rangeMult = (def.noRangeBuff ? 1 : b.range) * (t.smoke > 0 ? VERSUS.smokeRange : 1) * (t.lm?.range ?? 1); // (Liminal blessing/curse)
     if (rangeMult !== 1) s = { ...s, range: s.range * rangeMult };
     // Electricizer: zombies within part of its range switch it to its short-range mode.
     if (s.near) {
@@ -398,6 +398,14 @@ export class SimTowerUpdate {
     }
     // Planeswalker: zombies inside its inner range take less damage.
     if (s.closeRange && (target.x - t.x) ** 2 + (target.z - t.z) ** 2 <= s.closeRange ** 2) dmg = Math.round(dmg * s.closeMult * 100) / 100;
+    // Spearman: zombies in the outer ring of its range (the last `tip.width` studs) take Tip Damage.
+    // Other stabs are faster; Edge Cyclone hits the whole ring instead of one tip stab.
+    if (s.tip) {
+      const tip = (target.x - t.x) ** 2 + (target.z - t.z) ** 2 > (s.range - s.tip.width) ** 2;
+      if (tip) dmg += s.tip.bonus;
+      else if (s.tip.fast) t.cooldown -= s.cooldown * (1 - 1 / s.tip.fast);
+      if (tip && s.tip.cyclone) return this.edgeCyclone(t, s, dmg);
+    }
     // Hunter Collateral: spends bounty for a double-damage shot that bounces to nearby zombies.
     let collat = null;
     if (s.collateral && (t.bank || 0) >= s.collateral.cost) {

@@ -18,6 +18,9 @@
 //               three levels add ΘVERLOAD, which costs its owner money for the rest of the game.
 //   Snowman: an alternate Snowballer form. Snowballs freeze zombies in place (never bosses);
 //            from Lv 2 the whole blast freezes. Snowfall ability at Lv 6 (only 4 can have it).
+//   Infernus: an alternate Flamethrower form. A support: a wide cone of fire whose burns slow zombies.
+//   Spearman: an alternate Assassin form. Stabs harder at the far edge of its reach (Tip Damage);
+//             range buffs don't work on it. Edge Cyclone at Lv 5.
 //   Mage: weak long-range magic shots. Builds up its owner's Arcana, shoots faster with more of it,
 //         calls down lightning every 10 shots (Stormbringer), and Artificial Ascent at Lv 5.
 //
@@ -83,6 +86,9 @@
 //               range, each dealing (damage + Arcana / 15) ^ 1.1 in a blast of 3 + Arcana / 100.
 //   ARTS (Magical ARTS, e.arts): zombies take that much more damage from everything. Read in
 //               damage() in sim/parts/damage.js.
+//   burnSlow: n  (Infernus, on a level) how much its burns slow; the tower's own burnSlow before that.
+//   tip: { width, bonus, fast, cyclone }  Spearman (see updateTower in sim/parts/tower-update.js and
+//               edgeCyclone in weapons3.js). noRangeBuff: true (on the tower) range buffs don't count.
 //   trueDmg: true  True damage (see damage in sim/parts/damage.js): no resistance, armor or
 //               defense stops it.
 //
@@ -425,6 +431,57 @@ export const ELEVENTH_TOWERS = {
       { name: 'Subzero', desc: '+7 damage, +3 range and freezes longer (1.25s > 2s).', cost: 3750, damage: 13, cooldown: 2.2, range: 14, radius: 4.5, freeze: 2, hidden: false },
       { name: 'Endless Blizzard', desc: '+22 damage and freezes longer (2s > 3.5s). Unlocks Snowfall. Only 4 Snowmen can have this.', cost: 23000, damage: 35, cooldown: 2.2, range: 14, radius: 4.5, freeze: 3.5, hidden: false,
         maxCount: 4, abilities: [snowfall] },
+    ],
+  },
+  // Infernus (alternate Flamethrower form): a slow-fire support. Burn damage is per tick, and the
+  // game burns smoothly, so `burn` here is burn damage / tick (per second). burnSlow on a level
+  // sets how much its burns slow.
+  flamethrowerInfernus: {
+    name: 'Infernus',
+    altOf: 'flamethrower',
+    form: 'Infernus',
+    shards: 1,
+    price: 0,
+    cost: 750,
+    limit: Infinity,
+    lead: true,
+    burnSlow: 0.1,
+    kindLabel: 'Slow',
+    blurb: 'An alternate Flamethrower that helps your other towers. Its wide cone of fire sets zombies burning, and burning zombies move slower, so your big towers get more time to hit them. Flames even burn hidden zombies. No placement limit.',
+    tip: 'Put it where the path enters your main defense so the zombies stay slow while your damage towers work.',
+    levels: [
+      { name: 'Infernus', desc: 'Sprays a cone of fire: zombies burn for 3s (1 damage a second) and move 10% slower.', damage: 0, burn: 1, burnTime: 3, cooldown: 0.25, range: 11, cone: 0.45, hidden: false },
+      { name: 'Bigger Flames', desc: '+1 damage and bigger flames.', cost: 500, damage: 1, burn: 1, burnTime: 3, cooldown: 0.25, range: 11, cone: 0.55, hidden: false },
+      { name: 'Napalm Fire', desc: 'Burns last longer (3s > 6s) and slow by 15%.', cost: 850, damage: 1, burn: 1, burnTime: 6, burnSlow: 0.15, cooldown: 0.25, range: 11, cone: 0.55, hidden: false },
+      { name: 'Blazing Arson', desc: '+2 burn damage, bigger flames and +1 damage.', cost: 1450, damage: 2, burn: 3, burnTime: 6, burnSlow: 0.15, cooldown: 0.25, range: 11, cone: 0.65, hidden: false },
+      { name: 'The Furnace', desc: 'Burns hurt twice as often (every 1s > 0.5s) and +1 burn damage.', cost: 2250, damage: 2, burn: 8, burnTime: 6, burnSlow: 0.15, cooldown: 0.25, range: 11, cone: 0.65, hidden: false },
+      { name: 'Absolute Hellfire', desc: 'Burns last longer (6s > 10s), +6 burn damage, +2 damage, and burns slow by 25%.', cost: 7500, damage: 4, burn: 20, burnTime: 10, burnSlow: 0.25, cooldown: 0.25, range: 11, cone: 0.65, hidden: false },
+    ],
+  },
+  // Spearman (alternate Assassin form). range = regular range + tip range; tip: { width, bonus }:
+  // zombies in the outer `width` studs of its range take `bonus` more (Tip Damage). fast: stabs
+  // at closer zombies come that many times faster. cyclone: a tip attack hits the whole outer ring.
+  assassinSpearman: {
+    name: 'Spearman',
+    altOf: 'assassin',
+    form: 'Spearman',
+    shards: 1,
+    price: 0,
+    cost: 450,
+    limit: Infinity,
+    melee: true,
+    lead: false,
+    flying: false,
+    noRangeBuff: true,
+    blurb: 'An alternate Assassin with a long spear. Zombies near the far edge of its reach take Tip Damage, a lot more than a normal stab. Range buffs don\'t work on it. Sees hidden zombies from Lv 3. No placement limit.',
+    tip: 'Place it a little away from the path so the zombies walk through the tip of its spear.',
+    levels: [
+      { name: 'Spearman', desc: 'Stabs with a spear: 2 damage, or 4 at the tip.', damage: 2, cooldown: 0.8, range: 6.5, tip: { width: 1.5, bonus: 2 }, hidden: false },
+      { name: 'Steel Tip', desc: '+2 damage and +2 Tip Damage.', cost: 500, damage: 4, cooldown: 0.8, range: 6.5, tip: { width: 1.5, bonus: 4 }, hidden: false },
+      { name: 'Spear Rush', desc: '+3 damage, stabs faster (every 0.8s > 0.6s), and stabs that are not at the tip are 15% faster.', cost: 750, damage: 7, cooldown: 0.6, range: 6.5, tip: { width: 1.5, bonus: 4, fast: 1.15 }, hidden: false },
+      { name: 'Piercing Thorn', desc: '+4 damage, +2 Tip Damage and sees hidden zombies.', cost: 1000, damage: 11, cooldown: 0.6, range: 6.5, tip: { width: 1.5, bonus: 6, fast: 1.15 }, hidden: true },
+      { name: 'Striking Spear', desc: '+4 damage and +1 tip range.', cost: 1450, damage: 15, cooldown: 0.6, range: 7.5, tip: { width: 2.5, bonus: 6, fast: 1.15 }, hidden: true },
+      { name: 'Vicious Cyclone', desc: '+4 damage and Edge Cyclone: a tip attack spins the spear and hits every zombie at the tip.', cost: 4000, damage: 19, cooldown: 0.6, range: 7.5, tip: { width: 2.5, bonus: 6, fast: 1.15, cyclone: true }, hidden: true },
     ],
   },
   // Eradicator: quick energy orbs, and from Lv 3 the Raybreak beam (on its own timer).

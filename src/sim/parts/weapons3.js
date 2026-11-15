@@ -587,6 +587,19 @@ export class SimWeapons3 {
     }
   }
 
+  /** Spearman Edge Cyclone: hits every zombie in the outer ring of its range for `dmg`. */
+  edgeCyclone(t, s, dmg) {
+    const det = this.detects(t, s);
+    this.events.push({ k: 'whirl', t: t.id, r: s.range });
+    const r2max = s.range * s.range;
+    const r2min = (s.range - s.tip.width) ** 2;
+    for (const e of [...this.enemies.values()]) {
+      if (!canHit(det, e)) continue;
+      const d2 = (e.x - t.x) ** 2 + (e.z - t.z) ** 2;
+      if (d2 <= r2max && d2 > r2min) this.damage(t, e, dmg);
+    }
+  }
+
   /** Assassin Whirlwind Slash: hits every zombie in range. */
   whirl(t, s) {
     const det = this.detects(t, s);

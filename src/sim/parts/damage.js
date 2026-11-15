@@ -34,7 +34,7 @@ export class SimDamage {
     for (const { e } of list) {
       // Fire Slimes shrug off flames (unless it ignores fire resistance: Flame Tanks).
       if (e.fireImmune && !s.ignoreFireResist) continue;
-      this.ignite(e, t.id, s.burn, s.burnTime, def.burnSlow ?? 0, s.ignoreFireResist);
+      this.ignite(e, t.id, s.burn, s.burnTime, s.burnSlow ?? def.burnSlow ?? 0, s.ignoreFireResist); // (Infernus: slow per level)
       // Flame Tanks: zombies it sets on fire take extra damage from everything for a while.
       if (s.burnVuln) {
         e.vuln = Math.max(e.vuln, s.burnVuln.amount);
