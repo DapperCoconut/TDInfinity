@@ -622,6 +622,7 @@ export class UI {
       : s.ml ? ` · Slashes: ${Math.round(c * s.ml.max)}/${s.ml.max}` // Vindicator
       : s.shin?.focusMax ? ` · Mental Focus: +${Math.round(c * s.shin.focusMax * 100)}%` // Shinobi
       : s.sm?.steal ? ` · Souls: ${Math.round(c * s.sm.max)}/${s.sm.max}` // Soul Master
+      : s.frost?.grow ? ` · ❄ Crystals: ${Math.round(c * 7)}/${s.frost.max}${t.wisps?.length ? ` · Wisps: ${t.wisps.length}/5` : ''}` // Frostreaver (t.charge = crystals / 7)
       : s.van?.shield ? ` · 🛡 Shield: ${Math.round(c * 100)}` // Vanguard (t.charge = shield / 100)
       : s.crow && def.modePick && !t.mode ? ' · Pick a mode!' // Strawman
       : s.trick?.knife ? ` · Knife Tricks: ${Math.round(c * s.trick.knife.max)}/${s.trick.knife.max}` // Trickster

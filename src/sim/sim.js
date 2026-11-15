@@ -828,6 +828,10 @@ export class Sim {
           const why = this.cloneTower(p, ab, m);
           if (why) return why;
         }
+        if (ab.crystals) {
+          const why = this.frostWhy(t, s, ab, m); // Frostreaver: abilities cost Ice Crystals
+          if (why) return why;
+        }
         if (ab.key === 'hologram' || ab.key === 'utopia') {
           const why = this.technoWhy(t, p, s, ab, m); // (Utopia makes its copy here)
           if (why) return why;
@@ -982,6 +986,8 @@ export class Sim {
           ? [t.uses || 0, r2(t.costRoll ?? 0.5), t.magic || 0, TOWERS[t.type].levels[t.level].charge ? r2((t.chargeT || 0) / TOWERS[t.type].levels[t.level].charge.time) : 0] : 0,
         // Wave 12-13: [Strawman mode, Golden Bandit Share Relic money off the next upgrade, Technomancer pad dx, dz]
         t.mode || t.nextOff || t.pad ? [t.mode || 0, t.nextOff || 0, ...(t.pad ? [r2(t.pad.x - t.x), r2(t.pad.z - t.z)] : [])] : 0,
+        // Wave 13: Frostreaver Frost Wisps (the towers they sit on)
+        t.wisps?.length ? t.wisps.map((w) => w.host) : 0,
       ]),
       // Traps, plus Necromancer gravestones and Engineer sentries: [..., level, facing, health left (0-1), stunned, thermite radius].
       tr: [...this.traps.values()].map((tr) => [tr.id, tr.tower, tr.kind, r2(tr.x), r2(tr.z), tr.land > 0 ? 0 : 1, tr.lvl ?? 0, r2(tr.yaw ?? 0), tr.maxHp ? r2(tr.hp / tr.maxHp) : 1, tr.stunT > 0 ? 1 : 0, tr.kind === 'thermite' || tr.kind === 'gas' || tr.kind === 'thorns' || tr.kind === 'goo' || tr.kind === 'blade' ? tr.radius : 0]),

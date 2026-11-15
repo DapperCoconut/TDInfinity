@@ -128,6 +128,16 @@ export class GameEvents {
           audio.shot(v.level, v.type);
           break;
         }
+        case 'wisp': {
+          // Frostreaver Frost Wisp: an icy bolt from the wisp over its tower.
+          const v = this.towerViews.get(ev.h);
+          const e = this.enemyViews.get(ev.e);
+          if (!v || !e) break;
+          const from = v.group.position.clone().setY(v.group.position.y + 6.5);
+          this.effects.lightning([from, e.aimPoint(new THREE.Vector3())], 0x82b1ff);
+          e.hit();
+          break;
+        }
         case 'zap': {
           const v = this.towerViews.get(ev.t);
           if (!v) break;

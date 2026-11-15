@@ -589,7 +589,7 @@ export class SimUnits {
     // Buzzer Dark Summoner: its owner's summons explode for half their max health.
     if (!ex && !u.def.point && tower && this.players.get(tower.owner)?.darkSummon && u.maxHp > 1) ex = { damage: Math.round(u.maxHp / 2), radius: 6 };
     this.events.push({ k: 'udie', u: u.id, x: r2(u.x), z: r2(u.z), ...(ex ? { boom: 1 } : {}) });
-    if (ex) this.explode(tower, u.x, u.z, { damage: ex.damage, radius: ex.radius, det: WRECK_BLAST, pierceArmor: u.def.pierceArmor, freeze: ex.freeze, ice: ex.ice, ignoreIceResist: ex.ignoreIceResist }); // Ice Shard: freezes too (through ice resistance)
+    if (ex) this.explode(tower, u.x, u.z, { damage: ex.damage, radius: ex.radius, det: WRECK_BLAST, pierceArmor: u.def.pierceArmor, freeze: ex.freeze, ice: ex.ice, ignoreIceResist: ex.ignoreIceResist, chill: ex.chill }); // Ice Shard: freezes too (through ice resistance); Path Crystal: Frost Burn
   }
 
   removeUnitsOf(towerId) {

@@ -67,6 +67,9 @@ const beamGeo = new THREE.BoxGeometry(1, 1, 1).translate(0, 0, 0.5); // grows fr
 const spotConeGeo = new THREE.CylinderGeometry(1, 0.12, 1, 20, 1, true).rotateX(Math.PI / 2).translate(0, 0, 0.5);
 const spotDiscGeo = new THREE.CircleGeometry(1, 28).rotateX(-Math.PI / 2);
 const tmpB = new THREE.Vector3();
+// Frost Wisps.
+const wispGeo = new THREE.IcosahedronGeometry(0.45, 0);
+const wispMat = new THREE.MeshBasicMaterial({ color: 0x82b1ff, transparent: true, opacity: 0.9 });
 // Technomancer Hologram pad pieces.
 const padBaseGeo = new THREE.CylinderGeometry(2, 2.1, 0.18, 6).translate(0, 0.09, 0);
 const padTopGeo = new THREE.CylinderGeometry(1.85, 1.85, 0.06, 6);
@@ -172,6 +175,7 @@ export class TowerView {
       this.group.remove(this.model.root);
       if (this.model.plane) this.group.remove(this.model.plane);
       if (this.model.orbs) this.group.remove(this.model.orbs);
+      if (this.model.crystals) this.group.remove(this.model.crystals);
       for (const m of this.model.mats) m.dispose();
     }
     this.level = level;
@@ -197,6 +201,7 @@ export class TowerView {
     this.group.add(this.model.root);
     if (this.model.plane) this.group.add(this.model.plane);
     if (this.model.orbs) this.group.add(this.model.orbs); // Soul Master souls
+    if (this.model.crystals) this.group.add(this.model.crystals); // Frostreaver Ice Crystals
     this.padMat.color.setHex(this.holo ? 0x00bcd4 : PAD_COLORS[level]);
     this.stealthShown = false; // a fresh model is solid until sync() says it's stealthy
     if (this.holo) {
@@ -299,6 +304,7 @@ export class TowerView {
     if (m.heli) this.hover(t, dt);
     else if (m.plane) this.fly(t, dt);
     if (m.orbs) this.spinSouls(t, dt);
+    if (m.crystals) this.spinCrystals(t, dt);
     if (m.spot) this.syncSpot(t, dt);
     if (t.pad || this.holoPad) this.syncPad(t, dt);
     if (m.modeTracer) {
@@ -495,6 +501,34 @@ export class TowerView {
       // sim angle a: x = cos a, z = sin a; the group isn't turned with the tower
       o.position.set(Math.cos(a) * R, 2.5 + Math.sin(this.breath * 3 + i) * 0.4, Math.sin(a) * R);
       o.rotation.y = Math.atan2(-Math.sin(a), Math.cos(a)) + (dir > 0 ? Math.PI : 0); // tail trails behind
+    });
+  }
+
+  /** Frostreaver: its Ice Crystals circle it (t.charge = crystals / 7). */
+  spinCrystals(t, dt) {
+    const n = Math.round((t.charge || 0) * 7);
+    this.crystAng = (this.crystAng || 0) + dt * 1.2;
+    this.model.crystals.children.forEach((o, i) => {
+      o.visible = i < n;
+      if (!o.visible) return;
+      const a = this.crystAng + (i * Math.PI * 2) / n;
+      o.position.set(Math.cos(a) * 3.2, 4 + Math.sin(this.breath * 2 + i) * 0.35, Math.sin(a) * 3.2);
+      o.rotation.y += dt * 2;
+    });
+  }
+
+  /** Frost Wisps sitting on this tower (from any Frostreaver): little icy lights bobbing over it. */
+  syncWisps(n, dt) {
+    if (!n && !this.wisps) return;
+    if (!this.wisps) {
+      this.wisps = new THREE.Group();
+      this.group.add(this.wisps);
+    }
+    while (this.wisps.children.length < n) this.wisps.add(new THREE.Mesh(wispGeo, wispMat));
+    this.wisps.children.forEach((o, i) => {
+      o.visible = i < n;
+      const a = this.breath * 1.5 + (i * Math.PI * 2) / Math.max(1, n);
+      o.position.set(Math.cos(a) * 1.2, 6.5 / K + Math.sin(this.breath * 3 + i) * 0.3, Math.sin(a) * 1.2);
     });
   }
 

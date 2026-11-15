@@ -59,6 +59,10 @@ export class GameView {
       // Tempest: little lightning arcs crackle round it (lots more while its Lightning Field is up).
       if (v.model?.sparks && Math.random() < gdt * (t.active > 0 ? 9 : 2.5)) this.sparkArc(v, t);
     }
+    // Frostreaver Frost Wisps: little lights over the towers they sit on.
+    const wisps = new Map();
+    for (const t of st.towers.values()) for (const h of t.wisps ?? []) wisps.set(h, (wisps.get(h) || 0) + 1);
+    for (const [id, v] of this.towerViews) if (wisps.has(id) || v.wisps) v.syncWisps(wisps.get(id) || 0, gdt);
     for (const [id, v] of this.towerViews) {
       if (st.towers.has(id)) continue;
       if (id === this.selectedId) this.deselect();

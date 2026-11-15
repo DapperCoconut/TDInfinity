@@ -245,6 +245,7 @@ export class SimTowerUpdate {
     if (s.jug) return this.updateJuggernaut(t, s, dt); // Juggernaut: mace slams, Magnetic Field
     if (s.sm) return this.updateSoulMaster(t, s, dt, rate); // Soul Master: orbiting souls
     if (s.tox) return this.updateToxicator(t, s, dt); // Toxicator: toxic blasts
+    if (s.frost) return this.updateFrostreaver(t, s, dt); // Frostreaver: Ice Crystals, freezing hits, Frost Wisps
     if (s.tempest) return this.updateTempest(t, s, dt); // Tempest: punches, Lightning Fields
     if (s.phantom || s.van) return this.updatePathTower(t, s, dt); // Phantom / Vanguard
     // Ice Apprentice Blizzard: its staff can't attack while it lasts.
