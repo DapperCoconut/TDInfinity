@@ -35,6 +35,7 @@ export class SimAbilities {
         t.stunT = 0;
       }
     } else if (ab.key === 'grandslam') this.grandSlam(t, s, ab);
+    else if (ab.key === 'coolDown') t.cooling = !t.cooling; // Incinerator: a switch
     else if (ab.key === 'magicBoost') t.magic = (t.magic || 0) + ab.add; // Wizard
     else if (ab.key === 'soulSurge') {} // Lure: the use count is the effect (see updateTower)
     else if (ab.key === 'spore') {

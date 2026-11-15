@@ -539,6 +539,40 @@ export class SimWeapons4 {
     this.events.push({ k: 'trapThrow', t: t.id, x: r2(x), z: r2(z), d: TRAP_FLIGHT });
   }
 
+  /**
+   * Incinerator: attacks one zombie every `cooldown` s and sets it on fire (stronger with Heat;
+   * from Lv 3 a smaller splash too). Each attack adds Heat; it cools off when idle or while Cool
+   * Down is on (no attacks then). At 100 Heat it loses health fast until Cool Down brings the Heat
+   * back down, or it dies and blows up (overheatBlast in tower-health.js). t.charge = Heat / 100.
+   */
+  updateIncinerator(t, def, s, dt) {
+    const h = def.heat;
+    const ic = s.incin;
+    t.heat ??= 0;
+    t.idleT = (t.idleT || 0) + dt;
+    if (t.cooling) t.heat = Math.max(0, t.heat - h.cool * ic.cool * dt);
+    else if (t.heat >= 100) this.hurtTower(t, t.maxHp * h.drain * dt, false, true);
+    else if (t.idleT > h.wait) t.heat = Math.max(0, t.heat - h.decay * ic.cool * dt);
+    t.charge = t.heat / 100;
+    if (!this.towers.has(t.id) || t.hp <= 0) return;
+    const target = this.findTarget(t, s, t.x, t.z, s.range, null);
+    if (target) t.yaw = Math.atan2(target.x - t.x, target.z - t.z);
+    if (t.cooling || !target || t.cooldown > 0) {
+      t.cooldown = Math.max(0, t.cooldown);
+      return;
+    }
+    t.cooldown += s.cooldown;
+    t.idleT = 0;
+    t.heat = Math.min(100, t.heat + h.gain);
+    t.charge = t.heat / 100;
+    const dps = (ic.burn / ic.tick) * (1 + t.heat / 100);
+    const x = target.x;
+    const z = target.z;
+    this.shoot(t, target, s.damage);
+    if (this.enemies.has(target.id)) this.ignite(target, t.id, dps, ic.time, 0);
+    if (ic.aoe) this.explode(t, x, z, { damage: 0, splash: s.damage * 0.5, radius: ic.aoe, det: this.detects(t, s), main: target.id, burn: dps * 0.5, burnTime: ic.time });
+  }
+
   /** Bomber Dynamites: every 4th bomb (thrown or laid) deals `bomber.fourth` x damage. */
   bombDamage(t, s) {
     t.bombN = (t.bombN || 0) + 1;

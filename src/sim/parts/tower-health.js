@@ -125,6 +125,7 @@ export class SimTowerHealth {
     t.hp = 0;
     this.lifeInsurance(t);
     this.deathBlast(t);
+    this.overheatBlast(t);
     this.revivePack(t);
     const def = TOWERS[t.type];
     const saved = t.reviveT > 0 || (def.rebuilds && t.rebuilt < def.rebuilds) || t.owner === 'citadel'; // Citadel Sentries belong to the map
@@ -147,6 +148,20 @@ export class SimTowerHealth {
       }
       if (silence) t.silenceT = Math.max(t.silenceT || 0, silence);
     }
+  }
+
+  /**
+   * Incinerator: when it dies of overheating (100 Heat) it blows up, hurting every zombie it
+   * can hit within heat.radius (see updateIncinerator).
+   */
+  overheatBlast(t) {
+    const def = TOWERS[t.type];
+    const ic = def.levels[t.level].incin;
+    if (!ic || !(t.heat >= 100)) return;
+    t.heat = 0;
+    const over = ic.over ? (this.players.get(t.owner)?.overload || 0) : 0;
+    const dmg = Math.round((100 * Math.max(1, t.level)) ** 1.25 * 3 * ic.blast + (over ? (over * 4) ** 1.32 : 0));
+    this.explode(t, t.x, t.z, { damage: dmg, radius: def.heat.radius, det: this.detects(t, def.levels[t.level]), nuke: true });
   }
 
   /**

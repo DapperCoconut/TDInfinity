@@ -1,5 +1,5 @@
 // Tower models: people, batch 29 (dressed with the vehicle kit in ../vehicles.js).
-// In here: Cyborg.
+// In here: Cyborg, Incinerator.
 // Like batches 26-28 these are plain faceless figures: only their gear tells them apart, with
 // accents in one neon colour per tower.
 // MODELS maps tower keys to builders; ../models.js lays it over TOWER_MODELS, so these win.
@@ -124,6 +124,100 @@ export function makeCyborg(level) {
   return own(h, UP);
 }
 
+// ------------------------------------------------------------------ Incinerator (dark gray, neon orange)
+
+const INC_NEON = 0xff6d00;
+const D1 = 0x4a4d52; // dark gray armor
+const D2 = 0x3a3c40;
+const D3 = 0x5c6066;
+
+/**
+ * A dark gray incinerator cannon on the fist (gun space): a wide body, a fuel line, a flared
+ * nozzle with a glowing core. o.long (Long Range+): a longer barrel with cooling fins. o.mk2
+ * (Mk2+): a second side tank. o.ash (Ashmaker): a huge nozzle with three glowing rings.
+ * Returns the bore point [y, z].
+ */
+function incineratorCannon(k, neon, o = {}) {
+  const U = UP;
+  const len = o.ash ? 2.6 : o.long ? 2.4 : 1.9;
+  k.box(0.5, 1.1, 0.52, D1, 0, -0.35, U, { r: 0.09 }); // body
+  k.cyl(0.17, len - 0.9, D2, 0, -0.9 - (len - 0.9) / 2, U, { seg: 12 }); // barrel
+  if (o.long) for (let i = 0; i < 4; i++) k.cyl(0.26, 0.06, D3, 0, -1.1 - i * 0.22, U, { seg: 12 }); // cooling fins
+  const mouth = o.ash ? 0.36 : 0.26;
+  k.cyl(mouth, 0.36, D3, 0, -len, U, { seg: 14, r2: mouth * 0.6 }); // flared nozzle
+  k.cyl(mouth * 0.7, 0.04, neon, 0, -len - 0.2, U, { seg: 14 }); // glowing core
+  if (o.ash) for (let i = 0; i < 3; i++) k.torus(0.22, 0.04, neon, 0, -1.2 - i * 0.35, U, { rx: PI / 2, seg: 14 });
+  k.box(0.26, 0.24, 0.5, D2, 0, 0.1, U - 0.38, { rx: -0.32, r: 0.04 }); // grip
+  k.cyl(0.07, 0.9, neon, 0.3, -0.5, U - 0.1, { seg: 8 }); // glowing fuel line
+  k.cyl(0.2, 0.7, D3, 0, 0.15, U - 0.5, { seg: 12 }); // fuel canister
+  if (o.mk2) k.cyl(0.18, 0.6, D3, -0.36, -0.4, U, { seg: 12 }); // side tank
+  return [-len - 0.2, U];
+}
+
+/**
+ * Incinerator (alternate Hallowboomer): a faceless figure in heavy dark gray armor with neon
+ * orange lights and an incinerator cannon. Lv 1 Intense Flames: twin fuel tanks on the back.
+ * Lv 2 Long Range Incineration: a longer finned barrel and a range sight. Lv 3 Incinerator Mk2:
+ * big shoulder armor and a side tank. Lv 4 Immolation: glowing vents all over the armor. Lv 5
+ * Ashmaker: smoke stacks on the back and a huge nozzle.
+ */
+export function makeIncinerator(level) {
+  const h = makeHumanoid({ skin: D1, shirt: D1, pants: D2, arms: D1, face: 'none' });
+  const key = `hallowboomerIncinerator${level}`;
+  const neon = glowMat(h, INC_NEON);
+  const hd = wear(h, h.head, `${key}:head`);
+  const t = wear(h, h.torso, `${key}:torso`);
+  dome(hd, 0.86, 0.72, D1, 0, 0.84, 0); // heavy helmet
+  hd.box(1.4, 0.5, 0.2, D2, 0, 0.45, 0.62, { r: 0.08 }); // face guard
+  hd.box(1.1, 0.1, 0.05, neon, 0, 0.55, 0.73); // visor slit
+  for (let i = 0; i < 3; i++) hd.box(0.08, 0.2, 0.05, D3, -0.3 + i * 0.3, 0.3, 0.73); // breather grille
+  if (level >= 2) {
+    hd.box(0.14, 0.14, 0.45, D3, -0.85, 0.75, 0.3, { r: 0.03 }); // range sight
+    hd.cyl(0.06, 0.02, neon, -0.85, 0.75, 0.53, { axis: 'z', seg: 10 });
+  }
+  t.box(2.3, 1.8, 1.3, D1, 0, 0.1, 0, { r: 0.12 }); // armored body
+  t.box(1.7, 1.2, 0.24, D3, 0, 0.25, 0.66, { r: 0.08 }); // chest plate
+  t.box(1.2, 0.08, 0.05, neon, 0, 0.5, 0.79);
+  t.box(2.32, 0.28, 1.32, D2, 0, -0.84, 0, { r: 0.05 }); // belt
+  t.box(0.34, 0.2, 0.06, neon, 0, -0.84, 0.67, { r: 0.02 });
+  const tanks = level >= 1 ? [-0.45, 0.45] : [0];
+  for (const x of tanks) {
+    t.cyl(0.32, 1.4, D3, x, 0.15, -0.9, { seg: 14 }); // fuel tanks
+    t.cyl(0.33, 0.08, neon, x, 0.45, -0.9, { seg: 14 });
+  }
+  if (level >= 3) shoulderPads(t, D3, 0.72);
+  if (level >= 4) {
+    for (const sx of [-1, 1]) for (let i = 0; i < 3; i++) t.box(0.05, 0.3, 0.05, neon, sx * (0.55 + i * 0.12), -0.3, 0.67); // vents
+    for (const sx of [-1, 1]) t.box(0.06, 0.6, 0.4, neon, sx * 1.17, 0.1, 0); // side vents
+  }
+  if (level >= 5) {
+    for (const sx of [-1, 1]) {
+      t.cyl(0.16, 1.2, D2, sx * 0.85, 1.3, -0.75, { seg: 12 }); // smoke stacks
+      t.cyl(0.12, 0.05, neon, sx * 0.85, 1.92, -0.75, { seg: 12 });
+    }
+  }
+  hd.done();
+  t.done();
+  hands(h, key, D2, D3, (a) => {
+    a.box(1.1, 0.5, 1.1, D3, 0, -0.35, 0, { r: 0.06 }); // arm plate
+    if (level >= 4) a.box(0.5, 0.06, 0.04, neon, 0, -0.55, 0.57);
+  });
+  feet(h, key, D2, (b) => {
+    b.box(0.66, 0.5, 0.26, D3, 0, -0.95, 0.56, { r: 0.06 }); // knee armor
+    b.box(0.66, 0.06, 0.28, neon, 0, -0.78, 0.57);
+  });
+  h.muzzles = [];
+  const g = fist(h.rightArm, -1.9, 1.2);
+  const gk = wear(h, g, `${key}:gun`);
+  const [y, z] = incineratorCannon(gk, neon, { long: level >= 2, mk2: level >= 3, ash: level >= 5 });
+  gk.done();
+  muzzle(h, g, y, z);
+  aimLong(h);
+  h.tracer = INC_NEON;
+  return own(h, UP);
+}
+
 export const MODELS = {
   commandoCyborg: makeCyborg,
+  hallowboomerIncinerator: makeIncinerator,
 };

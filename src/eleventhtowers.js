@@ -32,6 +32,8 @@
 //   Programmer: an alternate Commander form. Towers near it attack faster; System Overdrive at Lv 3.
 //   Cyborg: an alternate Commando form. Heavy bursts with a reload; Magnum Howitzer blasts from Lv 3,
 //           no reload from Lv 4, rockets at Lv 5.
+//   Incinerator: an alternate Hallowboomer form. Burns zombies; Heat makes burns stronger, but at
+//                100 Heat it overheats and blows up unless Cool Down is switched on.
 //   Mage: weak long-range magic shots. Builds up its owner's Arcana, shoots faster with more of it,
 //         calls down lightning every 10 shots (Stormbringer), and Artificial Ascent at Lv 5.
 //
@@ -169,6 +171,8 @@ const onslaught = (boost, duration, cooldown) => ({ key: 'rage', name: 'Onslaugh
 const THIEF_MAX = 8000;
 // Programmer System Overdrive: `boost` on top of its own buff makes 50% (Call to Arms code).
 const overdrive = (boost, cooldown) => ({ key: 'cta', name: 'System Overdrive', desc: 'Firerate boost 50% for 10s, and it attacks', cooldown, duration: 10, boost });
+// Incinerator Cool Down: switches on and off (see updateIncinerator in sim/parts/weapons4.js).
+const COOL_DOWN = { key: 'coolDown', name: 'Cool Down', desc: 'On: stops attacking and cools down fast. Press again to switch it off', cooldown: 1 };
 
 export const ELEVENTH_TOWERS = {
   poacher: {
@@ -738,6 +742,41 @@ export const ELEVENTH_TOWERS = {
       { name: 'Cyber Augment: Jetstream', desc: '+4 range, +2 damage, a Magnum Howitzer every 20 shots, and 3 rockets every 8s (175 damage each). Selling it now gives back 80%.', cost: 21950, damage: 5, cooldown: 0.2, range: 22, hidden: true,
         spool: { per: 0.04, max: 1, decay: 2 }, howitzer: { every: 20, mult: 10, radius: 5 }, ceilDmg: true,
         rockets: { every: 8, damage: 175, radius: 3, count: 3 }, sellRatio: 0.8 },
+    ],
+  },
+  // Incinerator (alternate Hallowboomer form): every attack hits one zombie and sets it on fire:
+  // incin.burn damage every incin.tick s for incin.time s, +1% for every point of Heat. heat (on
+  // the tower): each attack adds `gain` Heat (up to 100); after `wait` s without attacking it
+  // cools `decay` a second. Cool Down (ability 'coolDown', a toggle) stops attacking and cools
+  // `cool` a second. Both cool incin.cool times faster. At 100 Heat it loses `drain` of its
+  // health a second until it dies (only Cool Down saves it); then it blows up within `radius`
+  // for ((100 x level)^1.25 x 3) x incin.blast, + (ΘVERLOAD x 4)^1.32 once incin.over is set.
+  // incin.aoe: from Lv 3 the attack also splashes that radius (half damage, half burn).
+  hallowboomerIncinerator: {
+    name: 'Incinerator',
+    altOf: 'hallowboomer',
+    form: 'Incinerator',
+    shards: 1,
+    price: 0,
+    cost: 1400,
+    limit: 10,
+    lead: true,
+    heat: { gain: 5, wait: 4, decay: 4, cool: 20, drain: 0.1, radius: 10 },
+    blurb: 'An alternate Hallowboomer in heavy armor that sets zombies on fire. Every attack adds 5 Heat, and every point of Heat makes its burns 1% stronger. At 100 Heat it overheats and starts to fall apart: use Cool Down in time, or it blows up and takes nearby zombies with it. Up to 10.',
+    tip: 'Let the Heat climb for stronger burns, then switch Cool Down on before it hits 100. Or let it blow up on purpose in front of a boss.',
+    levels: [
+      { name: 'Incinerator', desc: 'Sets one zombie on fire: 2 burn damage every 0.6s for 3s.', damage: 5, cooldown: 3, range: 11, hidden: false,
+        incin: { burn: 2, tick: 0.6, time: 3, cool: 1, blast: 1 }, abilities: [COOL_DOWN] },
+      { name: 'Intense Flames', desc: '+3 damage, and burns tick faster (every 0.6s > 0.25s).', cost: 1250, damage: 8, cooldown: 3, range: 11, hidden: false,
+        incin: { burn: 2, tick: 0.25, time: 3, cool: 1, blast: 1 }, abilities: [COOL_DOWN] },
+      { name: 'Long Range Incineration', desc: '+5 range, 5 burn damage (from 2), and attacks faster (every 3s > 2.5s).', cost: 1700, damage: 8, cooldown: 2.5, range: 16, hidden: false,
+        incin: { burn: 5, tick: 0.25, time: 3, cool: 1, blast: 1 }, abilities: [COOL_DOWN] },
+      { name: 'Incinerator Mk2', desc: '+12 damage. Attacks also splash a blast of 4 (half damage, half burn). Cools 20% faster.', cost: 7500, damage: 20, cooldown: 2.5, range: 16, hidden: false,
+        incin: { burn: 5, tick: 0.25, time: 3, cool: 1.2, blast: 1, aoe: 4 }, abilities: [COOL_DOWN] },
+      { name: 'Immolation', desc: 'Its overheat blast does 3x damage and also grows with your ΘVERLOAD. Burns last 6s (from 3s) and do 10 damage (from 5). +3 ΘVERLOAD.', cost: 11500, damage: 20, cooldown: 2.5, range: 16, hidden: false, overload: 3,
+        incin: { burn: 10, tick: 0.25, time: 6, cool: 1.2, blast: 3, over: true, aoe: 4 }, abilities: [COOL_DOWN] },
+      { name: 'Ashmaker', desc: '+40 damage, burns last 12s (from 6s) and tick faster (every 0.25s > 0.2s). +5 ΘVERLOAD.', cost: 33000, damage: 60, cooldown: 2.5, range: 16, hidden: false, overload: 5,
+        incin: { burn: 10, tick: 0.2, time: 12, cool: 1.2, blast: 3, over: true, aoe: 4 }, abilities: [COOL_DOWN] },
     ],
   },
   mage: {
