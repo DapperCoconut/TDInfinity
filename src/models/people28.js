@@ -1,5 +1,5 @@
 // Tower models: people, batch 28 (dressed with the vehicle kit in ../vehicles.js).
-// In here: Thief, Exterminator, Miner, Recon, Blaster, Programmer.
+// In here: Thief, Exterminator, Miner, Recon, Blaster, Programmer, Prophet.
 // Like batches 26-27 these are plain white figures with no face: only their gear tells them
 // apart, white too, with accents in one neon colour per tower.
 // MODELS maps tower keys to builders; ../models.js lays it over TOWER_MODELS, so these win.
@@ -550,7 +550,85 @@ export function makeProgrammer(level) {
   return own(h, UP);
 }
 
+// ------------------------------------------------------------------ Prophet (neon indigo)
+
+const PROPHET_NEON = 0x536dfe;
+
+/**
+ * A white beam emitter on the fist (gun space): a long body with neon rings, a forked prong
+ * head round a glowing orb. o.ark (Ray of Ark+): more rings and side fins; o.fate: a bigger
+ * orb and a halo ring at the tip. Returns the bore point [y, z].
+ */
+function whitePhasor(k, neon, o = {}) {
+  const U = UP;
+  const len = o.fate ? 2.3 : o.ark ? 2.1 : 1.85;
+  k.box(0.26, 0.6, 0.32, W2, 0, 0.5, U + 0.04, { r: 0.08 }); // stock
+  k.box(0.36, 1.0, 0.44, W, 0, -0.3, U, { r: 0.1 }); // body
+  k.box(0.04, 0.5, 0.2, neon, 0.19, -0.3, U + 0.04); // side light
+  k.box(0.22, 0.26, 0.48, W3, 0, 0.1, U - 0.36, { rx: -0.32, r: 0.04 }); // grip
+  const bl = len - 1.05;
+  k.cyl(0.13, bl, W2, 0, -0.8 - bl / 2, U, { seg: 14, r2: 0.11 }); // barrel
+  const rings = o.ark ? 3 : 2;
+  for (let i = 0; i < rings; i++) k.torus(0.18, 0.045, neon, 0, -0.95 - i * (bl * 0.8) / (rings - 1), U, { rx: PI / 2, seg: 16 });
+  for (const sx of [-1, 1]) k.box(0.06, 0.45, 0.1, W, sx * 0.2, -len + 0.05, U, { rz: sx * 0.25, r: 0.02 }); // prongs
+  const orb = o.fate ? 0.19 : 0.14;
+  k.ball(orb, neon, 0, -len, U, { seg: 12, rows: 8 }); // the orb
+  if (o.ark) for (const sx of [-1, 1]) k.box(0.05, 0.8, 0.26, W3, sx * 0.24, -0.4, U, { r: 0.02 }); // side fins
+  if (o.fate) k.torus(0.3, 0.03, neon, 0, -len, U, { rx: PI / 2, seg: 18 }); // halo at the tip
+  return [-len - 0.1, U];
+}
+
+/**
+ * Prophet (alternate Phaser): a white seer in a hood with a beam emitter. Lv 1 Charged Ray: a
+ * glowing eye mark on the hood. Lv 2 Genesis: a sash with an Arcana gem. Lv 3 Ray of Ark: a
+ * bigger emitter and shoulder pads. Lv 4 Transpire Vision: a floating halo. Lv 5 Fate of the
+ * Prophecy: a long robe, a bigger halo and an orb-tipped emitter.
+ */
+export function makeProphet(level) {
+  const h = blank();
+  const key = `phaserProphet${level}`;
+  const neon = glowMat(h, PROPHET_NEON);
+  const hd = wear(h, h.head, `${key}:head`);
+  const t = wear(h, h.torso, `${key}:torso`);
+  hood(hd, W2);
+  if (level >= 1) {
+    hd.cyl(0.12, 0.03, neon, 0, 1.36, 0.78, { axis: 'z', seg: 12, rx: 0.35 }); // eye mark on the peak
+    hd.ball(0.045, W, 0, 1.36, 0.8, { seg: 6, rows: 4 });
+  }
+  if (level >= 4) hd.torus(level >= 5 ? 0.85 : 0.7, 0.05, neon, 0, 2.0, 0, { rx: PI / 2, seg: 24 }); // halo
+  t.box(2.1, 1.6, 1.12, W2, 0, 0.1, 0, { r: 0.1 }); // robe top
+  t.box(2.12, 0.24, 1.14, W3, 0, -0.84, 0, { r: 0.04 }); // belt
+  t.box(0.3, 0.2, 0.06, neon, 0, -0.84, 0.58, { r: 0.02 });
+  t.box(0.16, 1.5, 0.06, W, 0, 0.1, 0.58); // front seam
+  if (level >= 2) {
+    t.box(0.3, 2.2, 0.08, W3, 0.2, 0.05, 0.6, { rz: 0.6 }); // sash
+    t.ball(0.13, neon, 0.05, 0.25, 0.68, { seg: 10, rows: 6 }); // Arcana gem
+  }
+  if (level >= 3) shoulderPads(t, W, 0.6);
+  if (level >= 5) {
+    cape(t, W, 2.6, { w: 2.2, clasp: PROPHET_NEON });
+    for (let i = 0; i < 3; i++) t.box(0.05, 1.6 - i * 0.3, 0.04, neon, -0.6 + i * 0.6, -0.95, -0.82);
+  }
+  hd.done();
+  t.done();
+  hands(h, key, W3, W2, (a) => {
+    if (level >= 2) a.box(0.5, 0.06, 0.04, neon, 0, -0.55, 0.55); // sleeve stripe
+  });
+  feet(h, key, W2, null);
+  h.muzzles = [];
+  const g = fist(h.rightArm, -1.9, 1.2);
+  const gk = wear(h, g, `${key}:gun`);
+  const [y, z] = whitePhasor(gk, neon, { ark: level >= 3, fate: level >= 5 });
+  gk.done();
+  muzzle(h, g, y, z);
+  aimLong(h);
+  h.beam = PROPHET_NEON;
+  h.tracer = PROPHET_NEON;
+  return own(h, UP);
+}
+
 export const MODELS = {
+  phaserProphet: makeProphet,
   commandoBlaster: makeBlaster,
   commanderProgrammer: makeProgrammer,
   cowboyThief: makeThief,

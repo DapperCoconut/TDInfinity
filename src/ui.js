@@ -618,6 +618,7 @@ export class UI {
     const c = t.charge || 0;
     const charge = s.star ? (t.starT > 0 ? ` · Rebooting ${Math.ceil(t.starT)}s` : ` · Charge: ${Math.round(c * 100)}% (${Math.round(s.star.min + (s.star.max - s.star.min) * c).toLocaleString()} dmg)`)
       : t.fwT > 0 ? ` · 🎆 Fireworks ${Math.ceil(t.fwT)}s`
+      : isBeam(s) && s.chargeRate ? ` · Charge: +${Math.round(c * (s.maxDamage - s.damage))}` // Prophet: extra damage now
       : isBeam(s) ? ` · Charge: ${Math.round(c * 100)}%`
       : s.souls ? ` · Souls: ${Math.round(c * s.souls)}/${s.souls}`
       : s.soul ? ` · Souls: ${Math.floor(c * s.soul.max)}/${s.soul.max}`

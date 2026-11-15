@@ -818,7 +818,8 @@ export class SimWeapons4 {
    */
   mageHit(t, s, target) {
     const p = this.players.get(t.owner);
-    if (p) p.arcana = Math.min(s.arcana.cap, Math.round(((p.arcana || 0) + s.arcana.gain) * 100) / 100);
+    // Never lowers it: Prophets can fill Arcana past a Mage's own cap.
+    if (p) p.arcana = Math.max(p.arcana || 0, Math.min(s.arcana.cap, Math.round(((p.arcana || 0) + s.arcana.gain) * 100) / 100));
     if (!s.storm || ++t.swings % 10 !== 0) return;
     const ar = p?.arcana || 0;
     const det = this.detects(t, s);

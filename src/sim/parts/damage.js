@@ -264,10 +264,26 @@ export class SimDamage {
     }
     t.yaw = Math.atan2(e.x - t.x, e.z - t.z);
     t.beamT += dt;
+    if (s.chargeRate) return this.prophetTick(t, s, e);
     t.charge = Math.min(1, t.beamT / s.ramp);
     if (t.cooldown > 0) return;
     t.cooldown += s.cooldown;
     this.shoot(t, e, Math.round(s.damage + (s.maxDamage - s.damage) * t.charge));
+  }
+
+  /**
+   * Prophet: +1 damage for every `chargeRate` s on the same zombie (t.beamT), up to `maxDamage`.
+   * Transpire Vision adds +1 for every `arcanaDmg` Arcana (at most +10) on top.
+   */
+  prophetTick(t, s, e) {
+    const span = s.maxDamage - s.damage;
+    const bonus = Math.min(span, Math.floor(t.beamT / s.chargeRate));
+    t.charge = span > 0 ? bonus / span : 1;
+    if (t.cooldown > 0) return;
+    t.cooldown += s.cooldown;
+    const ar = s.arcanaDmg ? Math.min(10, Math.floor((this.players.get(t.owner)?.arcana || 0) / s.arcanaDmg)) : 0;
+    this.shoot(t, e, s.damage + bonus + ar);
+    if (s.arcana) this.mageHit(t, s, e);
   }
 
   updateShells(dt) {

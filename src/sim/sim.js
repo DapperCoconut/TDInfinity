@@ -644,6 +644,7 @@ export class Sim {
         t.level++;
         this.setTowerLevelHp(t);
         t.spent += cost;
+        if (next.chargeRate) t.beamT = 0; // Prophet: an upgrade resets its charge
         if (next.overload) p.overload = (p.overload || 0) + next.overload; // Eradicator: ΘVERLOAD for good
         t.costRoll = Math.random(); // Chaos Jester: a new random price for the next upgrade
         if (next.ammo) {

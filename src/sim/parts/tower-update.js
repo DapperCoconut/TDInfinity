@@ -119,7 +119,10 @@ export class SimTowerUpdate {
       }
       return;
     }
-    if (t.stunT > 0 || t.hp <= 0) return; // stunned, or knocked out until healed
+    if (t.stunT > 0 || t.hp <= 0) {
+      if (t.stunT > 0 && TOWERS[t.type].levels[t.level].chargeRate) t.beamT = 0; // Prophet: a stun resets its charge
+      return; // stunned, or knocked out until healed
+    }
     if (t.bleedT > 0 || t.corrupt) return; // Void mode: bleeding (Guardian) or turned by VOID
     if (t.curseBy) {
       // Hardcore: cursed by the Soul Stealer / Void Reaver: nothing works until that enemy is gone.
@@ -195,7 +198,8 @@ export class SimTowerUpdate {
     // that keeps very fast fire rates accurate at any tick length. Firerate boosts speed them up.
     const dpRate = t.dpT > 0 ? 1 + (t.dpBoost || 0) : 1; // Bugler Directed Power
     const arcRate = s.arcanaRate ? 1 + s.arcanaRate * Math.floor((this.players.get(t.owner)?.arcana || 0) / 10) : 1; // Mage Enhanced Arcana
-    t.cooldown = Math.max(-dt, t.cooldown - dt * b.rate * dpRate * arcRate * (self?.rate ?? 1)); // Machine Gunner Overcharge: faster firing
+    const rate = def.noRateBuff ? 1 : b.rate * dpRate * arcRate * (self?.rate ?? 1); // Prophet: firerate boosts don't work
+    t.cooldown = Math.max(-dt, t.cooldown - dt * rate); // Machine Gunner Overcharge: faster firing
     t.gap = Math.max(0, t.gap - dt);
     // Ammo towers stop shooting while they reload (firerate boosts don't speed that up).
     let loaded = true;

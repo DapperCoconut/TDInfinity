@@ -677,6 +677,36 @@ export const ELEVENTH_TOWERS = {
         damage: 10, cooldown: 1.5, range: 17, shatter: 4, abilities: [overdrive(0.25, 30)] },
     ],
   },
+  // Prophet (alternate Phaser form): a beam that stays on one zombie until it dies (or leaves
+  // range). Every `chargeRate` s locked on adds +1 damage, from `damage` up to `maxDamage`; the
+  // charge resets on a new target, a stun or an upgrade. `ramp` is only for the panel (time to
+  // full charge). arcanaDmg: n  +1 damage for every n Arcana its owner has (at most +10).
+  // noRateBuff (tower): firerate boosts don't speed it up (read in updateTower).
+  phaserProphet: {
+    name: 'Prophet',
+    altOf: 'phaser',
+    form: 'Prophet',
+    shards: 1,
+    price: 0,
+    cost: 5000,
+    limit: 6,
+    retarget: 0,
+    noRateBuff: true,
+    blurb: 'An alternate Phaser that locks a beam onto one zombie and never lets go until it dies. The longer it stays on, the harder it hits. The charge resets on a new target, a stun or an upgrade. Shreds bosses. Never sees hidden zombies, and firerate boosts don\'t work on it. Up to 6.',
+    tip: 'Put it where bosses walk past for a long time, and pair it with a tower that clears the small zombies.',
+    levels: [
+      { name: 'Prophet', desc: 'A beam locked on one zombie. +1 damage every 1s on it, from 1 up to 5.', damage: 1, maxDamage: 5, chargeRate: 1, ramp: 4, cooldown: 0.2, range: 20, hidden: false },
+      { name: 'Charged Ray', desc: '+5 max damage (10), and charges faster (+1 every 0.75s).', cost: 2000, damage: 1, maxDamage: 10, chargeRate: 0.75, ramp: 6.75, cooldown: 0.2, range: 20, hidden: false },
+      { name: 'Genesis of a Prophecy', desc: '+3 range, charges faster (+1 every 0.5s), and every hit gives you 0.1 Arcana (Prophets stop at 300).', cost: 4850, damage: 1, maxDamage: 10, chargeRate: 0.5, ramp: 4.5, cooldown: 0.2, range: 23, hidden: false,
+        arcana: { gain: 0.1, cap: 300 } },
+      { name: 'Ray of Ark', desc: '+1 base damage, +10 max damage (20), and ticks faster (every 0.2s > 0.15s).', cost: 9000, damage: 2, maxDamage: 20, chargeRate: 0.5, ramp: 9, cooldown: 0.15, range: 23, hidden: false,
+        arcana: { gain: 0.1, cap: 300 } },
+      { name: 'Transpire Vision', desc: '+2 range, +2 base damage, +5 max damage (25), and +1 damage for every 50 Arcana you have (up to +10).', cost: 14500, damage: 4, maxDamage: 25, chargeRate: 0.5, ramp: 10.5, cooldown: 0.15, range: 25, hidden: false,
+        arcana: { gain: 0.1, cap: 300 }, arcanaDmg: 50 },
+      { name: 'Fate of the Prophecy', desc: '+25 max damage (50), charges faster (+1 every 0.3s), and ticks faster (every 0.15s > 0.1s).', cost: 50000, damage: 4, maxDamage: 50, chargeRate: 0.3, ramp: 13.8, cooldown: 0.1, range: 25, hidden: false,
+        arcana: { gain: 0.1, cap: 300 }, arcanaDmg: 50 },
+    ],
+  },
   mage: {
     name: 'Mage',
     price: 500,
