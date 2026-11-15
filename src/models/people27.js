@@ -179,7 +179,7 @@ export function makeFarmer(level) {
   h.muzzles = [];
   const g = fist(h.rightArm, -1.9, reaper ? 1.25 : 1.1);
   const gk = wear(h, g, `${key}:scythe`);
-  const len = reaper ? 4.6 : 3.6;
+  const len = reaper ? 4.0 : 3.6;
   gk.cyl(0.08, len, W2, 0, -len / 2 + 0.6, 0, { seg: 10 }); // handle
   gk.box(0.12, 0.3, 0.5, W3, 0, -0.9, 0.2, { r: 0.03 }); // side grip
   const hy = -len + 0.6;
