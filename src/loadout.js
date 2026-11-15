@@ -212,7 +212,9 @@ export class LoadoutScreen {
     $('lo-credits').textContent = num(profile.credits);
     $('lo-shards').textContent = num(profile.shards);
     $('lo-gems').textContent = num(profile.gems);
-    if (cards) {
+    if (cards && this.variantsOpen) this.gridStale = true; // hidden behind the Variants screen: redrawn when it closes
+    else if (cards || this.gridStale) {
+      this.gridStale = false;
       this.renderSlots();
       this.renderGrid();
     } else {
@@ -265,7 +267,7 @@ export class LoadoutScreen {
         const r = im.getBoundingClientRect();
         return r.height > 0 && r.bottom > view.top - 150 && r.top < view.bottom + 150;
       };
-      const imgs = [
+      const imgs = this.variantsOpen ? [...document.querySelectorAll('#lo-variants img[data-icon]')] : [
         ...document.querySelectorAll('#lo-info img[data-icon]'),
         ...[...document.querySelectorAll('#lo-slots img[data-icon], #lo-grid img[data-icon], #lo-events img[data-icon]')].filter(inSight),
       ];
@@ -496,11 +498,16 @@ export class LoadoutScreen {
   }
 
   showVariants(on) {
+    const was = this.variantsOpen;
     this.variantsOpen = on;
     $('lo-variants').classList.toggle('hidden', !on);
     if (on) this.renderVariants();
     if (on) this.tunnel ??= new StarTunnel($('lo-var-stars'));
     this.tunnel?.run(on);
+    if (was && !on) {
+      if (this.gridStale) this.render();
+      this.fillIcons(); // the shop's own pictures that waited
+    }
   }
 
   /**
@@ -587,9 +594,10 @@ export class LoadoutScreen {
       ? '<div class="lo-vc-line same">The main form</div>'
       : good.map((t) => `<div class="lo-vc-line good">▲ ${esc(t)}</div>`).join('') + bad.map((t) => `<div class="lo-vc-line bad">▼ ${esc(t)}</div>`).join('') || '<div class="lo-vc-line same">Same stats, new look</div>';
     const kind = d.goldOf ? ' gold' : d.evolved ? ' evo' : d.altOf ? ' alt' : '';
-    const pic = towerIcon(type, d.levels.length - 1) || this.lobby.icons[type];
+    const lv = d.levels.length - 1;
+    const pic = cachedTowerIcon(type, lv);
     return `<div class="lo-vc${kind}${viewing ? ' sel' : ''}${has ? '' : ' locked'}" data-view="${type}" title="Click to pick it in the shop">
-      <div class="lo-vc-pic"><img src="${pic}" alt="">${using ? '<span class="lo-vc-badge">IN USE</span>' : ''}</div>
+      <div class="lo-vc-pic">${pic !== undefined ? `<img src="${pic}" alt="">` : `<img data-icon="${type}|${lv}" alt="">`}${using ? '<span class="lo-vc-badge">IN USE</span>' : ''}</div>
       <div class="lo-vc-name">${esc(d.goldOf || d.evolved ? d.name : this.variantLabel(type))}</div>
       ${sub ? `<div class="lo-vc-sub">${sub}</div>` : ''}
       <div class="lo-vc-lines">${lines}</div>
@@ -610,6 +618,7 @@ export class LoadoutScreen {
       ${group('Forms', all.filter((t) => !TOWERS[t].goldOf && !TOWERS[t].evolved))}
       ${group('Golden', all.filter((t) => TOWERS[t].goldOf))}
       ${group('Evolutions', all.filter((t) => TOWERS[t].evolved), evo ? `unlock at tower Lv ${TOWERS[evo].evoLevel ?? 20}` : '')}`;
+    this.fillIcons(); // big pictures drawn a few per frame, not all at once
   }
 
   onVariantClick(e) {
@@ -775,6 +784,10 @@ export class LoadoutScreen {
   frame(now) {
     if (!this.open) return;
     this.raf = requestAnimationFrame((t) => this.frame(t));
+    if (this.variantsOpen) {
+      this.last = now; // the preview is hidden behind the Variants screen: don't draw it
+      return;
+    }
     const T = this.three;
     this.fitStep();
     const dt = Math.min(0.05, (now - this.last) / 1000);
@@ -872,7 +885,7 @@ class StarTunnel {
   constructor(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
-    this.stars = Array.from({ length: 700 }, () => this.newStar(Math.random()));
+    this.stars = Array.from({ length: 260 }, () => this.newStar(Math.random()));
     this.rings = [0, 0.25, 0.5, 0.75];
     this.on = false;
     this.last = 0;
@@ -899,21 +912,29 @@ class StarTunnel {
     this.frames = (this.frames || 0) + 1;
     this.last = t;
     const c = this.canvas;
-    const w = (c.width = c.clientWidth);
-    const h = (c.height = c.clientHeight);
+    // Half resolution (it's a blurry background anyway), and only resized when the window is.
+    const w = Math.max(1, Math.round(c.clientWidth / 2));
+    const h = Math.max(1, Math.round(c.clientHeight / 2));
+    if (c.width !== w || c.height !== h) {
+      c.width = w;
+      c.height = h;
+      this.bg = null;
+    }
     const x = this.ctx;
     const cx = w / 2;
     const cy = h / 2;
     const reach = Math.hypot(cx, cy);
     // Deep purple space, brightest in the far middle of the tunnel.
-    const bg = x.createRadialGradient(cx, cy, 0, cx, cy, reach);
-    bg.addColorStop(0, '#3a1466');
-    bg.addColorStop(0.25, '#1d0838');
-    bg.addColorStop(1, '#05010c');
-    x.fillStyle = bg;
+    if (!this.bg) {
+      this.bg = x.createRadialGradient(cx, cy, 0, cx, cy, reach);
+      this.bg.addColorStop(0, '#3a1466');
+      this.bg.addColorStop(0.25, '#1d0838');
+      this.bg.addColorStop(1, '#05010c');
+    }
+    x.fillStyle = this.bg;
     x.fillRect(0, 0, w, h);
     // Tunnel rings sliding toward you.
-    x.lineWidth = 2;
+    x.lineWidth = 1;
     this.rings = this.rings.map((z) => {
       z -= dt * 0.25;
       if (z <= 0.02) z += 1;
@@ -945,15 +966,12 @@ class StarTunnel {
       const sa = Math.sin(s.a);
       const bright = Math.min(1, 0.3 + (1 - s.z) * 1.4);
       x.strokeStyle = `hsla(${s.hue}, 100%, ${70 + bright * 20}%, ${bright})`;
-      x.lineWidth = s.size * (0.9 + (1 - s.z) * 3.5);
-      x.shadowColor = `hsl(${s.hue}, 100%, 60%)`;
-      x.shadowBlur = 6;
+      x.lineWidth = (s.size * (0.9 + (1 - s.z) * 3.5)) / 2;
       x.beginPath();
       x.moveTo(cx + ca * r0 * 1.4, cy + sa * r0);
       x.lineTo(cx + ca * r1 * 1.4 + 0.1, cy + sa * r1);
       x.stroke();
     }
-    x.shadowBlur = 0;
     requestAnimationFrame(this.frame);
   }
 }

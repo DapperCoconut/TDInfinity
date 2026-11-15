@@ -1795,8 +1795,7 @@ input:focus {
   gap: 6px;
   padding: 10px;
   border-radius: 14px;
-  background: rgba(24, 10, 44, 0.66);
-  backdrop-filter: blur(2px);
+  background: rgba(24, 10, 44, 0.8);
   border: 2px solid rgba(179, 136, 255, 0.35);
   box-shadow: 0 0 18px rgba(124, 77, 255, 0.25);
   cursor: pointer;
