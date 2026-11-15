@@ -166,6 +166,7 @@ export class TowerView {
     if (this.model) {
       this.group.remove(this.model.root);
       if (this.model.plane) this.group.remove(this.model.plane);
+      if (this.model.orbs) this.group.remove(this.model.orbs);
       for (const m of this.model.mats) m.dispose();
     }
     this.level = level;
@@ -190,6 +191,7 @@ export class TowerView {
     satParent?.add(sat);
     this.group.add(this.model.root);
     if (this.model.plane) this.group.add(this.model.plane);
+    if (this.model.orbs) this.group.add(this.model.orbs); // Soul Master souls
     this.padMat.color.setHex(this.holo ? 0x00bcd4 : PAD_COLORS[level]);
     this.stealthShown = false; // a fresh model is solid until sync() says it's stealthy
     if (this.holo) {
@@ -291,6 +293,7 @@ export class TowerView {
     }
     if (m.heli) this.hover(t, dt);
     else if (m.plane) this.fly(t, dt);
+    if (m.orbs) this.spinSouls(t, dt);
     if (m.spot) this.syncSpot(t, dt);
     if (m.modeTracer) {
       // Elementalist: its gauntlet and shots glow in the color of its element.
@@ -426,6 +429,27 @@ export class TowerView {
     this.fxClock.rotation.y -= dt * (fx & 32 ? 0.6 : 0.15);
     this.fxStars.rotation.y += dt * 5;
     this.fxHaze.rotation.y += dt * 0.6;
+  }
+
+  /** Soul Master: its souls fly round it at its range (t.ang: the first soul, t.charge: souls / max). */
+  spinSouls(t, dt) {
+    const s = TOWERS[this.type].levels[t.level];
+    const sm = s.sm;
+    const n = Math.max(1, Math.round((t.charge || 0) * (sm.max ?? sm.n)));
+    const dir = t.dir || 1;
+    const target = t.ang ?? 0;
+    if (this.ang == null) this.ang = target;
+    this.ang += (dir * dt * Math.PI * 2) / sm.spin;
+    this.ang = lerpAngle(this.ang, target, Math.min(1, dt * 4));
+    const R = s.range / K; // the group is scaled by K
+    this.model.orbs.children.forEach((o, i) => {
+      o.visible = i < n;
+      if (!o.visible) return;
+      const a = this.ang + (i * Math.PI * 2) / n;
+      // sim angle a: x = cos a, z = sin a; the group isn't turned with the tower
+      o.position.set(Math.cos(a) * R, 2.5 + Math.sin(this.breath * 3 + i) * 0.4, Math.sin(a) * R);
+      o.rotation.y = Math.atan2(-Math.sin(a), Math.cos(a)) + (dir > 0 ? Math.PI : 0); // tail trails behind
+    });
   }
 
   /** Aviator: the plane circles the tower at the sim's angle (smoothed for network play). */

@@ -182,6 +182,17 @@ const BLADE_STANCE = { key: 'bladeStance', name: 'Blade Stance', desc: 'Draws it
 const SENSELESS = { key: 'senseless', name: 'Senseless Stance', desc: 'On: attacks all the time, but Mental Focus stays at 0. Press again to switch it off', cooldown: 0.3 };
 const CREW = { boost: 0.1, fav: 0.25, names: ['Bandit', 'Archer', 'Thief', 'Mercenary', 'Mercenary Base', 'Bomber', 'Hunter', 'Berserker'], cash: 0.2, max: 0.5 };
 
+// Soul Master: Soul Rotation turns its souls round the other way.
+const SOUL_ROTATION = { key: 'soulRotation', name: 'Soul Rotation', desc: 'Turns the souls round the other way', cooldown: 1 };
+// Soul Master Revenants: they walk down the path from the base. Their AoE is a `cannon` (it
+// keeps walking while it fires); the Stronger Revenant also has a sword (`gun`, close only).
+// The cannon starts half a reload in, so the two attacks never land together.
+const REVENANT = { name: 'Revenant', model: 'revenant', soldiers: 1, hp: 200, speed: 3.5, flying: false,
+  cannon: { every: 5, damage: 65, radius: 4, range: 10 } };
+const REVENANT_2 = { name: 'Stronger Revenant', model: 'revenant2', soldiers: 1, hp: 400, speed: 3.5, flying: false,
+  gun: { damage: 150, cooldown: 5, range: 4.5 }, cannon: { every: 5, damage: 90, radius: 4, range: 10 } };
+const sm = (n, spin, o = {}) => ({ n, spin, hit: 2.5, every: 0.6, ...o });
+
 export const ELEVENTH_TOWERS = {
   poacher: {
     name: 'Poacher',
@@ -1036,6 +1047,131 @@ export const ELEVENTH_TOWERS = {
         arcana: ARCANA(0.1), arcanaRate: 0.01, storm: 2 },
       { name: 'Ascendant of Magic', desc: '+4 damage, shoots faster (every 0.8s), 3 lightning bolts, and 0.4 Arcana per shot. Unlocks Artificial Ascent.', cost: 7500, damage: 14, cooldown: 0.8, range: 12, hidden: true,
         arcana: ARCANA(0.4), arcanaRate: 0.01, storm: 3, abilities: [ascent] },
+    ],
+  },
+  // Hunter (alternate Archer form): slow, heavy bolts. hunter { inner, mult, aim, pierce, shatter }:
+  // its range has two rings, `inner` is the share of its range that is the inner ring; zombies
+  // in the outer ring take `mult` x damage. Before every shot it aims for `aim` s (firerate
+  // boosts don't change that). pierce: the bolt also hits up to that many more zombies behind its
+  // target. shatter: zombies with 15+ Shatter take +4% for every 5 Shatter (up to +50%).
+  // Lv 4: `aura` + `rangeBoost`: towers in its inner ring get more range (see computeBuffs).
+  archerHunter: {
+    name: 'Hunter',
+    altOf: 'archer',
+    form: 'Hunter',
+    shards: 1,
+    price: 0,
+    cost: 700,
+    flying: true,
+    lead: false,
+    blurb: 'An alternate Archer with very long range and big, slow bolts. Its range has two rings: zombies in the outer ring take 2x damage (up to 6x later). It aims before every shot, and firerate boosts don\'t speed that up. From Lv 3 its bolts pierce and add Shatter, and at Lv 4 towers in its inner ring get more range.',
+    tip: 'Put it far from the path so most zombies walk through its outer ring.',
+    levels: [
+      { name: 'Hunter', desc: 'A heavy bolt every 4s for 8 damage (2x in the outer ring). Aims for 1s first.', damage: 8, cooldown: 4, range: 24, hidden: false,
+        hunter: { inner: 2 / 3, mult: 2, aim: 1 } },
+      { name: 'Hawkshot', desc: '+4 damage.', cost: 400, damage: 12, cooldown: 4, range: 24, hidden: false,
+        hunter: { inner: 2 / 3, mult: 2, aim: 1 } },
+      { name: 'Eagle Eye', desc: '+4 range, +2 damage, and hidden detection.', cost: 600, damage: 14, cooldown: 4, range: 30, hidden: true,
+        hunter: { inner: 2 / 3, mult: 2, aim: 1 } },
+      { name: 'Piercing Bolt', desc: '+6 damage, 3x in the outer ring, and bolts pierce up to 3 more zombies. Hits add 2 Shatter, and zombies with 15+ Shatter take +4% for every 5 (up to +50%).', cost: 3000, damage: 20, cooldown: 4, range: 30, hidden: true, shatter: 2,
+        hunter: { inner: 2 / 3, mult: 3, aim: 1, pierce: 3, shatter: true } },
+      { name: 'Hunting Grounds', desc: '+5 range, 6x in the outer ring, and hits add 4 Shatter. Towers in its inner ring get +20% range.', cost: 8500, damage: 20, cooldown: 4, range: 37.5, hidden: true, shatter: 4,
+        aura: 25, rangeBoost: 0.2,
+        hunter: { inner: 2 / 3, mult: 6, aim: 1, pierce: 3, shatter: true } },
+    ],
+  },
+  // Juggernaut: a ground melee tower that slams its giant mace down: a blast of `radius` around
+  // its target. jug { sink, keep, booms, hpPct, mag }: every zombie in the blast gets `sink`
+  // Sinking. Sinking: when a zombie with Sinking takes damage, 20% of its Sinking (at least 1) is
+  // used up to deal that much true damage (see sinkHit in sim/parts/weapons5.js). keep: its own
+  // hits set Sinking off without using it up. booms: blasts per slam. hpPct { pct, max }: blasts
+  // also do pct of the zombie's max health, at most (max - 1) x damage more.
+  // mag { damage, every, sinkMult, add, max }: Magnetic Field, `damage` to every zombie in range
+  // every `every` s; its hits set Sinking off for `sinkMult` of the damage without using it up,
+  // and add `add` Sinking (at most `max` times per zombie). takeMult: it takes that share of damage.
+  maceJuggernaut: {
+    name: 'Juggernaut',
+    price: 1500,
+    cost: 800,
+    melee: true,
+    flying: false,
+    lead: true,
+    blurb: 'A ground melee tower with a giant mace. Every slam hits all zombies around its target. From Lv 3 its Magnetic Field hurts every zombie near it, and slams add Sinking: when a zombie with Sinking takes damage, some of it turns into true damage. At Lv 4 it can\'t be stunned and takes much less damage.',
+    tip: 'Put it at a bend where zombies bunch up. Other towers set off Sinking too, so it helps everyone.',
+    levels: [
+      { name: 'Juggernaut', desc: 'Slams its mace every 5s: 20 damage to every zombie in a blast around its target.', damage: 20, cooldown: 5, range: 6, radius: 4, hidden: false,
+        jug: {} },
+      { name: 'Crushing Slam', desc: '+10 damage and a bigger blast.', cost: 600, damage: 30, cooldown: 5, range: 6, radius: 5, hidden: false,
+        jug: {} },
+      { name: 'Magnetic Field', desc: 'Slams faster (every 5s > 4s) and add 4 Sinking. Magnetic Field: 2 damage to every zombie near it every 0.75s (it sets Sinking off for half, without using it up).', cost: 1000, damage: 30, cooldown: 4, range: 6, radius: 5, hidden: false,
+        jug: { sink: 4, mag: { damage: 2, every: 0.75, sinkMult: 0.5 } } },
+      { name: 'Wrecking Ball', desc: '+1 range, +50 damage. The field hits every 0.5s and adds 1 Sinking (up to 6 times per zombie). Can\'t be stunned, and takes 1/5 damage.', cost: 2900, damage: 80, cooldown: 4, range: 7, radius: 5, hidden: false, stunImmune: true, takeMult: 0.2,
+        jug: { sink: 4, mag: { damage: 2, every: 0.5, sinkMult: 0.5, add: 1, max: 6 } } },
+      { name: 'Sinking Obliteration', desc: '+200 damage and 2 blasts per slam that add 10 Sinking. Its slams no longer use Sinking up, and do +1% of the zombie\'s max health (up to 2x more damage).', cost: 14000, damage: 280, cooldown: 4, range: 7, radius: 5, hidden: false, stunImmune: true, takeMult: 0.2,
+        jug: { sink: 10, keep: true, booms: 2, hpPct: { pct: 0.01, max: 3 }, mag: { damage: 2, every: 0.5, sinkMult: 0.5, add: 1, max: 6 } } },
+    ],
+  },
+  // Soul Master (alternate Necromancer form): souls fly round it in a circle (its range) and hurt
+  // every zombie they touch. sm { n, spin, hit, every, steal, max, rev }: `n` souls, one lap every
+  // `spin` s (firerate boosts make it faster); a soul hits zombies within `hit` of it, each one
+  // at most every `every` s. steal: Soul Steal, +1 soul every `steal` s during a wave, up to
+  // `max` souls in all. rev: a unit sent down the path every `revEvery` s.
+  necroSoulMaster: {
+    name: 'Soul Master',
+    altOf: 'necromancer',
+    form: 'Soul Master',
+    shards: 1,
+    price: 0,
+    cost: 500,
+    limit: 6,
+    flying: true,
+    lead: false,
+    blurb: 'An alternate Necromancer that makes souls fly round it in a circle. Every zombie a soul touches gets hurt. From Lv 2 it steals more souls over time, and from Lv 4 it sends Revenants down the path. Soul Rotation turns the souls the other way.',
+    tip: 'Put it right next to the path, so the circle of souls crosses it twice.',
+    levels: [
+      { name: 'Soul Master', desc: '1 soul flies round it every 3s, doing 2 damage to every zombie it touches.', damage: 2, cooldown: 3, range: 6, hidden: false,
+        sm: sm(1, 3), abilities: [SOUL_ROTATION] },
+      { name: 'Vengeful Spirits', desc: '2 souls and +1 damage.', cost: 700, damage: 3, cooldown: 3, range: 6, hidden: false,
+        sm: sm(2, 3), abilities: [SOUL_ROTATION] },
+      { name: 'Soul Gathering', desc: '+1 damage. Soul Steal: +1 soul every 9s during a wave (up to 4).', cost: 900, damage: 4, cooldown: 3, range: 6, hidden: false,
+        sm: sm(2, 3, { steal: 9, max: 4 }), abilities: [SOUL_ROTATION] },
+      { name: 'Dark Essence', desc: '+8 damage, up to 5 souls.', cost: 4150, damage: 12, cooldown: 3, range: 6, hidden: false,
+        sm: sm(2, 3, { steal: 9, max: 5 }), abilities: [SOUL_ROTATION] },
+      { name: 'Soulstorm', desc: '3 souls, faster laps (3s > 2s), up to 6 souls. Sends a Revenant down the path every 60s (200 health, a 65-damage blast every 5s).', cost: 9200, damage: 12, cooldown: 2, range: 6, hidden: false,
+        sm: sm(3, 2, { steal: 9, max: 6, rev: REVENANT, revEvery: 60 }), abilities: [SOUL_ROTATION] },
+      { name: 'Eternal Damnation', desc: '5 souls, up to 8, +18 damage. Stronger Revenants: 400 health, a 90-damage blast or a 150-damage sword cut every 5s.', cost: 19350, damage: 30, cooldown: 2, range: 6, hidden: false,
+        sm: sm(5, 2, { steal: 9, max: 8, rev: REVENANT_2, revEvery: 60 }), abilities: [SOUL_ROTATION] },
+    ],
+  },
+  // Toxicator (alternate Toxic Gunner form): a cliff tower that fires toxic blasts. tox { init,
+  // tick, decay, twice }: every zombie in the blast gets a poison stack that hurts it every
+  // `tick` s, starting at `init` damage and losing `decay` of that each tick until it is 0.
+  // Stacks add up. twice: every attack fires 2 blasts.
+  toxicToxicator: {
+    name: 'Toxicator',
+    altOf: 'toxicGunner',
+    form: 'Toxicator',
+    shards: 1,
+    price: 0,
+    cost: 4000,
+    limit: 3,
+    placement: 'cliff',
+    lead: true,
+    blurb: 'An alternate Toxic Gunner that sits on a cliff and fires toxic blasts. Every zombie in a blast gets a poison stack that hurts it every tick, a bit less each time until it is gone. The stacks add up.',
+    tip: 'Its poison stacks add up, so it is great against tough zombies that stay in range a long time.',
+    levels: [
+      { name: 'Toxicator', desc: 'A toxic blast every 5s: 15 damage, and poison that starts at 3 a tick (every 0.75s) and fades by 8% each tick.', damage: 15, cooldown: 5, range: 20, radius: 4, hidden: false,
+        tox: { init: 3, tick: 0.75, decay: 0.08 } },
+      { name: 'Toxic Battery', desc: '+15 damage, +3 poison, and fires faster (every 5s > 4s).', cost: 3500, damage: 30, cooldown: 4, range: 20, radius: 4, hidden: false,
+        tox: { init: 6, tick: 0.75, decay: 0.08 } },
+      { name: 'Corroding Toxicants', desc: '+10 damage, +4 poison, and the poison ticks faster (every 0.75s > 0.45s).', cost: 6450, damage: 40, cooldown: 4, range: 20, radius: 4, hidden: false,
+        tox: { init: 10, tick: 0.45, decay: 0.08 } },
+      { name: 'Acidmaw', desc: '+6 range, +10 poison, and the poison fades slower (6% a tick).', cost: 7500, damage: 40, cooldown: 4, range: 26, radius: 4, hidden: false,
+        tox: { init: 20, tick: 0.45, decay: 0.06 } },
+      { name: 'Miniature Nuke', desc: '+4 range, +35 damage, and a much bigger blast.', cost: 8000, damage: 75, cooldown: 4, range: 30, radius: 6, hidden: false,
+        tox: { init: 20, tick: 0.45, decay: 0.06, nuke: true } },
+      { name: 'Radioactive Annihilation', desc: '+25 damage, +16 poison, attacks twice, and the poison ticks faster (every 0.45s > 0.35s).', cost: 20000, damage: 100, cooldown: 4, range: 30, radius: 6, hidden: false,
+        tox: { init: 36, tick: 0.35, decay: 0.06, nuke: true, twice: true } },
     ],
   },
 };

@@ -84,7 +84,8 @@ export class GameEvents {
         case 'quake': {
           // Sledger Aftershock: an icy shockwave around the tower. Berserker Crushing Blow: a red one at its target.
           const at = new THREE.Vector3(ev.x, 0.3, ev.z + laneOz(ev.L ?? 0));
-          this.effects.pulse(at, ev.r, 0.4, ev.c ?? 0x80d8ff); // (Berserker Crushing Blow: neon red)
+          this.effects.pulse(at, ev.r, ev.soft ? 0.25 : 0.4, ev.c ?? 0x80d8ff); // (Berserker Crushing Blow: neon red)
+          if (ev.soft) break; // Juggernaut Magnetic Field: just a faint ring, no sound
           this.effects.puff(at.clone().setY(1), ev.c ?? 0xb3e5fc, 12, 0.5, 8);
           audio.boom(2);
           break;

@@ -10,5 +10,6 @@ import { SUMMONS as S4 } from './summons4.js';
 import { SUMMONS as S5 } from './summons5.js';
 import { SUMMONS as S6 } from './summons6.js';
 import { SUMMONS as S7 } from './summons7.js';
+import { SUMMONS as S8 } from './people31.js'; // Soul Master Revenants
 
-export const SUMMON_MODELS = { ...S1, ...S2, ...S3, ...S4, ...S5, ...S6, ...S7 };
+export const SUMMON_MODELS = { ...S1, ...S2, ...S3, ...S4, ...S5, ...S6, ...S7, ...S8 };

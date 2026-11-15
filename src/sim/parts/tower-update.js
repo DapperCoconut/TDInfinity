@@ -235,6 +235,10 @@ export class SimTowerUpdate {
     if (s.taser) return this.updateTaser(t, s); // Taser: Electrocute zaps
     if (s.shin) return this.updateShinobi(t, s, dt); // Shinobi: Blade Stance
     if (s.trick) return this.updateTrickster(t, s); // Trickster: knives in a wedge
+    if (s.hunter) return this.updateHunter(t, s, dt); // Hunter: aims, then a heavy bolt
+    if (s.jug) return this.updateJuggernaut(t, s, dt); // Juggernaut: mace slams, Magnetic Field
+    if (s.sm) return this.updateSoulMaster(t, s, dt, rate); // Soul Master: orbiting souls
+    if (s.tox) return this.updateToxicator(t, s, dt); // Toxicator: toxic blasts
     // Ice Apprentice Blizzard: its staff can't attack while it lasts.
     if (t.active > 0 && s.abilities?.some((a) => a.key === 'blizzard')) return this.updateBlizzard(t, s, dt);
     if (s.soul && t.choice?.[0] === 'beam') return this.updateSoulBeam(t, s, dt * b.rate); // Spiritual Advocate Beam mode

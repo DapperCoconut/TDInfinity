@@ -95,6 +95,10 @@ export class SimDamage {
           if (!this.enemies.has(e.id)) continue;
         }
       }
+      if (e.tox) {
+        this.toxTick(e, dt); // Toxicator: fading poison stacks
+        if (!this.enemies.has(e.id)) continue;
+      }
       if (e.taints) {
         // Dumpster Child: Burn / Radioactive / Biohazard, each on its own tick (armor doesn't help).
         for (const [k, d] of e.taints) {
@@ -632,7 +636,10 @@ export class SimDamage {
     if (e.boneAt || e.drops != null) this.kingHurt(e); // Fallen King: Bone Armor, cash drops
     // Firework Technician: a boosted tower may launch a firework where it hit (fireworks never chain).
     if (t?.fwT > 0 && t.fw && dmg > 0 && !this.dot && this.towers.has(t.id)) this.firework(t, e);
-    if (e.hp > 0) return;
+    if (e.hp > 0) {
+      if (e.sink > 0 && dmg > 0 && !this.sinking) this.sinkHit(t, e); // Juggernaut Sinking: some turns into true damage
+      return;
+    }
     const pdef = ENEMIES[e.type];
     if ((pdef.pair || pdef.rageAt) && this.enemies.has(e.id) && this.pairDeath(e, pdef)) return; // Hardcore Void Reaver / Caster
     if (!this.enemies.delete(e.id)) return; // already dead (no double rewards or double cage monsters)

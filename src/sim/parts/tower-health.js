@@ -101,6 +101,8 @@ export class SimTowerHealth {
     if (t.hp <= 0) return;
     if (enemy && this.stealthy(t)) return;
     if (buffOf(this.buffs, t.id).invuln || t.invulnT > 0) return; // Medigun Medic Uber / Combat Drone Shield
+    const tm = TOWERS[t.type].levels[t.level].takeMult; // Juggernaut Wrecking Ball: takes less damage
+    if (tm != null) dmg *= tm;
     const left = noShield ? dmg : this.soakShield(t, dmg); // Shield Tower shields take the hit first (not Death Angel Pure Pain)
     if (left <= 0) return;
     t.calmT = 0; // Doctor: its regen waits again

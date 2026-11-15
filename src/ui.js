@@ -621,6 +621,7 @@ export class UI {
       : s.incin ? ` · 🔥 Heat: ${Math.round(c * 100)}/100${c >= 1 ? ' OVERHEATING!' : ''}` // Incinerator
       : s.ml ? ` · Slashes: ${Math.round(c * s.ml.max)}/${s.ml.max}` // Vindicator
       : s.shin?.focusMax ? ` · Mental Focus: +${Math.round(c * s.shin.focusMax * 100)}%` // Shinobi
+      : s.sm?.steal ? ` · Souls: ${Math.round(c * s.sm.max)}/${s.sm.max}` // Soul Master
       : s.trick?.knife ? ` · Knife Tricks: ${Math.round(c * s.trick.knife.max)}/${s.trick.knife.max}` // Trickster
       : isBeam(s) && s.chargeRate ? ` · Charge: +${Math.round(c * (s.maxDamage - s.damage))}` // Prophet: extra damage now
       : isBeam(s) ? ` · Charge: ${Math.round(c * 100)}%`
