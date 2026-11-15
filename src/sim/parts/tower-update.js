@@ -147,6 +147,7 @@ export class SimTowerUpdate {
     if (s.drone) this.updateSpectreDrone(t, s, dt); // Spectre drone
     if (t.liveT > 0) this.updateLiveShow(t, s, dt); // Glowup Live Show
     if (s.slash) this.banditSlash(t, s, b, dt); // Bandit: its sword swings on its own timer
+    if (s.ray) this.updateRay(t, s, b, dt); // Eradicator: Raybreak on its own timer
     if (s.scare) return this.updateScare(t, def, s, b, dt); // Scarecrow
     if (def.bait) return; // bait never attacks
     if (def.kind === 'spawner') return this.updateSpawner(t, def, s, dt);

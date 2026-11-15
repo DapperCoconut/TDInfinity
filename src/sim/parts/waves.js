@@ -508,6 +508,29 @@ export class SimWaves {
     return d;
   }
 
+  /**
+   * Eradicator ΘVERLOAD: every player with some pays that much money every second of a wave
+   * (every 0.5s once it's over the threshold). Money never goes below 0.
+   */
+  drainOverload(dt) {
+    for (const p of this.players.values()) {
+      if (!(p.overload > 0) || p.cash === Infinity) continue;
+      const every = p.overload > GAME.overload.threshold ? 0.5 : 1;
+      p.ovT = (p.ovT || 0) + dt;
+      while (p.ovT >= every) {
+        p.ovT -= every;
+        p.cash = Math.max(0, p.cash - p.overload);
+      }
+    }
+  }
+
+  /** How much of a player's hit cash ΘVERLOAD keeps (1 = all of it). */
+  overloadKeep(p) {
+    const o = GAME.overload;
+    const over = (p.overload || 0) - o.threshold;
+    return over > 0 ? 1 - Math.min(o.max, over * o.per) : 1;
+  }
+
   /** Jester: the bomb types it has picked, as [{ key, ...bomb }]. */
   bombsOf(t, s) {
     return choicesOf(TOWERS[t.type], s, t.choice).map((k) => ({ key: k, ...s.bombs[k] }));

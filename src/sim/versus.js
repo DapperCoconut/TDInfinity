@@ -289,6 +289,8 @@ export class VersusSim {
           const p = l.sim.players.get(l.id);
           return [p.id, p.name, p.cash === Infinity ? 'inf' : p.cash, p.color, l.i, l.sim.baseHp, l.alive ? 0 : l.place, l.target];
         }),
+      // Eradicator ΘVERLOAD per player.
+      ov: this.lanes.filter((l) => l.sim.players.get(l.id)?.overload > 0).map((l) => [l.id, l.sim.players.get(l.id).overload]),
       t,
       u,
       e,

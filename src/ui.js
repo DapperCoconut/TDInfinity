@@ -253,6 +253,22 @@ export class UI {
     });
   }
 
+  /** Eradicator ΘVERLOAD: a small red tag next to the cash (hidden at 0). */
+  setOverload(n) {
+    if (n === this.lastOverload) return;
+    this.lastOverload = n;
+    let el = this.el.overload;
+    if (!el) {
+      el = this.el.overload = document.createElement('span');
+      el.className = 'overload';
+      el.title = 'ΘVERLOAD: costs this much money every second of a wave, and never goes down';
+      this.el.cash.after(el);
+    }
+    el.textContent = n > 0 ? `ΘVERLOAD ${n}` : '';
+    el.classList.toggle('hidden', !(n > 0));
+    el.classList.toggle('over', n > GAME.overload.threshold);
+  }
+
   setCash(n) {
     if (n === this.lastCash) return;
     this.lastCash = n;
@@ -665,6 +681,9 @@ export class UI {
     if (s.pay) row('Paychecks', `${s.pay.count} every wave, $${s.pay.cash} each, one every ${s.pay.every}s during the wave (unused ones are kept)`, 'yes');
     if (s.organize) row('Farmers Organization', `other Farmers within ${s.range} pay ${Math.round(s.organize * 100)}% faster`, 'yes');
     if (s.slash) row('Sword', `${s.slash.damage} damage to every zombie within ${s.slash.radius} in front of it, every ${s.slash.cooldown}s${s.slash.min > 1 ? ' (only when more than one is close)' : ''}`, 'yes');
+    if (s.noResist) row('Resistance', 'ignores all resistance (armor still counts)', 'yes');
+    if (s.ray) row('Raybreak', `${s.ray.damage} damage to every zombie in a line ${s.ray.range} long, every ${s.ray.cooldown}s${s.ray.cut ? ` (${Math.round(s.ray.cut * 100)}% sooner per kill, up to ${Math.round(s.ray.maxCut * 100)}%)` : ''}${s.ray.extra ? `, plus ${s.ray.extra.count} wild beams for ${Math.round(s.ray.extra.mult * 100)}%` : ''}${s.ray.burn ? `, burns ${Math.round(s.ray.burn.share * 100)}% of health (up to ${s.ray.burn.cap}) over ${s.ray.burn.time}s` : ''}`, 'yes');
+    if (s.overload) row('ΘVERLOAD', `+${s.overload} for good when bought: costs that much money every second of a wave`, 'no');
     if (s.cliffBoost) row('Bullseye Support', `cliff towers within ${s.cliffBoost.radius} get +${Math.round(s.cliffBoost.boost * 100)}% range (stacks ${s.cliffBoost.stacks} times)`, 'yes');
     if (def.noHeal) row('Healing', "Medics can't heal it", 'no');
     if (def.kind === 'spawner' && s.roster) {

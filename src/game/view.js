@@ -211,6 +211,7 @@ export class GameView {
     const s = this.session;
     const st = s.state;
     this.ui.setCash(this.myCash);
+    this.ui.setOverload(st.overload?.get(s.myId) ?? 0); // Eradicator ΘVERLOAD
     const gate = !this.versus && mapInfo?.gate; // Frostgate Citadel: the gate's health is the base's
     this.ui.setBase(this.versus ? (this.me?.baseHp ?? 0) : st.baseHp, this.versus ? GAME.baseHp : gate || (difficulty(st.mode).baseHp ?? GAME.baseHp));
     this.ui.setRepair(gate && !this.spectating ? mapInfo.repair : null, st.baseHp < gate);

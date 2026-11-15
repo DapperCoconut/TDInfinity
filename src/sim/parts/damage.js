@@ -164,6 +164,24 @@ export class SimDamage {
           if (!this.enemies.has(e.id)) continue;
         }
       }
+      if (e.rayBurn) {
+        // Eradicator Raybreak burns: every stack burns on its own.
+        let dps = 0;
+        for (let i = e.rayBurn.length - 1; i >= 0; i--) {
+          const rb = e.rayBurn[i];
+          if ((rb.left -= dt) <= 0) e.rayBurn.splice(i, 1);
+          else dps += rb.dps;
+        }
+        const by = e.rayBurn[0]?.by;
+        if (!e.rayBurn.length) e.rayBurn = null;
+        e.rayAcc = (e.rayAcc || 0) + dps * dt * (1 - (el.burnResist ?? 0));
+        const whole = Math.floor(e.rayAcc);
+        if (whole >= 1) {
+          e.rayAcc -= whole;
+          this.damage(this.towers.get(by) ?? null, e, whole);
+          if (!this.enemies.has(e.id)) continue;
+        }
+      }
       if (!e.burn) {
         e.burnDps = 0;
         e.burnAcc = 0;
@@ -400,7 +418,11 @@ export class SimDamage {
     const whole = Math.floor(this.cashAcc);
     if (!whole) return;
     this.cashAcc -= whole;
-    for (const p of this.players.values()) p.cash += whole + this.cashBack(p, whole);
+    for (const p of this.players.values()) {
+      const keep = p.overload > 0 ? this.overloadKeep(p) : 1; // Eradicator ΘVERLOAD: less hit cash
+      const v2 = keep < 1 ? Math.floor(whole * keep) : whole;
+      p.cash += v2 + this.cashBack(p, v2);
+    }
   }
 
   /**
@@ -428,18 +450,19 @@ export class SimDamage {
     if (t && this.inhumanPow) dmg *= this.inhumanPow.dmg; // Inhuman contract: the glitchy bot's towers
     if (t?.lm) dmg *= t.lm.dmg; // Liminal contract: the tower's blessing or curse
     const tru = !this.dot && (ts0?.trueDmg || this.trueHit); // True damage (Future Sniper Lv 5, Shirayuki Shuriken): no resistance, armor or defense stops it
+    const nores = tru || (!this.dot && ts0?.noResist); // Eradicator: no resistance stops it (armor still does)
     const adapt = ENEMIES[e.type].adapt;
-    if (adapt && !tru) this.adaptResist(e, kind, dmg, adapt); // Void Colossus: its resistance wears down
-    if (tru) { /* skips every resistance below */ } else if (kind === 'bullet' && e.bulletResist && !this.ignoresBulletResist(t)) dmg *= 1 - e.bulletResist; // Shielders, Drones...
+    if (adapt && !nores) this.adaptResist(e, kind, dmg, adapt); // Void Colossus: its resistance wears down
+    if (nores) { /* skips every resistance below */ } else if (kind === 'bullet' && e.bulletResist && !this.ignoresBulletResist(t)) dmg *= 1 - e.bulletResist; // Shielders, Drones...
     else if (kind === 'laser') {
       const lr = Math.max(e.laserResist, e.glitchT > 0 ? e.glitchRes : 0); // Rushers, UFOs; Glitches lend it out
       if (lr) dmg *= 1 - lr;
     } else if (kind === 'explosive' && e.explosiveResist) dmg *= 1 - e.explosiveResist; // Chained
     else if (kind === 'golden' && e.goldResist && !this.ignoresGoldResist(t)) dmg *= 1 - e.goldResist; // Warpers, the Beholder
     const mr = ENEMIES[e.type].meleeResist; // Halloween Night 2 Executioner: melee towers barely hurt it
-    if (mr && !tru && t && !this.dot && (TOWERS[t.type]?.melee || ts0?.melee)) dmg *= 1 - mr;
+    if (mr && !nores && t && !this.dot && (TOWERS[t.type]?.melee || ts0?.melee)) dmg *= 1 - mr;
     const tr = ENEMIES[e.type].towerResist; // Christmas Night 3 Ardent: the Elite tower barely hurts it
-    if (tr && !tru && t && t.type.startsWith(tr.prefix)) dmg *= 1 - tr.amt;
+    if (tr && !nores && t && t.type.startsWith(tr.prefix)) dmg *= 1 - tr.amt;
     // Armor tops out at 90%, except Hard mode Corpses (100%: only defense piercing gets through).
     const cap = e.armor >= 1 ? 1 : 0.9;
     let armor = Math.min(cap, e.armor + (e.gear || 0) + (e.auraArmor || 0) + (e.blessed || 0) + (e.vShield > 0 ? this.voidArmor.armor : 0) + (e.osh > 0 ? ENEMIES[e.type].shieldArmor ?? 0 : 0)); // Mechanics bolt extra armor on; VOID's aura; Jester Blessed; void armor; Frost Ravager's shield

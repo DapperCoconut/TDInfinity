@@ -1,5 +1,5 @@
 // Tower models: people, batch 27 (dressed with the vehicle kit in ../vehicles.js).
-// In here: Priest, Farmer, Bandit.
+// In here: Priest, Farmer, Bandit, Eradicator.
 // Like batch 26 these are plain white figures with no face: only their gear tells them apart,
 // white too, with accents in one neon colour per tower.
 // MODELS maps tower keys to builders; ../models.js lays it over TOWER_MODELS, so these win.
@@ -296,7 +296,95 @@ export function makeBandit(level) {
   return own(h, 0.3);
 }
 
+// ------------------------------------------------------------------ Eradicator (neon cyan)
+
+const ERAD_NEON = 0x18ffff;
+
+/** A white ray gun on the fist (gun space, barrel down -y). size grows it; prongs: a 3-prong tip. Returns the bore point [y, z]. */
+function whiteRaygun(k, neon, size, prongs) {
+  const U = 0.3;
+  const len = 1.0 + size * 0.35;
+  const r = 0.16 + size * 0.04;
+  k.box(0.3 + size * 0.05, 0.6, 0.42, W2, 0, -0.05, U, { r: 0.06 }); // body
+  k.cyl(r, len, W, 0, -len / 2 - 0.25, U + 0.08, { seg: 14 }); // barrel
+  const coils = 2 + Math.min(3, size);
+  for (let i = 0; i < coils; i++) k.torus(r + 0.04, 0.035, neon, 0, -0.45 - (i * (len - 0.3)) / coils, U + 0.08, { rx: PI / 2, seg: 14 }); // glowing coils
+  if (prongs) {
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * PI * 2;
+      k.box(0.07, 0.5, 0.07, W3, Math.cos(a) * (r + 0.05), -len - 0.4, U + 0.08 + Math.sin(a) * (r + 0.05), { r: 0.02 });
+    }
+    k.ball(0.13, neon, 0, -len - 0.45, U + 0.08);
+  } else k.cyl(r * 0.6, 0.08, neon, 0, -len - 0.27, U + 0.08, { seg: 12 }); // glowing muzzle
+  k.box(0.22, 0.24, 0.5, W3, 0, 0.22, U - 0.32, { rx: -0.35, r: 0.05 }); // grip
+  if (size >= 2) k.box(0.18, 0.5, 0.3, W3, 0, -0.35, U + 0.4, { r: 0.05 }); // top sight
+  return [-len - (prongs ? 0.65 : 0.3), U + 0.08];
+}
+
+/**
+ * Eradicator: a white figure in a sleek suit with a ray gun. Lv 1 Powered Raygun: a longer gun
+ * with more coils. Lv 2 Raysight: a neon visor band and a sight on the gun. Lv 3 Alpha Ray: a
+ * power pack on the back. Lv 4 Beta Ray: a glowing chest core. Lv 5 Gamma Ray: armored
+ * shoulders with neon coils. Lv 6 Ultra Ray: a three-prong emitter and a glowing ring on its back.
+ */
+export function makeEradicator(level) {
+  const h = blank();
+  const key = `eradicator${level}`;
+  const neon = glowMat(h, ERAD_NEON);
+  const hd = wear(h, h.head, `${key}:head`);
+  const t = wear(h, h.torso, `${key}:torso`);
+  // a smooth white helmet
+  hd.ball(0.82, W2, 0, 0.55, -0.05, { sy: 1.05, seg: 16, rows: 10 });
+  hd.box(1.0, 0.12, 0.2, W3, 0, 0.1, 0.62, { r: 0.04 }); // chin guard
+  if (level >= 2) hd.box(1.25, 0.16, 0.1, neon, 0, 0.62, 0.7, { r: 0.04 }); // Raysight visor
+  // a sleek suit with neon seams
+  t.box(2.0, 1.6, 1.1, W, 0, 0.1, 0, { r: 0.12 });
+  t.box(0.08, 1.4, 0.05, neon, 0, 0.1, 0.57); // centre seam
+  t.box(2.02, 0.24, 1.12, W3, 0, -0.85, 0, { r: 0.04 }); // belt
+  if (level >= 3) {
+    // Alpha Ray: a power pack on the back with two glowing cells
+    t.box(1.4, 1.5, 0.6, W2, 0, 0.2, -0.82, { r: 0.1 });
+    for (const x of [-0.35, 0.35]) t.cyl(0.18, 1.1, neon, x, 0.2, -1.15, { seg: 10 });
+  }
+  if (level >= 4) {
+    // Beta Ray: a glowing core in the chest
+    t.cyl(0.32, 0.12, W3, 0, 0.35, 0.58, { axis: 'z', seg: 16 });
+    t.cyl(0.22, 0.14, neon, 0, 0.35, 0.62, { axis: 'z', seg: 16 });
+  }
+  if (level >= 5) {
+    // Gamma Ray: armored shoulders ringed with neon
+    for (const x of [-1, 1]) {
+      t.ball(0.55, W2, x * 1.1, 0.75, 0, { sy: 0.7 });
+      t.torus(0.5, 0.05, neon, x * 1.1, 0.68, 0, { rx: PI / 2, seg: 16 });
+    }
+  }
+  if (level >= 6) {
+    // Ultra Ray: a glowing ring floating behind the back
+    t.torus(1.15, 0.08, neon, 0, 0.6, -1.35, { seg: 24 });
+    t.torus(0.8, 0.05, W, 0, 0.6, -1.33, { seg: 20 });
+  }
+  hd.done();
+  t.done();
+  hands(h, key, W3, W2, (a) => {
+    if (level >= 1) a.box(0.5, 0.06, 0.06, neon, 0, -1.25, 0.6); // glove cuffs
+  });
+  feet(h, key, W3, (b) => {
+    b.box(1.12, 0.1, 1.14, neon, 0, -1.3, 0.02); // neon boot tops
+  });
+  h.muzzles = [];
+  const g = fist(h.rightArm, -1.9, 1.25);
+  const gk = wear(h, g, `${key}:gun`);
+  const size = level >= 6 ? 4 : level >= 4 ? 3 : level >= 1 ? Math.min(2, level) : 0;
+  const [y, z] = whiteRaygun(gk, neon, size, level >= 6);
+  gk.done();
+  muzzle(h, g, y, z);
+  aimLong(h);
+  h.tracer = ERAD_NEON;
+  return own(h, 0.3);
+}
+
 export const MODELS = {
+  eradicator: makeEradicator,
   priest: makePriest,
   farmer: makeFarmer,
   bandit: makeBandit,

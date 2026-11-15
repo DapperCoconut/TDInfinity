@@ -723,4 +723,88 @@ export class SimWeapons4 {
     }
     this.events.push({ k: 'gsword', id: t.id, x: r2(t.x), z: r2(t.z), r: sl.radius, c: 0x2979ff });
   }
+
+  /**
+   * Eradicator Raybreak: charges for `windup` s, then fires a beam (plus `extra` wild ones) that
+   * stays `linger` s and hits every zombie inside it once. Aims at what its orbs would shoot,
+   * or else at what its targeting picks within the beam's own range.
+   */
+  updateRay(t, s, b, dt) {
+    const r = s.ray;
+    const reach = s.range * b.range; // range boosts reach the beam too
+    t.rayLen = r.range * b.range;
+    if (t.rays) this.rayTick(t, r, dt);
+    if (t.rayCharge > 0) {
+      let e = this.enemies.get(t.rayE);
+      if (!e) {
+        e = this.findTarget(t, s, t.x, t.z, reach) ?? this.findTarget(t, s, t.x, t.z, t.rayLen);
+        if (!e) {
+          t.rayCharge = 0; // nothing left to fire at: keep it ready
+          return;
+        }
+        t.rayE = e.id;
+      }
+      t.yaw = Math.atan2(e.x - t.x, e.z - t.z);
+      if ((t.rayCharge -= dt * b.rate) > 0) return;
+      t.rayCharge = 0;
+      this.rayFire(t, r, e);
+      return;
+    }
+    t.rayT = (t.rayT || 0) - dt * b.rate;
+    if (t.rayT > 0 || t.rays) return;
+    const e = this.findTarget(t, s, t.x, t.z, reach) ?? this.findTarget(t, s, t.x, t.z, t.rayLen);
+    if (!e) {
+      t.rayT = 0;
+      return;
+    }
+    t.rayE = e.id;
+    t.rayCharge = r.windup;
+    this.events.push({ k: 'rayCharge', id: t.id, x: r2(t.x), z: r2(t.z), d: r.windup });
+  }
+
+  /** Eradicator: the beams go out (the main one at `e`, the extra ones off to the sides). */
+  rayFire(t, r, e) {
+    const a = Math.atan2(e.x - t.x, e.z - t.z);
+    const beams = [{ a, mult: 1 }];
+    const ex = r.extra;
+    if (ex) for (let i = 0; i < ex.count; i++) beams.push({ a: a + (i % 2 ? 1 : -1) * (0.18 + Math.random() * 0.22), mult: ex.mult });
+    t.rays = beams.map((bm) => ({ dx: Math.sin(bm.a), dz: Math.cos(bm.a), mult: bm.mult, hit: new Set() }));
+    t.rayLeft = r.linger;
+    t.rayT = r.cooldown;
+    t.rayCut = 0;
+    this.events.push({ k: 'raybreak', id: t.id, x: r2(t.x), z: r2(t.z), len: r2(t.rayLen), w: r.width, d: r.linger,
+      b: t.rays.map((bm) => [r2(bm.dx), r2(bm.dz)]) });
+    this.rayTick(t, r, 0);
+  }
+
+  /** Eradicator: the beams hit every zombie inside them (once per beam) until they fade. */
+  rayTick(t, r, dt) {
+    const det = this.detects(t, TOWERS[t.type].levels[t.level]);
+    const half = r.width / 2 + 0.5;
+    for (const bm of t.rays) {
+      for (const e of [...this.enemies.values()]) {
+        if (bm.hit.has(e.id) || !canHit(det, e)) continue;
+        const ox = e.x - t.x;
+        const oz = e.z - t.z;
+        const along = ox * bm.dx + oz * bm.dz;
+        if (along < 0 || along > t.rayLen) continue;
+        if (Math.abs(ox * bm.dz - oz * bm.dx) > half) continue;
+        bm.hit.add(e.id);
+        const hpNow = e.hp;
+        this.damage(t, e, r.damage * bm.mult, false, 'laser');
+        if (!this.enemies.has(e.id)) {
+          // Kills make the next Raybreak come sooner (up to maxCut of the cooldown).
+          const add = Math.min(r.cut || 0, r.maxCut - (t.rayCut || 0));
+          if (add > 0) {
+            t.rayCut = (t.rayCut || 0) + add;
+            t.rayT -= r.cooldown * add;
+          }
+        } else if (r.burn) {
+          const total = Math.min(r.burn.cap, hpNow * r.burn.share);
+          if (total > 0) (e.rayBurn ??= []).push({ left: r.burn.time, dps: total / r.burn.time, by: t.id });
+        }
+      }
+    }
+    if ((t.rayLeft -= dt) <= 0) t.rays = null;
+  }
 }

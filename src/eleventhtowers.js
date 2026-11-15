@@ -11,6 +11,8 @@
 //   Priest: an alternate Medic (Doctor) form. Never attacks; blesses one tower for more damage.
 //   Farmer: an alternate Farm form. Pays out paychecks during the wave; Rice From The Void at Lv 4.
 //   Bandit: an alternate Enforcer form. Shoots, and from Lv 2 slashes zombies close in front of it.
+//   Eradicator: fast little energy orbs, and from Lv 3 the Raybreak: a big piercing beam. Its last
+//               three levels add ΘVERLOAD, which costs its owner money for the rest of the game.
 //
 // New mechanic (see computeBuffs in sim/parts/shared.js):
 //   cliffBoost: { boost, stacks, radius }  Bullseye Support: other cliff towers (placement 'cliff')
@@ -49,6 +51,18 @@
 //   slash: { damage, cooldown, radius, arc, min }  Bandit (see banditSlash in sim/parts/weapons4.js):
 //               besides its gun, a sword swing on its own timer that hits every zombie within
 //               `radius` in front of it (an `arc` wide), only when at least `min` zombies are that close.
+//   noResist: true  (Eradicator) skips every resistance (bullet, laser, explosive, golden, melee),
+//               but armor and defense still count. Read in damage() in sim/parts/damage.js.
+//   ray: { damage, cooldown, range, windup, linger, width, cut, maxCut, burn, extra }  Eradicator
+//               Raybreak (see updateRay in sim/parts/weapons4.js): after `windup` s of charging it
+//               fires a beam `range` long at the zombie its orbs are shooting (or the one its
+//               targeting picks within `range`). The beam stays `linger` s and hits every zombie
+//               inside it (`width` wide) once for `damage`. Each kill by the beam cuts the time to
+//               the next one by `cut` of its `cooldown`, up to `maxCut`. burn: { share, cap, time }
+//               each hit also adds a burn stack worth `share` of the zombie's health now (at most
+//               `cap`) spread over `time` s. extra: { count, mult } more beams fired off to the sides.
+//   overload: n  (on a level) buying this level adds n ΘVERLOAD to its owner for good (GAME.overload
+//               in config.js; see drainOverload in sim/parts/waves.js).
 //   trueDmg: true  True damage (see damage in sim/parts/damage.js): no resistance, armor or
 //               defense stops it.
 //
@@ -92,6 +106,10 @@ const pay = (cash, count, every) => ({ cash, count, every });
 
 // Bandit: the sword swing (`radius` 6 and the arc are guesses; the spec only says "inner ring").
 const slash = (damage, cooldown, min = 1) => ({ damage, cooldown, radius: 6, arc: 2.1, min });
+
+// Eradicator: Raybreak.
+const ray = (damage, o = {}) => ({ damage, cooldown: 10, range: 20, windup: 0.5, linger: 1, width: 1.6, cut: 0.1, maxCut: 0.75, ...o });
+const RAY_BURN = { share: 0.05, cap: 400, time: 8 };
 
 export const ELEVENTH_TOWERS = {
   poacher: {
@@ -304,6 +322,27 @@ export const ELEVENTH_TOWERS = {
         slash: slash(18, 2) },
       { name: 'Potential', desc: '+25 damage and +4 range, but slower (every 1.7s). The sword does 68 damage every 1.7s, only when more than one zombie is close.', cost: 4800, damage: 34, cooldown: 1.7, range: 20, hidden: true,
         slash: slash(68, 1.7, 2) },
+    ],
+  },
+  // Eradicator: quick energy orbs, and from Lv 3 the Raybreak beam (on its own timer).
+  eradicator: {
+    name: 'Eradicator',
+    price: 2000,
+    cost: 500,
+    blurb: 'Fires quick little energy orbs that ignore resistance (from Lv 1), but its real power is the Raybreak from Lv 3: a huge piercing beam that hits every zombie in a line, and burns them at Lv 5. Careful: its last three upgrades add ΘVERLOAD, which drains your money every second for the rest of the game, even after you sell it.',
+    tip: 'One max Eradicator is fine. Too much ΘVERLOAD drains money twice as fast and cuts the cash you get from hits.',
+    levels: [
+      { name: 'Eradicator', desc: 'Fires small energy orbs at one zombie at a time.', damage: 1, cooldown: 1, range: 11, hidden: false },
+      { name: 'Powered Raygun', desc: '+5 range, shoots much faster (every 0.35s), and ignores all resistance.', cost: 1250, damage: 1, cooldown: 0.35, range: 16, noResist: true, hidden: false },
+      { name: 'Raysight', desc: '+1 damage, +1 range and hidden detection.', cost: 1500, damage: 2, cooldown: 0.35, range: 17, noResist: true, hidden: true },
+      { name: 'Alpha Ray', desc: 'Raybreak: every 10s it fires a piercing beam that hits every zombie in a line for 50 damage.', cost: 3000, damage: 2, cooldown: 0.35, range: 17, noResist: true, hidden: true,
+        ray: ray(50, { cut: 0 }) },
+      { name: 'Beta Ray', desc: 'Shoots faster (every 0.25s). Raybreak does 150 damage, and each kill by it makes the next one come 10% sooner (up to 75%). +5 ΘVERLOAD.', cost: 5000, damage: 2, cooldown: 0.25, range: 17, noResist: true, hidden: true, overload: 5,
+        ray: ray(150) },
+      { name: 'Gamma Ray', desc: '+1 damage. Raybreak does 500 damage and burns (5% of the zombie\'s health, up to 400, over 8s; stacks). +3 ΘVERLOAD.', cost: 12500, damage: 3, cooldown: 0.25, range: 17, noResist: true, hidden: true, overload: 3,
+        ray: ray(500, { burn: RAY_BURN }) },
+      { name: 'Ultra Ray', desc: 'Raybreak: +10 range, 650 damage, 15% sooner per kill, and two more wild beams for 75% damage (487.5). +8 ΘVERLOAD.', cost: 40000, damage: 3, cooldown: 0.25, range: 17, noResist: true, hidden: true, overload: 8,
+        ray: ray(650, { range: 30, cut: 0.15, burn: RAY_BURN, extra: { count: 2, mult: 0.75 } }) },
     ],
   },
 };

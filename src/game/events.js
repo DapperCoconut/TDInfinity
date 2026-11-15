@@ -376,6 +376,25 @@ export class GameEvents {
           audio.lob('grenadierAssaultBottom');
           break;
         }
+        case 'rayCharge': {
+          // Eradicator: the Raybreak charging up (a cyan glow gathering on the tower).
+          const at = new THREE.Vector3(ev.x, 0.3, ev.z);
+          this.effects.pulse(at, 3, ev.d, 0x18ffff);
+          this.effects.groundGlow(at, 2.5, 0x18ffff, ev.d);
+          break;
+        }
+        case 'raybreak': {
+          // Eradicator Raybreak: one beam (three at Lv 6) that stays for a moment.
+          const from = new THREE.Vector3(ev.x, 2.4, ev.z);
+          for (const [dx, dz] of ev.b) {
+            const to = new THREE.Vector3(ev.x + dx * ev.len, 1.2, ev.z + dz * ev.len);
+            this.effects.rayBeam(from, to, 0x18ffff, ev.w, ev.d);
+          }
+          this.effects.flash(from, 0x18ffff, 1.6);
+          audio.shot(0, 'phaser');
+          this.shake(0.25, 0.3);
+          break;
+        }
         case 'wheel': {
           // Last Laugh: someone spun the little jester's wheel.
           this.spinWheelFx(ev.win);

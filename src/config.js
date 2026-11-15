@@ -56,6 +56,10 @@ export const GAME = {
   waveBonus: (wave) => GAME.earnMult * (100 + 40 * wave + 3 * wave * wave), // wave is 1-based; ramps up quadratically
   hpScalePerWave: 0.06, // enemy HP multiplier grows by this much each wave
   sellRatio: 0.5,
+  // Eradicator ΘVERLOAD (a player's, never goes down): costs that much money every second of a
+  // wave. Above `threshold` it costs it every 0.5s, and hit cash shrinks by `per` for every point
+  // over, up to `max`.
+  overload: { threshold: 20, per: 0.05, max: 0.9 },
   corruptSell: 0.2, // Void mode: towers VOID corrupted sell for this much more
   // Tower health: a level's `hp`, or `towerHp` + `towerHpPerLevel` per level. Close-range towers
   // are tougher: up to `towerHpShort` more at range `towerHpShortRange[0]` or less, fading to

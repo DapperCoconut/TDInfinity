@@ -197,6 +197,7 @@ export class Sim {
       }
     }
 
+    if (w.state === 'wave') this.drainOverload(dt); // Eradicator ΘVERLOAD
     // Overlord Amplifiers: the speed and healing each summoner gets from its amplifiers (they stack).
     let amps = null;
     for (const o of this.enemies.values()) {
@@ -625,6 +626,7 @@ export class Sim {
         t.level++;
         this.setTowerLevelHp(t);
         t.spent += cost;
+        if (next.overload) p.overload = (p.overload || 0) + next.overload; // Eradicator: ΘVERLOAD for good
         t.costRoll = Math.random(); // Chaos Jester: a new random price for the next upgrade
         if (next.ammo) {
           t.ammo = next.ammo; // a fresh, bigger magazine
@@ -871,6 +873,8 @@ export class Sim {
       o: this.over,
       // JSON can't hold Infinity (Konami code cash), so it travels as 'inf'.
       p: [...this.players.values()].map((p) => [p.id, p.name, p.cash === Infinity ? 'inf' : p.cash, p.color]),
+      // Eradicator ΘVERLOAD per player: [[id, amount]].
+      ...([...this.players.values()].some((p) => p.overload > 0) ? { ov: [...this.players.values()].filter((p) => p.overload > 0).map((p) => [p.id, p.overload]) } : {}),
       t: [...this.towers.values()].map((t) => [
         t.id, t.owner, t.type, t.level, r2(t.x), r2(t.z), r2(t.yaw), t.targetMode, t.kills, t.damageDealt, t.spent,
         r2(t.ang), t.lock, r2(t.charge), r2(t.active), cdSnap(t.cd), (t.smoke > 0 ? 1 : 0) | (t.stunT > 0 ? 2 : 0) | (t.shieldT > 0 ? 4 : 0) | (t.revT > 0 ? 8 : 0) | (this.stealthy(t) ? 16 : 0) | (t.slowT > 0 ? 32 : 0) | ((t.nerf ?? 1) < 1 ? 64 : 0) | (t.weakT > 0 ? 128 : 0) | (t.silenceT > 0 ? 256 : 0) | (t.bleedT > 0 || t.curseBy ? 512 : 0) | (t.corrupt ? 1024 : 0), t.dir, t.track,

@@ -356,6 +356,27 @@ export class Effects {
     this.items[this.items.length - 1].extra = [core, beam.geometry, inner.geometry];
   }
 
+  /** Eradicator Raybreak: a straight glowing beam from `from` to `to` that lasts `time` s and thins out. */
+  rayBeam(from, to, color, width = 1.2, time = 1) {
+    const len = Math.max(0.1, from.distanceTo(to));
+    const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending });
+    const core = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95, depthWrite: false });
+    const g = new THREE.Group();
+    const outer = new THREE.Mesh(new THREE.CylinderGeometry(width / 2, width / 2, len, 12, 1, true), mat);
+    const inner = new THREE.Mesh(new THREE.CylinderGeometry(width * 0.16, width * 0.16, len, 8, 1, true), core);
+    g.add(outer, inner);
+    g.position.copy(from).lerp(to, 0.5);
+    g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), to.clone().sub(from).normalize());
+    this.add(g, time, mat, (it, f) => {
+      const s = 0.35 + 0.65 * f;
+      outer.scale.set(s, 1, s);
+      inner.scale.set(s, 1, s);
+      mat.opacity = 0.8 * Math.min(1, f * 3);
+      core.opacity = 0.95 * Math.min(1, f * 3);
+    });
+    this.items[this.items.length - 1].extra = [core, outer.geometry, inner.geometry];
+  }
+
   /** The Molten Warlord's embers: orange sparks drifting up everywhere, and an orange sky. */
   setEmbers(on) {
     this.emberOn = on;
