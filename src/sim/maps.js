@@ -1514,14 +1514,15 @@ function skyFixed() {
 }
 
 /**
- * Corporate Corruption: a downtown city block eaten by the void. The road snakes up and down
- * four streets between office towers. Black void masses with tentacles burst out of the blocks;
+ * Corporate Corruption: a downtown city eaten by the void. The road (traced from the user's
+ * picture, 2026-11-15) runs down from the portal at the top, swings left, loops round the bottom
+ * of the map and climbs back up the right side to the base. Black void masses with tentacles burst out of the blocks;
  * the closer a building is to one, the more broken and purple it gets. Decor is drawn by
  * corruptworld.js (CC_PROPS).
  */
-const CC_ROUTE = [[-100, -42], [-62, -42], [-62, 32], [-22, 32], [-22, -46], [24, -46], [24, 44], [62, 44], [62, 0], [88, 0]];
+const CC_ROUTE = [[-2, -60], [-2, -42], [-12, -25], [-28, -11], [-64, -11], [-74, -5], [-79, 6], [-79, 43], [-74, 52], [-60, 60], [9, 60], [17, 57], [32, 44], [38, 33], [38, 3], [44, -10], [57, -27], [80, -27]];
 /** The void masses: [x, z, radius]. The middle one is the biggest. */
-export const CC_MASSES = [[1, 4, 7], [-82, -14, 4], [43, 20, 4.5], [80, 32, 3.5], [-40, -24, 3]];
+export const CC_MASSES = [[-22, 28, 7], [-44, -36, 4.5], [24, -42, 4], [68, 20, 4], [12, -2, 3]];
 
 /** Distance from (x, z) to the road's middle line. */
 function ccRoadDist(x, z) {
@@ -1541,14 +1542,14 @@ function ccFixed() {
   const out = [{ kind: 'ccStreets' }, { kind: 'ccSky' }];
   // Office towers: [x, z, width, depth, height]. Tall ones round the edge, small ones inside the blocks.
   const towers = [
-    [-86, -58, 14, 10, 22], [-42, -58, 12, 10, 30], [0, -60, 16, 8, 26], [44, -58, 12, 10, 34], [86, -56, 14, 12, 20],
-    [-88, 56, 12, 12, 24], [-44, 58, 14, 10, 18], [0, 58, 12, 10, 28], [44, 59, 12, 9, 16], [88, 54, 12, 12, 22],
-    [-84, 18, 9, 10, 14], [-42, -2, 8, 8, 12], [44, -18, 10, 10, 16], [84, -30, 10, 10, 18],
+    [-82, -56, 14, 10, 22], [-62, -32, 10, 10, 18], [-26, -56, 12, 10, 30], [28, -58, 12, 8, 26], [62, -56, 14, 10, 34], [94, -56, 10, 10, 20],
+    [-96, -30, 10, 12, 24], [-97, 14, 9, 12, 14], [-97, 56, 9, 10, 16], [52, 57, 12, 10, 18], [90, 52, 12, 12, 22],
+    [92, 12, 12, 12, 20], [66, 40, 10, 10, 16], [-55, 32, 10, 10, 14], [5, 14, 9, 9, 12],
   ];
   for (const [x, z, w, d, h] of towers) out.push({ kind: 'ccTower', x, z, w, d, h, block: Math.max(w, d) / 2 + 0.8, box: [w / 2, d / 2, Infinity] });
   for (const [x, z, r] of CC_MASSES) out.push({ kind: 'ccMass', x, z, r, block: r + 1, bh: Infinity });
   // Lone tentacles poking out of cracks in the pavement.
-  [[-12, 18], [12, -14], [-30, 14], [-74, 0], [34, 6], [52, 30], [70, 18], [-50, -30], [8, 26], [-8, -30]].forEach(([x, z], i) =>
+  [[-60, 18], [0, 42], [-60, 47], [18, 30], [-35, -22], [56, -40], [60, 4], [24, 12], [-85, -42], [80, 30]].forEach(([x, z], i) =>
     out.push({ kind: 'ccTentacle', x, z, s: 0.7 + (i % 3) * 0.2, block: 1.2, bh: Infinity }));
   // Street lamps and wrecked cars along the kerbs, kept off the road and away from everything else.
   const taken = out.filter((f) => f.block).map((f) => [f.x, f.z, f.block]);
@@ -1952,11 +1953,11 @@ export const MAPS = {
   },
   corrupt: {
     name: 'Corporate Corruption',
-    rating: 'easy',
+    rating: 'medium',
     icon: '🏢',
-    desc: 'A downtown city swallowed by the void. The road snakes up and down four streets past office towers, wrecked cars and huge black void masses that wave their tentacles.',
+    desc: 'A downtown city swallowed by the void. The road comes down from the top, loops all the way round the bottom of the city and climbs back up to the base, past office towers, wrecked cars and huge black void masses that wave their tentacles.',
     path: CC_ROUTE,
-    spawn: { x: -42, z: 12 },
+    spawn: { x: -40, z: 8 },
     cliffs: [],
     pools: [],
     trees: 0, tree: 'dead', rocks: 0, border: 'none',
