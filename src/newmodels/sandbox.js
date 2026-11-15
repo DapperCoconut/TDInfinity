@@ -104,9 +104,9 @@ export function sbParts(h, def) {
     const sword = grp(h.rightArm, 0, -2.05, 0.1);
     B(sword, 0.18, 0.18, 1.0, P(0x4e342e), 0, 0, 0.1); // grip
     B(sword, 1.4, 0.25, 0.25, gold, 0, 0, 0.65); // guard
-    B(sword, 0.5, 0.12, 6.5, P(0xe0e0e0), 0, 0, 4.0); // blade
-    K(sword, 0.26, 0.6, P(0xe0e0e0), 0, 0, 7.55, 4).rotation.x = Math.PI / 2;
-    B(sword, 0.08, 0.14, 6.2, G(0xff1744, 0.8), 0, 0, 3.9); // a red line down the blade
+    B(sword, 0.5, 0.12, 4.6, P(0xe0e0e0), 0, 0, 3.05); // blade
+    K(sword, 0.26, 0.6, P(0xe0e0e0), 0, 0, 5.65, 4).rotation.x = Math.PI / 2;
+    B(sword, 0.08, 0.14, 4.3, G(0xff1744, 0.8), 0, 0, 2.95); // a red line down the blade
     // Walk heavily with the sword held up; on an attack it comes down hard.
     walker(h, (sw) => {
       h.rightArm.rotation.x = -1.9 + sw * 0.1;

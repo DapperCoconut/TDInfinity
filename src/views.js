@@ -1099,6 +1099,7 @@ export class EnemyView {
   constructor(scene, e) {
     this.scene = scene;
     this.id = e.id;
+    this.type = e.type;
     this.def = ENEMIES[e.type];
     this.pos = new THREE.Vector3();
     this.off = new THREE.Vector3();

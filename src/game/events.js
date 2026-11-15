@@ -699,6 +699,7 @@ export class GameEvents {
             this.ui.banner('THE FROST SPIRIT HAS FALLEN', 'The season is restored!', 4000);
           }
           if (v) {
+            if (!this.spectating) this.maybeWisp(v.type, v.pos); // a spirit wisp for the Enemy Journal (game/wisps.js)
             v.die(ev.r, this.effects, audio);
             this.enemyViews.delete(ev.e);
             this.dying.push(v);

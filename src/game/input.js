@@ -173,6 +173,8 @@ export class GameInput {
     // Beholder time bombs: clicking one defuses it (even while placing or aiming).
     const bomb = this.pickBomb();
     if (bomb != null) return this.session.send({ a: 'defuse', id: bomb });
+    const wisp = this.pickWisp(); // spirit wisps: clicking one picks it up
+    if (wisp) return this.takeWisp(wisp);
     if (this.placing === FENCE) return this.tryFence(); // Last Laugh fences
     if (!this.placing && !this.aiming && !this.ordering && this.pickNpc()) return this.openWheel(); // Last Laugh: the little jester's wheel
     if (this.ordering) return this.tryOrder();

@@ -35,6 +35,7 @@ import { GamePhone } from './game/phone.js';
 import { GameView } from './game/view.js';
 import { GameInput } from './game/input.js';
 import { GameTowers } from './game/towers.js';
+import { GameWisps } from './game/wisps.js';
 
 // What the player bumps into and can stand on, shaped like the models drawn in world.js
 // (MAP.obstacles is coarser: it's for tower placement and decoration spacing). Rebuilt for each map.
@@ -586,6 +587,7 @@ export class GameClient {
     this.dying = [];
     this.player?.dispose();
     this.player = null;
+    this.clearWisps();
     this.sbBar?.dispose(); // Sandbox bar
     this.sbBar = null;
     if (this.hoverTip) this.hoverTip.style.display = 'none';
@@ -696,6 +698,7 @@ export class GameClient {
 
     this.updateCamera(realDt);
     this.updateHover();
+    this.updateWisps(realDt);
     const ct = this.cam.target;
     const so = this.sunOff ?? [60, 120, 45];
     this.sun.position.set(ct.x + so[0] * WORLD_SCALE, so[1] * WORLD_SCALE, ct.z + so[2] * WORLD_SCALE);
@@ -717,7 +720,7 @@ export class GameClient {
 
 // GameClient's methods are kept in several files (see the list at the top). This puts them all on
 // GameClient, just as if they were written inside the class.
-for (const part of [GameEvents, GameView, GameInput, GameTowers, GameWheel, GameContract, GameLiminal, GamePhone]) {
+for (const part of [GameEvents, GameView, GameInput, GameTowers, GameWheel, GameContract, GameLiminal, GamePhone, GameWisps]) {
   const props = Object.getOwnPropertyDescriptors(part.prototype);
   delete props.constructor;
   Object.defineProperties(GameClient.prototype, props);

@@ -1,4 +1,5 @@
 // Menus: title screen, multiplayer menu (create / join a room by code), and room lobby.
+import { Journal } from './journal.js';
 import { DEFAULT_DIFFICULTY, DIFFICULTIES, EVENT_KEYS, GAME, eventMap, MODE_KEYS, MP, PLAYER_COLORS, TOWERS, VERSUS, detection, difficulty, modeFor } from './config.js';
 import { LoadoutScreen } from './loadout.js';
 import { audio } from './audio.js';
@@ -139,6 +140,7 @@ export class Lobby {
 
     // Loadout & shop (one screen)
     $('loadout-btn').onclick = () => this.show('loadout');
+    $('journal-btn').onclick = () => (this.journal ??= new Journal()).open(); // Enemy Journal (journal.js)
     this.loadoutScreen = new LoadoutScreen(this);
     profile.onChange(() => {
       this.renderContracts(); // (a contract finished in a game: its card and red buttons change)

@@ -3,7 +3,7 @@
 // evolution levels), and their loadout (hotbar). Stored in localStorage, so it is per browser.
 import { CONTRACTS } from './lastlaugh.js';
 import { ALL_CONTRACTS_REWARD, CONTRACT_REWARDS, NIGHT_REWARDS, PASS } from './halloweenpass.js';
-import { BASE_TOWERS, DIFFICULTIES, EVENT_TOWERS, EVOLVED_TOWERS, GAME, HARDCORE_NEEDS, STARTER_TOWERS, TOWERS, TOWER_MAX_LEVEL, goldOf, xpKey, xpToNext } from './config.js';
+import { BASE_TOWERS, DIFFICULTIES, ENEMIES, EVENT_TOWERS, EVOLVED_TOWERS, GAME, HARDCORE_NEEDS, STARTER_TOWERS, TOWERS, TOWER_MAX_LEVEL, goldOf, xpKey, xpToNext } from './config.js';
 
 const KEY = 'td.profile';
 
@@ -73,7 +73,12 @@ function load() {
   // Halloween (halloweenpass.js): Candy Corn earned in all, the nights won (their maps), and how
   // many Battle Pass rewards were already given out.
   const hw = { candy: readCount(data.hw?.candy), nights: Array.isArray(data.hw?.nights) ? data.hw.nights.filter((m) => NIGHT_REWARDS.some((n) => n.map === m)) : [], claimed: readCount(data.hw?.claimed) };
-  return { hw, contracts, credits: readCount(data.credits), shards: readCount(data.shards), gems: readCount(data.gems), owned: [...owned], loadout, ownedForms, forms, ownedGold, goldOn, xp, perks, beaten: [...new Set(beaten)] };
+  // Enemy Journal (journal.js): enemies whose spirit wisp was picked up, and kills of each boss (the 3rd drops its wisp).
+  const journal = {
+    seen: Array.isArray(data.journal?.seen) ? [...new Set(data.journal.seen.filter((t) => ENEMIES[t]))] : [],
+    bossKills: Object.fromEntries(Object.entries(data.journal?.bossKills ?? {}).filter(([t]) => ENEMIES[t]).map(([t, n]) => [t, readCount(n)])),
+  };
+  return { journal, hw, contracts, credits: readCount(data.credits), shards: readCount(data.shards), gems: readCount(data.gems), owned: [...owned], loadout, ownedForms, forms, ownedGold, goldOn, xp, perks, beaten: [...new Set(beaten)] };
 }
 
 export const profile = {
@@ -98,9 +103,28 @@ export const profile = {
         perks: this.perks,
         contracts: this.contracts,
         hw: { ...this.hw, candy: writeCount(this.hw.candy) },
+        journal: this.journal,
       }),
     );
     for (const fn of this.listeners) fn(this);
+  },
+  /** Enemy Journal: has `type`'s wisp been picked up? */
+  knows(type) {
+    return this.journal.seen.includes(type);
+  },
+  /** Enemy Journal: a wisp of `type` was picked up. True if it is a new entry. */
+  learn(type) {
+    if (this.knows(type)) return false;
+    this.journal.seen.push(type);
+    this.save();
+    return true;
+  },
+  /** Counts a kill of boss `type`; returns how many there have been. */
+  bossKill(type) {
+    const n = (this.journal.bossKills[type] ?? 0) + 1;
+    this.journal.bossKills[type] = n;
+    this.save();
+    return n;
   },
   onChange(fn) {
     this.listeners.add(fn);

@@ -326,12 +326,14 @@ export class GameView {
       this.tipV ??= new THREE.Vector3();
       for (const v of this.enemyViews.values()) {
         if (v.dying || !st.enemies.has(v.id)) continue;
-        const p = v.aimPoint(this.tipV).project(this.camera);
+        const p = v.aimPoint(this.tipV).multiplyScalar(WORLD_SCALE); // (the map is drawn scaled down)
+        const far = this.camera.position.distanceTo(p);
+        p.project(this.camera);
         if (p.z > 1) continue; // behind the camera
         const sx = (p.x + 1) * w / 2;
         const sy = (1 - p.y) * h / 2;
         // How big it looks on screen: its height, seen from this far away.
-        const reach = Math.max(18, Math.min(160, v.height * h / (2 * this.camera.position.distanceTo(v.pos) * Math.tan((this.camera.fov * Math.PI) / 360)) * 0.6));
+        const reach = Math.max(18, Math.min(160, v.height * WORLD_SCALE * h / (2 * far * Math.tan((this.camera.fov * Math.PI) / 360)) * 0.6));
         const d = Math.hypot(sx - mx, sy - my);
         if (d < reach && d < bestD) {
           bestD = d;
