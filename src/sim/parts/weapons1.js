@@ -467,9 +467,32 @@ export class SimWeapons1 {
     t.rocketT = (t.rocketT ?? 0) - dt;
     if (t.rocketT > 0) return;
     t.rocketT = s.rockets.every;
-    const time = 0.5;
-    this.shells.push({ tower: t.id, enemy: target.id, x: target.x, z: target.z, time, damage: s.rockets.damage, radius: s.rockets.radius, det: this.detects(t, s), main: target.id });
-    this.events.push({ k: 'rocket', t: t.id, e: target.id, d: time });
+    for (let i = 0; i < (s.rockets.count ?? 1); i++) {
+      const time = 0.5 + i * 0.15; // Cyborg: a volley, one rocket after another
+      this.shells.push({ tower: t.id, enemy: target.id, x: target.x, z: target.z, time, damage: s.rockets.damage, radius: s.rockets.radius, det: this.detects(t, s), main: target.id });
+      this.events.push({ k: 'rocket', t: t.id, e: target.id, d: time });
+    }
+  }
+
+  /**
+   * Cyborg: counts every shot for its faster firing, and fires the Magnum Howitzer when it's due
+   * (the last shot of a magazine, or every `howitzer.every`th shot): a blast of `mult` x damage
+   * instead of the plain shot. Returns true when it fired the Howitzer.
+   */
+  cyborgShot(t, s, target, dmg) {
+    t.spoolN = (t.spoolN || 0) + 1;
+    t.spoolIdle = 0;
+    const h = s.howitzer;
+    if (!h) return false;
+    const due = h.every ? (t.howN = (t.howN || 0) + 1) % h.every === 0 : s.ammo && t.ammo <= 1;
+    if (!due) return false;
+    this.events.push({ k: 'shot', t: t.id, e: target.id, c: 1 });
+    this.explode(t, target.x, target.z, { damage: dmg * h.mult, radius: h.radius, det: this.detects(t, s), main: target.id });
+    if (s.ammo) {
+      this.useAmmo(t, s);
+      t.spoolN = 0; // the faster firing starts over after a reload
+    }
+    return true;
   }
 
   /** Spends one bullet; an empty gun starts reloading. */

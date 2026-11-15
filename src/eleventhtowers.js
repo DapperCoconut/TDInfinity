@@ -30,6 +30,8 @@
 //   Blaster: an alternate Commando form. Fast shots that add Shatter (bad effects last longer);
 //            Core Blast at Lv 3.
 //   Programmer: an alternate Commander form. Towers near it attack faster; System Overdrive at Lv 3.
+//   Cyborg: an alternate Commando form. Heavy bursts with a reload; Magnum Howitzer blasts from Lv 3,
+//           no reload from Lv 4, rockets at Lv 5.
 //   Mage: weak long-range magic shots. Builds up its owner's Arcana, shoots faster with more of it,
 //         calls down lightning every 10 shots (Stormbringer), and Artificial Ascent at Lv 5.
 //
@@ -705,6 +707,37 @@ export const ELEVENTH_TOWERS = {
         arcana: { gain: 0.1, cap: 300 }, arcanaDmg: 50 },
       { name: 'Fate of the Prophecy', desc: '+25 max damage (50), charges faster (+1 every 0.3s), and ticks faster (every 0.15s > 0.1s).', cost: 50000, damage: 4, maxDamage: 50, chargeRate: 0.3, ramp: 13.8, cooldown: 0.1, range: 25, hidden: false,
         arcana: { gain: 0.1, cap: 300 }, arcanaDmg: 50 },
+    ],
+  },
+  // Cyborg (alternate Commando form): empties a magazine of `ammo` shots `cooldown` s apart, then
+  // reloads for `reload` s. spool { per, max, decay }: every shot in a row fires `per` faster (up
+  // to +`max`); it starts over on a reload, or after `decay` s without a shot. howitzer { every,
+  // mult, radius }: Magnum Howitzer, a shot that blows up for `mult` x damage (every: 0 = the last
+  // shot of each magazine, else every `every`th shot). ceilDmg: its damage is rounded up.
+  // rockets.count: rockets per volley. sellRatio on a level: what selling gives back from then on.
+  commandoCyborg: {
+    name: 'Cyborg',
+    altOf: 'commando',
+    form: 'Cyborg',
+    shards: 1,
+    price: 0,
+    cost: 700,
+    limit: 3,
+    lead: false,
+    flying: false,
+    blurb: 'An alternate Commando that fires heavy bursts at ground zombies: a full magazine, then a reload. From Lv 3 it fires faster the longer it shoots, and its last shot is a Magnum Howitzer that blows up for 10x damage. From Lv 4 it never reloads, and at max level it also fires rockets. Up to 3.',
+    tip: 'Keep it shooting: the longer it fires without stopping, the faster it gets.',
+    levels: [
+      { name: 'Cyborg', desc: 'Bursts of 15 shots (1 damage each, every 0.2s), then a reload.', damage: 1, cooldown: 0.2, ammo: 15, reload: 3, range: 15, hidden: false },
+      { name: 'Scanner', desc: 'Sees hidden zombies.', cost: 500, damage: 1, cooldown: 0.2, ammo: 15, reload: 3, range: 15, hidden: true },
+      { name: 'Overclock', desc: '+3 range, +1 damage, and 20 shots per burst.', cost: 1450, damage: 2, cooldown: 0.2, ammo: 20, reload: 3, range: 18, hidden: true },
+      { name: 'Magnum Howitzer', desc: 'Fires faster the longer it shoots (up to twice as fast). The last shot of every burst is a Magnum Howitzer: 10x damage to all zombies around it. Its damage is rounded up.', cost: 2000, damage: 2, cooldown: 0.2, ammo: 20, reload: 3, range: 18, hidden: true,
+        spool: { per: 0.04, max: 1 }, howitzer: { every: 0, mult: 10, radius: 5 }, ceilDmg: true },
+      { name: 'Reactor System', desc: '+1 damage and no more reloading. A Magnum Howitzer every 30 shots. The faster firing wears off after 2s without shooting.', cost: 4200, damage: 3, cooldown: 0.2, range: 18, hidden: true,
+        spool: { per: 0.04, max: 1, decay: 2 }, howitzer: { every: 30, mult: 10, radius: 5 }, ceilDmg: true },
+      { name: 'Cyber Augment: Jetstream', desc: '+4 range, +2 damage, a Magnum Howitzer every 20 shots, and 3 rockets every 8s (175 damage each). Selling it now gives back 80%.', cost: 21950, damage: 5, cooldown: 0.2, range: 22, hidden: true,
+        spool: { per: 0.04, max: 1, decay: 2 }, howitzer: { every: 20, mult: 10, radius: 5 }, ceilDmg: true,
+        rockets: { every: 8, damage: 175, radius: 3, count: 3 }, sellRatio: 0.8 },
     ],
   },
   mage: {

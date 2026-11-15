@@ -421,7 +421,7 @@ export class SimEnemyMoves2 {
     const sh = ENEMIES[boss.type].shift;
     for (const t of [...this.towers.values()]) {
       // Expert Beholder's Field: towers are refunded (`refund` of what they cost).
-      const value = t.holo ? 0 : sh.refund != null ? Math.floor(t.spent * sh.refund) : Math.floor(t.spent * (TOWERS[t.type].sellRatio ?? GAME.sellRatio) * (1 + buffOf(this.buffs, t.id).sell));
+      const value = t.holo ? 0 : sh.refund != null ? Math.floor(t.spent * sh.refund) : Math.floor(t.spent * (TOWERS[t.type].levels[t.level].sellRatio ?? TOWERS[t.type].sellRatio ?? GAME.sellRatio) * (1 + buffOf(this.buffs, t.id).sell));
       const p = this.players.get(t.owner);
       if (p) p.cash += value;
       this.removeTower(t, 'sell', { value });

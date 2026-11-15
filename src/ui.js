@@ -785,7 +785,7 @@ export class UI {
   renderPanel(t, def, next, mine, ctx) {
     const s = levelAt(def.levels[t.level], t.x, t.z);
     const kind = def.kind;
-    const sellValue = Math.floor(t.spent * (def.sellRatio ?? GAME.sellRatio) * (1 + (ctx.buff?.sell || 0))); // EDJ sellback
+    const sellValue = Math.floor(t.spent * (def.levels[t.level].sellRatio ?? def.sellRatio ?? GAME.sellRatio) * (1 + (ctx.buff?.sell || 0))); // EDJ sellback
     // Crosspath towers: a row of Top pips and a row of Bottom pips.
     const pipRow = (n, on, label) => `<span class="pip-tag">${label}</span>${Array.from({ length: n }, (_, i) => `<div class="pip ${i < on ? 'on' : ''}"></div>`).join('')}`;
     const pips = def.cross

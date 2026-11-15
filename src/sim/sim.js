@@ -665,7 +665,7 @@ export class Sim {
       case 'sell': {
         const t = this.ownedTower(pid, m.id);
         if (typeof t === 'string') return t;
-        const value = Math.floor(t.spent * (TOWERS[t.type].sellRatio ?? GAME.sellRatio) * (1 + buffOf(this.buffs, t.id).sell) * (t.corrupt ? 1 + GAME.corruptSell : 1)); // EDJ sellback; VOID's corrupted towers sell for more
+        const value = Math.floor(t.spent * (TOWERS[t.type].levels[t.level].sellRatio ?? TOWERS[t.type].sellRatio ?? GAME.sellRatio) * (1 + buffOf(this.buffs, t.id).sell) * (t.corrupt ? 1 + GAME.corruptSell : 1)); // EDJ sellback; VOID's corrupted towers sell for more
         p.cash += value;
         this.removeTower(t, 'sell', { value });
         this.sellSacrifice(t);

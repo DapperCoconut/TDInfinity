@@ -198,7 +198,10 @@ export class SimTowerUpdate {
     // that keeps very fast fire rates accurate at any tick length. Firerate boosts speed them up.
     const dpRate = t.dpT > 0 ? 1 + (t.dpBoost || 0) : 1; // Bugler Directed Power
     const arcRate = s.arcanaRate ? 1 + s.arcanaRate * Math.floor((this.players.get(t.owner)?.arcana || 0) / 10) : 1; // Mage Enhanced Arcana
-    const rate = def.noRateBuff ? 1 : b.rate * dpRate * arcRate * (self?.rate ?? 1); // Prophet: firerate boosts don't work
+    // Cyborg: fires faster the more shots in a row (it starts over after `spool.decay` s without one).
+    if (s.spool?.decay && (t.spoolIdle = (t.spoolIdle || 0) + dt) > s.spool.decay) t.spoolN = 0;
+    const spool = s.spool ? 1 + Math.min(s.spool.max, (t.spoolN || 0) * s.spool.per) : 1;
+    const rate = def.noRateBuff ? 1 : b.rate * dpRate * arcRate * spool * (self?.rate ?? 1); // Prophet: firerate boosts don't work
     t.cooldown = Math.max(-dt, t.cooldown - dt * rate); // Machine Gunner Overcharge: faster firing
     t.gap = Math.max(0, t.gap - dt);
     // Ammo towers stop shooting while they reload (firerate boosts don't speed that up).
@@ -439,6 +442,7 @@ export class SimTowerUpdate {
       t.focusE = target.id;
       dmg = Math.round(dmg * (1 + Math.min(s.focus.max, t.focusN * s.focus.per)) * 100) / 100;
     }
+    if ((s.spool || s.howitzer) && this.cyborgShot(t, s, target, dmg)) return; // Cyborg: Magnum Howitzer
     const berserk = s.crush ? { x: target.x, z: target.z, weak: target.physWeakT > 0 } : null; // Berserker: where it hit, and was it weakened
     if (s.combo) {
       // Brawler: every `hits`th punch is the combo finisher (harder, with knockback). The next

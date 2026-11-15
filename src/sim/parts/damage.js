@@ -556,6 +556,7 @@ export class SimDamage {
       if (ts.coord && this.coordinated(t, ts.coord)) mult *= 1 + ts.coord.boost; // Operator Coordination
       if (t.weakT > 0) mult *= 1 - t.weakAmt; // Void mode acid / poison
       if (mult !== 1) dmg = Math.round(dmg * mult * 100) / 100;
+      if (ts.ceilDmg && !this.dot) dmg = Math.ceil(dmg); // Cyborg: damage rounded up
       if (!this.dot) dmg = this.capHit(e, dmg); // Insane: max damage per hit
       if (e.pure && dmg > 0) dmg = 1; // Pure crystals: every hit does exactly 1
       const dealt = Math.min(dmg, e.hp);
