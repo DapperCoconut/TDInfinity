@@ -1,7 +1,7 @@
 // Renders the static map (ground, path, portal, castle, decorations) from shared map data.
 // buildWorld picks the renderer. The plain maps (Sunny Meadow, Sunken Canyon...) are drawn here.
 // Each special map has its own file: nexusworld.js, crossingworld.js, courtworld.js, emberworld.js,
-// rampartworld.js, brookworld.js, rigworld.js, graveworld.js. Shared pieces are in worldkit.js.
+// rampartworld.js, brookworld.js, rigworld.js, graveworld.js, corruptworld.js. Shared pieces are in worldkit.js.
 import * as THREE from 'three';
 import { boxGeo, part } from './models.js';
 import { mulberry32 } from './utils.js';
@@ -18,6 +18,7 @@ import { BR_PROPS } from './backroomsworld.js';
 import { FR_PROPS } from './frostworld.js';
 import { CG_PROPS } from './citadelworld.js';
 import { SKY_PROPS } from './skyworld.js';
+import { CC_PROPS } from './corruptworld.js';
 import { TREES, lambert, placed, snowMat, themeMats, tileTexture } from './worldkit.js';
 import { buildNexus } from './nexusworld.js';
 import { buildCrossing } from './crossingworld.js';
@@ -109,7 +110,7 @@ export function buildWorld(parent, { oz = 0, versus = false } = {}) {
     rock.rotation.set(r.rx, r.ry, r.rz);
   }
   const animated = [];
-  for (const p of MAP.props) (PROPS[p.kind] ?? GRAVE_PROPS[p.kind] ?? CARN_PROPS[p.kind] ?? NM_PROPS[p.kind] ?? BR_PROPS[p.kind] ?? FR_PROPS[p.kind] ?? CG_PROPS[p.kind] ?? SKY_PROPS[p.kind])?.(scene, p, m, animated);
+  for (const p of MAP.props) (PROPS[p.kind] ?? GRAVE_PROPS[p.kind] ?? CARN_PROPS[p.kind] ?? NM_PROPS[p.kind] ?? BR_PROPS[p.kind] ?? FR_PROPS[p.kind] ?? CG_PROPS[p.kind] ?? SKY_PROPS[p.kind] ?? CC_PROPS[p.kind])?.(scene, p, m, animated);
   if (animated.length) scene.userData.tick = (t) => animated.forEach((f) => f(t));
   return scene;
 }

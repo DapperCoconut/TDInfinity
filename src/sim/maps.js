@@ -1513,6 +1513,69 @@ function skyFixed() {
   return out;
 }
 
+/**
+ * Corporate Corruption: a downtown city block eaten by the void. The road snakes up and down
+ * four streets between office towers. Black void masses with tentacles burst out of the blocks;
+ * the closer a building is to one, the more broken and purple it gets. Decor is drawn by
+ * corruptworld.js (CC_PROPS).
+ */
+const CC_ROUTE = [[-100, -42], [-62, -42], [-62, 32], [-22, 32], [-22, -46], [24, -46], [24, 44], [62, 44], [62, 0], [88, 0]];
+/** The void masses: [x, z, radius]. The middle one is the biggest. */
+export const CC_MASSES = [[1, 4, 7], [-82, -14, 4], [43, 20, 4.5], [80, 32, 3.5], [-40, -24, 3]];
+
+/** Distance from (x, z) to the road's middle line. */
+function ccRoadDist(x, z) {
+  let best = Infinity;
+  for (let i = 1; i < CC_ROUTE.length; i++) {
+    const [ax, az] = CC_ROUTE[i - 1];
+    const [bx, bz] = CC_ROUTE[i];
+    const dx = bx - ax;
+    const dz = bz - az;
+    const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz)));
+    best = Math.min(best, Math.hypot(x - ax - dx * t, z - az - dz * t));
+  }
+  return best;
+}
+
+function ccFixed() {
+  const out = [{ kind: 'ccStreets' }, { kind: 'ccSky' }];
+  // Office towers: [x, z, width, depth, height]. Tall ones round the edge, small ones inside the blocks.
+  const towers = [
+    [-86, -58, 14, 10, 22], [-42, -58, 12, 10, 30], [0, -60, 16, 8, 26], [44, -58, 12, 10, 34], [86, -56, 14, 12, 20],
+    [-88, 56, 12, 12, 24], [-44, 58, 14, 10, 18], [0, 58, 12, 10, 28], [44, 59, 12, 9, 16], [88, 54, 12, 12, 22],
+    [-84, 18, 9, 10, 14], [-42, -2, 8, 8, 12], [44, -18, 10, 10, 16], [84, -30, 10, 10, 18],
+  ];
+  for (const [x, z, w, d, h] of towers) out.push({ kind: 'ccTower', x, z, w, d, h, block: Math.max(w, d) / 2 + 0.8, box: [w / 2, d / 2, Infinity] });
+  for (const [x, z, r] of CC_MASSES) out.push({ kind: 'ccMass', x, z, r, block: r + 1, bh: Infinity });
+  // Lone tentacles poking out of cracks in the pavement.
+  [[-12, 18], [12, -14], [-30, 14], [-74, 0], [34, 6], [52, 30], [70, 18], [-50, -30], [8, 26], [-8, -30]].forEach(([x, z], i) =>
+    out.push({ kind: 'ccTentacle', x, z, s: 0.7 + (i % 3) * 0.2, block: 1.2, bh: Infinity }));
+  // Street lamps and wrecked cars along the kerbs, kept off the road and away from everything else.
+  const taken = out.filter((f) => f.block).map((f) => [f.x, f.z, f.block]);
+  const free = (x, z, r) => ccRoadDist(x, z) > 3.6 && taken.every(([tx, tz, tr]) => Math.hypot(x - tx, z - tz) > tr + r + 1) && Math.abs(x) < 100 && Math.abs(z) < 63;
+  let n = 0;
+  for (let i = 1; i < CC_ROUTE.length; i++) {
+    const [ax, az] = CC_ROUTE[i - 1];
+    const [bx, bz] = CC_ROUTE[i];
+    const len = Math.hypot(bx - ax, bz - az);
+    const ux = (bx - ax) / len;
+    const uz = (bz - az) / len;
+    for (let t = 8; t < len - 6; t += 13) {
+      const side = n % 2 ? 1 : -1;
+      const car = n % 3 === 2;
+      const off = car ? 5.2 : 4.2;
+      const x = Math.round((ax + ux * t - uz * side * off) * 10) / 10;
+      const z = Math.round((az + uz * t + ux * side * off) * 10) / 10;
+      n++;
+      if (!free(x, z, car ? 2.2 : 0.6)) continue;
+      if (car) out.push({ kind: 'ccCar', x, z, rot: Math.atan2(ux, uz) + (n % 4) * 0.3 - 0.4, v: (n * 0.37) % 1, block: 2.2, bh: 1.6 });
+      else out.push({ kind: 'ccLamp', x, z, face: Math.atan2(uz * side, -ux * side), v: (n * 0.61) % 1, block: 0.6 });
+      taken.push([x, z, car ? 2.2 : 0.6]);
+    }
+  }
+  return out;
+}
+
 // How hard a map is (MAPS[key].rating): its card in the menus is that color. Judged by eye from
 // the path (long and winding is easy; short, split or random is hard) and how much room there is to build.
 export const MAP_RATINGS = {
@@ -1885,6 +1948,24 @@ export const MAPS = {
       sky: 0x9cc4e4, fog: 0xdde6ee, fogNear: 170, fogFar: 380,
       leaves: [0x4f7f4a, 0x4f7f4a, 0x4f7f4a], rock: 0x4a4d50,
       cliff: [0x4a4d50, 0x3a3d40, 0x8a8c8e], water: [0x4a86a8, 0x3a7698],
+    },
+  },
+  corrupt: {
+    name: 'Corporate Corruption',
+    rating: 'easy',
+    icon: '🏢',
+    desc: 'A downtown city swallowed by the void. The road snakes up and down four streets past office towers, wrecked cars and huge black void masses that wave their tentacles.',
+    path: CC_ROUTE,
+    spawn: { x: -42, z: 12 },
+    cliffs: [],
+    pools: [],
+    trees: 0, tree: 'dead', rocks: 0, border: 'none',
+    fixed: ccFixed(),
+    theme: {
+      ground: ['#5e5a66', '#585460', '#64606c', '#524e5a'], path: ['#2c2a33', '#29272f', '#302d37', '#26242c'],
+      sky: 0x0c0614, fog: 0x2a1640, fogNear: 110, fogFar: 260, voidCity: true,
+      leaves: [0x2a1a3a, 0x2a1a3a, 0x2a1a3a], rock: 0x3a3444,
+      cliff: [0x4a4456, 0x3a3444, 0x5e5a66], water: [0x2a0a4a, 0x1a0630],
     },
   },
   // The Backrooms (Liminal contract, see lastlaugh.js): only the Liminal mode plays it. Its rooms

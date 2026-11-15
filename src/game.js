@@ -475,6 +475,15 @@ export class GameClient {
       this.hemi.groundColor.set(0xe0c08a);
       this.hemi.intensity = 1.8;
     }
+    // Corporate Corruption: a dim violet glow over the city, a pale purple moon high up.
+    if (t.voidCity) {
+      this.sunOff = [-50, 120, -40];
+      this.sun.color.set(0xd0b8ff);
+      this.sun.intensity = 1.0;
+      this.hemi.color.set(0x9a7ad8);
+      this.hemi.groundColor.set(0x2a1838);
+      this.hemi.intensity = 1.35;
+    }
     if (t.sunOff) this.sunOff = t.sunOff; // a map's own sun direction (Brook Hollow: from the east)
     this.root.fog.near = t.fogNear ?? 90; // drawn units
     this.root.fog.far = t.fogFar ?? 200;
