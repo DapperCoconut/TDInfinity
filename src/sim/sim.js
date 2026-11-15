@@ -974,6 +974,8 @@ export class Sim {
         // Wave 9: [ability uses (paid abilities with rising prices), Chaos Jester price roll, Wizard Magic Boost, Mako charge 0-1]
         t.uses || t.magic || t.chargeT || TOWERS[t.type].levels.some((l) => l.costMax)
           ? [t.uses || 0, r2(t.costRoll ?? 0.5), t.magic || 0, TOWERS[t.type].levels[t.level].charge ? r2((t.chargeT || 0) / TOWERS[t.type].levels[t.level].charge.time) : 0] : 0,
+        // Wave 12: [Strawman mode, Golden Bandit Share Relic money off the next upgrade]
+        t.mode || t.nextOff ? [t.mode || 0, t.nextOff || 0] : 0,
       ]),
       // Traps, plus Necromancer gravestones and Engineer sentries: [..., level, facing, health left (0-1), stunned, thermite radius].
       tr: [...this.traps.values()].map((tr) => [tr.id, tr.tower, tr.kind, r2(tr.x), r2(tr.z), tr.land > 0 ? 0 : 1, tr.lvl ?? 0, r2(tr.yaw ?? 0), tr.maxHp ? r2(tr.hp / tr.maxHp) : 1, tr.stunT > 0 ? 1 : 0, tr.kind === 'thermite' || tr.kind === 'gas' || tr.kind === 'thorns' || tr.kind === 'goo' || tr.kind === 'blade' ? tr.radius : 0]),

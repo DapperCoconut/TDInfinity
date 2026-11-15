@@ -119,7 +119,7 @@ export class NetSession {
     }
 
     const seenT = new Set();
-    for (const [id, owner, type, level, x, z, yaw, targetMode, kills, damageDealt, spent, ang, lock, charge, active, cd, fx = 0, dir = 1, track = 0, radioT = 0, ext = 0, holo = 0, hp = 0, maxHp = 0, rb = 0, sth = 0, face = 0, off = 0, choice = 0, lt = 0, fwT = 0, starT = 0, shd = 0, invulnT = 0, reviveT = 0, w8 = 0, w9 = 0] of s.t) {
+    for (const [id, owner, type, level, x, z, yaw, targetMode, kills, damageDealt, spent, ang, lock, charge, active, cd, fx = 0, dir = 1, track = 0, radioT = 0, ext = 0, holo = 0, hp = 0, maxHp = 0, rb = 0, sth = 0, face = 0, off = 0, choice = 0, lt = 0, fwT = 0, starT = 0, shd = 0, invulnT = 0, reviveT = 0, w8 = 0, w9 = 0, w12 = 0] of s.t) {
       seenT.add(id);
       const t = { id, owner, type, level, x, z, yaw, targetMode, kills, damageDealt, spent, ang, lock, charge, active, cd, fx, dir, track, radioT, holo, hp, maxHp, rebuilt: rb ? rb[0] : 0, repairT: rb ? rb[1] : 0, stealthLeft: sth ? sth[0] : 0, exposedT: sth ? sth[1] : 0, cloakT: sth ? sth[2] : 0, off: off || [],
         choice: choice || [], fwT, starT, // Jester / Biologist / Elementalist picks, Firework boost, Star Cannon reboot
@@ -127,6 +127,7 @@ export class NetSession {
       if (w8) Object.assign(t, { bank: w8[0], dpT: w8[1], near: !!w8[2], ...(w8[3] != null ? { rx: x + w8[3], rz: z + w8[4] } : {}) }); // Market bank, Directed Power, Electricizer mode, Radar Drone
       if (lt) Object.assign(t, { lx: x + lt[0], lz: z + lt[1] }); // Spotlight Tech: where the light is
       if (w9) Object.assign(t, { uses: w9[0] || undefined, costRoll: w9[1], magic: w9[2], chargeF: w9[3] }); // ability uses, Chaos Jester price roll, Magic Boost, Mako charge
+      if (w12) Object.assign(t, { mode: w12[0] || undefined, nextOff: w12[1] }); // Strawman mode, Golden Bandit money off
       if (TOWERS[type]?.facing) t.face = face; // Sentry: its cone's direction
       if (ext) {
         // Pursuit / Gatling Gun: ammo, reloading, helicopter and patrol zone (sent relative to the tower).
