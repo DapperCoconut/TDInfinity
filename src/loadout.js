@@ -118,7 +118,7 @@ export class LoadoutScreen {
     this.level = 0;
     this.autoT = 0;
     audio.click?.();
-    this.render();
+    this.render(false);
     this.buildModel(true);
   }
 
@@ -178,13 +178,19 @@ export class LoadoutScreen {
 
   // ------------------------------------------------------------------ rendering (DOM)
 
-  render() {
+  /** Redraws the screen. `cards` false: only moves the card highlight (rebuilding hundreds of cards is slow). */
+  render(cards = true) {
     if (!this.open) return;
     $('lo-credits').textContent = num(profile.credits);
     $('lo-shards').textContent = num(profile.shards);
     $('lo-gems').textContent = num(profile.gems);
-    this.renderSlots();
-    this.renderGrid();
+    if (cards) {
+      this.renderSlots();
+      this.renderGrid();
+    } else {
+      for (const el of document.querySelectorAll('#lo-slots .inv-tower.sel, #lo-grid .inv-tower.sel, #lo-events .inv-tower.sel')) el.classList.remove('sel');
+      for (const el of document.querySelectorAll(`#lo-slots [data-pick="${this.base}"], #lo-grid [data-pick="${this.base}"], #lo-events [data-pick="${this.base}"]`)) el.classList.add('sel');
+    }
     this.renderLevels();
     this.renderInfo();
     this.renderVariants();
@@ -209,9 +215,10 @@ export class LoadoutScreen {
   }
 
   /** A card portrait: the picture if it's drawn already, else an empty one that fillIcons() draws soon. */
-  img(type) {
-    const url = cachedTowerIcon(type);
-    return url !== undefined ? `<img src="${url}" alt="">` : `<img data-icon="${type}" alt="">`;
+  img(type, level = 0, cls = '') {
+    const url = cachedTowerIcon(type, level);
+    const c = cls ? ` class="${cls}"` : '';
+    return url !== undefined ? `<img${c} src="${url}" alt="">` : `<img${c} data-icon="${type}|${level}" alt="">`;
   }
 
   /**
@@ -223,13 +230,16 @@ export class LoadoutScreen {
     const step = () => {
       this.iconRaf = 0;
       if (!this.open) return;
-      const imgs = document.querySelectorAll('#lo-slots img[data-icon], #lo-grid img[data-icon], #lo-events img[data-icon]');
+      // The info panel's level pictures first: they are the ones being looked at.
+      const imgs = [...document.querySelectorAll('#lo-info img[data-icon], #lo-slots img[data-icon], #lo-grid img[data-icon], #lo-events img[data-icon]')];
       if (!imgs.length) return;
       const end = performance.now() + 8; // about half a frame
       for (const im of imgs) {
-        const type = im.dataset.icon;
-        const url = towerIcon(type, 0);
-        for (const same of document.querySelectorAll(`img[data-icon="${type}"]`)) {
+        const key = im.dataset.icon;
+        if (!key) continue; // filled already by an earlier one with the same key
+        const [type, lv] = key.split('|');
+        const url = towerIcon(type, Number(lv) || 0);
+        for (const same of document.querySelectorAll(`img[data-icon="${key}"]`)) {
           same.src = url;
           same.removeAttribute('data-icon');
         }
@@ -364,7 +374,7 @@ export class LoadoutScreen {
         if (k === i) totalHere = total;
         const tag = x.path ? ` <small>(${x.path})</small>` : '';
         const evo = x.evo ? ` <small class="lo-evo-req">Evo ${x.evo}</small>` : '';
-        return `<tr data-row="${k}" class="${k === i ? 'sel' : ''}"><td>${k + 1}</td><td><img class="lv-ico" src="${towerIcon(this.shown, k)}" alt="">${esc(x.name)}${tag}${evo}</td><td>$${cost.toLocaleString()}</td><td>$${total.toLocaleString()}</td>${cells(x)}</tr>`;
+        return `<tr data-row="${k}" class="${k === i ? 'sel' : ''}"><td>${k + 1}</td><td>${this.img(this.shown, k, 'lv-ico')}${esc(x.name)}${tag}${evo}</td><td>$${cost.toLocaleString()}</td><td>$${total.toLocaleString()}</td>${cells(x)}</tr>`;
       })
       .join('');
 
@@ -388,6 +398,7 @@ export class LoadoutScreen {
       ${def.tip ? `<div class="lo-tip"><b>Tip:</b> ${esc(def.tip)}</div>` : ''}
       <table class="shop-stats lo-table"><tr><th>Lv</th><th>Upgrade</th><th>Cost</th><th>Total</th>${head}</tr>${rows}</table>
       <div class="hint">Click a row (or use ← →) to see that level. Every upgrade changes how the tower looks.</div>`;
+    this.fillIcons();
   }
 
   // ------------------------------------------------------------------ variants menu
@@ -573,26 +584,54 @@ export class LoadoutScreen {
     canvas.addEventListener('pointerup', () => (drag = null));
   }
 
-  /** Camera framing per tower type, big enough for its largest level so you can see it grow. */
+  /**
+   * Camera framing per tower type, big enough for its largest level so you can see it grow.
+   * Measuring every level means building every level's model, which is slow, so a new type is
+   * framed on the level shown first and the other levels are measured one per frame (fitStep).
+   */
   fitFor(type) {
     const T = this.three;
     if (T.fit.has(type)) return T.fit.get(type);
     const box = new THREE.Box3();
-    for (let lv = 0; lv < TOWERS[type].levels.length; lv++) {
-      const m = TOWER_MODELS[type](lv);
-      m.root.position.y = 0.4;
-      m.root.updateMatrixWorld(true);
-      box.expandByObject(m.root);
-      for (const mat of m.mats) mat.dispose();
-    }
+    const root = T.model.root;
+    T.stage.remove(root); // measured off the spinning turntable, like the other levels
+    root.updateMatrixWorld(true);
+    box.expandByObject(root);
+    T.stage.add(root);
+    T.fitJob = { type, lv: 0, box: box.clone() };
+    return this.fitOf(type, box);
+  }
+
+  /** Measures one more level of the type being framed; when all are done, the framing is kept. */
+  fitStep() {
+    const T = this.three;
+    const job = T.fitJob;
+    if (!job) return;
+    if (job.type !== this.shown) return (T.fitJob = null);
+    const m = TOWER_MODELS[job.type](job.lv);
+    m.root.position.y = 0.4;
+    m.root.updateMatrixWorld(true);
+    job.box.expandByObject(m.root);
+    for (const mat of m.mats) mat.dispose();
+    if (++job.lv < TOWERS[job.type].levels.length) return;
+    T.fitJob = null;
+    T.fit.set(job.type, this.fitOf(job.type, job.box));
+    this.aimCamera(T.fit.get(job.type));
+  }
+
+  fitOf(type, box) {
     box.expandByPoint(new THREE.Vector3(2.4, 0, 2.4)).expandByPoint(new THREE.Vector3(-2.4, 0, -2.4));
     if (TOWERS[type].orbit || TOWERS[type].heli) box.expandByPoint(new THREE.Vector3(0, 9.5, 0)); // room for the plane overhead
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
     const radius = Math.max(size.y * 0.62, Math.hypot(size.x, size.z) * 0.5);
-    const fit = { center, dist: radius / Math.tan(THREE.MathUtils.degToRad(16)) + 1.5 };
-    T.fit.set(type, fit);
-    return fit;
+    return { center, dist: radius / Math.tan(THREE.MathUtils.degToRad(16)) + 1.5 };
+  }
+
+  aimCamera(fit) {
+    const T = this.three;
+    T.camera.position.set(fit.center.x, fit.center.y + fit.dist * 0.28, fit.center.z + fit.dist);
+    T.camera.lookAt(fit.center);
   }
 
   buildModel(pop = false) {
@@ -615,15 +654,14 @@ export class LoadoutScreen {
     T.pop = pop ? 1 : 0;
     T.recoil = 0;
     T.fireT = 0.5;
-    const fit = this.fitFor(this.shown);
-    T.camera.position.set(fit.center.x, fit.center.y + fit.dist * 0.28, fit.center.z + fit.dist);
-    T.camera.lookAt(fit.center);
+    this.aimCamera(this.fitFor(this.shown));
   }
 
   frame(now) {
     if (!this.open) return;
     this.raf = requestAnimationFrame((t) => this.frame(t));
     const T = this.three;
+    this.fitStep();
     const dt = Math.min(0.05, (now - this.last) / 1000);
     this.last = now;
     const t = now / 1000;

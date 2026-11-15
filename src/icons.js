@@ -67,8 +67,9 @@ export function renderIcon(model) {
 }
 
 /** A tower's level-0 portrait if it's drawn already, else undefined (nothing gets drawn). */
-export function cachedTowerIcon(type) {
-  return cache.get(`${type}|0`);
+export function cachedTowerIcon(type, level = 0) {
+  const lv = Math.max(0, Math.min(level, (TOWERS[type]?.levels.length ?? 1) - 1));
+  return cache.get(`${type}|${lv}`);
 }
 
 /** The portrait of a tower at a level (0 = as placed). */
