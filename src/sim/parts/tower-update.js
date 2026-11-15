@@ -66,6 +66,8 @@ export class SimTowerUpdate {
       return this.removeTower(t, 'holoEnd');
     }
     const def = TOWERS[t.type];
+    if (t.atel) this.tickAtel(t, dt); // Atelier boosts wear off
+    if (def.building && this.buildingTick(t, dt)) return; // Artisan buildings: blow up when their time is up
     let s = levelAt(def.levels[t.level], t.x, t.z); // Penetrator: cliff stats on a cliff
     s = modeStats(s, t); // Submerge Submerged mode, Spectre Offense drone
     const b = buffOf(this.buffs, t.id);
@@ -164,6 +166,7 @@ export class SimTowerUpdate {
     if (s.ml) this.updateVindicator(t, s, b, dt); // Vindicator: Slashes and Mass Lethality
     if (s.scare) return this.updateScare(t, def, s, b, dt); // Scarecrow
     if (s.crow) return this.updateStrawman(t, s, dt); // Strawman
+    if (s.atelier) return this.updateAtelier(t, s, dt); // Artisan Atelier: boost pulses
     if (def.bait) return; // bait never attacks
     if (def.kind === 'spawner') return this.updateSpawner(t, def, s, dt);
     if (s.goons && this.updateGoons(t, def, s, dt)) return;
@@ -324,8 +327,13 @@ export class SimTowerUpdate {
     if (s.rockets) this.fireRockets(t, s, target, dt * b.rate);
     if (s.m203) this.fireM203(t, s, target, dt);
     if (s.rail) this.fireRail(t, s, target, dt);
-    if (def.aim && t.aimT < def.aim) {
-      t.aimT += dt * b.rate;
+    if (s.lockOn && t.lockE !== target.id) {
+      t.lockE = target.id; // Skirmisher: locks on again to every new zombie
+      t.aimT = 0;
+    }
+    const aimFor = s.lockOn ?? def.aim; // (Skirmisher lock-on time is fixed, firerate boosts don't speed it up)
+    if (aimFor && t.aimT < aimFor) {
+      t.aimT += s.lockOn ? dt : dt * b.rate;
       t.cooldown = Math.max(0, t.cooldown);
       return;
     }
@@ -370,7 +378,8 @@ export class SimTowerUpdate {
     if (s.pierce) return this.throwRangs(t, s, target);
     if (s.whirl && ++t.swings % s.whirl.every === 0) return this.whirl(t, s);
     if (s.pellets) {
-      this.pump(t, s, want);
+      const scrapX = this.pump(t, s, want);
+      if (s.artisan) this.addScrap(t, s, scrapX); // Artisan: its pellets' damage turns into Scrap
       if (s.ammo) this.useAmmo(t, s); // Breacher Good Coms: a full-auto magazine
       return;
     }

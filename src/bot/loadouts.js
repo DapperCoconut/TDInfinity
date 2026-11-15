@@ -7,7 +7,7 @@ import { levelPower } from './value.js';
 /** Towers a bot may bring: base towers plus their alternate, golden and evolved forms (not upgrade branches). */
 const POOL = Object.keys(TOWERS).filter((k) => {
   const d = TOWERS[k];
-  if (d.branchOf) return false;
+  if (d.branchOf || d.building) return false; // (Artisan buildings are built by the Artisan)
   if (d.cost == null || !d.levels?.length || towerCost(d) > 25000) return false;
   if (k === 'anarchist' || k === 'relic' || k === 'hacker') return false; // Versus-only, a joke tower, a cloner: not for bots
   return true;

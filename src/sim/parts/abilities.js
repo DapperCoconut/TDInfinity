@@ -72,6 +72,7 @@ export class SimAbilities {
       this.reposition(t, s, ab, Number(m.x), Number(m.z));
       if (ab.immune) t.immuneT = Math.max(t.immuneT || 0, ab.immune); // Eldritch Rift: stun immunity
     }
+    else if (ab.build || ab.key === 'wanderer') this.useArtisanAbility(t, s, ab, m); // Artisan
     else if (ab.crystals) this.useFrostAbility(t, s, ab, m); // Frostreaver: Crystal Burst, Path Crystal, Frost Wisp
     else if (ab.key === 'hologram') this.placeHologram(t, Number(m.x), Number(m.z)); // Technomancer
     else if (ab.key === 'utopia') {} // Technomancer: the copy was made when the action was checked

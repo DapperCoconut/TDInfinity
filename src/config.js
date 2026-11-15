@@ -175,7 +175,7 @@ export const TOWERS = {
   ...ELEVENTH_TOWERS,
   // Wave 12: Tempest, Golden Bandit, Phantom, Vanguard, Strawman. See twelfthtowers.js.
   ...TWELFTH_TOWERS,
-  // Wave 13: Technomancer. See thirteenthtowers.js.
+  // Wave 13: Technomancer, Frostreaver, Artisan (+ its Skirmisher and Atelier buildings). See thirteenthtowers.js.
   ...THIRTEENTH_TOWERS,
 };
 
@@ -457,7 +457,7 @@ export const canHit = (d, e) => !(e.noTarget || (e.hidden && !d.hidden && !(e.re
 export const facesCone = (def) => !!(def.fps || def.facing);
 
 /** Base towers (not alternate forms or event towers), in shop/loadout order. */
-export const BASE_TOWERS = Object.keys(TOWERS).filter((t) => !TOWERS[t].altOf && !TOWERS[t].branchOf && !TOWERS[t].goldOf && !TOWERS[t].event);
+export const BASE_TOWERS = Object.keys(TOWERS).filter((t) => !TOWERS[t].altOf && !TOWERS[t].branchOf && !TOWERS[t].goldOf && !TOWERS[t].event && !TOWERS[t].building); // (Artisan buildings are built, not bought)
 
 /** Event towers: only unlocked with the Konami code, shown in their own Loadout section. */
 export const EVENT_TOWERS = Object.keys(TOWERS).filter((t) => TOWERS[t].event);

@@ -225,10 +225,10 @@ export class GameTowers {
       if (!t.manual) this.session.send({ a: 'ability', id: t.id, key });
       return this.enterFps(t);
     }
-    if (key === 'clone') {
+    if (key === 'clone' || key === 'wanderer') {
       this.stopAim();
       this.aiming = { id: t.id, key, ab, src: null, ghost: null };
-      this.ui.toast('Click a tower to clone it (Esc to cancel)', 2500);
+      this.ui.toast(key === 'wanderer' ? 'Click one of your towers to move it (Esc to cancel)' : 'Click a tower to clone it (Esc to cancel)', 2500);
       return;
     }
     if (ab.mode && (t.choice?.[0] === 'frost' ? 'frost' : 'fire') !== ab.mode) return this.fail(`${ab.name} only works in ${ab.mode === 'fire' ? 'Fire' : 'Frost'} mode`); // Elementalist
@@ -236,14 +236,14 @@ export class GameTowers {
       // Thorns reach as far as the Harvester's range.
       const reach = ab.reach ?? (key === 'thorns' || key === 'targetSelect' ? TOWERS[t.type].levels[t.level].range : undefined);
       this.aiming = { id: t.id, key, radius: ab.radius || 2, reach }; // Teleport: no blast, just show a small ring
-      this.ui.toast(key === 'patrol' ? 'Click where the helicopter should patrol (Esc to cancel)' : key === 'airdrop' ? 'Click where the mercenaries should land (Esc to cancel)' : key === 'summon' ? 'Click the path where the Relic units should appear (Esc to cancel)' : key === 'redeploy' ? 'Click where it should face (Esc to cancel)' : key === 'reposition' || key === 'jump' ? `Click where it should leap (within ${ab.reach} studs, Esc to cancel)` : key === 'teleport' ? `Click where it should teleport (within ${ab.reach} studs, Esc to cancel)` : key === 'carpetBomb' ? 'Click the path where the B-52 should bomb (Esc to cancel)' : key === 'iceTurret' || key === 'iceShard' ? `Click the path where the ${ab.name} should go (Esc to cancel)` : key === 'targetSelect' ? `Click where it should fire (within ${reach} studs, Esc to cancel)` : key === 'thorns' ? 'Click the path where the thorns should grow (Esc to cancel)' : key === 'unitCommand' ? 'Click the zombie its towers should attack (Esc to cancel)' : key === 'immolation' ? 'Click the zombie to Immolate (Esc to cancel)' : key === 'directedPower' ? 'Click one of your towers to power up (Esc to cancel)' : key === 'radarMove' ? 'Click where the Radar Drone should hover (Esc to cancel)' : key === 'orbital' ? 'Click where the Orbital Airstrike should start (Esc to cancel)' : key === 'crystalBurst' ? `Click where the Crystal Burst should strike (within ${Math.round(ab.reach)} studs, Esc to cancel)` : key === 'pathCrystal' ? 'Click the path where the Path Crystal should go (Esc to cancel)' : key === 'frostWisp' ? 'Click one of your towers to put a Frost Wisp on it (Esc to cancel)' : key === 'hologram' ? `Click where the Hologram pad should go (within ${Math.round(TOWERS[t.type].levels[t.level].range)} studs, Esc to cancel)` : key === 'utopia' ? 'Click where the copy of the tower on its Hologram should go (Esc to cancel)' : `Click where the ${ab.name} should hit (Esc to cancel)`, 2500);
+      this.ui.toast(key === 'patrol' ? 'Click where the helicopter should patrol (Esc to cancel)' : key === 'airdrop' ? 'Click where the mercenaries should land (Esc to cancel)' : key === 'summon' ? 'Click the path where the Relic units should appear (Esc to cancel)' : key === 'redeploy' ? 'Click where it should face (Esc to cancel)' : key === 'reposition' || key === 'jump' ? `Click where it should leap (within ${ab.reach} studs, Esc to cancel)` : key === 'teleport' ? `Click where it should teleport (within ${ab.reach} studs, Esc to cancel)` : key === 'carpetBomb' ? 'Click the path where the B-52 should bomb (Esc to cancel)' : key === 'iceTurret' || key === 'iceShard' ? `Click the path where the ${ab.name} should go (Esc to cancel)` : key === 'targetSelect' ? `Click where it should fire (within ${reach} studs, Esc to cancel)` : key === 'thorns' ? 'Click the path where the thorns should grow (Esc to cancel)' : key === 'unitCommand' ? 'Click the zombie its towers should attack (Esc to cancel)' : key === 'immolation' ? 'Click the zombie to Immolate (Esc to cancel)' : key === 'directedPower' ? 'Click one of your towers to power up (Esc to cancel)' : key === 'radarMove' ? 'Click where the Radar Drone should hover (Esc to cancel)' : key === 'orbital' ? 'Click where the Orbital Airstrike should start (Esc to cancel)' : key === 'teleport' && ab.reach > 500 ? 'Click where it should teleport (anywhere, Esc to cancel)' : key === 'buildSkirm' || key === 'buildAtel' ? `Click where the ${TOWERS[ab.build].name} should go (in its range, Esc to cancel)` : key === 'crystalBurst' ? `Click where the Crystal Burst should strike (within ${Math.round(ab.reach)} studs, Esc to cancel)` : key === 'pathCrystal' ? 'Click the path where the Path Crystal should go (Esc to cancel)' : key === 'frostWisp' ? 'Click one of your towers to put a Frost Wisp on it (Esc to cancel)' : key === 'hologram' ? `Click where the Hologram pad should go (within ${Math.round(TOWERS[t.type].levels[t.level].range)} studs, Esc to cancel)` : key === 'utopia' ? 'Click where the copy of the tower on its Hologram should go (Esc to cancel)' : `Click where the ${ab.name} should hit (Esc to cancel)`, 2500);
       return;
     }
     this.session.send({ a: 'ability', id: t.id, key });
   }
 
   tryAim() {
-    if (this.aiming.key === 'clone') return this.tryClone(this.aiming);
+    if (this.aiming.key === 'clone' || this.aiming.key === 'wanderer') return this.tryClone(this.aiming);
     if (!this.hasGround) return this.fail('Pick a spot on the ground');
     const { id, key } = this.aiming;
     this.aiming = null;
@@ -257,6 +257,21 @@ export class GameTowers {
 
   /** Hologram Tower: the first click picks the tower to clone, the second places the clone. */
   tryClone(a) {
+    if (a.src == null && a.key === 'wanderer') {
+      // Artisan Wanderer: the first click picks one of your towers, the second where it goes.
+      const src = this.state.towers.get(this.pickTower());
+      if (!src || src.owner !== this.session.myId) return this.fail('Click one of your towers to move it');
+      const def = TOWERS[src.type];
+      if (src.holo || def.building || def.placement === 'path') return this.fail(`It can't move the ${def.name}`);
+      Object.assign(a, { src: src.id, type: src.type, level: src.level });
+      a.ghost = TOWER_MODELS[src.type](src.level);
+      a.ghost.root.scale.setScalar(MODEL_SCALE);
+      setOpacity(a.ghost, 0.45);
+      a.ghost.root.visible = false;
+      this.scene.add(a.ghost.root);
+      this.ui.toast(`Click where the ${def.name} should go${src.id === a.id ? '' : ' (200 Scrap)'} (Esc to cancel)`, 2500);
+      return;
+    }
     if (a.src == null) {
       const src = this.state.towers.get(this.pickTower());
       if (!src) return this.fail('Click a tower to clone it');

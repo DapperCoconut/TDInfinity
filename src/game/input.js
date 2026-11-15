@@ -386,7 +386,7 @@ export class GameInput {
       return;
     }
     const a = this.aiming;
-    if (a?.key === 'clone') {
+    if (a?.key === 'clone' || a?.key === 'wanderer') {
       // Hologram Tower: nothing to show until a tower is picked, then a see-through cyan copy.
       if (a.ghost) this.moveGhost(a.ghost, a.type, a.level, 0x006064);
       else this.ring.visible = this.cone.visible = false;

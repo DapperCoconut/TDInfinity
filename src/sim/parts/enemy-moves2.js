@@ -784,7 +784,7 @@ export class SimEnemyMoves2 {
           const p = this.players.get(t.owner);
           const others = [...this.towers.values()].filter((o) => o !== t);
           // From the owner's loadout (no loadout: any plain tower, not alt forms, golden or event towers).
-          const pool = (p?.loadout ?? Object.keys(TOWERS).filter((k) => TOWERS[k].levels && !TOWERS[k].altOf && !TOWERS[k].branchOf && !TOWERS[k].goldOf && !TOWERS[k].event))
+          const pool = (p?.loadout ?? Object.keys(TOWERS).filter((k) => TOWERS[k].levels && !TOWERS[k].altOf && !TOWERS[k].branchOf && !TOWERS[k].goldOf && !TOWERS[k].event && !TOWERS[k].building))
             .filter((k) => TOWERS[k] && k !== rootType(t.type) && towerCost(TOWERS[k]) <= t.spent && canPlace(t.x, t.z, others, TOWERS[k].placement));
           if (!pool.length) continue;
           const type = pool[Math.floor(Math.random() * pool.length)];

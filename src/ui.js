@@ -622,6 +622,8 @@ export class UI {
       : s.ml ? ` · Slashes: ${Math.round(c * s.ml.max)}/${s.ml.max}` // Vindicator
       : s.shin?.focusMax ? ` · Mental Focus: +${Math.round(c * s.shin.focusMax * 100)}%` // Shinobi
       : s.sm?.steal ? ` · Souls: ${Math.round(c * s.sm.max)}/${s.sm.max}` // Soul Master
+      : s.artisan ? ` · ⚙ Scrap: ${Math.floor(c * s.artisan.cap)}/${s.artisan.cap.toLocaleString()}` // Artisan (t.charge = scrap / cap)
+      : def.building ? ` · 💥 Blows up in ${Math.ceil(t.active || 0)}s` // Artisan buildings
       : s.frost?.grow ? ` · ❄ Crystals: ${Math.round(c * 7)}/${s.frost.max}${t.wisps?.length ? ` · Wisps: ${t.wisps.length}/5` : ''}` // Frostreaver (t.charge = crystals / 7)
       : s.van?.shield ? ` · 🛡 Shield: ${Math.round(c * 100)}` // Vanguard (t.charge = shield / 100)
       : s.crow && def.modePick && !t.mode ? ' · Pick a mode!' // Strawman
@@ -954,7 +956,8 @@ export class UI {
         </div>
         <div class="diff">${diffs.map((d) => `<div class="dl"><span class="di">${diffIcon(d)}</span><span>${d}</span></div>`).join('')}</div>
         ${mine && ctx.upgradeLock?.(nextType, next) ? `<button class="btn" disabled title="${next.perk ? 'A reward for winning a mode' : 'Earn XP with this tower to raise its evolution level'}">🔒 ${ctx.upgradeLock(nextType, next)}</button>` : ''}
-        ${mine && !ctx.upgradeLock?.(nextType, next) ? `<button class="btn green" data-action="${action}" ${ctx.cash < upCost ? 'disabled' : ''}>Upgrade $${upCost.toLocaleString()}${upCost < next.cost ? ` <s>$${next.cost.toLocaleString()}</s>` : ''}${key}</button>` : ''}
+        ${mine && def.building ? `<button class="btn green" data-action="${action}">Upgrade ${next.cost.toLocaleString()} Scrap</button>` : ''}
+        ${mine && !def.building && !ctx.upgradeLock?.(nextType, next) ? `<button class="btn green" data-action="${action}" ${ctx.cash < upCost ? 'disabled' : ''}>Upgrade $${upCost.toLocaleString()}${upCost < next.cost ? ` <s>$${next.cost.toLocaleString()}</s>` : ''}${key}</button>` : ''}
       </div>`;
     };
     if (t.holo) nextHtml = '<div class="maxed">Hologram: can\'t be upgraded</div>';

@@ -147,7 +147,7 @@ export class SimWeapons2 {
    * Saboteur: each pellet hits the first `scatter` zombies on its line (full damage) and
    * poisons every zombie it hits.
    */
-  pump(t, s, aim) {
+  pump(t, s, aim) { // returns the damage its pellets did, for Artisan Scrap
     const det = this.detects(t, s);
     const near = [];
     const r2max = s.range * s.range;
@@ -158,6 +158,7 @@ export class SimWeapons2 {
       if (dx * dx + dz * dz <= r2max) near.push({ e, dx, dz });
     }
     const hits = new Map(); // enemy -> damage this shot
+    let scrapX = 0; // Artisan: the shot's damage for Scrap (a pellet that already went through a zombie counts half)
     for (let i = 0; i < s.pellets; i++) {
       const a = aim + (Math.random() * 2 - 1) * s.cone;
       const ux = Math.sin(a);
@@ -172,6 +173,7 @@ export class SimWeapons2 {
       for (let k = 0; k < Math.min(s.scatter ?? 3, line.length); k++) {
         const d = s.scatter || k < 2 ? s.damage : s.damage / 2;
         hits.set(line[k].e, (hits.get(line[k].e) || 0) + d);
+        scrapX += k ? d / 2 : d;
       }
     }
     this.events.push({ k: 'pellets', t: t.id, es: [...hits.keys()].map((e) => e.id), a: r2(aim), r: s.range, c: s.cone });
@@ -180,6 +182,7 @@ export class SimWeapons2 {
       this.damage(t, e, d);
       if (s.poison && this.enemies.has(e.id)) this.applyPoison(t, e, s.poison);
     }
+    return scrapX;
   }
 
   /** Saboteur poison: damage every `tick` s and a slow. The strongest poison wins; hits refresh it. */

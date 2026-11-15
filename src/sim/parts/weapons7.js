@@ -1,11 +1,12 @@
 // Tower weapons, part 7: Technomancer (Hologram pad, Hijack, Utopia), Frostreaver (Ice Crystals,
-// Crystal Burst, Path Crystal, Frost Burst, Frost Wisps).
+// Crystal Burst, Path Crystal, Frost Burst, Frost Wisps), Artisan (Scrap, Skirmisher and Atelier
+// buildings, Wanderer).
 // These are methods of Sim: sim.js puts them on the Sim class, so "this" is the game.
 
-import { TOWERS } from '../../config.js';
-import { PAD_SNAP } from '../map.js';
+import { TOWERS, towerMaxHp } from '../../config.js';
+import { PAD_SNAP, canPlace } from '../map.js';
 import { BOUNDS, PATH_WIDTH, path } from '../path.js';
-import { buffOf, r2 } from './shared.js';
+import { SEE_ALL, buffOf, r2 } from './shared.js';
 
 const PAD_CLEAR = 4; // a Hologram pad stays this far from every tower, so a tower fits on it
 
@@ -17,6 +18,13 @@ const CRYSTAL_STUN = 5; // this many crystals or more: can't be stunned (spec)
 const FROST_BURST_EVERY = 5; // every 5th hit is a Frost Burst (my guess: the spec gives no trigger)
 const WISP_MAX = 5; // Frost Wisps per Frostreaver (spec)
 const WISP_PICK = 3; // a click this close to a tower puts the wisp on it
+
+// Artisan (guesses unless the spec gave them).
+const BUILD_LIFE = 60; // seconds a building lasts (spec) ...
+const BUILD_PER_LV = 5; // ... + 5 s per Artisan level (spec said "per Artisan": with a limit of 1 I read it as per level)
+const BUILD_BLAST_R = 8; // radius of a building's blast when it runs out or is sold (guess)
+const WANDER_SCRAP = 200; // Wanderer: moving a tower that isn't the Artisan (spec)
+const ATEL_KINDS = ['rate', 'dmg', 'range']; // Atelier pulses, in turn (spec)
 
 export class SimWeapons7 {
 
@@ -185,6 +193,136 @@ export class SimWeapons7 {
       this.events.push({ k: 'wisp', h: host.id, e: e.id });
       this.damage(t, e, X / 1.5);
     }
+  }
+
+  // ---------------------------------------------------------------- Artisan
+
+  /** Artisan Scrap: set it (kept under its cap) and show it to the client as t.charge. */
+  setScrap(t, s, n) {
+    t.scrap = Math.max(0, Math.min(s.artisan.cap, n));
+    t.charge = t.scrap / s.artisan.cap;
+  }
+
+  /** A shot whose pellets did `x` damage (pierced pellets counted half) gives `pct` of it as Scrap, at least 1. */
+  addScrap(t, s, x) {
+    this.setScrap(t, s, (t.scrap || 0) + Math.max(1, x * s.artisan.pct));
+  }
+
+  /** How long a building made by Artisan `art` lasts. */
+  buildLife(art) {
+    return BUILD_LIFE + BUILD_PER_LV * (art?.level ?? 0);
+  }
+
+  /** The building of `type` this Artisan has out, if any. */
+  buildingOf(t, type) {
+    for (const o of this.towers.values()) if (o.parent === t.id && o.type === type) return o;
+    return null;
+  }
+
+  /** Why an Artisan ability can't be used now (null if it can). */
+  artisanWhy(t, p, s, ab, m) {
+    const x = Number(m.x);
+    const z = Number(m.z);
+    if (ab.build) {
+      const def = TOWERS[ab.build];
+      if ((t.scrap || 0) < ab.scrap) return `Needs ${ab.scrap} Scrap (it has ${Math.floor(t.scrap || 0)})`;
+      if (this.buildingOf(t, ab.build)) return `It already has a ${def.name}`;
+      const range = s.range * buffOf(this.buffs, t.id).range;
+      if (Math.hypot(x - t.x, z - t.z) > range) return `Too far! It builds within ${Math.round(range)} studs`;
+      if (!canPlace(x, z, this.towers.values(), def.placement, ab.build)) return `A ${def.name} can't go there`;
+      return null;
+    }
+    // Wanderer: move one of the owner's towers.
+    const src = this.towers.get(Number(m.src));
+    if (!src || src.owner !== t.owner) return 'Pick one of your towers to move';
+    const def = TOWERS[src.type];
+    if (src.holo || def.building || def.placement === 'path') return `It can't move the ${def.name}`;
+    if (src !== t && (t.scrap || 0) < WANDER_SCRAP) return `Moving a tower costs ${WANDER_SCRAP} Scrap (it has ${Math.floor(t.scrap || 0)})`;
+    if (!canPlace(x, z, [...this.towers.values()].filter((o) => o !== src), def.placement, src.type)) return `The ${def.name} can't go there`;
+    return null;
+  }
+
+  /** An Artisan ability (already checked by artisanWhy). */
+  useArtisanAbility(t, s, ab, m) {
+    const x = Number(m.x);
+    const z = Number(m.z);
+    if (ab.build) {
+      this.setScrap(t, s, t.scrap - ab.scrap);
+      const b = this.newTower(t.owner, ab.build, x, z, m.yaw, 0);
+      b.parent = t.id;
+      b.life = b.active = this.buildLife(t);
+      this.events.push({ k: 'place', id: b.id, owner: t.owner, x, z });
+      return;
+    }
+    const src = this.towers.get(Number(m.src));
+    if (!src) return;
+    if (src !== t) this.setScrap(t, s, t.scrap - WANDER_SCRAP);
+    this.reposition(src, null, { key: 'teleport', radius: 0 }, x, z);
+  }
+
+  /** Every tick for a building: its time runs down; at 0 it blows up. Returns true when it is gone. */
+  buildingTick(t, dt) {
+    t.life = (t.life ?? BUILD_LIFE) - dt; // (one placed some other way lasts the base time)
+    t.active = Math.max(0, t.life); // the client shows this
+    if (t.life > 0) return false;
+    this.removeTower(t, 'holoEnd');
+    this.buildingBlast(t);
+    return true;
+  }
+
+  /** A building blows up (its time ran out, or it was sold): `blast` damage around it. */
+  buildingBlast(t) {
+    const s = TOWERS[t.type].levels[t.level];
+    const by = this.towers.get(t.parent) ?? t;
+    this.explode(by, t.x, t.z, { damage: s.blast, radius: BUILD_BLAST_R, det: SEE_ALL });
+  }
+
+  /** Upgrading a building: costs its Artisan's Scrap, the Artisan must be near it and high enough level. */
+  upgradeBuilding(t, pid) {
+    const def = TOWERS[t.type];
+    const next = def.levels[t.level + 1];
+    if (!next) return 'Already max level!';
+    const art = this.towers.get(t.parent);
+    if (!art) return 'Its Artisan is gone, so it can\'t be upgraded';
+    const ad = TOWERS[art.type];
+    const as = ad.levels[art.level];
+    const key = t.type === 'artisanAtelier' ? 'atel' : 'skirm';
+    if (as.artisan[key] < t.level + 1) {
+      const need = ad.levels.findIndex((l) => l.artisan[key] >= t.level + 1);
+      return `The Artisan must be Lv ${need} to upgrade this`;
+    }
+    const range = as.range * buffOf(this.buffs, art.id).range;
+    if (Math.hypot(art.x - t.x, art.z - t.z) > range) return 'The Artisan must be in range of it to upgrade it';
+    if ((art.scrap || 0) < next.cost) return `Needs ${next.cost.toLocaleString()} Scrap (the Artisan has ${Math.floor(art.scrap || 0)})`;
+    this.setScrap(art, as, art.scrap - next.cost);
+    t.level++;
+    t.hp = t.maxHp = towerMaxHp(t.type, t.level);
+    t.life = t.active = this.buildLife(art); // an upgrade starts its time over
+    this.events.push({ k: 'upgrade', id: t.id, owner: pid, name: next.name, x: t.x, z: t.z });
+    return null;
+  }
+
+  /** Atelier: every `pulse` s, boosts towers in its range (firerate, damage, range in turn). */
+  updateAtelier(t, s, dt) {
+    const a = s.atelier;
+    t.pulseT = (t.pulseT || 0) + dt;
+    if (t.pulseT < a.pulse) return;
+    t.pulseT = 0;
+    const kind = ATEL_KINDS[(t.pulseN || 0) % 3];
+    t.pulseN = (t.pulseN || 0) + 1;
+    const r = s.range * buffOf(this.buffs, t.id).range;
+    for (const o of this.towers.values()) {
+      if (o.type === t.type || (o.x - t.x) ** 2 + (o.z - t.z) ** 2 > r * r) continue;
+      (o.atel ??= {})[kind] = { a: a.buff, t: a.time };
+      if (a.unstun) o.stunT = 0;
+    }
+    this.events.push({ k: 'rave', id: t.id, x: t.x, z: t.z, r });
+  }
+
+  /** Atelier boosts on tower `t` wear off. */
+  tickAtel(t, dt) {
+    for (const k in t.atel) if ((t.atel[k].t -= dt) <= 0) delete t.atel[k];
+    if (!Object.keys(t.atel).length) t.atel = null;
   }
 }
 

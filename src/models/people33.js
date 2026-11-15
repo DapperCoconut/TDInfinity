@@ -1,13 +1,14 @@
 // Tower models: people, batch 33 (dressed with the vehicle kit in ../vehicles.js).
-// In here: Technomancer, Frostreaver.
+// In here: Technomancer, Frostreaver, Artisan and its two buildings (Skirmisher, Atelier).
 // Like batches 26-32 these are plain faceless figures: only their gear tells them apart, with
 // accents in one neon colour per tower.
 // MODELS maps tower keys to builders; ../models.js lays it over TOWER_MODELS, so these win.
 
 import * as THREE from 'three';
-import { glowMat } from '../vehicles.js';
+import { PARTS, barrel, glowMat, kit } from '../vehicles.js';
+import { gunMuzzle, makeThing } from './bits.js';
 import { makeHumanoid } from './kit.js';
-import { UP, aimLong, dome, fist, muzzle, own, rifle, wear } from './people1.js';
+import { UP, aimLong, dome, fist, muzzle, own, pouch, rifle, wear } from './people1.js';
 import { shoulderPads } from './people2.js';
 import { feet, hands, hood } from './people5.js';
 import { cape } from './people18.js';
@@ -193,7 +194,181 @@ export function makeFrostreaver(level) {
   return m;
 }
 
+// ------------------------------------------------------------------ Artisan (neon coral) and its buildings
+
+export const ART_NEON = 0xff6e40;
+const { STEEL, DARK } = PARTS;
+
+/** A white scrap shotgun (fist space, bore along -y): pump, wide barrel, scrap hopper on top. Returns [y, z]. */
+function scrapGun(k, neon, o = {}) {
+  const U = UP;
+  k.box(0.34, 1.0, 0.36, W, 0, -0.3, U, { r: 0.04 }); // receiver
+  k.cyl(0.12, 1.5, W3, 0, -1.4, U + 0.05, { seg: 10 }); // barrel
+  k.cyl(0.15, 0.2, DARK, 0, -2.1, U + 0.05, { seg: 10 }); // muzzle
+  k.cyl(0.14, 0.7, W2, 0, -1.15, U - 0.2, { seg: 10 }); // pump
+  for (let i = 0; i < 3; i++) k.torus(0.15, 0.03, neon, 0, -0.95 - i * 0.2, U - 0.2, { seg: 10 });
+  k.box(0.24, 0.26, 0.55, W2, 0, 0.12, U - 0.36, { rx: -0.3, r: 0.04 }); // grip
+  k.box(0.26, 0.6, 0.3, W2, 0, 0.5, U + 0.05, { r: 0.05 }); // stock
+  k.box(0.4, 0.45, 0.4, W3, 0, -0.35, U + 0.4, { r: 0.05 }); // scrap hopper
+  k.box(0.3, 0.06, 0.3, neon, 0, -0.12, U + 0.4);
+  if (o.big) for (const sx of [-1, 1]) k.cyl(0.07, 1.2, STEEL, sx * 0.2, -1.3, U + 0.12, { seg: 8 }); // twin rails
+  return [-2.2, U + 0.05];
+}
+
+/**
+ * Artisan (alternate Engineer): a white faceless builder with a hard hat, a scrap shotgun and a
+ * wrench on the back. Lv 1 Scavenger: a scrap bag. Lv 2 Frontline Support: welding goggles and a
+ * tool belt. Lv 3 Battle Ready: shoulder plates. Lv 4 Revisioned Blueprints: a blueprint tube and a
+ * bigger gun. Lv 5 The Seventh Architect: a hovering helper drone and a coat.
+ */
+export function makeArtisan(level) {
+  const h = blank();
+  const key = `engineerArtisan${level}`;
+  const neon = glowMat(h, ART_NEON);
+  const hd = wear(h, h.head, `${key}:head`);
+  const t = wear(h, h.torso, `${key}:torso`);
+  dome(hd, 0.92, 0.6, W2, 0, 1.0, 0); // hard hat
+  hd.box(2.0, 0.08, 2.0, W2, 0, 1.0, 0.1, { r: 0.04 }); // brim
+  hd.box(0.2, 0.55, 1.6, W3, 0, 1.25, 0, { r: 0.04 }); // ridge
+  hd.box(0.3, 0.2, 0.06, neon, 0, 1.25, 0.82); // lamp
+  if (level >= 2) {
+    hd.box(1.25, 0.32, 0.12, W3, 0, 0.62, 0.72, { r: 0.05 }); // welding goggles
+    for (const sx of [-1, 1]) hd.cyl(0.13, 0.06, neon, sx * 0.3, 0.62, 0.79, { axis: 'z', seg: 10 });
+  }
+  t.box(2.1, 1.8, 1.15, W, 0, 0.1, 0, { r: 0.12 }); // overalls
+  for (const sx of [-1, 1]) t.box(0.18, 1.7, 0.05, W3, sx * 0.55, 0.15, 0.6); // straps
+  t.box(0.8, 0.06, 0.05, neon, 0, 0.4, 0.61); // chest stripe
+  t.box(2.15, 0.26, 1.2, W3, 0, -0.84, 0, { r: 0.04 }); // belt
+  // a big wrench across the back
+  t.box(0.2, 2.2, 0.14, W3, 0.2, 0.2, -0.7, { rz: 0.6 });
+  t.box(0.6, 0.35, 0.16, W2, 0.85, 1.1, -0.7, { rz: 0.6, r: 0.04 });
+  if (level >= 1) t.box(0.9, 0.9, 0.6, W2, -0.5, -0.1, -0.85, { r: 0.18 }); // scrap bag
+  if (level >= 2) for (let i = 0; i < 3; i++) pouch(t, -0.7 + i * 0.7, -0.84, 0.62, 0.36, 0.3, W2); // tool belt
+  if (level >= 3) shoulderPads(t, W2, 0.6);
+  if (level >= 4) {
+    t.cyl(0.18, 1.6, W2, -0.75, 0.6, -0.95, { seg: 10, rz: -0.3 }); // blueprint tube
+    t.torus(0.19, 0.03, neon, -0.75, 0.6, -0.95, { seg: 10, rz: -0.3 });
+  }
+  if (level >= 5) {
+    cape(t, W2, 2.4, { w: 2.0, clasp: ART_NEON });
+    // a little helper drone hovering over the shoulder
+    t.box(0.6, 0.22, 0.6, W, 1.4, 2.4, -0.2, { r: 0.08 });
+    t.cyl(0.12, 0.05, neon, 1.4, 2.25, -0.2, { seg: 10 });
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) t.cyl(0.18, 0.03, W3, 1.4 + sx * 0.42, 2.55, -0.2 + sz * 0.42, { seg: 10 });
+  }
+  hd.done();
+  t.done();
+  hands(h, key, W3, W2, null);
+  feet(h, key, W2, (b) => b.box(1.0, 0.4, 0.35, W3, 0, -0.6, 0.5, { r: 0.08 }));
+  h.muzzles = [];
+  const g = fist(h.rightArm, -1.9, 1.15);
+  const gk = wear(h, g, `${key}:gun`);
+  const [y, z] = scrapGun(gk, neon, { big: level >= 4 });
+  gk.done();
+  muzzle(h, g, y, z);
+  aimLong(h);
+  h.tracer = ART_NEON;
+  return own(h, UP);
+}
+
+/**
+ * Skirmisher (Artisan building): a white tripod turret with a sensor head. Lv 1 Smart Targeting: a
+ * radar dish. Lv 2 Armor Piercing Rounds: a longer, heavier barrel and armour plates. Lv 3
+ * Annihilator Core: twin barrels, a glowing core and rocket pods.
+ */
+export function makeSkirmisher(level) {
+  const u = makeThing();
+  const neon = glowMat(u, ART_NEON);
+  const key = `artisanSkirmisher${level}`;
+  const k = kit(u, u.body, `${key}:base`);
+  k.cyl(0.9, 0.16, W3, 0, 0.08, 0, { seg: 18 }); // foot plate
+  k.torus(0.9, 0.04, neon, 0, 0.17, 0, { seg: 24 });
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2;
+    const fx = Math.sin(a) * 1.2;
+    const fz = Math.cos(a) * 1.2;
+    k.tube([[0, 1.2, 0], [fx * 0.6, 0.6, fz * 0.6], [fx, 0.1, fz]], 0.08, W2, { sides: 6 }); // legs
+    k.box(0.3, 0.08, 0.3, DARK, fx, 0.05, fz);
+  }
+  k.cyl(0.22, 1.4, W, 0, 0.9, 0, { r2: 0.18, seg: 12 }); // post
+  k.cyl(0.36, 0.2, DARK, 0, 1.6, 0, { seg: 12 });
+  k.done();
+  const head = new THREE.Group();
+  head.position.set(0, 1.95, 0);
+  head.scale.setScalar(level >= 2 ? 1.2 : 1);
+  u.body.add(head);
+  const g = kit(u, head, `${key}:head`);
+  g.box(1.1, 0.7, 1.2, W, 0, 0, 0, { r: 0.12 }); // housing
+  g.box(0.7, 0.18, 0.06, neon, 0, 0.12, 0.62); // sensor slit
+  g.box(1.14, 0.06, 1.24, W3, 0, -0.2, 0);
+  const len = level >= 2 ? 1.6 : 1.1;
+  const xs = level >= 3 ? [-0.2, 0.2] : [0];
+  for (const x of xs) {
+    barrel(g, x, 0, 0.55, len, 0.09, STEEL, { brake: level >= 2 });
+    gunMuzzle(u, head, x, 0, 0.6 + len);
+  }
+  if (level >= 1) {
+    g.cyl(0.05, 0.4, W3, 0, 0.5, -0.3, { seg: 6 }); // radar mast
+    g.cyl(0.3, 0.06, W2, 0, 0.75, -0.3, { seg: 14, rx: 0.5 });
+    g.ball(0.06, neon, 0, 0.8, -0.2, { seg: 6, rows: 4 });
+  }
+  if (level >= 2) for (const sx of [-1, 1]) g.box(0.12, 0.6, 1.0, W2, sx * 0.62, 0, 0.05, { r: 0.04 }); // armour plates
+  if (level >= 3) {
+    g.cyl(0.22, 0.1, neon, 0, 0, -0.62, { axis: 'z', seg: 12 }); // glowing core at the back
+    for (const sx of [-1, 1]) {
+      g.box(0.45, 0.45, 0.8, W3, sx * 0.85, 0.35, 0, { r: 0.06 }); // rocket pods
+      for (const y of [0.25, 0.45]) g.cyl(0.07, 0.04, neon, sx * 0.85, y, 0.41, { axis: 'z', seg: 8 });
+    }
+  }
+  g.done();
+  u.static = true;
+  u.tracer = ART_NEON;
+  return u;
+}
+
+/**
+ * Atelier (Artisan building): a white workshop station: a raised deck with an anvil, a crane arm
+ * and a glowing pulse emitter. Lv 1 Quick Fix: tool racks. Lv 2 Full Charge: battery cells. Lv 3
+ * Prime Purifier: a taller emitter with rings.
+ */
+export function makeAtelier(level) {
+  const u = makeThing();
+  const neon = glowMat(u, ART_NEON);
+  const k = kit(u, u.body, `artisanAtelier${level}`);
+  k.box(3.0, 0.5, 3.0, W2, 0, 0.25, 0, { r: 0.08 }); // deck
+  k.box(3.04, 0.06, 3.04, neon, 0, 0.45, 0);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) k.box(0.3, 0.6, 0.3, DARK, sx * 1.3, 0.3, sz * 1.3); // feet
+  // the anvil
+  k.box(0.9, 0.4, 0.5, W3, -0.6, 0.7, 0.5, { r: 0.04 });
+  k.box(1.3, 0.35, 0.6, W, -0.6, 1.05, 0.5, { r: 0.05 });
+  k.cyl(0.18, 0.5, W, -1.35, 1.05, 0.5, { axis: 'x', seg: 8, r2: 0.04 });
+  // the crane arm
+  k.cyl(0.14, 2.2, W3, 1.0, 1.6, -0.9, { seg: 10 });
+  k.tube([[1.0, 2.7, -0.9], [0.5, 3.0, -0.3], [-0.2, 2.8, 0.3]], 0.08, W2, { sides: 6 });
+  k.box(0.3, 0.3, 0.3, DARK, -0.2, 2.55, 0.3);
+  // the pulse emitter
+  const tall = level >= 3 ? 1.6 : 1.0;
+  k.cyl(0.35, tall, W, 0.6, 0.5 + tall / 2, 0.6, { seg: 14 });
+  k.ball(0.3, neon, 0.6, 0.6 + tall, 0.6, { seg: 12, rows: 8 });
+  if (level >= 3) for (let i = 0; i < 2; i++) k.torus(0.45, 0.04, neon, 0.6, 1.0 + i * 0.6, 0.6, { seg: 18 });
+  if (level >= 1) {
+    k.box(0.1, 1.2, 1.2, W3, -1.4, 1.1, -0.6); // tool rack
+    for (let i = 0; i < 3; i++) k.box(0.08, 0.6, 0.12, DARK, -1.33, 1.1, -1.0 + i * 0.4);
+  }
+  if (level >= 2) for (let i = 0; i < 3; i++) {
+    k.cyl(0.18, 0.6, W, -0.2 + i * 0.45, 0.8, -1.0, { seg: 10 }); // battery cells
+    k.cyl(0.19, 0.08, neon, -0.2 + i * 0.45, 0.95, -1.0, { seg: 10 });
+  }
+  k.done();
+  u.static = true;
+  u.tracer = ART_NEON;
+  return u;
+}
+
 export const MODELS = {
+  engineerArtisan: makeArtisan,
+  artisanSkirmisher: makeSkirmisher,
+  artisanAtelier: makeAtelier,
   sledgerFrostreaver: makeFrostreaver,
   hackerTechnomancer: makeTechnomancer,
 };

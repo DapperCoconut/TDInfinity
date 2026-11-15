@@ -3,6 +3,8 @@
 //                 tower can stand on), hijacks the tower on it for boosts, and clones it (Utopia).
 //   Frostreaver: an alternate Sledger form. A melee fighter that freezes the zombie it hits and
 //                grows Ice Crystals that boost it and pay for its abilities.
+//   Artisan: an alternate Engineer form. A shotgun that collects Scrap, which it spends on two
+//            buildings (Skirmisher, Atelier) and their upgrades. Can teleport anywhere.
 //
 // New mechanics (sim code in sim/parts/weapons7.js):
 //   techno: { hijack }  Technomancer.
@@ -23,6 +25,18 @@
 //       area), Path Crystal (a block of ice on the path), Frost Wisp (a wisp on one of your towers
 //       that attacks with power from that tower's damage a second).
 //       Frost Burn = chill (sim applyChill): slows and hurts a little every second.
+//   artisan: { pct, cap, skirm, atel }  Artisan.
+//       Every shot gives Scrap = `pct` x the damage its pellets did (before damage boosts; a pellet
+//       that already went through a zombie counts half), at least 1, up to `cap`.
+//       Build Skirmisher / Build Atelier abilities (`build` = the building's tower key, `scrap` its
+//       price) put a building in its range; one of each at a time. Buildings are towers with
+//       `building: true`: they last BUILD_LIFE + 5 s per Artisan level, and blow up when they run out
+//       or are sold (`blast`, by building level). Their upgrades cost Scrap (`cost` = Scrap) from
+//       their Artisan, which must be in its range; `skirm` / `atel` = the highest building level
+//       this Artisan level allows. An upgrade starts the building's time over.
+//       atelier: { pulse, buff, time, unstun } on the Atelier: every `pulse` s it boosts towers in
+//       its range by `buff` for `time` s, in turn firerate, damage, range (not other Ateliers).
+//       unstun: its pulses end stuns. Wanderer (Lv 5): moves one of your towers for WANDER_SCRAP.
 
 // ---------------------------------------------------------------- Technomancer
 
@@ -41,6 +55,18 @@ const pathCrystal = (hp) => ({ key: 'pathCrystal', name: 'Path Crystal', crystal
   desc: `Spend 2 crystals: put a chunk of ice (${hp.toLocaleString()} HP) on the path. Zombies stop to break it, and when it breaks it puts Frost Burn on every zombie within 6` });
 const FROST_WISP = { key: 'frostWisp', name: 'Frost Wisp', crystals: 3, cooldown: 1, aim: true,
   desc: 'Spend 3 crystals: put a Frost Wisp on one of your towers. It stays for good and attacks zombies in that tower\'s range, stronger the more damage a second the tower does. Up to 5 per Frostreaver' };
+
+// ---------------------------------------------------------------- Artisan
+
+const RELOCATION = { key: 'teleport', name: 'Relocation', desc: 'Teleport the Artisan anywhere on the map', cooldown: 10, aim: true, reach: 999 };
+const BUILD_SKIRM = { key: 'buildSkirm', name: 'Build Skirmisher', build: 'artisanSkirmisher', scrap: 30, cooldown: 20, aim: true,
+  desc: '30 Scrap: build a Skirmisher turret in range. It locks on to a zombie, then shoots very fast for low damage' };
+const BUILD_ATEL = { key: 'buildAtel', name: 'Build Atelier', build: 'artisanAtelier', scrap: 55, cooldown: 20, aim: true,
+  desc: '55 Scrap: build an Atelier in range. It boosts towers near it in turn: firerate, damage, range (not other Ateliers)' };
+const WANDERER = { key: 'wanderer', name: 'Wanderer', cooldown: 10, aim: true,
+  desc: 'Teleport one of your towers to a new spot. Moving a tower that isn\'t the Artisan costs 200 Scrap' };
+const artisan = (o) => ({ cap: 200, skirm: 0, atel: -1, ...o });
+const ART_AB = (lv) => [RELOCATION, BUILD_SKIRM, ...(lv >= 2 ? [BUILD_ATEL] : []), ...(lv >= 5 ? [WANDERER] : [])];
 
 export const THIRTEENTH_TOWERS = {
   // Technomancer (alternate Hacker form): bursts of shots. The cycle (`cooldown`) is the burst
@@ -101,6 +127,75 @@ export const THIRTEENTH_TOWERS = {
         frost: { freeze: 3.5, grow: 30, max: 5, pct: 0.04, burn: 0.15, burst: true }, abilities: [CRYSTAL_BURST, pathCrystal(1000)] },
       { name: 'Icicle Zero', desc: '+150 damage, +1s freeze, +1 range, 2 more crystals (7) and +5% damage per crystal. New ability: Frost Wisp.', cost: 23450, damage: 250, cooldown: 2.5, range: 6, hidden: false,
         frost: { freeze: 4.5, grow: 30, max: 7, pct: 0.05, burn: 0.15, burst: true }, abilities: [CRYSTAL_BURST, pathCrystal(2500), FROST_WISP] },
+    ],
+  },
+
+  // Artisan (alternate Engineer form). Scrap caps after Lv 1 are guesses: the spec only gives the
+  // base 200, but later building upgrades cost up to 4,000.
+  engineerArtisan: {
+    name: 'Artisan',
+    altOf: 'sentryEngineer',
+    form: 'Artisan',
+    shards: 1,
+    price: 0,
+    cost: 700,
+    limit: 1,
+    lead: true,
+    kindLabel: 'Builder',
+    blurb: 'An alternate Engineer with a scrap shotgun. Every shot collects Scrap, which it spends on buildings: a Skirmisher turret, and from Lv 2 an Atelier that boosts towers near it. Buildings last about a minute, then blow up. Upgrade them with Scrap while the Artisan is near. It can teleport anywhere, and at max level move your other towers too (Wanderer).',
+    tip: 'Keep it shooting so Scrap keeps coming in. Put the Atelier next to your strongest towers.',
+    levels: [
+      { name: 'Artisan', desc: 'Shotgun: 3 pellets for 2 every 1.8s. 40% of the damage it does becomes Scrap (holds 200). Builds Skirmishers.', damage: 2, pellets: 3, cooldown: 1.8, range: 8, cone: 0.22, hidden: false,
+        artisan: artisan({ pct: 0.4 }), abilities: ART_AB(0) },
+      { name: 'Scavenger', desc: '4 pellets (from 3), and 50% of its damage becomes Scrap.', cost: 450, damage: 2, pellets: 4, cooldown: 1.8, range: 8, cone: 0.22, hidden: false,
+        artisan: artisan({ pct: 0.5 }), abilities: ART_AB(1) },
+      { name: 'Frontline Support', desc: '+2 damage. It can build the Atelier and upgrade the Skirmisher to Lv 1. Holds 300 Scrap.', cost: 1300, damage: 4, pellets: 4, cooldown: 1.8, range: 8, cone: 0.22, hidden: false,
+        artisan: artisan({ pct: 0.5, cap: 300, skirm: 1, atel: 0 }), abilities: ART_AB(2) },
+      { name: 'Battle Ready', desc: '+2 damage, shoots faster (every 1.8s > 1.4s), and it can upgrade the Atelier to Lv 1. Holds 400 Scrap.', cost: 3800, damage: 6, pellets: 4, cooldown: 1.4, range: 8, cone: 0.22, hidden: false,
+        artisan: artisan({ pct: 0.5, cap: 400, skirm: 1, atel: 1 }), abilities: ART_AB(3) },
+      { name: 'Revisioned Blueprints', desc: '6 pellets, 75% of its damage becomes Scrap, and both buildings can go to Lv 2. Holds 1,000 Scrap.', cost: 14000, damage: 6, pellets: 6, cooldown: 1.4, range: 8, cone: 0.22, hidden: false,
+        artisan: artisan({ pct: 0.75, cap: 1000, skirm: 2, atel: 2 }), abilities: ART_AB(4) },
+      { name: 'The Seventh Architect', desc: '+6 damage, both buildings can go to Lv 3, and it holds 4,000 Scrap. New ability: Wanderer, move any of your towers.', cost: 40000, damage: 12, pellets: 6, cooldown: 1.4, range: 8, cone: 0.22, hidden: false,
+        artisan: artisan({ pct: 0.75, cap: 4000, skirm: 3, atel: 3 }), abilities: ART_AB(5) },
+    ],
+  },
+
+  // Artisan buildings (not in the shop). Upgrade `cost` is Scrap. blast: damage when it blows up.
+  artisanSkirmisher: {
+    name: 'Skirmisher',
+    building: true,
+    cost: 0,
+    limit: 99,
+    lead: true,
+    kindLabel: 'Building',
+    blurb: 'A turret the Artisan built. It locks on to a zombie, then shoots very fast. It blows up when its time runs out or it is sold. Upgrade it with the Artisan\'s Scrap.',
+    tip: 'Its upgrades cost Scrap, and the Artisan must be close to it.',
+    levels: [
+      { name: 'Skirmisher', desc: 'Locks on for 0.6s, then shoots every 0.2s for 2.5.', damage: 2.5, cooldown: 0.2, range: 12, lockOn: 0.6, hidden: false, blast: 40 },
+      { name: 'Smart Targeting', desc: 'Shoots faster (every 0.12s), +1.5 damage, locks on in 0.4s, and hidden detection.', cost: 180, damage: 4, cooldown: 0.12, range: 12, lockOn: 0.4, hidden: true, blast: 150 },
+      { name: 'Armor Piercing Rounds', desc: '+9 damage, +6 range, and ignores 80% of resistance.', cost: 650, damage: 13, cooldown: 0.12, range: 18, lockOn: 0.4, resistPierce: 0.8, hidden: true, blast: 500 },
+      { name: 'Annihilator Core', desc: '+4 damage, shoots every 0.04s, and fires rockets (85 in a blast every 1.5s).', cost: 4000, damage: 17, cooldown: 0.04, range: 18, lockOn: 0.4, resistPierce: 0.8, hidden: true, blast: 1500,
+        rockets: { every: 1.5, damage: 85, radius: 3 } },
+    ],
+  },
+  artisanAtelier: {
+    name: 'Atelier',
+    building: true,
+    cost: 0,
+    limit: 99,
+    kind: 'support',
+    kindLabel: 'Building',
+    blurb: 'A workshop the Artisan built. Every few seconds it pulses and boosts towers near it, in turn: firerate, damage, range. It can\'t boost other Ateliers. It blows up when its time runs out or it is sold.',
+    tip: 'Its upgrades cost Scrap, and the Artisan must be close to it.',
+    levels: [
+      { name: 'Atelier', desc: 'Every 10s: +15% firerate, damage or range (in turn) for 12.5s to towers in range.', range: 12, hidden: false, blast: 40,
+        atelier: { pulse: 10, buff: 0.15, time: 12.5 } },
+      { name: 'Quick Fix', desc: '+20% boosts, a pulse every 7.5s, +3 range.', cost: 250, range: 15, hidden: false, blast: 150,
+        atelier: { pulse: 7.5, buff: 0.2, time: 12.5 } },
+      { name: 'Full Charge', desc: '+25% boosts that last 20s.', cost: 800, range: 15, hidden: false, blast: 500,
+        atelier: { pulse: 7.5, buff: 0.25, time: 20 } },
+      { name: 'Prime Purifier', desc: '+35% boosts, a pulse every 5s, and pulses end stuns.', cost: 2500, range: 15, hidden: false, blast: 1500,
+        atelier: { pulse: 5, buff: 0.35, time: 20, unstun: true } },
     ],
   },
 };

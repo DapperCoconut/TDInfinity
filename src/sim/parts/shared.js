@@ -144,9 +144,9 @@ export function computeBuffs(towers) {
   const list = [...towers];
   const out = new Map();
   // (VOID's corrupted towers boost nobody.)
-  const sources = list.filter((o) => { if (o.corrupt) return false; const s = TOWERS[o.type].levels[o.level]; return s.aura || s.bless || (s.radio && o.radioT > 0) || (o.active > 0 && rageOf(s)) || s.kin || s.radar || s.globalCdCut || s.bizDisc || s.cliffBoost || s.taser?.link || (s.trick?.knife?.red && o.redN > 0) || (s.crow?.buff && o.mode) || (s.techno?.hijack && o.padOn); });
+  const sources = list.filter((o) => { if (o.corrupt) return false; const s = TOWERS[o.type].levels[o.level]; return s.aura || s.bless || (s.radio && o.radioT > 0) || (o.active > 0 && rageOf(s)) || s.kin || s.radar || s.globalCdCut || s.bizDisc || s.cliffBoost || s.taser?.link || (s.trick?.knife?.red && o.redN > 0) || (s.crow?.buff && o.mode) || (s.techno?.hijack && o.padOn) || s.atelier; });
   // (Spectre drones boost damage in Support mode; Glowups boost firerate less the farther away a tower is.)
-  if (!sources.length) return out;
+  if (!sources.length && !list.some((o) => o.atel)) return out; // (Atelier boosts outlast their Atelier)
   const shields = medicShields(list);
   const family = (o) => familyOf(o.type); // a tower, its alternate forms, upgrade paths and golden versions
   // Businessman Stimulus Booster: every tower's ability cooldowns are shorter, 5% per one (up to 30%).
@@ -328,6 +328,12 @@ export function computeBuffs(towers) {
       const m = Math.max(0.1, 1 + add);
       out.set(t.id, { ...tb, dmg: tb.dmg * m, rate: tb.rate * m, range: tb.range * m });
     }
+  }
+  // Artisan Atelier: boosts it gave out (o.atel, set and worn off by the sim) multiply what each tower has.
+  for (const t of list) {
+    if (!t.atel) continue;
+    const tb = out.get(t.id) ?? NO_BUFF;
+    out.set(t.id, { ...tb, rate: tb.rate * (1 + (t.atel.rate?.a || 0)), dmg: tb.dmg * (1 + (t.atel.dmg?.a || 0)), range: TOWERS[t.type].noRangeBuff ? tb.range : tb.range * (1 + (t.atel.range?.a || 0)) });
   }
   // Technomancer Hijack: the tower on its Hologram pad (o.padOn, set by the sim) gives it half of how much more
   // damage, shots a second and range that tower has, a third less if it isn't max level, each at most HIJACK_CAP.

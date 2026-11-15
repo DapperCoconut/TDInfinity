@@ -626,7 +626,7 @@ export class Sim {
         if (p.placeCd?.[m.type] > 0) return `${def.name} can be placed again in ${Math.ceil(p.placeCd[m.type])}s`; // Phantom / Vanguard
         let owned = 0;
         let all = 0;
-        for (const t of this.towers.values()) if (t.owner === pid && !t.holo) { all++; if (rootType(t.type) === m.type) owned++; }
+        for (const t of this.towers.values()) if (t.owner === pid && !t.holo && !TOWERS[t.type].building) { all++; if (rootType(t.type) === m.type) owned++; } // (Artisan buildings don't count)
         if (all >= GAME.towerCap) return `You have ${GAME.towerCap} towers, the most you can have`;
         const limit = towerLimit(def, this.vs ? 1 : this.players.size) + (p.extraSlots || 0); // Discount Dog Extra Slot
         if (owned >= limit && !this.sandbox) return `Placement limit reached (${limit})`; // (Sandbox: no limits)
@@ -648,6 +648,7 @@ export class Sim {
         if (t.holo) return "Holograms can't be upgraded";
         if (t.bleedT > 0) return "Bleeding! It can't be upgraded until it stops";
         if (t.corrupt) return 'Corrupted by VOID! It can only be sold now';
+        if (TOWERS[t.type].building) return this.upgradeBuilding(t, pid); // Artisan buildings: upgrades cost Scrap
         if (TOWERS[t.type].modePick && !t.mode) {
           // Strawman: the first upgrade picks the mode if no mode was picked (Top = Vengeful, Bottom = Benevolent).
           const why = this.crowModeWhy(t, m.path === 'bottom' ? 'b' : 'v');
@@ -701,6 +702,7 @@ export class Sim {
         this.removeTower(t, 'sell', { value });
         this.sellSacrifice(t);
         this.sellPadTower(t, pid); // Technomancer: the tower on its Hologram goes too
+        if (TOWERS[t.type].building) this.buildingBlast(t); // Artisan buildings blow up when sold
         if (!t.holo) this.setPlaceCd(p, t.type, TOWERS[t.type].placeCd); // Phantom / Vanguard: a wait before placing it again
         return null;
       }
@@ -826,6 +828,10 @@ export class Sim {
         if (ab.key === 'kritz' && !this.chargeTarget(t, s, ab)) return 'No tower in range to Kritz';
         if (ab.key === 'clone') {
           const why = this.cloneTower(p, ab, m);
+          if (why) return why;
+        }
+        if (ab.build || ab.key === 'wanderer') {
+          const why = this.artisanWhy(t, p, s, ab, m); // Artisan: buildings and Wanderer cost Scrap
           if (why) return why;
         }
         if (ab.crystals) {
