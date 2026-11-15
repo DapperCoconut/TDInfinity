@@ -10,7 +10,7 @@
 //              and makes zombies weaker to physical damage. Fatal Frenzy ability at Lv 4.
 //   Priest: an alternate Medic (Doctor) form. Never attacks; blesses one tower for more damage.
 //   Farmer: an alternate Farm form. Pays out paychecks during the wave; Rice From The Void at Lv 4.
-//   Bandit: an alternate Enforcer form. Shoots, and from Lv 2 slashes zombies close in front of it.
+//   Bandit: an alternate Scout form. Shoots, and from Lv 2 slashes zombies close in front of it.
 //   Eradicator: fast little energy orbs, and from Lv 3 the Raybreak: a big piercing beam. Its last
 //               three levels add ΘVERLOAD, which costs its owner money for the rest of the game.
 //
@@ -298,18 +298,18 @@ export const ELEVENTH_TOWERS = {
         abilities: [riceVoid] },
     ],
   },
-  // Bandit (alternate Enforcer form): a gun plus, from Lv 2, a sword swing on its own timer.
+  // Bandit (alternate Scout form): a gun plus, from Lv 2, a sword swing on its own timer.
   // Lv 5 is the spec's "Potential" level (the Potential: Bandit shop perk isn't built, so every
   // Bandit can reach it). Its other perks (Candy Corn, Deadeye Bandit, Perk Mastery) aren't built.
   bandit: {
     name: 'Bandit',
-    altOf: 'enforcer',
+    altOf: 'scout',
     form: 'Bandit',
     shards: 1,
     price: 0,
     cost: 400,
     burstGap: 0.2,
-    blurb: 'An alternate Enforcer that shoots from range. From Lv 2 it also swings a sword at every zombie close in front of it, and from Lv 3 it fires two shots at a time and sees hidden zombies. No placement limit.',
+    blurb: 'An alternate Scout that shoots from range. From Lv 2 it also swings a sword at every zombie close in front of it, and from Lv 3 it fires two shots at a time and sees hidden zombies. No placement limit.',
     tip: 'Put it near the path so zombies walk into its sword range too.',
     levels: [
       { name: 'Bandit', desc: 'Shoots one zombie at a time.', damage: 2, cooldown: 1.2, range: 12, hidden: false },

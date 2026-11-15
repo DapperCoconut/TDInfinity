@@ -226,7 +226,7 @@ function whiteSabre(k, neon, o = {}) {
 }
 
 /**
- * Bandit (alternate Enforcer): a white outlaw in a wide hat with a revolver. Lv 1 Combat Ready:
+ * Bandit (alternate Scout): a white outlaw in a wide hat with a revolver. Lv 1 Combat Ready:
  * a bandana over the face and a gun belt. Lv 2 Bladeworks: a sabre in the other hand. Lv 3
  * Twinshot: a double-barrel revolver and a neon hat band. Lv 4 Combat Mastery: a poncho and
  * bullet belt. Lv 5 Potential: a long coat and a glowing sabre.
