@@ -19,6 +19,19 @@ const SHOP_ORDER = [...BASE_TOWERS].sort((a, b) => {
   return (A.gems ? 1 : 0) - (B.gems ? 1 : 0) || (A.shards || 0) - (B.shards || 0) || (A.gems || 0) - (B.gems || 0) || (A.price || 0) - (B.price || 0);
 });
 
+// Search: every name a shop tower goes by (its own, its forms, evolutions and golden perks).
+let NAMES = null;
+const namesOf = (base) => {
+  if (!NAMES) {
+    NAMES = new Map();
+    for (const t of [...BASE_TOWERS, ...EVENT_TOWERS]) {
+      const all = [t, ...formsOf(t)];
+      NAMES.set(t, [...all, ...all.map(goldOf).filter(Boolean)]);
+    }
+  }
+  return NAMES.get(base) || [base];
+};
+
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
 const num = (n) => (n === Infinity ? '∞' : n.toLocaleString());
@@ -46,11 +59,16 @@ export class LoadoutScreen {
     $('lo-back').onclick = () => lobby.show('title');
     $('lo-grid').addEventListener('click', (e) => {
       const b = e.target.closest('[data-pick]');
-      if (b) this.select(b.dataset.pick);
+      if (b) this.select(b.dataset.pick, b.dataset.var);
     });
     $('lo-events').addEventListener('click', (e) => {
       const b = e.target.closest('[data-pick]');
-      if (b) this.select(b.dataset.pick);
+      if (b) this.select(b.dataset.pick, b.dataset.var);
+    });
+    this.search = '';
+    $('lo-search').addEventListener('input', (e) => {
+      this.search = e.target.value;
+      this.applySearch();
     });
     $('lo-slots').addEventListener('click', (e) => {
       const b = e.target.closest('[data-pick]');
@@ -110,11 +128,16 @@ export class LoadoutScreen {
     cancelAnimationFrame(this.raf);
   }
 
-  select(base) {
-    if (!TOWERS[base] || base === this.base) return;
+  /** Picks a tower. `variant`: a found-by-search form or golden perk to show instead of the one in use. */
+  select(base, variant) {
+    if (!TOWERS[base] || (base === this.base && !variant)) return;
     this.base = base;
     this.form = profile.formOf(base);
     this.gold = this.goldUsed(this.form);
+    if (variant && TOWERS[variant]) {
+      this.form = TOWERS[variant].goldOf ?? variant;
+      this.gold = !!TOWERS[variant].goldOf;
+    }
     this.level = 0;
     this.autoT = 0;
     audio.click?.();
@@ -262,7 +285,36 @@ export class LoadoutScreen {
   renderGrid() {
     $('lo-grid').innerHTML = SHOP_ORDER.map((t) => this.card(t)).join('');
     $('lo-events').innerHTML = EVENT_TOWERS.map((t) => this.card(t)).join('');
+    this.applySearch();
     this.fillIcons();
+  }
+
+  /**
+   * Hides the cards that don't match the search box. A tower found by one of its variants'
+   * names shows that variant's name on its card, and clicking it shows that variant.
+   */
+  applySearch() {
+    const q = this.search.trim().toLowerCase();
+    let shown = 0;
+    for (const el of document.querySelectorAll('#lo-grid [data-pick], #lo-events [data-pick]')) {
+      el.querySelector('.lo-match')?.remove();
+      delete el.dataset.var;
+      const base = el.dataset.pick;
+      let hit = !q;
+      if (q) {
+        const has = (t) => TOWERS[t].name.toLowerCase().includes(q);
+        const own = has(base) || has(profile.playedAs(base)); // the names already on the card
+        const v = !own && namesOf(base).find(has);
+        hit = !!(own || v);
+        if (v) {
+          el.dataset.var = v;
+          el.insertAdjacentHTML('beforeend', `<span class="lo-match">${esc(TOWERS[v].name)}</span>`);
+        }
+      }
+      el.style.display = hit ? '' : 'none';
+      if (hit) shown++;
+    }
+    $('lo-nomatch').hidden = !q || shown > 0;
   }
 
   /**
