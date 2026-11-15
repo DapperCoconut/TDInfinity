@@ -1,6 +1,7 @@
 // Keeping the picture up to date: reconcile (views match the sim), the HUD and the camera.
 // These are methods of GameClient: game.js puts them on the class, so "this" is the game client.
 
+import * as THREE from 'three';
 import { ENEMIES, GAME, TOWERS, VERSUS, difficulty, facesCone, rootType } from '../config.js';
 import { BeamView, BombView, EnemyView, MarkView, OrbView, RemotePlayerView, TowerView, TrapView, UnitView } from '../views.js';
 import { audio } from '../audio.js';
@@ -8,6 +9,7 @@ import { subInfo } from '../substats.js';
 import { clamp } from '../utils.js';
 import { WORLD_SCALE } from '../scale.js';
 import { heightAt, mapInfo } from '../sim/map.js';
+import { ST_AIRBORNE, ST_ARMORED, ST_BIOHAZARD, ST_BURNING, ST_CHARGING, ST_CHILLED, ST_CLOAKED, ST_CONFUSED, ST_DANCE, ST_ENRAGED, ST_FLOAT, ST_FROZEN, ST_GASSED, ST_GLITCHED, ST_HACKED, ST_HASTED, ST_MUTANT, ST_SHOCKED, ST_SHROOM, ST_SLIMED, ST_SMOKED, ST_STUNNED, ST_VOIDARMOR, ST_VOIDAURA } from '../sim/sim.js';
 import { CITADEL, borrowsHidden, buffOf, computeBuffs, mediCharge, medicShields, nextUpgrade, spyCircles } from '../sim/sim.js';
 import { CAM_GROUND_GAP, CAM_PITCH_MIN, EMPTY, innerRings, ringRadius } from './shared.js';
 const CLOSE_ZOOM = 7; // camera closer than this (drawn units) hides your own player
@@ -301,4 +303,77 @@ export class GameView {
       this.camera.position.z += (Math.random() - 0.5) * a;
     }
   }
+
+  /** Hovering an enemy: a little card by the mouse with its name, health and what is on it. */
+  updateHover() {
+    let tip = this.hoverTip;
+    if (!tip) {
+      tip = this.hoverTip = document.createElement('div');
+      tip.id = 'enemy-tip';
+      document.body.appendChild(tip);
+    }
+    const st = this.session && !this.fps && !this.ended ? this.state : null;
+    let best = null;
+    if (st && this.mouseIn !== false) {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const mx = (this.mouse.x + 1) * w / 2;
+      const my = (1 - this.mouse.y) * h / 2;
+      let bestD = Infinity;
+      this.tipV ??= new THREE.Vector3();
+      for (const v of this.enemyViews.values()) {
+        if (v.dying || !st.enemies.has(v.id)) continue;
+        const p = v.aimPoint(this.tipV).project(this.camera);
+        if (p.z > 1) continue; // behind the camera
+        const sx = (p.x + 1) * w / 2;
+        const sy = (1 - p.y) * h / 2;
+        // How big it looks on screen: its height, seen from this far away.
+        const reach = Math.max(18, Math.min(160, v.height * h / (2 * this.camera.position.distanceTo(v.pos) * Math.tan((this.camera.fov * Math.PI) / 360)) * 0.6));
+        const d = Math.hypot(sx - mx, sy - my);
+        if (d < reach && d < bestD) {
+          bestD = d;
+          best = v;
+        }
+      }
+    }
+    if (!best) {
+      if (this.tipId != null) tip.style.display = 'none';
+      this.tipId = null;
+      return;
+    }
+    const e = st.enemies.get(best.id);
+    const def = best.def;
+    const key = `${e.id}|${Math.ceil(e.hp)}|${e.st}`;
+    if (key !== this.tipKey) {
+      this.tipKey = key;
+      const good = [];
+      const bad = [];
+      if (def.boss) good.push('Boss');
+      if (def.hidden) good.push('Hidden');
+      if (def.flying) good.push('Flying');
+      for (const [bit, name, isBad] of ENEMY_EFFECTS) if (e.st & bit) (isBad ? bad : good).push(name);
+      const hp = e.maxHp === Infinity || e.hp === Infinity ? '∞' : `${Math.ceil(e.hp).toLocaleString()} / ${Math.ceil(e.maxHp).toLocaleString()}`;
+      const share = e.maxHp > 0 && e.maxHp !== Infinity ? Math.max(0, Math.min(1, e.hp / e.maxHp)) : 1;
+      tip.innerHTML = `<div class="et-name">${def.name}</div>`
+        + `<div class="et-bar"><div style="width:${share * 100}%"></div></div><div class="et-hp">❤ ${hp}</div>`
+        + (good.length ? `<div class="et-good">${good.map((n) => `<span>${n}</span>`).join('')}</div>` : '')
+        + (bad.length ? `<div class="et-bad">${bad.map((n) => `<span>${n}</span>`).join('')}</div>` : '');
+    }
+    this.tipId = e.id;
+    tip.style.display = 'block';
+    const x = (this.mouse.x + 1) * window.innerWidth / 2;
+    const y = (1 - this.mouse.y) * window.innerHeight / 2;
+    tip.style.left = `${Math.min(x + 16, window.innerWidth - tip.offsetWidth - 8)}px`;
+    tip.style.top = `${Math.min(y + 16, window.innerHeight - tip.offsetHeight - 8)}px`;
+  }
 }
+
+/** Status bits shown on the hover card: [bit, name, bad for the enemy]. */
+const ENEMY_EFFECTS = [
+  [ST_FROZEN, 'Frozen', true], [ST_STUNNED, 'Stunned', true], [ST_BURNING, 'Burning', true], [ST_DANCE, 'Dancing', true],
+  [ST_SLIMED, 'Slimed', true], [ST_CHILLED, 'Chilled', true], [ST_HACKED, 'Hacked', true], [ST_GASSED, 'Poisoned', true],
+  [ST_CONFUSED, 'Confused', true], [ST_FLOAT, 'In a bubble', true], [ST_SHOCKED, 'Shocked', true], [ST_BIOHAZARD, 'Biohazard', true],
+  [ST_AIRBORNE, 'Airborne', false], [ST_SHROOM, 'Mushrooms', false], [ST_ENRAGED, 'Enraged', false], [ST_SMOKED, 'In smoke', false],
+  [ST_ARMORED, 'Armored', false], [ST_HASTED, 'Sped up', false], [ST_GLITCHED, 'Glitched', false], [ST_VOIDAURA, 'Void aura', false],
+  [ST_CHARGING, 'Charging', false], [ST_CLOAKED, 'Cloaked', false], [ST_VOIDARMOR, 'Void armor', false], [ST_MUTANT, 'Mutant', false],
+];

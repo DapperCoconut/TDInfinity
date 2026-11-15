@@ -692,6 +692,7 @@ export class GameClient {
     }
 
     this.updateCamera(realDt);
+    this.updateHover();
     const ct = this.cam.target;
     const so = this.sunOff ?? [60, 120, 45];
     this.sun.position.set(ct.x + so[0] * WORLD_SCALE, so[1] * WORLD_SCALE, ct.z + so[2] * WORLD_SCALE);

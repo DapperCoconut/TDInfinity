@@ -3227,3 +3227,27 @@ input:focus {
 .overload { margin-left: 8px; padding: 1px 6px; border-radius: 4px; font-size: 0.7em; font-weight: 700; color: #18ffff; background: rgba(0, 40, 48, 0.75); vertical-align: middle; }
 .arcana { margin-left: 8px; padding: 1px 6px; border-radius: 4px; font-size: 0.7em; font-weight: 700; color: #ea80fc; background: rgba(40, 0, 56, 0.75); vertical-align: middle; }
 .overload.over { color: #ff5252; background: rgba(60, 0, 0, 0.8); }
+
+/* Hovering an enemy: name, health, effects */
+#enemy-tip {
+  position: fixed;
+  display: none;
+  z-index: 40;
+  pointer-events: none;
+  min-width: 150px;
+  max-width: 240px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(10, 12, 20, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-size: 13px;
+}
+#enemy-tip .et-name { font-weight: 800; margin-bottom: 4px; }
+#enemy-tip .et-bar { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.15); overflow: hidden; }
+#enemy-tip .et-bar div { height: 100%; background: #66bb6a; }
+#enemy-tip .et-hp { margin: 3px 0 2px; opacity: 0.9; }
+#enemy-tip .et-good, #enemy-tip .et-bad { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+#enemy-tip span { padding: 1px 6px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+#enemy-tip .et-good span { background: rgba(239, 83, 80, 0.3); color: #ffab91; }
+#enemy-tip .et-bad span { background: rgba(102, 187, 106, 0.3); color: #b9f6ca; }
