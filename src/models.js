@@ -398,7 +398,7 @@ for (const [type, make] of Object.entries(TOWER_MODELS)) {
       rigify(model); // elbows, knees and a round head (rig.js)
       armWeapons(model, type, level); // bigger, more detailed weapons (weapons.js)
       gripPole(type, model); // staffs and hammers held up the shaft, not at the end (visuals.js)
-      declip(model.root);
+      declip(model.root, `${type}|${level}`);
       model.root.userData.declipped = true;
     }
     if (model) model.vis = styleFor(type, level, model); // how this tower stands, holds its weapon and moves

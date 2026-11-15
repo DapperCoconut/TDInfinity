@@ -21,36 +21,40 @@ const _v = new THREE.Vector3();
 const _e1 = new THREE.Vector3();
 const _e2 = new THREE.Vector3();
 
-/** Every triangle of every visible mesh under `root`, in model space. */
-function clipFaces(root, meshes) {
-  const out = [];
+/** Every visible mesh under `root`, with its model-space matrix and size. */
+function clipMeshes(root) {
+  const meshes = [];
   root.updateMatrixWorld(true);
   const inv = new THREE.Matrix4().copy(root.matrixWorld).invert();
   root.traverse((m) => {
     if (!m.isMesh || !m.geometry?.attributes.position) return;
     for (let o = m; o && o !== root; o = o.parent) if (!o.visible) return;
-    const mi = meshes.length;
     const toModel = new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld);
     const g = m.geometry;
     // Sized once, before any face moves, so two equal parts can't keep swapping which is on top.
-    if (m.userData.clipVol == null) {
-      g.computeBoundingBox();
-      const size = g.boundingBox.getSize(new THREE.Vector3()).multiply(new THREE.Vector3().setFromMatrixScale(toModel));
-      m.userData.clipVol = Math.max(size.x, 1e-3) * Math.max(size.y, 1e-3) * Math.max(size.z, 1e-3);
-    }
-    meshes.push({ m, toModel, vol: m.userData.clipVol, push: new Map() });
-    const pos = g.attributes.position;
-    const idx = g.index;
-    const n = idx ? idx.count : pos.count;
-    for (let i = 0; i + 2 < n; i += 3) {
-      const p = [0, 1, 2].map((k) => new THREE.Vector3().fromBufferAttribute(pos, idx ? idx.getX(i + k) : i + k).applyMatrix4(toModel));
-      const nr = _e1.subVectors(p[1], p[0]).cross(_e2.subVectors(p[2], p[0]));
-      const len = nr.length();
-      if (len < 1e-6) continue;
-      const normal = nr.clone().divideScalar(len);
-      out.push({ mi, n: normal, d: normal.dot(p[0]), p });
-    }
+    g.computeBoundingBox();
+    const size = g.boundingBox.getSize(new THREE.Vector3()).multiply(new THREE.Vector3().setFromMatrixScale(toModel));
+    meshes.push({ m, toModel, vol: Math.max(size.x, 1e-3) * Math.max(size.y, 1e-3) * Math.max(size.z, 1e-3), push: new Map() });
   });
+  return meshes;
+}
+
+/** Every triangle of mesh number `mi`, in model space. */
+function meshFaces(meshes, mi, out = []) {
+  const { m, toModel } = meshes[mi];
+  const pos = m.geometry.attributes.position;
+  const idx = m.geometry.index;
+  const n = idx ? idx.count : pos.count;
+  for (let i = 0; i + 2 < n; i += 3) {
+    const p = [0, 1, 2].map((k) => new THREE.Vector3().fromBufferAttribute(pos, idx ? idx.getX(i + k) : i + k).applyMatrix4(toModel));
+    const nr = _e1.subVectors(p[1], p[0]).cross(_e2.subVectors(p[2], p[0]));
+    const len = nr.length();
+    if (len < 1e-6) continue;
+    const normal = nr.clone().divideScalar(len);
+    const [a, b, c] = p;
+    out.push({ mi, ti: i, n: normal, d: normal.dot(a), p,
+      x0: Math.min(a.x, b.x, c.x), x1: Math.max(a.x, b.x, c.x), y0: Math.min(a.y, b.y, c.y), y1: Math.max(a.y, b.y, c.y), z0: Math.min(a.z, b.z, c.z), z1: Math.max(a.z, b.z, c.z) });
+  }
   return out;
 }
 
@@ -94,19 +98,25 @@ function moveFace(mesh, n, d, dist) {
   pos.needsUpdate = true;
 }
 
-/** One de-clipping pass over `root`. Returns the faces it moved, as "part|plane|distance" keys. */
-function declipPass(root) {
-  const meshes = [];
-  declipGroup(clipFaces(root, meshes).sort((a, b) => a.d - b.d), meshes);
+/**
+ * One de-clipping pass. `active`: the parts that moved last pass (null on the first pass): a pair
+ * where neither part moved was already settled, so only pairs touching one of them are checked.
+ * Returns the faces it moved and the parts they belong to.
+ */
+function declipPass(meshes, buckets, active) {
+  for (const mesh of meshes) mesh.push.clear();
+  declipGroup(buckets, meshes, active);
   const moved = [];
-  for (const mesh of meshes) {
+  const parts = new Set();
+  meshes.forEach((mesh, mi) => {
     for (const f of mesh.push.values()) {
       if (Math.abs(f.dist) < 1e-5) continue;
       moveFace(mesh, f.n, f.d, f.dist);
       moved.push({ id: mesh.m.id, n: f.n, from: f.d, to: f.d + f.dist });
+      parts.add(mi);
     }
-  }
-  return moved;
+  });
+  return { moved, parts };
 }
 
 /** Did pass `b` put back exactly what pass `a` moved (every face back where it was)? */
@@ -117,43 +127,191 @@ function undoes(b, a) {
   return b.every((f) => want.delete(key(f.id, f.n, f.from, f.to))) && want.size === 0;
 }
 
-/** Finds the fighting pairs among `faces` (sorted by depth) and plans how far each face moves. */
-function declipGroup(faces, meshes) {
-  for (let i = 0; i < faces.length; i++) {
-    const a = faces[i];
-    for (let j = i + 1; j < faces.length && faces[j].d - a.d < CLIP_GAP; j++) {
-      const b = faces[j];
-      if (a.mi === b.mi || a.n.dot(b.n) < 0.9995) continue;
-      // The smaller part is the detail that should show; on a tie, the one added later.
-      const [top, under] = meshes[a.mi].vol < meshes[b.mi].vol || (meshes[a.mi].vol === meshes[b.mi].vol && a.mi > b.mi) ? [a, b] : [b, a];
-      if (!triOverlap(a.p, b.p, a.n)) continue;
-      const gap = top.d - under.d; // > 0: the detail is in front
-      const behind = gap < -CLIP_BEHIND;
-      const want = behind ? -CLIP_PUSH - gap : CLIP_PUSH - gap;
-      const key = `${top.n.x.toFixed(4)},${top.n.y.toFixed(4)},${top.n.z.toFixed(4)},${top.d.toFixed(4)}`;
-      const push = meshes[top.mi].push;
-      const prev = push.get(key);
-      if (!prev) push.set(key, { n: top.n, d: top.d, dist: want });
-      // Pushed out by one part and in by another: out wins (a detail should show, not hide).
-      else if (want > 0 ? prev.dist < 0 || want > prev.dist : prev.dist < 0 && want < prev.dist) prev.dist = want;
+// Faces are sorted into buckets by which way they face (each part of the normal rounded to
+// NORMAL_STEP). Two faces that can fight (normals within 0.9995) always land in the same or a
+// next-door bucket, so only those are compared: far fewer pairs than every face at that depth.
+const NORMAL_STEP = 0.05;
+
+/** A bucket number for normal step indexes (each from -20 to 20). */
+const bucketKey = (ix, iy, iz) => (ix + 32) * 4096 + (iy + 32) * 64 + (iz + 32);
+
+/** Puts `faces` into their buckets (by which way they face). Returns the buckets it touched. */
+function addToBuckets(buckets, faces) {
+  const touched = new Set();
+  for (const f of faces) {
+    const ix = Math.round(f.n.x / NORMAL_STEP), iy = Math.round(f.n.y / NORMAL_STEP), iz = Math.round(f.n.z / NORMAL_STEP);
+    f.bk = bucketKey(ix, iy, iz);
+    let b = buckets.get(f.bk);
+    if (!b) buckets.set(f.bk, (b = { ix, iy, iz, key: f.bk, list: [] }));
+    b.list.push(f);
+    touched.add(b);
+  }
+  return touched;
+}
+
+/** First face in `list` (sorted by depth) deeper than `d`. */
+function firstAfter(list, d) {
+  let lo = 0, hi = list.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (list[mid].d <= d) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
+/**
+ * Finds the fighting pairs among the faces in `buckets` and plans how far each face moves. With `active` (the
+ * parts that moved last pass), only pairs with a face of one of those parts are looked at.
+ */
+function declipGroup(buckets, meshes, active) {
+  pending.length = 0;
+  findPairs(buckets, meshes, active);
+  pending.sort(beforeOrder);
+  for (const [a, b] of pending) clipPairNow(a, b, meshes);
+  pending.length = 0;
+}
+
+function findPairs(buckets, meshes, active) {
+  if (active) {
+    for (const mi of active) for (const a of meshes[mi].faces) {
+      const A = buckets.get(a.bk);
+      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) {
+        const B = buckets.get(bucketKey(A.ix + dx, A.iy + dy, A.iz + dz));
+        if (!B) continue;
+        const fb = B.list;
+        for (let j = firstAfter(fb, a.d - CLIP_GAP); j < fb.length && fb[j].d - a.d < CLIP_GAP; j++) {
+          const b = fb[j];
+          // Both parts moved: the pair is found from both sides, so take it once.
+          if (active.has(b.mi) && (b.mi < a.mi || (b.mi === a.mi))) continue;
+          if (a.d <= b.d) clipPair(a, b, meshes);
+          else clipPair(b, a, meshes);
+        }
+      }
+    }
+    return;
+  }
+  for (const A of buckets.values()) {
+    const fa = A.list;
+    for (let i = 0; i < fa.length; i++) for (let j = i + 1; j < fa.length && fa[j].d - fa[i].d < CLIP_GAP; j++) clipPair(fa[i], fa[j], meshes);
+    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) {
+      const B = buckets.get(bucketKey(A.ix + dx, A.iy + dy, A.iz + dz));
+      if (!B || B.key <= A.key) continue; // each pair of buckets once
+      const fb = B.list;
+      let lo = 0;
+      for (const a of fa) {
+        while (lo < fb.length && fb[lo].d <= a.d - CLIP_GAP) lo++;
+        for (let j = lo; j < fb.length && fb[j].d - a.d < CLIP_GAP; j++) {
+          const b = fb[j];
+          if (a.d <= b.d) clipPair(a, b, meshes);
+          else clipPair(b, a, meshes);
+        }
+      }
     }
   }
 }
 
-/** De-clips `root` (see above) and swaps edited geometries for cached copies. */
-export function declip(root) {
+/** Two faces `a`, `b` (a not deeper than b): if they fight, plan which one moves and how far. */
+function clipPair(a, b, meshes) {
+  if (a.mi === b.mi) return;
+  // Quick test first: triangles whose boxes are apart along a direction that lies (nearly) flat
+  // in their plane can't overlap. (Not along a direction they face: big tilted faces still can.)
+  const e = CLIP_GAP + 0.01;
+  const n = a.n;
+  if ((Math.abs(n.x) < 0.3 && (a.x1 < b.x0 - e || b.x1 < a.x0 - e)) || (Math.abs(n.y) < 0.3 && (a.y1 < b.y0 - e || b.y1 < a.y0 - e)) || (Math.abs(n.z) < 0.3 && (a.z1 < b.z0 - e || b.z1 < a.z0 - e))) return;
+  if (a.n.dot(b.n) < 0.9995) return;
+  pending.push(earlier(a, b) < 0 ? [a, b] : [b, a]);
+}
+
+// Pairs found in a pass are handled in the order the faces sort by depth (ties: by part, then by
+// triangle), so the result never depends on how the faces were bucketed.
+const earlier = (a, b) => a.d - b.d || a.mi - b.mi || a.ti - b.ti;
+const pending = [];
+const beforeOrder = (p, q) => earlier(p[0], q[0]) || earlier(p[1], q[1]);
+
+function clipPairNow(a, b, meshes) {
+  // The smaller part is the detail that should show; on a tie, the one added later.
+  const [top, under] = meshes[a.mi].vol < meshes[b.mi].vol || (meshes[a.mi].vol === meshes[b.mi].vol && a.mi > b.mi) ? [a, b] : [b, a];
+  if (!triOverlap(a.p, b.p, a.n)) return;
+  const gap = top.d - under.d; // > 0: the detail is in front
+  const behind = gap < -CLIP_BEHIND;
+  const want = behind ? -CLIP_PUSH - gap : CLIP_PUSH - gap;
+  const key = `${top.n.x.toFixed(4)},${top.n.y.toFixed(4)},${top.n.z.toFixed(4)},${top.d.toFixed(4)}`;
+  const push = meshes[top.mi].push;
+  const prev = push.get(key);
+  if (!prev) push.set(key, { n: top.n, d: top.d, dist: want });
+  // Pushed out by one part and in by another: out wins (a detail should show, not hide).
+  else if (want > 0 ? prev.dist < 0 || want > prev.dist : prev.dist < 0 && want < prev.dist) prev.dist = want;
+}
+
+// What declip did to each tower model it has seen, by `key` (tower type and level): the
+// geometry of every part before, and the parts whose geometry it swapped. Building the same
+// model again gives the same parts, so the swaps are copied over instead of worked out again.
+const modelMemo = new Map();
+
+/** Every mesh under `root`, in traverse order. */
+function allMeshes(root) {
+  const out = [];
+  root.traverse((m) => {
+    if (m.isMesh) out.push(m);
+  });
+  return out;
+}
+
+/**
+ * De-clips `root` (see above) and swaps edited geometries for cached copies. With `key`, a model
+ * built the same way as an earlier one with that key reuses its result (much faster).
+ */
+export function declip(root, key) {
+  const parts = key != null ? allMeshes(root) : null;
+  const memo = key != null ? modelMemo.get(key) : null;
+  if (memo && memo.before.length === parts.length && parts.every((m, i) => m.geometry === memo.before[i])) {
+    for (const [i, g] of memo.swaps) parts[i].geometry = g;
+    return;
+  }
+  const before = parts?.map((m) => m.geometry);
+  declipRun(root);
+  if (parts) modelMemo.set(key, { before, swaps: parts.flatMap((m, i) => (m.geometry !== before[i] ? [[i, m.geometry]] : [])) });
+}
+
+function declipRun(root) {
   // Some faces never settle: two parts push the same face out and back, every pass. Once a pass
   // just undoes the one before, the rest would only flip it back and forth, so skip to where the
   // last pass would leave it (one more flip if an odd number of passes is left).
+  const meshes = clipMeshes(root);
+  const buckets = new Map();
+  meshes.forEach((mesh, mi) => {
+    mesh.faces = meshFaces(meshes, mi);
+    addToBuckets(buckets, mesh.faces);
+  });
+  for (const b of buckets.values()) b.list.sort((p, q) => p.d - q.d);
   let prev = null;
+  let active = null;
+  // After a pass, only the parts that moved need their faces read again.
+  const refresh = (parts) => {
+    const touched = new Set();
+    for (const mi of parts) for (const f of meshes[mi].faces) touched.add(buckets.get(f.bk));
+    for (const b of touched) b.list = b.list.filter((f) => !parts.has(f.mi));
+    for (const mi of parts) {
+      meshes[mi].faces = meshFaces(meshes, mi);
+      for (const b of addToBuckets(buckets, meshes[mi].faces)) touched.add(b);
+    }
+    for (const b of touched) b.list.sort((p, q) => p.d - q.d);
+  };
   for (let pass = 0; pass < CLIP_PASSES; pass++) {
-    const moved = declipPass(root);
-    if (!moved.length) break;
+    const { moved, parts } = declipPass(meshes, buckets, active);
+    if (!moved.length) {
+      if (!active) break;
+      active = null; // nothing left near the parts that moved: one full pass to be sure
+      continue;
+    }
+    refresh(parts);
     if (undoes(moved, prev)) {
-      if ((CLIP_PASSES - 1 - pass) % 2) declipPass(root);
+      if ((CLIP_PASSES - 1 - pass) % 2) declipPass(meshes, buckets, null);
       break;
     }
     prev = moved;
+    active = parts;
   }
   root.traverse((m) => {
     if (!m.userData.clipOwn) return;
@@ -171,5 +329,4 @@ export function declip(root) {
     delete m.userData.clipOwn;
     delete m.userData.clipSrc;
   });
-  root.traverse((m) => delete m.userData.clipVol);
 }

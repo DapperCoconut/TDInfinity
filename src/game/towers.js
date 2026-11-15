@@ -21,6 +21,31 @@ export class GameTowers {
     this.selectedId = id;
     this.towerViews.get(id)?.setSelected(true);
     this.uiTimer = 0; // refresh panel now
+    this.prebuildUpgrade(id);
+  }
+
+  /**
+   * Builds the selected tower's next-level models while the game is idle and throws them away.
+   * Big models take a while to de-clip the first time (models/declip.js remembers the result),
+   * so the upgrade itself is then quick instead of freezing the game.
+   */
+  prebuildUpgrade(id) {
+    const t = this.state?.towers.get(id);
+    if (!t) return;
+    const later = globalThis.requestIdleCallback ?? ((f) => setTimeout(f, 30));
+    for (const path of ['top', 'bottom']) {
+      const up = nextUpgrade(t, path, this.state.towers.values(), new Map()); // only its type matters here, not its price
+      const key = up && `${up.type}|${t.level + 1}`;
+      if (!up || this.prebuilt?.has(key)) continue;
+      (this.prebuilt ??= new Set()).add(key);
+      later(() => {
+        try {
+          TOWER_MODELS[up.type]?.(t.level + 1);
+        } catch {
+          // only a warm-up: the real upgrade builds it again and shows any error there
+        }
+      });
+    }
   }
 
   /** Selects a plane, sentry, gravestone or unit: its own stats panel, and a ring that follows it. */
