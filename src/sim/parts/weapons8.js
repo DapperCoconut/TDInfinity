@@ -1,5 +1,6 @@
 // Tower weapons, part 8: evolved towers of wave 13. Lament (Butterfly ammo, Sinking, Lament,
-// Deathseeker, Salvation, Funeral, Sinking Deluge).
+// Deathseeker, Salvation, Funeral, Sinking Deluge), Vulcan (stacking burns, Ignition, Burn
+// Fragility, Vulcan Straight).
 // These are methods of Sim: sim.js puts them on the Sim class, so "this" is the game.
 
 import { canHit } from '../../config.js';
@@ -19,6 +20,16 @@ const DELUGE_AT = 12; // Sinking Deluge: needs this much Sinking ... (spec)
 const DELUGE_USE = 8; // ... and spends this much (spec)
 export const LAMENT_WHITE = 0xffffff;
 export const LAMENT_BLACK = 0x7c4dff; // black shots show as a dark violet so they can be seen
+
+// ---------------------------------------------------------------- Vulcan
+const IGN_LOSE = 4; // Ignition is lost after this long without a hit (spec)
+const FRAG_AT = 6; // Burn Fragility needs this much Ignition (spec)
+const FRAG_TIME = 3; // Burn Fragility lasts this long after the last hit (guess)
+const VS_MULT = 10; // Vulcan Straight: x damage (spec)
+const VS_LEN = 8; // its area in front: this long ... (guess)
+const VS_WIDTH = 2; // ... and this wide on each side (guess)
+const CINCT_R = 6; // Cinctura Ignis radius (guess)
+export const VULCAN_FIRE = 0xff6d00;
 
 export class SimWeapons8 {
   /**
@@ -188,5 +199,106 @@ export class SimWeapons8 {
     if (!L.ds) return;
     const ch = sure ? 1 : Math.min(1, 0.5 + 0.1 * Math.max(0, BF_START - Math.min(t.bw, t.bb)));
     for (let i = 0; i < L.ds && this.enemies.has(e.id); i++) if (Math.random() < ch) strike(0.5);
+  }
+
+  // ---------------------------------------------------------------- Vulcan
+
+  /** Vulcan: t.ign = Ignition, t.idle = time since its last hit. t.charge = Ignition / max. */
+  updateVulcan(t, s, dt) {
+    const v = s.vulcan;
+    const b = buffOf(this.buffs, t.id);
+    t.idle = (t.idle || 0) + dt;
+    if (t.idle >= IGN_LOSE) t.ign = 0;
+    t.charge = (t.ign || 0) / v.ign;
+    const target = this.findTarget(t, s, t.x, t.z, s.range * b.range, null);
+    if (!target) {
+      t.cooldown = Math.max(0, t.cooldown);
+      return;
+    }
+    t.yaw = Math.atan2(target.x - t.x, target.z - t.z);
+    if (t.cooldown > 0) return;
+    t.cooldown += s.cooldown;
+    t.idle = 0;
+    this.events.push({ k: 'shot', t: t.id, e: target.id });
+    this.vulcanHit(t, s, target, s.damage * b.dmg);
+    t.ign = Math.min(v.ign, (t.ign || 0) + 1);
+  }
+
+  /** Is `e` on fire (a normal burn or stacked burns)? */
+  burning(e) {
+    return e.burn > 0 || e.rayBurn?.length > 0;
+  }
+
+  /** One Vulcan hit for `dmg`: Enspark, the hit, a stacking 1s burn and Burn Fragility. */
+  vulcanHit(t, s, e, dmg) {
+    const v = s.vulcan;
+    if (v.hot && this.burning(e)) dmg *= 1 + v.hot;
+    this.fireHit = true;
+    try {
+      this.damage(t, e, dmg);
+    } finally {
+      this.fireHit = false;
+    }
+    if (!this.enemies.has(e.id) || e.fireImmune) return;
+    const tick = s.damage * 0.25 + (t.ign || 0); // burn damage per tick (spec), before damage boosts
+    (e.rayBurn ??= []).push({ left: 1, dps: tick / v.tick, by: t.id, fire: 1 });
+    if (v.frag && (t.ign || 0) >= FRAG_AT) {
+      e.frag ??= {};
+      e.frag[t.type] = { v: v.frag, left: FRAG_TIME };
+    }
+  }
+
+  /** Burn Fragility on `e`: one amount per kind of tower, added up. */
+  fragOf(e) {
+    let v = 0;
+    for (const k in e.frag) v += e.frag[k].v;
+    return v;
+  }
+
+  /** Burn Fragility wears off (once a tick, from tickDots). */
+  fragTick(e, dt) {
+    for (const k in e.frag) if ((e.frag[k].left -= dt) <= 0) delete e.frag[k];
+    if (!Object.keys(e.frag).length) e.frag = null;
+  }
+
+  vulcanWhy(t) {
+    return (t.ign || 0) < 10 ? 'Vulcan Straight needs 10 Ignition' : null;
+  }
+
+  /** Vulcan Straight: 10x damage in a wide area in front, then Cinctura Ignis all around. */
+  vulcanStraight(t, s) {
+    const b = buffOf(this.buffs, t.id);
+    const det = this.detects(t, s);
+    const dmg = s.damage * b.dmg;
+    t.ign = 0;
+    t.charge = 0;
+    const ux = Math.sin(t.yaw || 0);
+    const uz = Math.cos(t.yaw || 0);
+    for (const e of [...this.enemies.values()]) {
+      if (e.remains || !canHit(det, e)) continue;
+      const ex = e.x - t.x;
+      const ez = e.z - t.z;
+      const along = ex * ux + ez * uz;
+      if (along < 0 || along > VS_LEN) continue;
+      if (Math.abs(ex * uz - ez * ux) <= VS_WIDTH) this.vulcanHit(t, s, e, dmg * VS_MULT);
+    }
+    this.events.push({ k: 'quake', x: r2(t.x + ux * VS_LEN / 2), z: r2(t.z + uz * VS_LEN / 2), r: VS_LEN / 2, c: VULCAN_FIRE });
+    // Cinctura Ignis
+    for (const e of [...this.enemies.values()]) {
+      if (e.remains || !canHit(det, e) || (e.x - t.x) ** 2 + (e.z - t.z) ** 2 > CINCT_R * CINCT_R) continue;
+      let d = dmg * 0.5;
+      if (this.burning(e)) {
+        let burn = e.burnDps || 0;
+        for (const rb of e.rayBurn ?? []) burn += rb.dps;
+        d += dmg * 0.5 + burn * s.vulcan.tick; // + one tick of its burns
+      }
+      this.fireHit = true;
+      try {
+        this.damage(t, e, d);
+      } finally {
+        this.fireHit = false;
+      }
+    }
+    this.events.push({ k: 'quake', x: r2(t.x), z: r2(t.z), r: CINCT_R, c: VULCAN_FIRE, soft: 1 });
   }
 }

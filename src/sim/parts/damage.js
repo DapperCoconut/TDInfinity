@@ -182,10 +182,16 @@ export class SimDamage {
         const whole = Math.floor(e.rayAcc);
         if (whole >= 1) {
           e.rayAcc -= whole;
-          this.damage(this.towers.get(by) ?? null, e, whole);
+          this.fireHit = true; // Vulcan Burn Fragility counts these
+          try {
+            this.damage(this.towers.get(by) ?? null, e, whole);
+          } finally {
+            this.fireHit = false;
+          }
           if (!this.enemies.has(e.id)) continue;
         }
       }
+      if (e.frag) this.fragTick(e, dt); // Vulcan Burn Fragility wears off
       if (!e.burn) {
         e.burnDps = 0;
         e.burnAcc = 0;
@@ -195,7 +201,12 @@ export class SimDamage {
       const whole = Math.floor(e.burnAcc);
       if (whole < 1) continue;
       e.burnAcc -= whole;
-      this.damage(this.towers.get(e.burnBy) ?? null, e, whole);
+      this.fireHit = true;
+      try {
+        this.damage(this.towers.get(e.burnBy) ?? null, e, whole);
+      } finally {
+        this.fireHit = false;
+      }
     }
   }
 
@@ -521,6 +532,7 @@ export class SimDamage {
     // Insane: flat Defense blocks part of every direct hit (defense piercing cuts it like armor).
     const block = e.carry?.defense ?? e.defense;
     if (block && !this.dot && !pierceArmor && !tru) dmg = Math.max(0, dmg - block * (1 - Math.min(1, dp)));
+    if (e.frag && this.fireHit) dmg *= 1 + this.fragOf(e); // Vulcan Burn Fragility: more fire damage
     if (e.vuln) dmg *= 1 + e.vuln; // softened up by a DJ Booth's Red Drop the Beat
     if (e.arts > 0) dmg *= 1 + e.arts; // Mage Magical ARTS: more damage from everything
     if (e.gmT > 0 && kind === 'laser') dmg *= 1 + e.gm; // Ghost Mark: Energy ARTS, more damage from lasers

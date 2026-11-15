@@ -346,6 +346,8 @@ const TABLE = {
   punkbuster: 'stand canted highReady float kick',
   paralyzer: 'stand asbuilt - servo beam',
   exterminator: 'wide asbuilt - sway beam',
+  evoLament: 'stand dwide dDown sway akimbo',
+  evoVulcan: 'widebladed overhead frontM stoic swing',
 };
 
 // ---------------------------------------------------------------- lookup

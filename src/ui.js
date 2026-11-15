@@ -624,6 +624,7 @@ export class UI {
       : s.sm?.steal ? ` · Souls: ${Math.round(c * s.sm.max)}/${s.sm.max}` // Soul Master
       : s.artisan ? ` · ⚙ Scrap: ${Math.floor(c * s.artisan.cap)}/${s.artisan.cap.toLocaleString()}` // Artisan (t.charge = scrap / cap)
       : def.building ? ` · 💥 Blows up in ${Math.ceil(t.active || 0)}s` // Artisan buildings
+      : s.vulcan ? ` · 🔥 Ignition: ${Math.round(c * s.vulcan.ign)}/${s.vulcan.ign}` // Vulcan (t.charge = Ignition / max)
       : s.lament?.ammo && t.bw != null ? ` · 🦋 ${t.bw} White / ${t.bb} Black · ${t.bmode === 'b' ? 'Black' : t.bmode === 's' ? 'Sorrow' : 'White'} mode${t.funeral ? ' · Funeral!' : ''}` // Lament
       : s.frost?.grow ? ` · ❄ Crystals: ${Math.round(c * 7)}/${s.frost.max}${t.wisps?.length ? ` · Wisps: ${t.wisps.length}/5` : ''}` // Frostreaver (t.charge = crystals / 7)
       : s.van?.shield ? ` · 🛡 Shield: ${Math.round(c * 100)}` // Vanguard (t.charge = shield / 100)

@@ -74,9 +74,48 @@ const ART_AB = (lv) => [RELOCATION, BUILD_SKIRM, ...(lv >= 2 ? [BUILD_ATEL] : []
 const BUTTERFLY = { key: 'butterfly', name: 'Butterfly Gathering', cooldown: 0.2,
   desc: 'Switch mode: White (after a kill, shoot White next; reloads turn some Black into White), Black (reloads turn some White into Black) or Sorrow (with 3+ Black, spend 1 more Black for 1 more Sinking)' };
 
+// ---------------------------------------------------------------- Vulcan (evolved Warrior)
+
+// Vulcan Straight: needs 10 Ignition. The cooldown is the spec's 18s (the spec's "6s" is not used).
+const VULCAN_STRAIGHT = { key: 'vulcanStraight', name: 'Vulcan Straight', cooldown: 18,
+  desc: 'Needs 10 Ignition: spends it all to slash a wide area in front for 10x damage, then Cinctura Ignis hits every zombie around it for half its damage (burning zombies take 50% more, plus their burn)' };
+
 export const THIRTEENTH_TOWERS = {
   // Lament (evolved Gunner): dual pistols, one white and one black, that put Sinking on zombies.
   // lament: { ammo, chance, lv3, ds, salv, fun, funGive, deluge } - see sim/parts/weapons8.js.
+  // Vulcan (evolved Warrior): a burning greatsword. vulcan: { ign, burnMult, tick, frag, frontal }
+  // - see sim/parts/weapons8.js.
+  evoVulcan: {
+    name: 'Vulcan',
+    altOf: 'enforcer',
+    evolved: true,
+    evoFrom: 'enforcerWarrior',
+    evoLevel: 20,
+    form: 'Vulcan',
+    price: 8000,
+    shards: 3,
+    cost: 850,
+    limit: 5,
+    melee: true,
+    lead: false,
+    flying: false,
+    kindLabel: 'Fire',
+    blurb: 'The evolved Warrior. A flaming greatsword that sets zombies on fire with every hit, and burns stack. Each hit also gives it Ignition, which makes its burns hotter. From Lv 2 its hot hits make zombies take more fire damage, and at max level it unleashes Vulcan Straight.',
+    tip: 'Keep it swinging: Ignition is lost after 4s without a hit. Fire towers near it love its Burn Fragility.',
+    levels: [
+      { name: 'Vulcan', desc: 'Slashes for 10 every 1.4s and sets the zombie on fire for 1s (25% of its damage per tick, burns stack). Every hit: +1 Ignition (up to 6), +1 burn damage each. Ignition is lost after 4s without a hit.', damage: 10, cooldown: 1.4, range: 5, hidden: false,
+        vulcan: { ign: 6, tick: 0.5 } },
+      { name: 'Enspark', desc: '+2 damage, and hits on burning zombies do 25% more.', cost: 500, damage: 12, cooldown: 1.4, range: 5, hidden: false,
+        vulcan: { ign: 6, tick: 0.5, hot: 0.25 } },
+      { name: 'Ignition Blade II', desc: '+6 damage, swings every 1.2s and hidden detection. At 6+ Ignition, hits give 15% Burn Fragility: more fire damage taken (only stacks with other kinds of towers).', cost: 1900, damage: 18, cooldown: 1.2, range: 5, hidden: true,
+        vulcan: { ign: 6, tick: 0.5, hot: 0.25, frag: 0.15 } },
+      { name: 'Ignition Blade V', desc: 'Enspark: 50% more on burning zombies. Burns tick twice as fast (every 0.25s). Up to 10 Ignition and +1 range.', cost: 6000, evo: 5, damage: 18, cooldown: 1.2, range: 6, hidden: true,
+        vulcan: { ign: 10, tick: 0.25, hot: 0.5, frag: 0.15 } },
+      { name: 'Inferno', desc: '+14 damage and 25% Burn Fragility. New ability: Vulcan Straight.', cost: 19042, evo: 10, damage: 32, cooldown: 1.2, range: 6, hidden: true,
+        vulcan: { ign: 10, tick: 0.25, hot: 0.5, frag: 0.25 }, abilities: [VULCAN_STRAIGHT] },
+    ],
+  },
+
   evoLament: {
     name: 'Lament',
     altOf: 'soldier',

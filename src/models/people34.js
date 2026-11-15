@@ -1,10 +1,11 @@
 // Tower models: people, batch 34 (dressed with the vehicle kit in ../vehicles.js).
-// In here: Lament (evolved Gunner).
+// In here: Lament (evolved Gunner), Vulcan (evolved Warrior).
 // MODELS maps tower keys to builders; ../models.js lays it over TOWER_MODELS, so these win.
 
 import { glowMat } from '../vehicles.js';
 import { makeHumanoid } from './kit.js';
 import { aimBoth, fist, muzzle, own, wear } from './people1.js';
+import { shoulderPads } from './people2.js';
 import { feet, hands, hood } from './people5.js';
 import { cape } from './people18.js';
 
@@ -168,6 +169,140 @@ export function makeLament(level) {
   return own(h, 0.3);
 }
 
+// ------------------------------------------------------------------ Vulcan (charcoal and molten orange)
+
+export const VULCAN_GLOW = 0xff6d00;
+const C = 0x26221f; // charcoal armour
+const C2 = 0x36302b;
+const C3 = 0x4a423b;
+
+/** A little flame: an orange cone with a yellow core, pointing up. */
+function flame(k, fire, core, x, y, z, s = 1, o = {}) {
+  k.cyl(0.18 * s, 0.6 * s, fire, x, y, z, { r2: 0.01, seg: 6, ...o });
+  k.cyl(0.09 * s, 0.38 * s, core, x, y - 0.06 * s, z, { r2: 0.01, seg: 5, ...o });
+}
+
+/** The Vulcan greatsword (fist space, blade down -y): a dark blade with a molten core and flames. Returns the tip y. */
+function vulcanSword(k, fire, core, o = {}) {
+  const bl = o.big ? 3.4 : 2.9;
+  const bw = o.big ? 0.62 : 0.52;
+  k.cyl(0.11, 0.7, C2, 0, 0.12, 0, { seg: 8 }); // grip
+  for (let i = 0; i < 3; i++) k.torus(0.11, 0.025, C3, 0, 0.35 - i * 0.2, 0, { rx: PI / 2, seg: 8 });
+  k.ball(0.17, fire, 0, 0.55, 0, { seg: 10, rows: 7 }); // pommel
+  // a swept crossguard with burning ends
+  for (const sd of [-1, 1]) {
+    k.box(0.2, 0.18, 0.7, C3, 0, -0.3, sd * 0.38, { r: 0.04, rx: sd * 0.3 });
+    flame(k, fire, core, 0, -0.05, sd * 0.78, 0.7);
+  }
+  const y0 = -0.4;
+  const body = bl * 0.85;
+  const tip = bl - body;
+  k.box(0.1, body, bw, C, 0, y0 - body / 2, 0); // blade
+  k.slab(0.1, tip, bw, C, 0, y0 - body - tip / 2, 0, { bd: 0.05 });
+  k.box(0.12, body * 0.9, 0.12, fire, 0, y0 - body * 0.47, 0); // molten core
+  for (const sd of [-1, 1]) k.box(0.11, body, 0.04, core, 0, y0 - body / 2, sd * (bw / 2 - 0.02)); // hot edges
+  // flames licking up off the blade
+  const n = o.big ? 5 : 3;
+  for (let i = 0; i < n; i++) {
+    const sd = i % 2 ? 1 : -1;
+    flame(k, fire, core, 0, y0 - 0.5 - (i * body) / n, sd * (bw / 2 + 0.12), o.big ? 0.9 : 0.75, { rx: sd * 2.6 });
+  }
+  if (o.rings) for (let i = 0; i < 2; i++) k.torus(0.55, 0.04, fire, 0, y0 - body * (0.35 + i * 0.3), 0, { rz: PI / 2, seg: 16 }); // burning rings
+  return y0 - bl;
+}
+
+/**
+ * Vulcan (evolved Warrior): a charcoal knight in plate with molten orange cracks, a horned helm
+ * and a flaming greatsword. Lv 1 Enspark: a glowing chest core. Lv 2 Ignition Blade II: a burning
+ * crest, molten gauntlets and shoulder plates with ember spikes. Lv 3 Ignition Blade V: a wreath
+ * of flames on its back and a burning sword with rings. Lv 4 Inferno: a bigger sword, a crown of
+ * fire and a burning cape.
+ */
+export function makeVulcan(level) {
+  const h = makeHumanoid({ skin: C, shirt: C, pants: C2, arms: C, face: 'none' });
+  const key = `evoVulcan${level}`;
+  const fire = glowMat(h, VULCAN_GLOW);
+  const core = glowMat(h, 0xffd54f);
+  const hd = wear(h, h.head, `${key}:head`);
+  const t = wear(h, h.torso, `${key}:torso`);
+  // a horned great helm with a glowing eye slit and cracks
+  hd.box(1.35, 1.4, 1.35, C2, 0, 0.58, 0, { r: 0.22 });
+  hd.box(1.05, 0.12, 0.06, core, 0, 0.62, 0.69); // eye slit
+  hd.box(0.06, 0.45, 0.05, fire, 0.3, 0.25, 0.69, { rz: 0.4 }); // crack
+  for (const sd of [-1, 1]) {
+    const hl = level >= 4 ? 1.1 : 0.8;
+    hd.tube([[sd * 0.62, 0.85, 0], [sd * 1.0, 1.15, -0.1], [sd * 1.1, 1.15 + hl * 0.6, -0.25]], 0.1, C3, { seg: 10, sides: 6 }); // horns
+    hd.ball(0.07, fire, sd * 1.1, 1.2 + hl * 0.6, -0.25, { seg: 6, rows: 4 });
+  }
+  if (level >= 2) {
+    // a crest of flames along the top
+    for (let i = 0; i < 4; i++) flame(hd, fire, core, 0, 1.45, 0.45 - i * 0.3, 0.8 + (i === 1 ? 0.3 : 0));
+  }
+  if (level >= 4) {
+    // a crown of fire
+    hd.torus(0.72, 0.05, fire, 0, 1.35, 0, { rx: PI / 2, seg: 20 });
+    for (let i = 0; i < 7; i++) {
+      const a = (i / 7) * PI * 2;
+      flame(hd, fire, core, Math.sin(a) * 0.72, 1.6, Math.cos(a) * 0.72, 0.65);
+    }
+  }
+  // plate armour with molten cracks
+  t.box(2.18, 1.8, 1.18, C, 0, 0.05, 0, { r: 0.12 });
+  t.box(2.28, 1.25, 1.28, C2, 0, 0.3, 0, { r: 0.14 }); // breastplate
+  for (const [x, y, rz] of [[-0.5, 0.5, 0.5], [0.45, 0.2, -0.6], [-0.2, -0.1, 0.2], [0.6, 0.7, 0.3]]) t.box(0.05, 0.42, 0.04, fire, x, y, 0.65, { rz });
+  t.box(2.24, 0.26, 1.22, C3, 0, -0.86, 0, { r: 0.04 }); // belt
+  t.box(0.36, 0.24, 0.06, fire, 0, -0.86, 0.63, { r: 0.02 });
+  for (const sd of [-1, 1]) t.slab(0.75, 0.7, 0.12, C2, sd * 0.55, -1.3, 0.5, { bw: 0.8 }); // tassets
+  if (level >= 1) {
+    // Enspark: a glowing core in the chest
+    t.ball(0.24, core, 0, 0.45, 0.66, { seg: 12, rows: 8 });
+    t.torus(0.32, 0.06, C3, 0, 0.45, 0.66, { seg: 14 });
+    for (let i = 0; i < 4; i++) t.box(0.05, 0.3, 0.04, fire, Math.sin((i * PI) / 2) * 0.45, 0.45 + Math.cos((i * PI) / 2) * 0.45, 0.66, { rz: (i * PI) / 2 });
+  }
+  if (level >= 2) {
+    shoulderPads(t, C2, 0.62);
+    for (const sd of [-1, 1]) {
+      for (let i = 0; i < 3; i++) t.cyl(0.1, 0.45, C3, sd * (1.25 + i * 0.12), 1.15 - i * 0.05, -0.25 + i * 0.25, { r2: 0.01, seg: 6, rz: -sd * 0.5 }); // spikes
+      t.ball(0.08, fire, sd * 1.5, 1.4, 0, { seg: 6, rows: 4 });
+    }
+  }
+  if (level >= 3) {
+    // a wreath of flames on its back
+    t.torus(1.05, 0.07, C3, 0, 0.6, -0.85, { seg: 24 });
+    for (let i = 0; i < 9; i++) {
+      const a = (i / 9) * PI * 2;
+      flame(t, fire, core, Math.sin(a) * 1.05, 0.6 + Math.cos(a) * 1.05, -0.88, 0.9, { rz: -a });
+    }
+  }
+  if (level >= 4) {
+    cape(t, 0x3e1a0b, 3.0, { w: 2.2, clasp: VULCAN_GLOW, tatter: true });
+    t.box(2.4, 0.08, 0.05, fire, 0, -1.9, -0.82); // burning hem
+  }
+  hd.done();
+  t.done();
+  hands(h, key, C3, C2, (a) => {
+    if (level >= 2) {
+      a.box(0.75, 0.55, 0.75, C2, 0, -1.25, 0, { r: 0.08 }); // gauntlets
+      a.box(0.77, 0.07, 0.77, fire, 0, -1.05, 0);
+    }
+  });
+  feet(h, key, C3, (b) => b.box(1.12, 0.1, 1.14, fire, 0, -1.3, 0.02));
+  h.muzzles = [];
+  const g = fist(h.rightArm, -1.9, 1.15);
+  const gk = wear(h, g, `${key}:gun`);
+  const tipY = vulcanSword(gk, fire, core, { big: level >= 4, rings: level >= 3 });
+  gk.done();
+  muzzle(h, g, tipY, 0);
+  h.rightArm.rotation.set(-2.5, 0, 0.2);
+  h.leftArm.rotation.set(-0.4, 0, -0.25);
+  h.pose = { right: -2.5, left: -0.4, leftRecoil: 0 };
+  h.swing = 2.0;
+  h.melee = true;
+  h.tracer = VULCAN_GLOW;
+  return own(h, 0);
+}
+
 export const MODELS = {
   evoLament: makeLament,
+  evoVulcan: makeVulcan,
 };

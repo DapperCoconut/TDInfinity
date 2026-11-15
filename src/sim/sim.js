@@ -839,6 +839,10 @@ export class Sim {
           const why = this.frostWhy(t, s, ab, m); // Frostreaver: abilities cost Ice Crystals
           if (why) return why;
         }
+        if (ab.key === 'vulcanStraight') {
+          const why = this.vulcanWhy(t); // Vulcan: needs 10 Ignition
+          if (why) return why;
+        }
         if (ab.key === 'hologram' || ab.key === 'utopia') {
           const why = this.technoWhy(t, p, s, ab, m); // (Utopia makes its copy here)
           if (why) return why;
