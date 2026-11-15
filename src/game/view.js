@@ -8,7 +8,7 @@ import { audio } from '../audio.js';
 import { subInfo } from '../substats.js';
 import { SandboxBar } from '../sandboxbar.js';
 import { clamp } from '../utils.js';
-import { WORLD_SCALE } from '../scale.js';
+import { MODEL_SCALE as K, WORLD_SCALE } from '../scale.js';
 import { heightAt, mapInfo } from '../sim/map.js';
 import { ST_AIRBORNE, ST_ARMORED, ST_BIOHAZARD, ST_BURNING, ST_CHARGING, ST_CHILLED, ST_CLOAKED, ST_CONFUSED, ST_DANCE, ST_ENRAGED, ST_FLOAT, ST_FROZEN, ST_GASSED, ST_GLITCHED, ST_HACKED, ST_HASTED, ST_MUTANT, ST_SHOCKED, ST_SHROOM, ST_SLIMED, ST_SMOKED, ST_STUNNED, ST_VOIDARMOR, ST_VOIDAURA } from '../sim/sim.js';
 import { CITADEL, borrowsHidden, buffOf, computeBuffs, mediCharge, medicShields, nextUpgrade, spyCircles } from '../sim/sim.js';
@@ -307,7 +307,7 @@ export class GameView {
     }
   }
 
-  /** Hovering an enemy: a little card by the mouse with its name, health and what is on it. */
+  /** Hovering an enemy or a friendly summon: a little card by the mouse with its name, health and what is on it. */
   updateHover() {
     let tip = this.hoverTip;
     if (!tip) {
@@ -340,7 +340,29 @@ export class GameView {
           best = v;
         }
       }
+      // Friendly summons (units) too.
+      for (const v of this.unitViews.values()) {
+        if (!st.units.has(v.id)) continue;
+        const ht = (v.m.height || 2) * K;
+        const p = this.tipV.copy(v.pos).setY(v.pos.y + ht * 0.5).multiplyScalar(WORLD_SCALE);
+        const far = this.camera.position.distanceTo(p);
+        p.project(this.camera);
+        if (p.z > 1) continue;
+        const sx = (p.x + 1) * w / 2;
+        const sy = (1 - p.y) * h / 2;
+        const reach = Math.max(18, Math.min(160, ht * WORLD_SCALE * h / (2 * far * Math.tan((this.camera.fov * Math.PI) / 360)) * 0.6));
+        const d = Math.hypot(sx - mx, sy - my);
+        if (d < reach && d < bestD) {
+          bestD = d;
+          best = v;
+        }
+      }
     }
+    if (best instanceof UnitView) {
+      this.unitTip(tip, st.units.get(best.id), st);
+      return;
+    }
+    tip.classList.remove('ally');
     if (!best) {
       if (this.tipId != null) tip.style.display = 'none';
       this.tipId = null;
@@ -371,6 +393,74 @@ export class GameView {
     tip.style.left = `${Math.min(x + 16, window.innerWidth - tip.offsetWidth - 8)}px`;
     tip.style.top = `${Math.min(y + 16, window.innerHeight - tip.offsetHeight - 8)}px`;
   }
+
+  /** The hover card for a friendly summon: name, the tower that sent it, health, traits and effects. */
+  unitTip(tip, u, st) {
+    const tower = st.towers.get(u.tower);
+    const def = unitDefOf(tower?.type, u.model);
+    const key = `u${u.id}|${Math.ceil(u.hp)}|${u.ust}|${u.alive}`;
+    if (key !== this.tipKey) {
+      this.tipKey = key;
+      const good = [];
+      const bad = [];
+      if (def) {
+        if (def.soldiers > 1) good.push(`Squad of ${u.alive}`);
+        if (def.air) good.push('Flying');
+        if (def.untouchable) good.push("Can't be hurt");
+        if (def.hidden) good.push('Sees hidden');
+        if (def.flying) good.push('Hits flyers');
+        if (def.heal) good.push('Medic');
+        if (def.decay) bad.push('Wearing down');
+        if (def.life) bad.push(`Leaves after ${def.life}s`);
+      }
+      for (const [bit, name] of UNIT_EFFECTS) if (u.ust & bit) good.push(name);
+      const hp = u.maxHp > 1 ? `${Math.ceil(u.hp).toLocaleString()} / ${Math.ceil(u.maxHp).toLocaleString()}` : '—';
+      const share = u.maxHp > 0 ? Math.max(0, Math.min(1, u.hp / u.maxHp)) : 1;
+      const from = tower ? TOWERS[tower.type]?.name : null;
+      tip.innerHTML = `<div class="et-name">${def?.name ?? 'Summon'}</div>`
+        + (from ? `<div class="et-from">From ${from}${tower.owner !== this.session.myId && st.players?.get?.(tower.owner)?.name ? ` (${st.players.get(tower.owner).name})` : ''}</div>` : '')
+        + `<div class="et-bar"><div style="width:${share * 100}%"></div></div><div class="et-hp">❤ ${hp}</div>`
+        + (good.length ? `<div class="et-good">${good.map((n) => `<span>${n}</span>`).join('')}</div>` : '')
+        + (bad.length ? `<div class="et-bad">${bad.map((n) => `<span>${n}</span>`).join('')}</div>` : '');
+    }
+    tip.classList.add('ally');
+    this.tipId = u.id;
+    tip.style.display = 'block';
+    const x = (this.mouse.x + 1) * window.innerWidth / 2;
+    const y = (1 - this.mouse.y) * window.innerHeight / 2;
+    tip.style.left = `${Math.min(x + 16, window.innerWidth - tip.offsetWidth - 8)}px`;
+    tip.style.top = `${Math.min(y + 16, window.innerHeight - tip.offsetHeight - 8)}px`;
+  }
+}
+
+/** Live summon states the sim sends (bits): [bit, name]. All good for the summon. */
+const UNIT_EFFECTS = [[1, 'Star power'], [2, 'Ghost'], [4, 'Being healed'], [8, 'Shielded']];
+
+/**
+ * The unit def behind a summon's model: looked for in its own tower's levels first, then in every
+ * tower (a unit def is any object with a `model`, a `name` and `hp`).
+ */
+const unitDefs = new Map();
+function unitDefOf(type, model) {
+  const k = `${type}|${model}`;
+  if (unitDefs.has(k)) return unitDefs.get(k);
+  const find = (root) => {
+    const seen = new Set();
+    const walk = (o) => {
+      if (!o || typeof o !== 'object' || seen.has(o)) return null;
+      seen.add(o);
+      if (o.model === model && typeof o.name === 'string' && o.hp != null) return o;
+      for (const v of Object.values(o)) {
+        const r = walk(v);
+        if (r) return r;
+      }
+      return null;
+    };
+    return walk(root);
+  };
+  const def = (type && find(TOWERS[type]?.levels)) || find(TOWERS) || null;
+  unitDefs.set(k, def);
+  return def;
 }
 
 /** Status bits shown on the hover card: [bit, name, bad for the enemy]. */

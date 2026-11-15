@@ -938,7 +938,7 @@ export class Sim {
       // Traps, plus Necromancer gravestones and Engineer sentries: [..., level, facing, health left (0-1), stunned, thermite radius].
       tr: [...this.traps.values()].map((tr) => [tr.id, tr.tower, tr.kind, r2(tr.x), r2(tr.z), tr.land > 0 ? 0 : 1, tr.lvl ?? 0, r2(tr.yaw ?? 0), tr.maxHp ? r2(tr.hp / tr.maxHp) : 1, tr.stunT > 0 ? 1 : 0, tr.kind === 'thermite' || tr.kind === 'gas' || tr.kind === 'thorns' || tr.kind === 'goo' || tr.kind === 'blade' ? tr.radius : 0]),
       // Units: free ones (crows, bees, Volt Points) also send where they are, [x, z].
-      u: [...this.units.values()].map((u) => [u.id, u.tower, u.model, Math.ceil(u.hp), u.maxHp, r2(u.dist), r2(u.lateral), u.alive, r2(u.speed), r2(u.yaw), u.def.free || u.def.chase ? [r2(u.x), r2(u.z)] : 0, u.route || 0]),
+      u: [...this.units.values()].map((u) => [u.id, u.tower, u.model, Math.ceil(u.hp), u.maxHp, r2(u.dist), r2(u.lateral), u.alive, r2(u.speed), r2(u.yaw), u.def.free || u.def.chase ? [r2(u.x), r2(u.z)] : 0, u.route || 0, (u.starT > 0 ? 1 : 0) | (u.ghostT > 0 ? 2 : 0) | (u.healed ? 4 : 0) | (u.shielded ? 8 : 0)]),
       // (Inhuman contract jumpers send speed 0 so the client doesn't slide them.)
       e: [...this.enemies.values()].map((e) => [e.id, e.type, e.hp, e.maxHp, r2(e.dist), e.glitch ? 0 : r2(e.speed), r2(e.lateral), e.st, e.route || 0]),
       // Insane mode: the time dimension, and Beholder time bombs [id, x, z, seconds left].

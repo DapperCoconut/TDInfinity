@@ -222,11 +222,15 @@ export class SimUnits {
       }
       return best;
     };
+    for (const u of this.units.values()) u.healed = u.shielded = false; // for the hover card
     for (const m of medics) {
       const h = m.def.heal;
       m.healing = false;
       for (const o of this.units.values()) {
-        if (o === m || o.hp >= o.maxHp || (o.x - m.x) ** 2 + (o.z - m.z) ** 2 > h.range * h.range) continue;
+        if (o === m || (o.x - m.x) ** 2 + (o.z - m.z) ** 2 > h.range * h.range) continue;
+        if (h.shield) o.shielded = true;
+        if (o.hp >= o.maxHp) continue;
+        o.healed = true;
         o.hp = Math.min(o.maxHp, o.hp + h.rate * dt);
         m.healing = true;
       }

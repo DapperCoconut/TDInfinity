@@ -3251,6 +3251,11 @@ input:focus {
 #enemy-tip span { padding: 1px 6px; border-radius: 6px; font-size: 11px; font-weight: 700; }
 #enemy-tip .et-good span { background: rgba(239, 83, 80, 0.3); color: #ffab91; }
 #enemy-tip .et-bad span { background: rgba(102, 187, 106, 0.3); color: #b9f6ca; }
+/* Friendly summons: blue health bar; good things green, bad things red */
+#enemy-tip .et-from { font-size: 11px; opacity: 0.75; margin: -2px 0 4px; }
+#enemy-tip.ally .et-bar div { background: #42a5f5; }
+#enemy-tip.ally .et-good span { background: rgba(102, 187, 106, 0.3); color: #b9f6ca; }
+#enemy-tip.ally .et-bad span { background: rgba(239, 83, 80, 0.3); color: #ffab91; }
 
 /* Sandbox bar (under the health bar) and the Dummy King warnings */
 #sandbox-bar {

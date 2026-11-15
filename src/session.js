@@ -155,14 +155,14 @@ export class NetSession {
 
     // Units (Jeeps, squads...) drive toward the entrance, so their dist goes down.
     const seenU = new Set();
-    for (const [id, tower, model, hp, maxHp, dist, lateral, alive, speed, yaw, free = 0, route = 0, lane = 0] of s.u || []) {
+    for (const [id, tower, model, hp, maxHp, dist, lateral, alive, speed, yaw, free = 0, route = 0, ust = 0, lane = 0] of s.u || []) {
       seenU.add(id);
       let u = st.units.get(id);
       if (!u) {
         u = { id, dist };
         st.units.set(id, u);
       }
-      Object.assign(u, { tower, model, hp, maxHp, lateral, alive, speed, yaw, route, lane, oz: laneOz(lane), target: dist, fx: free ? free[0] : null, fz: free ? free[1] : null }); // fx/fz: crows, bees, Volt Points fly freely
+      Object.assign(u, { tower, model, hp, maxHp, lateral, alive, speed, yaw, route, ust, lane, oz: laneOz(lane), target: dist, fx: free ? free[0] : null, fz: free ? free[1] : null }); // fx/fz: crows, bees, Volt Points fly freely
     }
     for (const id of st.units.keys()) if (!seenU.has(id)) st.units.delete(id);
 
