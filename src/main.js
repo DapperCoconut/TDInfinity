@@ -21,7 +21,7 @@ for (const ev of ['pointerdown', 'keydown']) window.addEventListener(ev, () => a
 window.td = { client, net, lobby, audio };
 
 // Konami code (↑ ↑ ↓ ↓ ← → ← → B A): infinite cash in a game; in the menus, infinite credits and
-// shards, and every event tower unlocked.
+// shards, every event tower unlocked, and every enemy in the Enemy Journal.
 const KONAMI = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'KeyB', 'KeyA'];
 let konami = 0;
 window.addEventListener('keydown', (e) => {
@@ -40,8 +40,9 @@ window.addEventListener('keydown', (e) => {
   profile.shards = Infinity;
   profile.gems = Infinity;
   for (const k of Object.keys(DIFFICULTIES)) if (!profile.beaten.includes(k) && k !== 'hardcore') profile.beaten.push(k); // opens Hardcore
+  profile.learnAll(); // every enemy in the Enemy Journal
   profile.unlockEvents(); // also saves
   audio.upgrade();
   lobby.renderDifficulty?.();
-  lobby.toast('∞ credits, ∞ Dimension Shards, ∞ Gems, Hardcore and every event tower unlocked!');
+  lobby.toast('∞ credits, ∞ Dimension Shards, ∞ Gems, Hardcore, every event tower and the whole Enemy Journal unlocked!');
 });

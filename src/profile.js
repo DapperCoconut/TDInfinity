@@ -119,6 +119,10 @@ export const profile = {
     this.save();
     return true;
   },
+  /** Enemy Journal: every enemy found at once (the Konami code in the menus). Does not save. */
+  learnAll() {
+    this.journal.seen = Object.keys(ENEMIES);
+  },
   /** Counts a kill of boss `type`; returns how many there have been. */
   bossKill(type) {
     const n = (this.journal.bossKills[type] ?? 0) + 1;
