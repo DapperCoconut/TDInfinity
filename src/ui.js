@@ -694,6 +694,7 @@ export class UI {
     if (s.rage) row('Rage', `+${Math.round(s.rage.per * 100)}% Crushing Blow damage per stack (up to ${s.rage.max}), lost after ${s.rage.idle}s without a hit`, 'yes');
     if (s.bless) row('Blessing', `+${Math.round(s.bless * 100)}% damage to one tower in range${s.blessHidden ? ', and it sees hidden zombies' : ''}`, 'yes');
     if (s.maxOne) row('Limit', `only one ${def.name} can have this level`, 'no');
+    if (s.maxCount) row('Limit', `only ${s.maxCount} ${def.name} towers can have this level`, 'no');
     if (s.pay) row('Paychecks', `${s.pay.count} every wave, $${s.pay.cash} each, one every ${s.pay.every}s during the wave (unused ones are kept)`, 'yes');
     if (s.organize) row('Farmers Organization', `other Farmers within ${s.range} pay ${Math.round(s.organize * 100)}% faster`, 'yes');
     if (s.slash) row('Sword', `${s.slash.damage} damage to every zombie within ${s.slash.radius} in front of it, every ${s.slash.cooldown}s${s.slash.min > 1 ? ' (only when more than one is close)' : ''}`, 'yes');

@@ -16,6 +16,8 @@
 //   Warrior: an alternate Enforcer form. Swings a sword; hidden detection at Lv 3, Double Strike at Lv 4.
 //   Eradicator: fast little energy orbs, and from Lv 3 the Raybreak: a big piercing beam. Its last
 //               three levels add ΘVERLOAD, which costs its owner money for the rest of the game.
+//   Snowman: an alternate Snowballer form. Snowballs freeze zombies in place (never bosses);
+//            from Lv 2 the whole blast freezes. Snowfall ability at Lv 6 (only 4 can have it).
 //   Mage: weak long-range magic shots. Builds up its owner's Arcana, shoots faster with more of it,
 //         calls down lightning every 10 shots (Stormbringer), and Artificial Ascent at Lv 5.
 //
@@ -49,6 +51,7 @@
 //               nearest tower in its `aura` that attacks and gives it +n damage (Priests don't add
 //               up: the best one counts). blessHidden: that tower also sees hidden zombies.
 //   maxOne: true  (on a level) only one of a player's towers of this type can have this level.
+//   maxCount: n  (on a level) only n of a player's towers of this type can have this level.
 //   pay: { cash, count, every }  Farmer (see updateFarmer in sim/parts/weapons4.js): gets `count`
 //               paychecks at the start of every wave (unused ones are kept), and pays one, worth
 //               `cash`, every `every` s while the wave is on. organize: other Farmers within its
@@ -133,6 +136,8 @@ const RAY_BURN = { share: 0.05, cap: 400, time: 8 };
 // adding up to `cap`). More Arcana makes the ARTS stronger and last longer (see arcaneBlast).
 const ascent = { key: 'artificialAscent', name: 'Artificial Ascent', cooldown: 50, aim: true, reach: 40, mult: 3, radius: 6, arts: 0.05, time: 15, cap: 0.25,
   desc: 'Fires a blast of arcane energy where you click: 3x the Mage\'s damage, and Magical ARTS (+5% damage taken from everything for 15s, up to 25%). More Arcana makes the ARTS stronger and last longer' };
+const snowfall = { key: 'snowfall', name: 'Snowfall', cooldown: 50, freeze: 6, vuln: 0.2, extra: 10,
+  desc: 'Freezes every zombie on the map for 6s (not bosses). Frozen zombies take +20% damage. +10s cooldown for every other max level Snowman' };
 const ARCANA = (gain) => ({ gain, cap: 200 });
 
 export const ELEVENTH_TOWERS = {
@@ -393,6 +398,33 @@ export const ELEVENTH_TOWERS = {
       { name: 'Ethereal Blade', desc: '+6 damage and sees hidden zombies.', cost: 1200, damage: 14, cooldown: 0.6, range: 6, hidden: true },
       { name: 'Warrior Spirit', desc: '+12 damage and Double Strike: every swing hits twice (swings every 0.7s).', cost: 3500, damage: 26, cooldown: 0.7, range: 6, hidden: true,
         double: true },
+    ],
+  },
+  // Snowman (alternate Snowballer form). Snowballs freeze what they hit; bosses never freeze (bossStop 0).
+  snowballerSnowman: {
+    name: 'Snowman',
+    altOf: 'snowballerFrost',
+    form: 'Snowman',
+    shards: 1,
+    price: 0,
+    cost: 550,
+    limit: 12,
+    lob: 0.6,
+    lead: true,
+    flying: false,
+    bossStop: 0,
+    kindLabel: 'Splash',
+    blurb: 'An alternate Snowballer whose snowballs freeze zombies in their tracks. Bosses never freeze. From Lv 2 the whole blast freezes. At max level it unlocks Snowfall, which freezes every zombie on the map. Up to 12, and only 4 can reach max level.',
+    tip: 'Great for holding zombies still while your big towers hit them.',
+    levels: [
+      { name: 'Snowman', desc: 'Throws a snowball that freezes the zombie it hits for 1s.', damage: 2, cooldown: 3, range: 9, radius: 1.5, maxHits: 1, freeze: 1, hidden: false },
+      { name: 'Stronger Snowballs', desc: '+1 damage and freezes longer (1s > 1.25s).', cost: 350, damage: 3, cooldown: 3, range: 9, radius: 1.5, maxHits: 1, freeze: 1.25, hidden: false },
+      { name: 'Cold Snap', desc: 'The snowball bursts and freezes every zombie in the blast.', cost: 650, damage: 3, cooldown: 3, range: 9, radius: 3, freeze: 1.25, hidden: false },
+      { name: 'Winter Scarf', desc: '+2 range and throws faster (every 3s > 2.2s).', cost: 1050, damage: 3, cooldown: 2.2, range: 11, radius: 3, freeze: 1.25, hidden: false },
+      { name: 'Frostbringer', desc: '+3 damage and a bigger blast.', cost: 2000, damage: 6, cooldown: 2.2, range: 11, radius: 4.5, freeze: 1.25, hidden: false },
+      { name: 'Subzero', desc: '+7 damage, +3 range and freezes longer (1.25s > 2s).', cost: 3750, damage: 13, cooldown: 2.2, range: 14, radius: 4.5, freeze: 2, hidden: false },
+      { name: 'Endless Blizzard', desc: '+22 damage and freezes longer (2s > 3.5s). Unlocks Snowfall. Only 4 Snowmen can have this.', cost: 23000, damage: 35, cooldown: 2.2, range: 14, radius: 4.5, freeze: 3.5, hidden: false,
+        maxCount: 4, abilities: [snowfall] },
     ],
   },
   // Eradicator: quick energy orbs, and from Lv 3 the Raybreak beam (on its own timer).

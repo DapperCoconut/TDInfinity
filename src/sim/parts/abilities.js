@@ -66,6 +66,7 @@ export class SimAbilities {
       if (ab.immune) t.immuneT = Math.max(t.immuneT || 0, ab.immune); // Eldritch Rift: stun immunity
     }
     else if (ab.key === 'carpetBomb') this.carpetBomb(t, s, ab, Number(m.x), Number(m.z));
+    else if (ab.key === 'snowfall') this.snowfall(t, ab); // Snowman
     else if (ab.key === 'artificialAscent') this.arcaneBlast(t, s, ab, Number(m.x), Number(m.z)); // Mage
     else if (ab.key === 'redeploy') t.face = t.yaw = Math.atan2(Number(m.x) - t.x, Number(m.z) - t.z); // Machine Gunner: turn its cone
     else if (ab.key === 'reverse') t.dir = -(t.dir || 1);
@@ -312,6 +313,22 @@ export class SimAbilities {
       if (this.enemies.has(e.id)) this.iceFreeze(e, ab.freeze, { freezeBoss: 0.5 });
     }
     this.events.push({ k: 'boom', x: r2(t.x), z: r2(t.z), r: ab.radius, ice: 1 });
+  }
+
+  /**
+   * Snowman Snowfall: every zombie on the map (not bosses) freezes for `freeze` s and takes +`vuln`
+   * damage while frozen. Every other max level Snowman adds `extra` s to the cooldown.
+   */
+  snowfall(t, ab) {
+    let n = 0;
+    for (const e of [...this.enemies.values()]) {
+      if (e.boss) continue;
+      this.iceFreeze(e, ab.freeze, { freezeBoss: 0, frozenVuln: ab.vuln });
+      if (n++ < 30) this.events.push({ k: 'boom', x: r2(e.x), z: r2(e.z), r: 2.5, ice: 1 });
+    }
+    const top = TOWERS[t.type].levels.length - 1;
+    const others = [...this.towers.values()].filter((o) => o !== t && o.type === t.type && o.level === top).length;
+    t.cd[ab.key] += ab.extra * others;
   }
 
   /** The zombie closest to (x, z) that `det` can see, or null. */

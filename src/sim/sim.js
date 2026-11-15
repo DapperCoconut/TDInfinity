@@ -619,7 +619,8 @@ export class Sim {
         const next = up.next;
         if (next.evo && p.evo && (p.evo[rootType(t.type)] ?? 0) < next.evo) return `Needs evolution level ${next.evo}`;
         if (next.perk && p.evo && !p.evo[`perk:${next.perk}`]) return `Locked: ${PERKS[next.perk] ?? 'win a mode'} to unlock this upgrade`;
-        if (next.maxOne && [...this.towers.values()].some((o) => o !== t && o.owner === pid && o.type === up.type && o.level >= t.level + 1)) return `Only one ${def.name} can have ${next.name}`;
+        const capN = next.maxOne ? 1 : next.maxCount; // Priest Guardian Angel, Snowman Endless Blizzard
+        if (capN && [...this.towers.values()].filter((o) => o !== t && o.owner === pid && o.type === up.type && o.level >= t.level + 1).length >= capN) return capN === 1 ? `Only one ${def.name} can have ${next.name}` : `Only ${capN} ${def.name} towers can have ${next.name}`;
         const cost = up.cost;
         if (p.cash < cost) return `Need $${cost} to upgrade`;
         p.cash -= cost;

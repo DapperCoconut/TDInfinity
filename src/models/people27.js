@@ -1,5 +1,5 @@
 // Tower models: people, batch 27 (dressed with the vehicle kit in ../vehicles.js).
-// In here: Priest, Farmer, Bandit, Eradicator, Shrapnel Grenadier, Warrior, Mage.
+// In here: Priest, Farmer, Bandit, Eradicator, Shrapnel Grenadier, Warrior, Mage, Snowman.
 // Like batch 26 these are plain white figures with no face: only their gear tells them apart,
 // white too, with accents in one neon colour per tower. (The Mage is not one of them: it has
 // normal colours.)
@@ -686,6 +686,71 @@ export function makeMage(level) {
   return own(h, 0);
 }
 
+// ------------------------------------------------------------------ Snowman (neon spring green)
+
+const SNOW_NEON = 0x00ffa3;
+
+/**
+ * Snowman (alternate Snowballer): a round white snow figure with a top hat, coal-style buttons
+ * in neon, and a snowball in the hand. Lv 1: mittens. Lv 2 Cold Snap: a frosty belly ring.
+ * Lv 3 Winter Scarf: a neon scarf. Lv 4 Frostbringer: ice spikes on the shoulders. Lv 5 Subzero:
+ * an icicle crown on the hat. Lv 6 Endless Blizzard: a little snow cloud over its head.
+ */
+export function makeSnowman(level) {
+  const h = blank();
+  const key = `snowballerSnowman${level}`;
+  const neon = glowMat(h, SNOW_NEON);
+  const hd = wear(h, h.head, `${key}:head`);
+  const t = wear(h, h.torso, `${key}:torso`);
+  // a round snow head and a top hat with a neon band
+  hd.ball(0.78, W, 0, 0.55, 0, { seg: 14, rows: 10 });
+  hd.cyl(0.9, 0.08, W3, 0, 1.18, 0, { seg: 16 }); // brim
+  hd.cyl(0.6, 0.85, W2, 0, 1.6, 0, { seg: 16 });
+  hd.cyl(0.62, 0.16, neon, 0, 1.3, 0, { seg: 16 });
+  if (level >= 5) for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * PI * 2;
+    hd.box(0.1, 0.45, 0.1, neon, Math.sin(a) * 0.5, 2.2, Math.cos(a) * 0.5, { r: 0.03 });
+  }
+  if (level >= 6) {
+    // a little snow cloud floating over the hat
+    for (const [x, z, r] of [[0, 0, 0.55], [0.55, 0.1, 0.4], [-0.5, -0.1, 0.42], [0.1, -0.4, 0.38]]) hd.ball(r, W2, x, 3.1, z, { seg: 10, rows: 7 });
+    for (const x of [-0.4, 0, 0.4]) hd.ball(0.07, neon, x, 2.6, 0.1, { seg: 6, rows: 4 });
+  }
+  // a round snow body with neon buttons
+  t.ball(1.25, W, 0, -0.05, 0, { seg: 16, rows: 12 });
+  for (const y of [0.55, 0.05, -0.45]) t.ball(0.12, neon, 0, y, 1.2, { seg: 8, rows: 6 });
+  if (level >= 2) t.torus(1.2, 0.07, neon, 0, -0.55, 0, { rx: PI / 2, seg: 20 }); // frosty belly ring
+  if (level >= 3) {
+    // Winter Scarf: wrapped round the neck with one end hanging down the front
+    t.torus(0.62, 0.2, neon, 0, 0.98, 0, { rx: PI / 2, seg: 16 });
+    t.box(0.36, 1.0, 0.14, neon, 0.38, 0.45, 1.05, { r: 0.05, rz: 0.12 });
+    for (const x of [0.28, 0.38, 0.48]) t.box(0.06, 0.18, 0.1, W2, x + 0.06, -0.12, 1.06);
+  }
+  if (level >= 4) for (const sd of [-1, 1]) {
+    // Frostbringer: ice spikes on the shoulders
+    for (const [dx, a] of [[0, 0], [0.25, 0.4], [-0.2, -0.4]]) t.box(0.14, 0.6, 0.14, W3, sd * (1.0 + dx * 0.4), 1.15, dx, { r: 0.03, rz: -sd * (0.5 + a * 0.3) });
+    t.ball(0.12, neon, sd * 1.05, 1.0, 0, { seg: 8, rows: 6 });
+  }
+  hd.done();
+  t.done();
+  hands(h, key, level >= 1 ? W2 : W3, W2, (a) => {
+    if (level >= 1) a.box(0.5, 0.06, 0.06, neon, 0, -1.25, 0.6); // mitten cuffs
+  });
+  feet(h, key, W3, (b) => b.box(1.12, 0.1, 1.14, neon, 0, -1.3, 0.02));
+  h.muzzles = [];
+  const g = fist(h.rightArm, -1.9, 1.2);
+  const gk = wear(h, g, `${key}:gun`);
+  const r = level >= 4 ? 0.42 : 0.34;
+  gk.ball(r, W, 0, -r * 0.6, 0, { seg: 12, rows: 8 });
+  if (level >= 2) gk.ball(r * 0.45, neon, 0, -r * 0.6, r * 0.75, { seg: 8, rows: 6 });
+  gk.done();
+  muzzle(h, g, -r * 0.6, 0);
+  throwPose(h);
+  h.projectile = { color: 0xffffff, size: level >= 4 ? 0.65 : 0.5, arc: 3.5 };
+  h.tracer = SNOW_NEON;
+  return own(h, 0);
+}
+
 export const MODELS = {
   eradicator: makeEradicator,
   priest: makePriest,
@@ -693,5 +758,6 @@ export const MODELS = {
   bandit: makeBandit,
   grenadierShrapnel: makeShrapnelGrenadier,
   enforcerWarrior: makeWarrior,
+  snowballerSnowman: makeSnowman,
   mage: makeMage,
 };
