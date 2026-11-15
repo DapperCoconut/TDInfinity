@@ -487,12 +487,43 @@ export class SimWaves {
         t.stoleFrom = t.damageDealt || 0;
         if (!t.holo) income = (income || 0) + Math.min(thief.max, Math.round(dealt * thief.rate));
       }
+      const plunder = TOWERS[t.type].levels[t.level].plunder;
+      if (plunder) this.payPlunder(t, TOWERS[t.type].levels[t.level]); // Smuggler: cash for every player
       const fish = !t.holo && TOWERS[t.type].levels[t.level].catch;
       if (fish) income = this.catchFish(t, fish, skip);
       const owner = this.players.get(t.owner);
       if (!income || !owner) continue;
       owner.cash += income;
       this.events.push({ k: 'income', id: t.id, owner: t.owner, v: income, x: t.x, z: t.z });
+    }
+  }
+
+  /**
+   * Smuggler Plunder: every player gets the base (split down in multiplayer, but at least 40% of
+   * it), + up to 100% more for the damage this Smuggler dealt since the last payout, x `mult`.
+   * Hunting Crew: + `crew.cash` for every max-level tower of that player inside its aura (up to `crew.max`).
+   */
+  payPlunder(t, s) {
+    const pl = s.plunder;
+    const dealt = (t.damageDealt || 0) - (t.plunderFrom || 0);
+    t.plunderFrom = t.damageDealt || 0;
+    if (t.holo) return;
+    const n = this.players.size;
+    const base = n > 1 ? Math.max(pl.base * 0.4, pl.base / (1.3 * (n - 1))) : pl.base;
+    const bonus = Math.min(1, (Math.max(0, dealt) ** 0.6 * 7.35) / 100);
+    for (const p of this.players.values()) {
+      let crew = 0;
+      if (s.crew) {
+        let maxed = 0;
+        for (const o of this.towers.values()) {
+          if (o === t || o.owner !== p.id || o.holo || TOWERS[o.type].levels[o.level + 1] || rootType(o.type) === rootType(t.type)) continue;
+          if ((o.x - t.x) ** 2 + (o.z - t.z) ** 2 <= s.aura * s.aura) maxed++;
+        }
+        crew = Math.min(s.crew.max, maxed * s.crew.cash);
+      }
+      const v = Math.round(base * (1 + bonus) * pl.mult * (1 + crew));
+      p.cash += v;
+      if (p.id === t.owner) this.events.push({ k: 'income', id: t.id, owner: t.owner, v, x: t.x, z: t.z });
     }
   }
 

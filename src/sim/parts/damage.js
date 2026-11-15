@@ -549,6 +549,7 @@ export class SimDamage {
         }
       }
       if (ts.bossMult && e.boss) mult *= ts.bossMult; // Titan special rounds
+      if (ts.lowHpMult && !this.dot && e.hp < e.maxHp / 2) mult *= ts.lowHpMult; // Smuggler: zombies below half health
       if (ts.burnMult && e.burn > 0 && !this.dot) mult *= ts.burnMult.hot && e.burnDps > ts.burnMult.over ? ts.burnMult.hot : ts.burnMult.mult; // Bomber: burning zombies
       const shm = hm?.shieldMult ?? ts.shieldMult; // Elite Plasma Bombardment, Plasmators, Immolation
       if (shm && ENEMIES[e.type].shield) mult *= shm;

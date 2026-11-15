@@ -34,6 +34,8 @@
 //           no reload from Lv 4, rockets at Lv 5.
 //   Incinerator: an alternate Hallowboomer form. Burns zombies; Heat makes burns stronger, but at
 //                100 Heat it overheats and blows up unless Cool Down is switched on.
+//   Smuggler: an alternate DJ form. A blunderbuss that plunders cash for every player each wave,
+//             slows what it hits, and from Lv 4 makes towers near it hit harder (Hunting Crew).
 //   Mage: weak long-range magic shots. Builds up its owner's Arcana, shoots faster with more of it,
 //         calls down lightning every 10 shots (Stormbringer), and Artificial Ascent at Lv 5.
 //
@@ -173,6 +175,8 @@ const THIEF_MAX = 8000;
 const overdrive = (boost, cooldown) => ({ key: 'cta', name: 'System Overdrive', desc: 'Firerate boost 50% for 10s, and it attacks', cooldown, duration: 10, boost });
 // Incinerator Cool Down: switches on and off (see updateIncinerator in sim/parts/weapons4.js).
 const COOL_DOWN = { key: 'coolDown', name: 'Cool Down', desc: 'On: stops attacking and cools down fast. Press again to switch it off', cooldown: 1 };
+// Smuggler Hunting Crew (towers named in `names` get `fav`, the rest `boost`).
+const CREW = { boost: 0.1, fav: 0.25, names: ['Bandit', 'Archer', 'Thief', 'Mercenary', 'Mercenary Base', 'Bomber', 'Hunter', 'Berserker'], cash: 0.2, max: 0.5 };
 
 export const ELEVENTH_TOWERS = {
   poacher: {
@@ -777,6 +781,36 @@ export const ELEVENTH_TOWERS = {
         incin: { burn: 10, tick: 0.25, time: 6, cool: 1.2, blast: 3, over: true, aoe: 4 }, abilities: [COOL_DOWN] },
       { name: 'Ashmaker', desc: '+40 damage, burns last 12s (from 6s) and tick faster (every 0.25s > 0.2s). +5 ΘVERLOAD.', cost: 33000, damage: 60, cooldown: 2.5, range: 16, hidden: false, overload: 5,
         incin: { burn: 10, tick: 0.2, time: 12, cool: 1.2, blast: 3, over: true, aoe: 4 }, abilities: [COOL_DOWN] },
+    ],
+  },
+  // Smuggler (alternate DJ form): a blunderbuss whose shots splash `radius`. lowHpMult: x damage on
+  // zombies below half health. hitSlow: the zombie it hits directly is slowed (no stacking; the
+  // stronger slow wins). plunder (see payPlunder in sim/parts/waves.js): at the end of every wave
+  // each player gets $base (in multiplayer base / (1.3 x (players - 1)), at least 40% of it),
+  // + up to 100% more for the damage it dealt that wave (damage^0.6 x 7.35 %), x `mult`. crew
+  // (Hunting Crew): other towers in its aura deal `boost` more damage (`fav` for the towers named
+  // in CREW); each player gets +`cash` plunder for every max-level tower of theirs it boosts (up to `max`).
+  djSmuggler: {
+    name: 'Smuggler',
+    altOf: 'dj',
+    form: 'Smuggler',
+    shards: 1,
+    price: 0,
+    cost: 700,
+    limit: 4,
+    lead: false,
+    blurb: 'An alternate DJ with a blunderbuss. Its shots splash a little, and from Lv 1 it plunders cash for every player at the end of each wave (more the more damage it dealt). Its direct hits slow zombies from Lv 2. At Lv 4 Hunting Crew makes towers near it hit harder. Up to 4.',
+    tip: 'Get one early for the free cash every wave. At Lv 4, put it next to Bandits, Archers, Thieves, Mercenaries, Bombers, Hunters and Berserkers.',
+    levels: [
+      { name: 'Smuggler', desc: 'A blunderbuss: 1 damage in a small splash.', damage: 1, cooldown: 1.5, range: 15, radius: 3, hidden: false },
+      { name: 'Plunder', desc: 'Sees hidden zombies, 1.5x damage to zombies below half health. Plunder: every player gets about $100 each wave (less in multiplayer), up to twice that for the damage it dealt.', cost: 600, damage: 1, cooldown: 1.5, range: 15, radius: 3, hidden: true,
+        lowHpMult: 1.5, plunder: { base: 100, mult: 1 } },
+      { name: 'Concussion', desc: '+2 damage. Direct hits slow the zombie by 10% for 2s.', cost: 700, damage: 3, cooldown: 1.5, range: 15, radius: 3, hidden: true,
+        lowHpMult: 1.5, plunder: { base: 100, mult: 1 }, hitSlow: { slow: 0.1, time: 2, boss: 1 } },
+      { name: 'Blunderbomb', desc: 'Shoots faster (every 1.5s > 1.1s), Plunder pays 30% more, and direct hits slow by 20%.', cost: 1700, damage: 3, cooldown: 1.1, range: 15, radius: 3, hidden: true,
+        lowHpMult: 1.5, plunder: { base: 100, mult: 1.3 }, hitSlow: { slow: 0.2, time: 2, boss: 1 } },
+      { name: 'Hunting Crew', desc: '+9 damage, but the splash does half. Hunting Crew: other towers in range deal 10% more damage (25% for Bandits, Archers, Thieves, Mercenaries, Bombers, Hunters and Berserkers). Plunder: +20% for every max-level tower of yours it boosts (up to +50%).', cost: 4700, damage: 12, splash: 6, cooldown: 1.1, range: 15, radius: 3, hidden: true,
+        lowHpMult: 1.5, plunder: { base: 100, mult: 1.3 }, hitSlow: { slow: 0.2, time: 2, boss: 1 }, aura: 15, crew: CREW },
     ],
   },
   mage: {

@@ -1,5 +1,5 @@
 // Tower models: people, batch 29 (dressed with the vehicle kit in ../vehicles.js).
-// In here: Cyborg, Incinerator.
+// In here: Cyborg, Incinerator, Smuggler.
 // Like batches 26-28 these are plain faceless figures: only their gear tells them apart, with
 // accents in one neon colour per tower.
 // MODELS maps tower keys to builders; ../models.js lays it over TOWER_MODELS, so these win.
@@ -9,6 +9,7 @@ import { makeHumanoid } from './kit.js';
 import { UP, aimLong, dome, fist, muzzle, own, wear } from './people1.js';
 import { shoulderPads } from './people2.js';
 import { feet, hands } from './people5.js';
+import { cape } from './people18.js';
 
 const PI = Math.PI;
 const W = 0xffffff;
@@ -217,7 +218,92 @@ export function makeIncinerator(level) {
   return own(h, UP);
 }
 
+// ------------------------------------------------------------------ Smuggler (neon salmon)
+
+const SMUG_NEON = 0xff8a80;
+
+/**
+ * A white blunderbuss on the fist (gun space): a wooden-shaped stock, a long barrel that flares
+ * into a wide bell. o.bomb (Blunderbomb+): a bigger bell and a drum of bomb shells. Returns the
+ * bore point [y, z].
+ */
+function whiteBlunderbuss(k, neon, o = {}) {
+  const U = UP;
+  const len = o.bomb ? 2.3 : 2.1;
+  k.box(0.3, 1.0, 0.34, W2, 0, -0.3, U, { r: 0.06 }); // lock and body
+  k.cyl(0.1, len - 1.0, W, 0, -0.8 - (len - 1.0) / 2, U + 0.04, { seg: 12 }); // barrel
+  k.torus(0.13, 0.03, neon, 0, -1.0, U + 0.04, { rx: PI / 2, seg: 12 }); // barrel band
+  const bell = o.bomb ? 0.34 : 0.26;
+  k.cyl(bell, 0.4, W3, 0, -len, U + 0.04, { seg: 16, r2: 0.12 }); // flared bell
+  k.torus(bell, 0.035, neon, 0, -len - 0.2, U + 0.04, { rx: PI / 2, seg: 16 });
+  k.box(0.22, 0.3, 0.5, W3, 0, 0.12, U - 0.34, { rx: -0.32, r: 0.04 }); // grip
+  k.box(0.26, 0.8, 0.4, W2, 0, 0.6, U - 0.05, { r: 0.1 }); // stock
+  k.box(0.05, 0.12, 0.2, neon, 0, -0.2, U + 0.24); // hammer
+  if (o.bomb) {
+    k.cyl(0.3, 0.3, W, 0, -0.55, U - 0.42, { axis: 'x', seg: 16 }); // shell drum
+    for (let i = 0; i < 4; i++) k.ball(0.07, neon, 0.17, -0.55 + Math.cos(i * PI / 2) * 0.18, U - 0.42 + Math.sin(i * PI / 2) * 0.18, { seg: 8, rows: 5 });
+  }
+  return [-len - 0.2, U + 0.04];
+}
+
+/**
+ * Smuggler (alternate DJ): a white rogue with a bandana mask and a blunderbuss. Lv 1 Plunder: a
+ * loot crate on the back with neon coins. Lv 2 Concussion: a bandolier of glowing shells. Lv 3
+ * Blunderbomb: the bigger bomb blunderbuss and a hat. Lv 4 Hunting Crew: a long coat and a crew
+ * flag on a pole on the back.
+ */
+export function makeSmuggler(level) {
+  const h = blank();
+  const key = `djSmuggler${level}`;
+  const neon = glowMat(h, SMUG_NEON);
+  const hd = wear(h, h.head, `${key}:head`);
+  const t = wear(h, h.torso, `${key}:torso`);
+  hd.box(1.66, 0.42, 1.66, W2, 0, 0.3, 0.02, { r: 0.12 }); // bandana mask
+  hd.box(1.0, 0.06, 0.05, neon, 0, 0.42, 0.85);
+  hd.box(0.3, 0.5, 0.12, W2, 0.3, 0.05, -0.84, { rz: 0.3 }); // knot tails
+  if (level >= 3) {
+    hd.cyl(1.2, 0.12, W3, 0, 1.0, 0, { seg: 20 }); // hat brim
+    hd.cyl(0.72, 0.6, W, 0, 1.35, 0, { seg: 18, r2: 0.62 }); // hat crown
+    hd.cyl(0.74, 0.1, neon, 0, 1.1, 0, { seg: 18 }); // hat band
+  } else dome(hd, 0.8, 0.5, W, 0, 0.92, 0); // cap
+  t.box(2.1, 1.7, 1.1, W, 0, 0.1, 0, { r: 0.1 });
+  t.box(0.5, 1.5, 0.08, W3, 0, 0.1, 0.56); // vest seam
+  t.box(2.12, 0.24, 1.12, W3, 0, -0.84, 0, { r: 0.04 }); // belt
+  t.box(0.3, 0.2, 0.06, neon, 0, -0.84, 0.57, { r: 0.02 });
+  for (const sx of [-1, 1]) t.box(0.36, 0.34, 0.3, W2, sx * 0.7, -0.84, 0.55, { r: 0.05 }); // pouches
+  if (level >= 1) {
+    t.box(1.4, 1.1, 0.7, W2, 0, 0.1, -0.9, { r: 0.05 }); // loot crate
+    for (const y of [-0.3, 0.5]) t.box(1.42, 0.08, 0.72, W3, 0, y, -0.9);
+    for (let i = 0; i < 3; i++) t.cyl(0.14, 0.05, neon, -0.35 + i * 0.35, 0.7, -0.9, { seg: 12 }); // coins on top
+  }
+  if (level >= 2) {
+    t.box(0.28, 2.3, 0.1, W3, -0.2, 0.1, 0.6, { rz: -0.62 }); // bandolier
+    for (let i = 0; i < 5; i++) t.cyl(0.07, 0.2, neon, -0.75 + i * 0.27, -0.35 + i * 0.22, 0.68, { seg: 8, rz: -0.62 });
+  }
+  if (level >= 4) {
+    cape(t, W2, 2.3, { w: 2.2, clasp: SMUG_NEON }); // long coat
+    t.cyl(0.05, 2.6, W3, 0.75, 1.1, -1.0, { seg: 8 }); // flag pole
+    t.box(0.9, 0.6, 0.04, neon, 1.22, 2.1, -1.0); // crew flag
+  }
+  hd.done();
+  t.done();
+  hands(h, key, W3, W2, (a) => {
+    if (level >= 2) a.box(0.5, 0.06, 0.04, neon, 0, -0.55, 0.55); // sleeve stripe
+  });
+  feet(h, key, W2, null);
+  h.muzzles = [];
+  const g = fist(h.rightArm, -1.9, 1.2);
+  const gk = wear(h, g, `${key}:gun`);
+  const [y, z] = whiteBlunderbuss(gk, neon, { bomb: level >= 3 });
+  gk.done();
+  muzzle(h, g, y, z);
+  aimLong(h);
+  h.tracer = SMUG_NEON;
+  return own(h, UP);
+}
+
 export const MODELS = {
+  djSmuggler: makeSmuggler,
   commandoCyborg: makeCyborg,
   hallowboomerIncinerator: makeIncinerator,
 };

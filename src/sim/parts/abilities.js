@@ -908,6 +908,7 @@ export class SimAbilities {
       // Ice blast: instant hit on the target, freezing everything around it.
       this.events.push({ k: 'shot', t: t.id, e: target.id });
       this.explode(t, target.x, target.z, blast);
+      if (s.hitSlow && this.enemies.has(target.id)) this.applySlime(target, s.hitSlow); // Smuggler: direct hits slow
       return;
     }
     const time = s.lob ?? def.lob;

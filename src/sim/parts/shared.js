@@ -222,6 +222,7 @@ export function computeBuffs(towers) {
       sell = Math.max(sell, s.sellback || 0);
       cdCut = Math.max(cdCut, s.cdCut || 0);
       merc = Math.max(merc, s.dmgBoost || 0);
+      if (s.crew) merc = Math.max(merc, s.crew.names.includes(TOWERS[t.type].name) ? s.crew.fav : s.crew.boost); // Smuggler Hunting Crew
       costUp = Math.max(costUp, s.costUp || 0);
       dmgLoss = Math.max(dmgLoss, s.dmgLoss || 0);
       rateLoss = Math.max(rateLoss, s.rateLoss || 0);
