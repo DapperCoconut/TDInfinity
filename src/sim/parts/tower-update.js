@@ -189,7 +189,8 @@ export class SimTowerUpdate {
     // Cooldowns may dip just below zero so leftover time carries into the next shot;
     // that keeps very fast fire rates accurate at any tick length. Firerate boosts speed them up.
     const dpRate = t.dpT > 0 ? 1 + (t.dpBoost || 0) : 1; // Bugler Directed Power
-    t.cooldown = Math.max(-dt, t.cooldown - dt * b.rate * dpRate * (self?.rate ?? 1)); // Machine Gunner Overcharge: faster firing
+    const arcRate = s.arcanaRate ? 1 + s.arcanaRate * Math.floor((this.players.get(t.owner)?.arcana || 0) / 10) : 1; // Mage Enhanced Arcana
+    t.cooldown = Math.max(-dt, t.cooldown - dt * b.rate * dpRate * arcRate * (self?.rate ?? 1)); // Machine Gunner Overcharge: faster firing
     t.gap = Math.max(0, t.gap - dt);
     // Ammo towers stop shooting while they reload (firerate boosts don't speed that up).
     let loaded = true;
@@ -435,6 +436,7 @@ export class SimTowerUpdate {
       this.damage(t, target, dmg);
     } else this.shoot(t, target, dmg);
     if (s.double && !def.fly && this.enemies.has(target.id)) this.shoot(t, target, dmg); // Warrior: Double Strike
+    if (s.arcana) this.mageHit(t, s, target); // Mage: Arcana and Stormbringer
     if (s.pass) this.passThrough(t, s, target, dmg);
     if (berserk) this.berserkHit(t, s, berserk); // Berserker: Rage and Crushing Blow
     if (collat) this.collateralBounce(t, s, collat);

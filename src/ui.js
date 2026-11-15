@@ -269,6 +269,22 @@ export class UI {
     el.classList.toggle('over', n > GAME.overload.threshold);
   }
 
+  /** Mage Arcana: a small purple tag next to the cash (hidden at 0). */
+  setArcana(n) {
+    const v = Math.floor(n);
+    if (v === this.lastArcana) return;
+    this.lastArcana = v;
+    let el = this.el.arcana;
+    if (!el) {
+      el = this.el.arcana = document.createElement('span');
+      el.className = 'arcana';
+      el.title = 'Arcana: your Mages make it with every shot (up to 200). More Arcana makes them stronger';
+      this.el.cash.after(el);
+    }
+    el.textContent = v > 0 ? `✦ ${v} Arcana` : '';
+    el.classList.toggle('hidden', !(v > 0));
+  }
+
   setCash(n) {
     if (n === this.lastCash) return;
     this.lastCash = n;

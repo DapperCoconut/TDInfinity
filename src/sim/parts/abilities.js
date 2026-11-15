@@ -66,6 +66,7 @@ export class SimAbilities {
       if (ab.immune) t.immuneT = Math.max(t.immuneT || 0, ab.immune); // Eldritch Rift: stun immunity
     }
     else if (ab.key === 'carpetBomb') this.carpetBomb(t, s, ab, Number(m.x), Number(m.z));
+    else if (ab.key === 'artificialAscent') this.arcaneBlast(t, s, ab, Number(m.x), Number(m.z)); // Mage
     else if (ab.key === 'redeploy') t.face = t.yaw = Math.atan2(Number(m.x) - t.x, Number(m.z) - t.z); // Machine Gunner: turn its cone
     else if (ab.key === 'reverse') t.dir = -(t.dir || 1);
     else if (ab.key === 'patrol') {

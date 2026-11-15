@@ -237,6 +237,27 @@ export class GameEvents {
           }
           break;
         }
+        case 'mageBolt': {
+          // Mage Stormbringer: a purple lightning bolt from the sky.
+          const to = new THREE.Vector3(ev.x, 0.3, ev.z);
+          setTimeout(() => {
+            this.effects.lightning([to.clone().setY(40), to], 0xb388ff);
+            this.effects.flash(to.clone().setY(1.5), 0xb388ff, 1.2);
+            this.effects.pulse(to, ev.r, 0.35, 0xea80fc);
+          }, (ev.d ?? 0) * 1000);
+          audio.shot(0, 'electro');
+          break;
+        }
+        case 'arcaneBlast': {
+          // Mage Artificial Ascent: a ring of arcane energy where the player clicked.
+          const to = new THREE.Vector3(ev.x, 0.3, ev.z);
+          const v = this.towerViews.get(ev.t);
+          if (v) this.effects.tracer(v.fireFrom(ev.x, ev.z, new THREE.Vector3()), to.clone().setY(1), 0xea80fc, 0.35);
+          this.effects.pulse(to, ev.r, 0.6, 0xd500f9);
+          this.effects.pulse(to, ev.r * 0.6, 0.45, 0xffffff);
+          audio.boom(3);
+          break;
+        }
         case 'strike': {
           // Airstrike: a bomb whistles down from high above.
           const to = new THREE.Vector3(ev.x, 0.3, ev.z);

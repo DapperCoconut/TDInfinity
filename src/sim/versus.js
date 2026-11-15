@@ -291,6 +291,7 @@ export class VersusSim {
         }),
       // Eradicator ΘVERLOAD per player.
       ov: this.lanes.filter((l) => l.sim.players.get(l.id)?.overload > 0).map((l) => [l.id, l.sim.players.get(l.id).overload]),
+      ar: this.lanes.filter((l) => l.sim.players.get(l.id)?.arcana > 0).map((l) => [l.id, l.sim.players.get(l.id).arcana]), // Mage Arcana
       t,
       u,
       e,

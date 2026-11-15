@@ -3119,4 +3119,5 @@ input:focus {
 
 /* Eradicator ΘVERLOAD tag next to the cash */
 .overload { margin-left: 8px; padding: 1px 6px; border-radius: 4px; font-size: 0.7em; font-weight: 700; color: #18ffff; background: rgba(0, 40, 48, 0.75); vertical-align: middle; }
+.arcana { margin-left: 8px; padding: 1px 6px; border-radius: 4px; font-size: 0.7em; font-weight: 700; color: #ea80fc; background: rgba(40, 0, 56, 0.75); vertical-align: middle; }
 .overload.over { color: #ff5252; background: rgba(60, 0, 0, 0.8); }

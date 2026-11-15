@@ -16,6 +16,8 @@
 //   Warrior: an alternate Enforcer form. Swings a sword; hidden detection at Lv 3, Double Strike at Lv 4.
 //   Eradicator: fast little energy orbs, and from Lv 3 the Raybreak: a big piercing beam. Its last
 //               three levels add ΘVERLOAD, which costs its owner money for the rest of the game.
+//   Mage: weak long-range magic shots. Builds up its owner's Arcana, shoots faster with more of it,
+//         calls down lightning every 10 shots (Stormbringer), and Artificial Ascent at Lv 5.
 //
 // New mechanic (see computeBuffs in sim/parts/shared.js):
 //   cliffBoost: { boost, stacks, radius }  Bullseye Support: other cliff towers (placement 'cliff')
@@ -70,6 +72,14 @@
 //               hit never goes over `max` x the tower's damage. Read in explodeHits (sim/parts/damage.js).
 //   double: true  (Warrior) every swing hits its target twice. Read at the end of updateTower
 //               (sim/parts/tower-update.js).
+//   arcana: { gain, cap }  Mage (see mageHit in sim/parts/weapons4.js): every attack adds `gain`
+//               Arcana to its owner, up to `cap`. Arcana belongs to the player, not the tower.
+//   arcanaRate: n  shoots n faster (0.01 = 1%) for every 10 Arcana its owner has. Read where the
+//               cooldown ticks in updateTower (sim/parts/tower-update.js).
+//   storm: n  Stormbringer: every 10th attack also calls down n lightning bolts on zombies in
+//               range, each dealing (damage + Arcana / 15) ^ 1.1 in a blast of 3 + Arcana / 100.
+//   ARTS (Magical ARTS, e.arts): zombies take that much more damage from everything. Read in
+//               damage() in sim/parts/damage.js.
 //   trueDmg: true  True damage (see damage in sim/parts/damage.js): no resistance, armor or
 //               defense stops it.
 //
@@ -117,6 +127,13 @@ const slash = (damage, cooldown, min = 1) => ({ damage, cooldown, radius: 6, arc
 // Eradicator: Raybreak.
 const ray = (damage, o = {}) => ({ damage, cooldown: 10, range: 20, windup: 0.5, linger: 1, width: 1.6, cut: 0.1, maxCut: 0.75, ...o });
 const RAY_BURN = { share: 0.05, cap: 400, time: 8 };
+
+// Mage: Artificial Ascent. An arcane blast where the player clicks: `mult` x the Mage's damage to
+// every zombie in `radius`, and Magical ARTS on each (`arts` more damage taken for `time` s,
+// adding up to `cap`). More Arcana makes the ARTS stronger and last longer (see arcaneBlast).
+const ascent = { key: 'artificialAscent', name: 'Artificial Ascent', cooldown: 50, aim: true, reach: 40, mult: 3, radius: 6, arts: 0.05, time: 15, cap: 0.25,
+  desc: 'Fires a blast of arcane energy where you click: 3x the Mage\'s damage, and Magical ARTS (+5% damage taken from everything for 15s, up to 25%). More Arcana makes the ARTS stronger and last longer' };
+const ARCANA = (gain) => ({ gain, cap: 200 });
 
 export const ELEVENTH_TOWERS = {
   poacher: {
@@ -397,6 +414,26 @@ export const ELEVENTH_TOWERS = {
         ray: ray(500, { burn: RAY_BURN }) },
       { name: 'Ultra Ray', desc: 'Raybreak: +10 range, 650 damage, 15% sooner per kill, and two more wild beams for 75% damage (487.5). +8 ΘVERLOAD.', cost: 40000, damage: 3, cooldown: 0.25, range: 17, noResist: true, hidden: true, overload: 8,
         ray: ray(650, { range: 30, cut: 0.15, burn: RAY_BURN, extra: { count: 2, mult: 0.75 } }) },
+    ],
+  },
+  // Mage: weak long-range shots. Arcana is its owner's, shared by all their Mages.
+  mage: {
+    name: 'Mage',
+    price: 500,
+    cost: 450,
+    blurb: 'An early tower with weak but long-range magic shots. From Lv 2 every shot gives you Arcana (up to 200), and from Lv 3 more Arcana makes it shoot faster. At Lv 4 every 10th shot calls down lightning bolts, and at max level Artificial Ascent makes zombies take more damage from everything.',
+    tip: 'Arcana is yours, not the tower\'s: every Mage you own builds it up and uses it.',
+    levels: [
+      { name: 'Mage', desc: 'Shoots magic at one zombie at a time from far away.', damage: 2, cooldown: 1.1, range: 10, hidden: false },
+      { name: 'Wand Training', desc: '+2 damage and +2 range.', cost: 300, damage: 4, cooldown: 1.1, range: 12, hidden: false },
+      { name: 'Arcana Amplifier', desc: '+2 damage and hidden detection. Every shot gives you 0.1 Arcana (up to 200).', cost: 800, damage: 6, cooldown: 1.1, range: 12, hidden: true,
+        arcana: ARCANA(0.1) },
+      { name: 'Enhanced Arcana', desc: '+1 damage and shoots faster (every 0.9s). Shoots 1% faster for every 10 Arcana you have.', cost: 1500, damage: 7, cooldown: 0.9, range: 12, hidden: true,
+        arcana: ARCANA(0.1), arcanaRate: 0.01 },
+      { name: 'Stormbringer', desc: '+3 damage. Every 10 shots it calls down 2 lightning bolts: (damage + Arcana / 15) ^ 1.1 each, in a blast of 3 + Arcana / 100.', cost: 3000, damage: 10, cooldown: 0.9, range: 12, hidden: true,
+        arcana: ARCANA(0.1), arcanaRate: 0.01, storm: 2 },
+      { name: 'Ascendant of Magic', desc: '+4 damage, shoots faster (every 0.8s), 3 lightning bolts, and 0.4 Arcana per shot. Unlocks Artificial Ascent.', cost: 7500, damage: 14, cooldown: 0.8, range: 12, hidden: true,
+        arcana: ARCANA(0.4), arcanaRate: 0.01, storm: 3, abilities: [ascent] },
     ],
   },
 };

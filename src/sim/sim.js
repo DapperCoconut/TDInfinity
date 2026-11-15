@@ -238,6 +238,7 @@ export class Sim {
       e.vulnT = Math.max(0, e.vulnT - dt);
       if (!e.vulnT) e.vuln = 0;
       if (e.physWeakT > 0 && (e.physWeakT -= dt) <= 0) e.physWeak = 0; // Berserker Physical Weakness wore off
+      if (e.artsT > 0 && (e.artsT -= dt) <= 0) e.arts = 0; // Mage Magical ARTS wore off
       if (e.neuroT) e.neuroT = Math.max(0, e.neuroT - dt);
       if (e.zapT) e.zapT = Math.max(0, e.zapT - dt);
       if (e.injuredT && !(e.injuredT = Math.max(0, e.injuredT - dt))) e.injured = 0;
@@ -753,6 +754,7 @@ export class Sim {
         }
         if (ab.mode && choicesOf(TOWERS[t.type], s, t.choice)[0] !== ab.mode) return `${ab.name} only works in ${ab.mode === 'fire' ? 'Fire' : 'Frost'} mode`;
         if ((ab.key === 'thorns' || ab.key === 'iceTurret' || ab.key === 'iceShard' || ab.key === 'targetSelect' || ab.key === 'voltPoint') && Math.hypot(Number(m.x) - t.x, Number(m.z) - t.z) > (ab.reach ?? s.range)) return `Too far! ${ab.name} reaches ${ab.reach ?? s.range} studs`;
+        if (ab.key === 'artificialAscent' && Math.hypot(Number(m.x) - t.x, Number(m.z) - t.z) > ab.reach) return `Too far! ${ab.name} reaches ${ab.reach} studs`;
         if (ab.key === 'concussive' && Math.hypot(Number(m.x) - t.x, Number(m.z) - t.z) > ab.reach) return `Too far! ${ab.name} reach ${ab.reach} studs`;
         if (ab.key === 'crossbow' && Math.hypot(Number(m.x) - t.x, Number(m.z) - t.z) > ab.reach) return `Too far! ${ab.name} reaches ${ab.reach} studs`;
         if (ab.key === 'chargedThrow' && ![...this.enemies.values()].some((e) => canHit({ hidden: !!s.hidden, flying: true, lead: true }, e))) return 'No zombie to throw at';
@@ -875,6 +877,8 @@ export class Sim {
       p: [...this.players.values()].map((p) => [p.id, p.name, p.cash === Infinity ? 'inf' : p.cash, p.color]),
       // Eradicator ΘVERLOAD per player: [[id, amount]].
       ...([...this.players.values()].some((p) => p.overload > 0) ? { ov: [...this.players.values()].filter((p) => p.overload > 0).map((p) => [p.id, p.overload]) } : {}),
+      // Mage Arcana per player: [[id, amount]].
+      ...([...this.players.values()].some((p) => p.arcana > 0) ? { ar: [...this.players.values()].filter((p) => p.arcana > 0).map((p) => [p.id, p.arcana]) } : {}),
       t: [...this.towers.values()].map((t) => [
         t.id, t.owner, t.type, t.level, r2(t.x), r2(t.z), r2(t.yaw), t.targetMode, t.kills, t.damageDealt, t.spent,
         r2(t.ang), t.lock, r2(t.charge), r2(t.active), cdSnap(t.cd), (t.smoke > 0 ? 1 : 0) | (t.stunT > 0 ? 2 : 0) | (t.shieldT > 0 ? 4 : 0) | (t.revT > 0 ? 8 : 0) | (this.stealthy(t) ? 16 : 0) | (t.slowT > 0 ? 32 : 0) | ((t.nerf ?? 1) < 1 ? 64 : 0) | (t.weakT > 0 ? 128 : 0) | (t.silenceT > 0 ? 256 : 0) | (t.bleedT > 0 || t.curseBy ? 512 : 0) | (t.corrupt ? 1024 : 0), t.dir, t.track,

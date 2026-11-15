@@ -807,4 +807,48 @@ export class SimWeapons4 {
     }
     if ((t.rayLeft -= dt) <= 0) t.rays = null;
   }
+
+  // ---------------------------------------------------------------- Mage
+
+  /**
+   * Mage, after every attack: its owner gets `s.arcana.gain` Arcana (up to `cap`). Stormbringer:
+   * every 10th attack calls down `s.storm` lightning bolts, the target first, then other zombies
+   * in range (the target again if there are none). Each one deals (damage + Arcana / 15) ^ 1.1
+   * to every zombie within 3 + Arcana / 100.
+   */
+  mageHit(t, s, target) {
+    const p = this.players.get(t.owner);
+    if (p) p.arcana = Math.min(s.arcana.cap, Math.round(((p.arcana || 0) + s.arcana.gain) * 100) / 100);
+    if (!s.storm || ++t.swings % 10 !== 0) return;
+    const ar = p?.arcana || 0;
+    const det = this.detects(t, s);
+    const damage = Math.round((s.damage + ar / 15) ** 1.1 * 100) / 100;
+    const radius = 3 + ar / 100;
+    const list = [target, ...this.findTargets(t, s, s.storm - 1, (e) => e !== target)];
+    for (let i = 0; i < s.storm; i++) {
+      const e = list[i] ?? target;
+      const time = 0.12 + i * 0.08;
+      this.shells.push({ tower: t.id, x: e.x, z: e.z, time, damage, radius, det });
+      this.events.push({ k: 'mageBolt', x: r2(e.x), z: r2(e.z), r: r2(radius), d: r2(time) });
+    }
+  }
+
+  /**
+   * Mage Artificial Ascent: a blast at (x, z) for `ab.mult` x its damage, adding Magical ARTS to
+   * every zombie in it. Its owner's Arcana makes the ARTS stronger and longer: up to 2x at 200.
+   */
+  arcaneBlast(t, s, ab, x, z) {
+    if (!Number.isFinite(x) || !Number.isFinite(z)) return;
+    const more = 1 + (this.players.get(t.owner)?.arcana || 0) / 200;
+    const arts = { add: ab.arts * more, time: ab.time * more, cap: ab.cap };
+    this.shells.push({ tower: t.id, x, z, time: 0.4, damage: s.damage * ab.mult, radius: ab.radius, det: this.detects(t, s), arts });
+    this.events.push({ k: 'arcaneBlast', t: t.id, x: r2(x), z: r2(z), r: ab.radius, d: 0.4 });
+    t.yaw = Math.atan2(x - t.x, z - t.z);
+  }
+
+  /** Magical ARTS: `a.add` more damage taken from everything, adding up to `a.cap`, for `a.time` s. */
+  addArts(e, a) {
+    e.arts = Math.min(a.cap, (e.arts || 0) + a.add);
+    e.artsT = Math.max(e.artsT || 0, a.time);
+  }
 }

@@ -373,6 +373,7 @@ export class SimDamage {
       if (b.confuse) this.confuse(e, b.confuse.time, b.confuse.cd); // Jester Confusion Bomb
       if (dmg > 0) this.damage(t, e, dmg, b.pierceArmor, boomKind); // explosions are never bullets or lasers
       if (b.knock && this.enemies.has(e.id)) this.knockBack(e, b.knock); // Hallow Punk
+      if (b.arts && this.enemies.has(e.id)) this.addArts(e, b.arts); // Mage Artificial Ascent
     }
   }
 
@@ -475,6 +476,7 @@ export class SimDamage {
     const block = e.carry?.defense ?? e.defense;
     if (block && !this.dot && !pierceArmor && !tru) dmg = Math.max(0, dmg - block * (1 - Math.min(1, dp)));
     if (e.vuln) dmg *= 1 + e.vuln; // softened up by a DJ Booth's Red Drop the Beat
+    if (e.arts > 0) dmg *= 1 + e.arts; // Mage Magical ARTS: more damage from everything
     if (e.physWeak > 0 && t && !this.dot && kind !== 'laser' && kind !== 'golden') dmg *= 1 + e.physWeak; // Berserker Physical Weakness: physical hits do more
     if (e.sacrificing && !this.bloodPass && !tru) {
       // Rebirther Blood Sacrifice: almost nothing gets through, except crashes from some units.

@@ -111,6 +111,7 @@ export class NetSession {
     st.beams = (s.ob ?? []).map(([id, x, z, left, r]) => ({ id, x, z, left, r })); // Gold Commander Orbital Airstrike beams (id = its tower)
 
     st.overload = new Map(s.ov ?? []); // Eradicator ΘVERLOAD per player
+    st.arcana = new Map(s.ar ?? []); // Mage Arcana per player
     st.players.clear();
     for (const [id, name, cash, color, lane = 0, baseHp, place = 0, target = null] of s.p) {
       st.players.set(id, { id, name, cash: cash === 'inf' ? Infinity : cash, color, lane, baseHp: baseHp ?? s.b, place, target });

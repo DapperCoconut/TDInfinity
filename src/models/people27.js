@@ -1,7 +1,8 @@
 // Tower models: people, batch 27 (dressed with the vehicle kit in ../vehicles.js).
-// In here: Priest, Farmer, Bandit, Eradicator, Shrapnel Grenadier, Warrior.
+// In here: Priest, Farmer, Bandit, Eradicator, Shrapnel Grenadier, Warrior, Mage.
 // Like batch 26 these are plain white figures with no face: only their gear tells them apart,
-// white too, with accents in one neon colour per tower.
+// white too, with accents in one neon colour per tower. (The Mage is not one of them: it has
+// normal colours.)
 // MODELS maps tower keys to builders; ../models.js lays it over TOWER_MODELS, so these win.
 
 import { glowMat } from '../vehicles.js';
@@ -595,6 +596,96 @@ export function makeWarrior(level) {
   return own(h, 0);
 }
 
+// ------------------------------------------------------------------ Mage (purple, normal colours)
+
+const MAGE_GLOW = 0xd17bff;
+
+/**
+ * Mage: a wizard in a purple robe and a tall pointed hat with a wand. Lv 1 Wand Training: a
+ * longer wand with a gold band. Lv 2 Arcana Amplifier: a glowing gem on the wand and a gem on the
+ * hat. Lv 3 Enhanced Arcana: a spell book on the belt and glowing runes on the robe. Lv 4
+ * Stormbringer: a shoulder cape and little storm clouds orbiting its hat. Lv 5 Ascendant of Magic:
+ * a long staff with a big glowing crystal, a gold-trimmed hat and a long cape.
+ */
+export function makeMage(level) {
+  const ROBE = 0x5e35b1;
+  const ROBE2 = 0x4527a0;
+  const GOLD = 0xffc107;
+  const h = makeHumanoid({ skin: 0xf1c27d, shirt: ROBE, pants: ROBE2, arms: ROBE, face: 'smile' });
+  const key = `mage${level}`;
+  const glow = glowMat(h, MAGE_GLOW);
+  const hd = wear(h, h.head, `${key}:head`);
+  const t = wear(h, h.torso, `${key}:torso`);
+  // the pointed hat: a wide brim and a cone that bends back at the top
+  hd.cyl(1.15, 0.12, ROBE2, 0, 0.62, 0, { seg: 20 });
+  hd.cyl(0.66, 1.1, ROBE, 0, 1.2, 0, { seg: 16, r2: 0.32 });
+  hd.cyl(0.32, 0.6, ROBE, 0, 1.95, -0.12, { seg: 12, r2: 0.06, rx: -0.35 });
+  hd.cyl(0.68, 0.14, level >= 5 ? GOLD : 0x311b92, 0, 0.76, 0, { seg: 16 }); // hat band
+  if (level >= 2) hd.ball(0.13, glow, 0, 0.78, 0.66, { seg: 10, rows: 7 }); // gem on the band
+  // a white beard
+  hd.box(0.9, 0.55, 0.2, 0xeeeeee, 0, -0.42, 0.58, { r: 0.08 });
+  hd.slab(0.7, 0.4, 0.18, 0xeeeeee, 0, -0.88, 0.56, { bw: 0.2 });
+  // the robe: down over the legs, with a gold belt
+  t.box(2.1, 1.8, 1.12, ROBE, 0, 0.05, 0, { r: 0.12 });
+  t.slab(2.3, 1.9, 1.2, ROBE2, 0, -1.6, 0, { bw: 1.35 });
+  t.box(2.14, 0.18, 1.16, GOLD, 0, -0.8, 0, { r: 0.05 }); // belt
+  t.box(0.08, 1.6, 0.05, GOLD, 0, 0.1, 0.58); // trim down the front
+  if (level >= 3) {
+    // Enhanced Arcana: a spell book on the belt and glowing runes on the robe
+    t.box(0.55, 0.68, 0.2, 0x6d4c41, -0.8, -1.08, 0.5, { r: 0.03 });
+    t.box(0.06, 0.4, 0.05, glow, -0.8, -1.08, 0.61);
+    for (const [x, y] of [[-0.55, 0.4], [0.55, 0.4], [-0.6, -1.7], [0.6, -1.7], [0, -2.2]]) t.box(0.18, 0.18, 0.05, glow, x, y, 0.62, { rz: PI / 4 });
+  }
+  if (level >= 4) cape(t, level >= 5 ? ROBE2 : 0x7e57c2, level >= 5 ? 3 : 1.6, { w: 2.2 });
+  if (level >= 4) {
+    // Stormbringer: little storm clouds with lightning around the hat
+    for (const a of [0, 2.1, 4.2]) {
+      const x = Math.sin(a) * 1.1;
+      const z = Math.cos(a) * 1.1;
+      for (const [ox, oy, r] of [[-0.15, 0, 0.2], [0.12, 0.05, 0.24], [0.02, 0.15, 0.18]]) hd.ball(r, 0x90a4ae, x + ox, 1.5 + oy, z, { seg: 8, rows: 6 });
+      hd.box(0.06, 0.35, 0.05, glow, x, 1.2, z, { rz: 0.4 });
+    }
+  }
+  hd.done();
+  t.done();
+  hands(h, key, 0xf1c27d, ROBE, (a) => {
+    a.cyl(0.6, 0.9, ROBE, 0, -1.1, 0, { seg: 12, r2: 0.75 }); // wide sleeves
+    a.torus(0.74, 0.05, GOLD, 0, -1.55, 0, { seg: 14 });
+  });
+  feet(h, key, 0x311b92);
+  h.muzzles = [];
+  const g = fist(h.rightArm, -1.9, 1.1);
+  const gk = wear(h, g, `${key}:wand`);
+  let top;
+  if (level >= 5) {
+    // Ascendant of Magic: a tall staff with a big crystal held in prongs
+    gk.cyl(0.09, 4.2, 0x5d4037, 0, -0.3, 0, { seg: 10 });
+    for (const yy of [0.4, -0.8]) gk.torus(0.11, 0.03, GOLD, 0, yy, 0, { seg: 10 });
+    top = -2.6;
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * PI * 2;
+      gk.box(0.06, 0.6, 0.06, GOLD, Math.sin(a) * 0.22, top + 0.15, Math.cos(a) * 0.22, { rx: Math.cos(a) * 0.35, rz: -Math.sin(a) * 0.35 });
+    }
+    gk.cyl(0.24, 0.7, glow, 0, top - 0.1, 0, { seg: 6, r2: 0.02 });
+    gk.cyl(0.24, 0.3, glow, 0, top + 0.3, 0, { seg: 6, r2: 0.02, rx: PI });
+  } else {
+    // a wand pointing forward
+    const len = level >= 1 ? 1.6 : 1.2;
+    gk.cyl(0.07, len, 0x6d4c41, 0, -len / 2, 0, { seg: 8, r2: 0.05 });
+    if (level >= 1) gk.torus(0.08, 0.025, GOLD, 0, -0.25, 0, { seg: 10 });
+    top = -len - 0.05;
+    gk.ball(level >= 2 ? 0.15 : 0.09, level >= 2 ? glow : 0xffffff, 0, top, 0, { seg: 10, rows: 7 });
+  }
+  gk.done();
+  muzzle(h, g, top, 0);
+  const right = level >= 5 ? -0.9 : -1.5;
+  h.rightArm.rotation.set(right, 0, 0.15);
+  h.leftArm.rotation.set(-0.4, 0, -0.2);
+  h.pose = { right, left: -0.4, leftRecoil: 0 };
+  h.tracer = MAGE_GLOW;
+  return own(h, 0);
+}
+
 export const MODELS = {
   eradicator: makeEradicator,
   priest: makePriest,
@@ -602,4 +693,5 @@ export const MODELS = {
   bandit: makeBandit,
   grenadierShrapnel: makeShrapnelGrenadier,
   enforcerWarrior: makeWarrior,
+  mage: makeMage,
 };
