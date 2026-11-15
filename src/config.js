@@ -12,6 +12,7 @@ import { TENTH_TOWERS } from './tenthtowers.js';
 import { GOLD_TOWERS } from './goldtowers.js';
 import { ELEVENTH_TOWERS } from './eleventhtowers.js';
 import { TWELFTH_TOWERS } from './twelfthtowers.js';
+import { THIRTEENTH_TOWERS } from './thirteenthtowers.js';
 import { HARDCORE_WAVES } from './hardcore.js';
 import { HALLOWEEN_TIMERS, HALLOWEEN_WAVES } from './halloween.js';
 import { HALLOWEEN2_TIMERS, HALLOWEEN2_WAVES } from './halloween2.js';
@@ -174,6 +175,8 @@ export const TOWERS = {
   ...ELEVENTH_TOWERS,
   // Wave 12: Tempest, Golden Bandit, Phantom, Vanguard, Strawman. See twelfthtowers.js.
   ...TWELFTH_TOWERS,
+  // Wave 13: Technomancer. See thirteenthtowers.js.
+  ...THIRTEENTH_TOWERS,
 };
 
 /**

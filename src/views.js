@@ -67,6 +67,11 @@ const beamGeo = new THREE.BoxGeometry(1, 1, 1).translate(0, 0, 0.5); // grows fr
 const spotConeGeo = new THREE.CylinderGeometry(1, 0.12, 1, 20, 1, true).rotateX(Math.PI / 2).translate(0, 0, 0.5);
 const spotDiscGeo = new THREE.CircleGeometry(1, 28).rotateX(-Math.PI / 2);
 const tmpB = new THREE.Vector3();
+// Technomancer Hologram pad pieces.
+const padBaseGeo = new THREE.CylinderGeometry(2, 2.1, 0.18, 6).translate(0, 0.09, 0);
+const padTopGeo = new THREE.CylinderGeometry(1.85, 1.85, 0.06, 6);
+const padRingGeo = new THREE.TorusGeometry(1.3, 0.06, 6, 32);
+const padPostGeo = new THREE.BoxGeometry(0.12, 0.6, 0.12);
 
 const _walk = { phase: 0, t: 0, atk: -1, dance: false, fly: false };
 const _pose = { t: 0, dt: 0, recoil: 0, shots: 0, snap: false, aim: false, kick: 1 };
@@ -295,6 +300,7 @@ export class TowerView {
     else if (m.plane) this.fly(t, dt);
     if (m.orbs) this.spinSouls(t, dt);
     if (m.spot) this.syncSpot(t, dt);
+    if (t.pad || this.holoPad) this.syncPad(t, dt);
     if (m.modeTracer) {
       // Elementalist: its gauntlet and shots glow in the color of its element.
       const c = m.modeTracer[t.choice?.[0] === 'frost' ? 'frost' : 'fire'];
@@ -308,6 +314,46 @@ export class TowerView {
       }
     }
     if (t.fx || this.fx) this.syncFx(t.fx || 0, dt);
+  }
+
+  /** Technomancer Hologram: a see-through hexagon pad with a spinning ring where t.pad is. */
+  syncPad(t, dt) {
+    if (!t.pad) {
+      this.scene.remove(this.holoPad);
+      this.holoPad = null;
+      return;
+    }
+    if (!this.holoPad) {
+      const g = new THREE.Group();
+      this.holoMats = [
+        new THREE.MeshBasicMaterial({ color: 0x00ffc8, transparent: true, opacity: 0.28, depthWrite: false, blending: THREE.AdditiveBlending }),
+        new THREE.MeshBasicMaterial({ color: 0x00ffc8, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending }),
+        new THREE.MeshLambertMaterial({ color: 0xf2f2f2 }),
+      ];
+      const [glass, glow, white] = this.holoMats;
+      g.add(new THREE.Mesh(padBaseGeo, white)); // white hexagon rim on the ground
+      const top = new THREE.Mesh(padTopGeo, glass); // see-through glowing hexagon
+      top.position.y = 0.2;
+      g.add(top);
+      const ring = new THREE.Mesh(padRingGeo, glow);
+      ring.rotation.x = Math.PI / 2;
+      ring.position.y = 0.32;
+      g.add(ring);
+      for (let i = 0; i < 6; i++) {
+        // little light posts at the corners
+        const a = (i / 6) * Math.PI * 2;
+        const post = new THREE.Mesh(padPostGeo, glow);
+        post.position.set(Math.cos(a) * 1.75, 0.45, Math.sin(a) * 1.75);
+        g.add(post);
+      }
+      g.userData.ring = ring;
+      this.holoPad = g;
+      this.scene.add(g);
+    }
+    const g = this.holoPad;
+    g.position.set(t.pad.x, heightAt(t.pad.x, t.pad.z), t.pad.z);
+    g.userData.ring.rotation.z += dt * 0.8;
+    this.holoMats[0].opacity = 0.22 + Math.sin(this.breath * 4) * 0.06;
   }
 
   /** Spotlight Tech: a cone of light from its lamp down to where the light is, and a bright disc on the ground. */
@@ -733,6 +779,10 @@ export class TowerView {
     for (const l of this.links ?? []) {
       this.scene.remove(l);
       l.material.dispose();
+    }
+    if (this.holoPad) {
+      this.scene.remove(this.holoPad);
+      for (const m of this.holoMats) m.dispose();
     }
     this.padMat.dispose();
     this.ringMat.dispose();

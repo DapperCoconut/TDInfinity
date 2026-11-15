@@ -158,6 +158,7 @@ export class SimTowerUpdate {
     if (s.drop?.units) this.updateDrops(t, s, dt); // Buccaneer pirate barrel (Airdrop Farms / Markets use `drop` for crate timing)
     if (s.drone) this.updateSpectreDrone(t, s, dt); // Spectre drone
     if (t.liveT > 0) this.updateLiveShow(t, s, dt); // Glowup Live Show
+    if (t.pad) this.updateTechno(t); // Technomancer: which tower stands on its Hologram
     if (s.slash) this.banditSlash(t, s, b, dt); // Bandit: its sword swings on its own timer
     if (s.ray) this.updateRay(t, s, b, dt); // Eradicator: Raybreak on its own timer
     if (s.ml) this.updateVindicator(t, s, b, dt); // Vindicator: Slashes and Mass Lethality

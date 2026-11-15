@@ -49,6 +49,7 @@ import { SimDamage } from './parts/damage.js';
 import { SimWeapons4 } from './parts/weapons4.js';
 import { SimWeapons5 } from './parts/weapons5.js';
 import { SimWeapons6 } from './parts/weapons6.js';
+import { SimWeapons7 } from './parts/weapons7.js';
 import { H2_FX, SimCarnival } from './parts/carnival.js';
 import { N3_FX, SimNightmare } from './parts/nightmare.js';
 import { SimChristmas, XM_FX } from './parts/christmas.js';
@@ -699,6 +700,7 @@ export class Sim {
         p.cash += value;
         this.removeTower(t, 'sell', { value });
         this.sellSacrifice(t);
+        this.sellPadTower(t, pid); // Technomancer: the tower on its Hologram goes too
         if (!t.holo) this.setPlaceCd(p, t.type, TOWERS[t.type].placeCd); // Phantom / Vanguard: a wait before placing it again
         return null;
       }
@@ -824,6 +826,10 @@ export class Sim {
         if (ab.key === 'kritz' && !this.chargeTarget(t, s, ab)) return 'No tower in range to Kritz';
         if (ab.key === 'clone') {
           const why = this.cloneTower(p, ab, m);
+          if (why) return why;
+        }
+        if (ab.key === 'hologram' || ab.key === 'utopia') {
+          const why = this.technoWhy(t, p, s, ab, m); // (Utopia makes its copy here)
           if (why) return why;
         }
         if (ab.key === 'crucifix' && !this.crucifixTarget(t, s)) return 'No zombie in range';
@@ -974,8 +980,8 @@ export class Sim {
         // Wave 9: [ability uses (paid abilities with rising prices), Chaos Jester price roll, Wizard Magic Boost, Mako charge 0-1]
         t.uses || t.magic || t.chargeT || TOWERS[t.type].levels.some((l) => l.costMax)
           ? [t.uses || 0, r2(t.costRoll ?? 0.5), t.magic || 0, TOWERS[t.type].levels[t.level].charge ? r2((t.chargeT || 0) / TOWERS[t.type].levels[t.level].charge.time) : 0] : 0,
-        // Wave 12: [Strawman mode, Golden Bandit Share Relic money off the next upgrade]
-        t.mode || t.nextOff ? [t.mode || 0, t.nextOff || 0] : 0,
+        // Wave 12-13: [Strawman mode, Golden Bandit Share Relic money off the next upgrade, Technomancer pad dx, dz]
+        t.mode || t.nextOff || t.pad ? [t.mode || 0, t.nextOff || 0, ...(t.pad ? [r2(t.pad.x - t.x), r2(t.pad.z - t.z)] : [])] : 0,
       ]),
       // Traps, plus Necromancer gravestones and Engineer sentries: [..., level, facing, health left (0-1), stunned, thermite radius].
       tr: [...this.traps.values()].map((tr) => [tr.id, tr.tower, tr.kind, r2(tr.x), r2(tr.z), tr.land > 0 ? 0 : 1, tr.lvl ?? 0, r2(tr.yaw ?? 0), tr.maxHp ? r2(tr.hp / tr.maxHp) : 1, tr.stunT > 0 ? 1 : 0, tr.kind === 'thermite' || tr.kind === 'gas' || tr.kind === 'thorns' || tr.kind === 'goo' || tr.kind === 'blade' ? tr.radius : 0]),
@@ -1006,7 +1012,7 @@ export class Sim {
 
 // Sim's methods are kept in several files (see the list at the top). This puts them all on Sim,
 // just as if they were written inside the class.
-for (const part of [SimEnemyMoves1, SimEnemyMoves2, SimTowerHealth, SimWaves, SimTowerUpdate, SimWeapons1, SimWeapons2, SimWeapons3, SimUnits, SimAbilities, SimDamage, SimWeapons4, SimWeapons5, SimWeapons6, SimCarnival, SimNightmare, SimChristmas, SimSpires, SimContract, SimLiminal, SimSandbox]) {
+for (const part of [SimEnemyMoves1, SimEnemyMoves2, SimTowerHealth, SimWaves, SimTowerUpdate, SimWeapons1, SimWeapons2, SimWeapons3, SimUnits, SimAbilities, SimDamage, SimWeapons4, SimWeapons5, SimWeapons6, SimWeapons7, SimCarnival, SimNightmare, SimChristmas, SimSpires, SimContract, SimLiminal, SimSandbox]) {
   const props = Object.getOwnPropertyDescriptors(part.prototype);
   delete props.constructor;
   Object.defineProperties(Sim.prototype, props);

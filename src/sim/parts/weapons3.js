@@ -396,7 +396,7 @@ export class SimWeapons3 {
     if (p.cash < cost) return `Need $${cost} to clone the ${def.name}`;
     const x = Number(m.x);
     const z = Number(m.z);
-    if (!canPlace(x, z, this.towers.values(), def.placement)) return placeFail(def, 'A');
+    if (!canPlace(x, z, this.towers.values(), ab.anySpot && def.placement !== 'water' ? 'any' : def.placement)) return ab.anySpot ? "The copy can't go there" : placeFail(def, 'A'); // Technomancer Utopia: ground or cliff
     p.cash -= cost;
     const t = this.newTower(p.id, src.type, x, z, m.yaw, 0);
     t.level = src.level;

@@ -51,6 +51,8 @@ export function placeFail(def, article = '') {
 
 // Towers are drawn TOWER_SIZE x their model size (see src/scale.js), so their footprint grows too.
 const TOWER_SIZE = 1; // keep equal to MODEL_SCALE
+// Technomancer Hologram pad: a tower whose centre is this close to a pad stands on it.
+export const PAD_SNAP = 1.5;
 const CLIFF_INSET = 2.1 * TOWER_SIZE; // a tower's center must be this far inside the cliff edge
 
 // Raised flat tops (mesas, roofs, rock blocks, the Night 3 hill): colliders marked `top` in
@@ -965,7 +967,13 @@ setMap(DEFAULT_MAP);
 export function canPlace(x, z, towers, placement = 'ground', type = null) {
   if (!Number.isFinite(x) || !Number.isFinite(z)) return false;
   const size = (TOWERS[type]?.size ?? 1) * 2 * TOWER_SIZE;
-  for (const t of towers) if (Math.hypot(t.x - x, t.z - z) < size + (TOWERS[t.type]?.size ?? 1) * 2 * TOWER_SIZE) return false;
+  let onPad = false;
+  for (const t of towers) {
+    if (Math.hypot(t.x - x, t.z - z) < size + (TOWERS[t.type]?.size ?? 1) * 2 * TOWER_SIZE) return false;
+    if (t.pad && Math.hypot(t.pad.x - x, t.pad.z - z) <= PAD_SNAP) onPad = true;
+  }
+  // Technomancer Hologram: any tower (ground, cliff or water) can stand on its pad.
+  if (onPad && placement !== 'path') return true;
   // Phantom / Vanguard: only ON the path (not on a cliff top).
   if (placement === 'path') return !topAt(x, z) && path.distanceTo(x, z) <= PATH_WIDTH / 2;
   const top = topAt(x, z);

@@ -144,7 +144,7 @@ export function computeBuffs(towers) {
   const list = [...towers];
   const out = new Map();
   // (VOID's corrupted towers boost nobody.)
-  const sources = list.filter((o) => { if (o.corrupt) return false; const s = TOWERS[o.type].levels[o.level]; return s.aura || s.bless || (s.radio && o.radioT > 0) || (o.active > 0 && rageOf(s)) || s.kin || s.radar || s.globalCdCut || s.bizDisc || s.cliffBoost || s.taser?.link || (s.trick?.knife?.red && o.redN > 0) || (s.crow?.buff && o.mode); });
+  const sources = list.filter((o) => { if (o.corrupt) return false; const s = TOWERS[o.type].levels[o.level]; return s.aura || s.bless || (s.radio && o.radioT > 0) || (o.active > 0 && rageOf(s)) || s.kin || s.radar || s.globalCdCut || s.bizDisc || s.cliffBoost || s.taser?.link || (s.trick?.knife?.red && o.redN > 0) || (s.crow?.buff && o.mode) || (s.techno?.hijack && o.padOn); });
   // (Spectre drones boost damage in Support mode; Glowups boost firerate less the farther away a tower is.)
   if (!sources.length) return out;
   const shields = medicShields(list);
@@ -329,8 +329,32 @@ export function computeBuffs(towers) {
       out.set(t.id, { ...tb, dmg: tb.dmg * m, rate: tb.rate * m, range: tb.range * m });
     }
   }
+  // Technomancer Hijack: the tower on its Hologram pad (o.padOn, set by the sim) gives it half of how much more
+  // damage, shots a second and range that tower has, a third less if it isn't max level, each at most HIJACK_CAP.
+  // (The receiver keeps the bigger of what it already has and the hijack boost, like Volt Link.)
+  for (const o of sources) {
+    const s = TOWERS[o.type].levels[o.level];
+    if (!s.techno?.hijack) continue;
+    const v = list.find((t) => t.id === o.padOn && t.owner === o.owner);
+    if (!v) continue;
+    const vd = TOWERS[v.type];
+    const vs = vd.levels[v.level];
+    if (!vs.damage || !vs.cooldown) continue; // only attacking towers have stats to steal
+    const eff = HIJACK_PART * (v.level >= vd.levels.length - 1 ? 1 : 1 - HIJACK_UNMAXED);
+    const gain = (theirs, mine) => 1 + Math.min(HIJACK_CAP, eff * Math.max(0, theirs / mine - 1));
+    const tb = out.get(o.id) ?? NO_BUFF;
+    out.set(o.id, { ...tb,
+      dmg: Math.max(tb.dmg, gain(vs.damage, s.damage)),
+      rate: Math.max(tb.rate, gain((vs.burst || 1) / vs.cooldown, (s.burst || 1) / s.cooldown)),
+      range: Math.max(tb.range, gain(vs.range || 0, s.range)) });
+  }
   return out;
 }
+
+// Technomancer Hijack: half of the excess stats, a third less from towers that aren't max level, at most +150% each.
+const HIJACK_PART = 0.5;
+const HIJACK_UNMAXED = 1 / 3;
+const HIJACK_CAP = 1.5;
 
 /** Boosts for tower `id` from a computeBuffs() map (never undefined). */
 export const buffOf = (buffs, id) => buffs.get(id) ?? NO_BUFF;

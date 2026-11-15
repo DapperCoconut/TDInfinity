@@ -72,6 +72,8 @@ export class SimAbilities {
       this.reposition(t, s, ab, Number(m.x), Number(m.z));
       if (ab.immune) t.immuneT = Math.max(t.immuneT || 0, ab.immune); // Eldritch Rift: stun immunity
     }
+    else if (ab.key === 'hologram') this.placeHologram(t, Number(m.x), Number(m.z)); // Technomancer
+    else if (ab.key === 'utopia') {} // Technomancer: the copy was made when the action was checked
     else if (ab.key === 'carpetBomb') this.carpetBomb(t, s, ab, Number(m.x), Number(m.z));
     else if (ab.key === 'snowfall') this.snowfall(t, ab); // Snowman
     else if (ab.key === 'artificialAscent') this.arcaneBlast(t, s, ab, Number(m.x), Number(m.z)); // Mage
