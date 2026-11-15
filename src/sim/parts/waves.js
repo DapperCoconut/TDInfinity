@@ -476,6 +476,13 @@ export class SimWaves {
         continue;
       }
       let income = !t.holo && TOWERS[t.type].levels[t.level].income;
+      const thief = TOWERS[t.type].levels[t.level].thief;
+      if (thief) {
+        // Thief: the damage it dealt since the last payout becomes cash (capped per wave).
+        const dealt = (t.damageDealt || 0) - (t.stoleFrom || 0);
+        t.stoleFrom = t.damageDealt || 0;
+        if (!t.holo) income = (income || 0) + Math.min(thief.max, Math.round(dealt * thief.rate));
+      }
       const fish = !t.holo && TOWERS[t.type].levels[t.level].catch;
       if (fish) income = this.catchFish(t, fish, skip);
       const owner = this.players.get(t.owner);

@@ -166,7 +166,7 @@ export class SimWeapons2 {
       for (const n of near) {
         const along = n.dx * ux + n.dz * uz;
         if (along < 0) continue;
-        if (Math.abs(n.dx * uz - n.dz * ux) <= PELLET_WIDTH) line.push({ e: n.e, along });
+        if (Math.abs(n.dx * uz - n.dz * ux) <= (s.pelletW ?? PELLET_WIDTH)) line.push({ e: n.e, along });
       }
       line.sort((p, q) => p.along - q.along);
       for (let k = 0; k < Math.min(s.scatter ?? 3, line.length); k++) {

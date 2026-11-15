@@ -9,7 +9,7 @@
 //   Berserker: an alternate Slugger form. Chops with two axes; Crushing Blow slams the ground
 //              and makes zombies weaker to physical damage. Fatal Frenzy ability at Lv 4.
 //   Priest: an alternate Medic (Doctor) form. Never attacks; blesses one tower for more damage.
-//   Farmer: an alternate Farm form. Pays out paychecks during the wave; Rice From The Void at Lv 4.
+//   Farmer: an alternate Oil Derrick form. Pays out paychecks during the wave; Rice From The Void at Lv 4.
 //   Bandit: an alternate Scout form. Shoots, and from Lv 2 slashes zombies close in front of it.
 //   Shrapnel Grenadier: an alternate Grenadier form. Cheap grenades, a grenade launcher from Lv 3,
 //               and at Lv 5 every blast also hurts by a share of each zombie's max health.
@@ -21,6 +21,12 @@
 //   Infernus: an alternate Flamethrower form. A support: a wide cone of fire whose burns slow zombies.
 //   Spearman: an alternate Assassin form. Stabs harder at the far edge of its reach (Tip Damage);
 //             range buffs don't work on it. Edge Cyclone at Lv 5.
+//   Thief: an alternate Cowboy form. Stabs with a dagger; the damage it deals in a wave turns
+//          into cash at the end of the wave (up to $8,000 each).
+//   Exterminator: an alternate Mercenary Base form. A soldier that shoots very fast; Onslaught
+//                 ability at Lv 5 boosts the damage of towers around it.
+//   Miner: an alternate Farm form. Earns cash every wave.
+//   Recon: an alternate Shotgunner form. A shotgun that fires 5 pellets (7 at Lv 4).
 //   Mage: weak long-range magic shots. Builds up its owner's Arcana, shoots faster with more of it,
 //         calls down lightning every 10 shots (Stormbringer), and Artificial Ascent at Lv 5.
 //
@@ -86,6 +92,12 @@
 //               range, each dealing (damage + Arcana / 15) ^ 1.1 in a blast of 3 + Arcana / 100.
 //   ARTS (Magical ARTS, e.arts): zombies take that much more damage from everything. Read in
 //               damage() in sim/parts/damage.js.
+//   thief: { rate, max }  Thief: after each wave its owner gets `rate` cash per damage it dealt
+//               that wave, at most `max` (payIncome in sim/parts/waves.js).
+//   hex: [a, b, c]  Thief Hex Thief: +2 damage for each of these its owner's Arcana is above.
+//   dummybane: s  Thief: every hit adds +1 damage for `s` seconds (stacks; t.db in updateTower).
+//   resistPierce: n  Exterminator: ignores that share of every resistance (damage in sim/parts/damage.js).
+//   pelletW: n  Recon Heavy Shells: how close a pellet must pass to hit (PELLET_WIDTH otherwise).
 //   burnSlow: n  (Infernus, on a level) how much its burns slow; the tower's own burnSlow before that.
 //   tip: { width, bonus, fast, cyclone }  Spearman (see updateTower in sim/parts/tower-update.js and
 //               edgeCyclone in weapons3.js). noRangeBuff: true (on the tower) range buffs don't count.
@@ -145,6 +157,11 @@ const ascent = { key: 'artificialAscent', name: 'Artificial Ascent', cooldown: 5
 const snowfall = { key: 'snowfall', name: 'Snowfall', cooldown: 50, freeze: 6, vuln: 0.2, extra: 10,
   desc: 'Freezes every zombie on the map for 6s (not bosses). Frozen zombies take +20% damage. +10s cooldown for every other max level Snowman' };
 const ARCANA = (gain) => ({ gain, cap: 200 });
+// Exterminator: Onslaught. Like John's Rage Mode: other towers within `radius` deal `boost` more damage.
+// radius 27 = its Lv 5 range (20) after RANGE_BOOST.
+const onslaught = (boost, duration, cooldown) => ({ key: 'rage', name: 'Onslaught', cooldown, duration, radius: 27, boost,
+  desc: `Towers in its range deal ${Math.round(boost * 100)}% more damage for ${duration}s` });
+const THIEF_MAX = 8000;
 
 export const ELEVENTH_TOWERS = {
   poacher: {
@@ -315,7 +332,7 @@ export const ELEVENTH_TOWERS = {
   // Farmer (alternate Farm form): pays during the wave, not at the end.
   farmer: {
     name: 'Farmer',
-    altOf: 'farm',
+    altOf: 'oilDerrick',
     form: 'Farmer',
     shards: 1,
     price: 0,
@@ -506,6 +523,105 @@ export const ELEVENTH_TOWERS = {
     ],
   },
   // Mage: weak long-range shots. Arcana is its owner's, shared by all their Mages.
+  // Thief (alternate Cowboy form): a dagger fighter whose damage turns into cash after each wave.
+  // `thief.rate` is cash per damage: 1 at first, x1.6 at Lv 2 and x2.22 at Lv 4 (the spec's real
+  // multipliers, not the 175% / 225% its upgrade text shows).
+  cowboyThief: {
+    name: 'Thief',
+    altOf: 'cowboy',
+    form: 'Thief',
+    shards: 1,
+    price: 0,
+    cost: 600,
+    limit: Infinity,
+    melee: true,
+    lead: false,
+    flying: false,
+    blurb: 'An alternate Cowboy that stabs zombies up close. At the end of every wave, all the damage it dealt that wave turns into cash (up to $8,000 per Thief each wave). Hits harder with more Arcana from Lv 4, and keeps getting stronger while it keeps hitting at Lv 5. No placement limit.',
+    tip: 'Put it where lots of zombies walk past close by. The more it hits, the more money it makes.',
+    levels: [
+      { name: 'Thief', desc: 'Stabs with a dagger. Its damage each wave turns into cash after the wave.', damage: 4, cooldown: 0.9, range: 5, hidden: false,
+        thief: { rate: 1, max: THIEF_MAX } },
+      { name: 'Crooked Connections', desc: 'Stabs faster (every 0.9s > 0.7s), and +$20 every wave.', cost: 200, damage: 4, cooldown: 0.7, range: 5, income: 20, hidden: false,
+        thief: { rate: 1, max: THIEF_MAX } },
+      { name: 'Pickpocket', desc: '+1 damage, and 60% more cash for its damage.', cost: 700, damage: 5, cooldown: 0.7, range: 5, income: 20, hidden: false,
+        thief: { rate: 1.6, max: THIEF_MAX } },
+      { name: 'Duel Daggers', desc: 'Two daggers: stabs much faster (every 0.7s > 0.45s).', cost: 1150, damage: 5, cooldown: 0.45, range: 5, income: 20, hidden: false,
+        thief: { rate: 1.6, max: THIEF_MAX } },
+      { name: 'Hex Thief', desc: '+4 damage and even more cash for its damage. +2 damage when your Arcana is above 10, 50 and 125 (up to +6).', cost: 2350, damage: 9, cooldown: 0.45, range: 5, income: 20, hidden: false,
+        thief: { rate: 2.22, max: THIEF_MAX }, hex: [10, 50, 125] },
+      { name: 'Dummybane', desc: 'Every hit gives it +1 damage for 12s (these add up).', cost: 4800, damage: 9, cooldown: 0.45, range: 5, income: 20, hidden: false,
+        thief: { rate: 2.22, max: THIEF_MAX }, hex: [10, 50, 125], dummybane: 12 },
+    ],
+  },
+  // Exterminator (alternate Mercenary Base form): a soldier, not a base. Has 7 levels (the spec's
+  // 6 upgrades). Onslaught at Lv 5; Onrush (Lv 6) makes it stronger and gets through half of
+  // every resistance.
+  mercenaryExterminator: {
+    name: 'Exterminator',
+    altOf: 'mercenary',
+    form: 'Exterminator',
+    shards: 1,
+    price: 0,
+    cost: 1000,
+    limit: 6,
+    blurb: 'An alternate Mercenary Base: one soldier who shoots instead of a base that sends units. Shoots faster and faster as it levels up, sees hidden zombies from Lv 2, and at Lv 5 gets Onslaught, which makes every tower in its range deal more damage. At max level it gets through half of every resistance.',
+    tip: 'Put your strongest towers inside its range so Onslaught boosts them.',
+    levels: [
+      { name: 'Exterminator', desc: 'Shoots one zombie at a time.', damage: 5, cooldown: 1.2, range: 12, hidden: false },
+      { name: 'Firepower', desc: '+2 damage.', cost: 550, damage: 7, cooldown: 1.2, range: 12, hidden: false },
+      { name: 'Pursuit', desc: '+3 range, and sees hidden zombies.', cost: 700, damage: 7, cooldown: 1.2, range: 15, hidden: true },
+      { name: 'Assault', desc: 'Shoots much faster (every 1.2s > 0.45s).', cost: 1750, damage: 7, cooldown: 0.45, range: 15, hidden: true },
+      { name: 'Exterminate', desc: '+2 range and +4 damage.', cost: 2000, damage: 11, cooldown: 0.45, range: 17, hidden: true },
+      { name: 'Emissary', desc: '+3 range, shoots faster (every 0.45s > 0.22s), and unlocks Onslaught.', cost: 6500, damage: 11, cooldown: 0.22, range: 20, hidden: true,
+        abilities: [onslaught(0.25, 8, 40)] },
+      { name: 'Onrush', desc: '+2 damage, shoots faster (every 0.22s > 0.14s), and gets through half of every resistance. Onslaught: +35% damage for 10s, recharges in 30s.', cost: 10000, damage: 13, cooldown: 0.14, range: 20, resistPierce: 0.5, hidden: true,
+        abilities: [onslaught(0.35, 10, 30)] },
+    ],
+  },
+  // Miner (alternate Farm form): cash every wave, like a Farm.
+  farmMiner: {
+    name: 'Miner',
+    altOf: 'farm',
+    form: 'Miner',
+    shards: 1,
+    price: 0,
+    cost: 300,
+    limit: 6,
+    kind: 'income',
+    blurb: 'An alternate Farm: a miner who digs up cash every wave. Never attacks. Its later levels pay a lot more. Up to 6.',
+    tip: 'Get your Miners to Lv 3 and Lv 4 early. Lv 5 only pays off in long games.',
+    levels: [
+      { name: 'Miner', desc: 'Earns $50 every wave.', income: 50, hidden: false },
+      { name: 'Excavation', desc: 'Earns $100 every wave.', cost: 300, income: 100, hidden: false },
+      { name: 'Mining Helmet', desc: 'Earns $250 every wave.', cost: 850, income: 250, hidden: false },
+      { name: 'Better Pickaxe', desc: 'Earns $400 every wave.', cost: 1000, income: 400, hidden: false },
+      { name: 'Refined Minerals', desc: 'Earns $900 every wave.', cost: 2900, income: 900, hidden: false },
+      { name: 'Mining Industry', desc: 'Earns $1,350 every wave.', cost: 4500, income: 1350, hidden: false },
+    ],
+  },
+  // Recon (alternate Shotgunner form): a shotgun of `pellets` pellets; each one hits the first
+  // zombie on its line (scatter 1).
+  shotgunnerRecon: {
+    name: 'Recon',
+    altOf: 'shotgunner',
+    form: 'Recon',
+    shards: 1,
+    price: 0,
+    cost: 500,
+    limit: Infinity,
+    lead: 3,
+    blurb: 'An alternate Shotgunner with short range. Each shot sprays 5 pellets (7 from Lv 4) that each hit the first zombie in their way, so zombies up close take lots of them. Sees hidden zombies from Lv 2. No placement limit.',
+    tip: 'Put it right next to the path. Up close, most of its pellets hit the same zombie.',
+    levels: [
+      { name: 'Recon', desc: 'A shotgun: 5 pellets of 2 damage each.', damage: 2, pellets: 5, scatter: 1, cone: 0.22, cooldown: 2.5, range: 8, hidden: false },
+      { name: 'Faster Reload', desc: '+1 range, and shoots faster (every 2.5s > 2s).', cost: 250, damage: 2, pellets: 5, scatter: 1, cone: 0.22, cooldown: 2, range: 9, hidden: false },
+      { name: 'Radio Signal', desc: '+2 damage, and sees hidden zombies.', cost: 600, damage: 4, pellets: 5, scatter: 1, cone: 0.22, cooldown: 2, range: 9, hidden: true },
+      { name: 'Heavy Shells', desc: '+4 damage, and bigger pellets that hit more easily.', cost: 1550, damage: 8, pellets: 5, scatter: 1, cone: 0.22, cooldown: 2, range: 9, pelletW: 1.3, hidden: true },
+      { name: 'Shotgun Barrage', desc: '+2 damage, 7 pellets, and +2 range.', cost: 3200, damage: 10, pellets: 7, scatter: 1, cone: 0.22, cooldown: 2, range: 11, pelletW: 1.3, hidden: true },
+      { name: 'Expert Assassin', desc: '+1 range, +6 damage, and shoots faster (every 2s > 1.5s).', cost: 4500, damage: 16, pellets: 7, scatter: 1, cone: 0.22, cooldown: 1.5, range: 12, pelletW: 1.3, hidden: true },
+    ],
+  },
   mage: {
     name: 'Mage',
     price: 500,

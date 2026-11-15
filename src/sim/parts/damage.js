@@ -455,16 +455,17 @@ export class SimDamage {
     const nores = tru || (!this.dot && ts0?.noResist); // Eradicator: no resistance stops it (armor still does)
     const adapt = ENEMIES[e.type].adapt;
     if (adapt && !nores) this.adaptResist(e, kind, dmg, adapt); // Void Colossus: its resistance wears down
-    if (nores) { /* skips every resistance below */ } else if (kind === 'bullet' && e.bulletResist && !this.ignoresBulletResist(t)) dmg *= 1 - e.bulletResist; // Shielders, Drones...
+    const rk = this.dot ? 1 : 1 - (ts0?.resistPierce || 0); // Exterminator Onrush: only part of each resistance counts
+    if (nores) { /* skips every resistance below */ } else if (kind === 'bullet' && e.bulletResist && !this.ignoresBulletResist(t)) dmg *= 1 - e.bulletResist * rk; // Shielders, Drones...
     else if (kind === 'laser') {
       const lr = Math.max(e.laserResist, e.glitchT > 0 ? e.glitchRes : 0); // Rushers, UFOs; Glitches lend it out
-      if (lr) dmg *= 1 - lr;
-    } else if (kind === 'explosive' && e.explosiveResist) dmg *= 1 - e.explosiveResist; // Chained
-    else if (kind === 'golden' && e.goldResist && !this.ignoresGoldResist(t)) dmg *= 1 - e.goldResist; // Warpers, the Beholder
+      if (lr) dmg *= 1 - lr * rk;
+    } else if (kind === 'explosive' && e.explosiveResist) dmg *= 1 - e.explosiveResist * rk; // Chained
+    else if (kind === 'golden' && e.goldResist && !this.ignoresGoldResist(t)) dmg *= 1 - e.goldResist * rk; // Warpers, the Beholder
     const mr = ENEMIES[e.type].meleeResist; // Halloween Night 2 Executioner: melee towers barely hurt it
-    if (mr && !nores && t && !this.dot && (TOWERS[t.type]?.melee || ts0?.melee)) dmg *= 1 - mr;
+    if (mr && !nores && t && !this.dot && (TOWERS[t.type]?.melee || ts0?.melee)) dmg *= 1 - mr * rk;
     const tr = ENEMIES[e.type].towerResist; // Christmas Night 3 Ardent: the Elite tower barely hurts it
-    if (tr && !nores && t && t.type.startsWith(tr.prefix)) dmg *= 1 - tr.amt;
+    if (tr && !nores && t && t.type.startsWith(tr.prefix)) dmg *= 1 - tr.amt * rk;
     // Armor tops out at 90%, except Hard mode Corpses (100%: only defense piercing gets through).
     const cap = e.armor >= 1 ? 1 : 0.9;
     let armor = Math.min(cap, e.armor + (e.gear || 0) + (e.auraArmor || 0) + (e.blessed || 0) + (e.vShield > 0 ? this.voidArmor.armor : 0) + (e.osh > 0 ? ENEMIES[e.type].shieldArmor ?? 0 : 0)); // Mechanics bolt extra armor on; VOID's aura; Jester Blessed; void armor; Frost Ravager's shield

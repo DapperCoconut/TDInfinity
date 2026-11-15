@@ -74,6 +74,11 @@ export class SimTowerUpdate {
     t.parryT = Math.max(0, (t.parryT || 0) - dt);
     t.aspectT = Math.max(0, (t.aspectT || 0) - dt);
     if (t.rageT > 0 && (t.rageT -= dt) <= 0) t.rage = 0; // Berserker: Rage fades after a while without a hit
+    if (t.db?.length) {
+      // Thief Dummybane: each +1 damage stack runs out on its own.
+      t.dbClock = (t.dbClock || 0) + dt;
+      while (t.db.length && t.db[0] <= t.dbClock) t.db.shift();
+    }
     if (t.after && (t.after.left -= dt) <= 0) this.aftershock(t, s); // Berserker Aftershock: the second slam
     t.radioT = Math.max(0, t.radioT - dt);
     if (t.fwT > 0) t.fwT = Math.max(0, t.fwT - dt); // Firework Technician boost
@@ -398,6 +403,17 @@ export class SimTowerUpdate {
     }
     // Planeswalker: zombies inside its inner range take less damage.
     if (s.closeRange && (target.x - t.x) ** 2 + (target.z - t.z) ** 2 <= s.closeRange ** 2) dmg = Math.round(dmg * s.closeMult * 100) / 100;
+    // Thief Hex Thief: +2 damage for each Arcana step its owner is past. Dummybane: +1 per stack,
+    // and this hit adds a stack that lasts `dummybane` s.
+    if (s.hex) {
+      const ar = this.players.get(t.owner)?.arcana || 0;
+      for (const a of s.hex) if (ar > a) dmg += 2;
+    }
+    if (s.dummybane) {
+      t.db ??= [];
+      dmg += t.db.length;
+      t.db.push((t.dbClock || 0) + s.dummybane);
+    }
     // Spearman: zombies in the outer ring of its range (the last `tip.width` studs) take Tip Damage.
     // Other stabs are faster; Edge Cyclone hits the whole ring instead of one tip stab.
     if (s.tip) {
