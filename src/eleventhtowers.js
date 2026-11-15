@@ -11,6 +11,8 @@
 //   Priest: an alternate Medic (Doctor) form. Never attacks; blesses one tower for more damage.
 //   Farmer: an alternate Farm form. Pays out paychecks during the wave; Rice From The Void at Lv 4.
 //   Bandit: an alternate Scout form. Shoots, and from Lv 2 slashes zombies close in front of it.
+//   Shrapnel Grenadier: an alternate Grenadier form. Cheap grenades, a grenade launcher from Lv 3,
+//               and at Lv 5 every blast also hurts by a share of each zombie's max health.
 //   Eradicator: fast little energy orbs, and from Lv 3 the Raybreak: a big piercing beam. Its last
 //               three levels add ΘVERLOAD, which costs its owner money for the rest of the game.
 //
@@ -63,6 +65,8 @@
 //               `cap`) spread over `time` s. extra: { count, mult } more beams fired off to the sides.
 //   overload: n  (on a level) buying this level adds n ΘVERLOAD to its owner for good (GAME.overload
 //               in config.js; see drainOverload in sim/parts/waves.js).
+//   hpPct: { pct, max }  (blasts) each zombie hit also takes `pct` of its max health, but the
+//               hit never goes over `max` x the tower's damage. Read in explodeHits (sim/parts/damage.js).
 //   trueDmg: true  True damage (see damage in sim/parts/damage.js): no resistance, armor or
 //               defense stops it.
 //
@@ -322,6 +326,29 @@ export const ELEVENTH_TOWERS = {
         slash: slash(18, 2) },
       { name: 'Potential', desc: '+25 damage and +4 range, but slower (every 1.7s). The sword does 68 damage every 1.7s, only when more than one zombie is close.', cost: 4800, damage: 34, cooldown: 1.7, range: 20, hidden: true,
         slash: slash(68, 1.7, 2) },
+    ],
+  },
+  // Shrapnel Grenadier (alternate Grenadier form). Range follows the spec's table (+3 at Lv 3).
+  grenadierShrapnel: {
+    name: 'Shrapnel Grenadier',
+    lead: true,
+    altOf: 'grenadier',
+    form: 'Shrapnel',
+    shards: 1,
+    price: 0,
+    cost: 250,
+    limit: Infinity,
+    lob: 0.7,
+    blurb: 'An alternate Grenadier that throws grenades into big blasts. At Lv 3 it gets a grenade launcher and sees hidden zombies. At max level every blast also hurts each zombie by 1% of its max health, so it is great against tough zombies. No placement limit.',
+    tip: 'Cheap to start. Max it out to deal with big zombies and bosses.',
+    levels: [
+      { name: 'Shrapnel Grenadier', desc: 'Throws grenades that hurt every zombie in the blast.', damage: 3, cooldown: 2.5, range: 7, radius: 4, hidden: false },
+      { name: 'Heavy Impact', desc: '+2 damage.', cost: 300, damage: 5, cooldown: 2.5, range: 7, radius: 4, hidden: false },
+      { name: 'Bigger Bombs', desc: '+2 damage.', cost: 400, damage: 7, cooldown: 2.5, range: 7, radius: 4, hidden: false },
+      { name: 'Grenade Launcher', desc: '+3 damage, +3 range, fires faster (every 1.8s) and sees hidden zombies.', cost: 1000, damage: 10, cooldown: 1.8, range: 10, radius: 4, hidden: true, lob: 0.5 },
+      { name: 'Shrapnel Explosives', desc: '+6 damage and a bigger blast (4 > 6).', cost: 1550, damage: 16, cooldown: 1.8, range: 10, radius: 6, hidden: true, lob: 0.5 },
+      { name: 'Demolition', desc: '+8 damage and +4 range. Each blast also hurts every zombie in it by 1% of its max health (up to 3x damage: 72).', cost: 3000, damage: 24, cooldown: 1.8, range: 14, radius: 6, hidden: true, lob: 0.5,
+        hpPct: { pct: 0.01, max: 3 } },
     ],
   },
   // Eradicator: quick energy orbs, and from Lv 3 the Raybreak beam (on its own timer).

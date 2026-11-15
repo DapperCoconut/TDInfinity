@@ -863,7 +863,7 @@ export class SimAbilities {
     if (def.splashAir) det = { ...det, flying: true }; // Demolitionist: its blasts catch flyers near the ground zombie
     const blast = { damage: s.damage, splash: s.splash, radius: s.radius, freeze: s.freeze, freezeMain: s.freezeMain, slime: s.slime,
       ...(s.ignite ? { burn: s.ignite.dps, burnTime: s.ignite.time, burnSlow: def.burnSlow ?? 0 } : {}), stun: s.stun, stunTargets: s.stunTargets, det, main: target.id, cluster: s.cluster, nuke: s.nuke, gas: s.gas, maxHits: s.maxHits, paint: def.paint,
-      knock: s.knock, chill: s.chill ? s : null, airMult: s.airMult, freezeHp: s.freezeHp, reveal: s.reveal,
+      knock: s.knock, chill: s.chill ? s : null, airMult: s.airMult, hpPct: s.hpPct, freezeHp: s.freezeHp, reveal: s.reveal,
       ...(s.poison ? { poison: s.poison } : {}), ...(s.nuki ? { nuki: s.nuki } : {}) }; // Maitake splash poison, Nuki Launcher
     if (s.bombs) {
       // Jester: every bomb has the effects of every bomb type picked (the biggest blast and damage of them).

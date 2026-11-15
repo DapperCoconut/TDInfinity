@@ -307,6 +307,7 @@ export function extrasText(l) {
     l.revive && `Revive Pack: knocked-out towers back in ${l.revive.delay}s (every ${l.revive.cooldown}s)`,
     l.handgun && `Handgun ${l.handgun.damage} dmg every ${l.handgun.cooldown}s inside its blind spot`,
     l.airMult && `×${l.airMult} damage to flyers`,
+    l.hpPct && `+${Math.round(l.hpPct.pct * 100)}% of each zombie's max health per hit (up to ×${l.hpPct.max} damage)`,
     l.abilities?.some((a) => a.key === 'medDrone') && 'Medic Drone',
     l.abilities?.some((a) => a.key === 'crossbow') && 'Crossbow',
     l.abilities?.some((a) => a.key === 'targetSelect') && !l.autoAim && 'Only fires at the spot you pick',

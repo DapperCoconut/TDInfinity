@@ -1,12 +1,14 @@
 // Tower models: people, batch 27 (dressed with the vehicle kit in ../vehicles.js).
-// In here: Priest, Farmer, Bandit, Eradicator.
+// In here: Priest, Farmer, Bandit, Eradicator, Shrapnel Grenadier.
 // Like batch 26 these are plain white figures with no face: only their gear tells them apart,
 // white too, with accents in one neon colour per tower.
 // MODELS maps tower keys to builders; ../models.js lays it over TOWER_MODELS, so these win.
 
 import { glowMat } from '../vehicles.js';
 import { makeHumanoid } from './kit.js';
-import { aimLong, dome, fist, muzzle, own, wear } from './people1.js';
+import { UP, aimLong, dome, fist, goggles, helmet, muzzle, own, wear } from './people1.js';
+import { shoulderPads } from './people2.js';
+import { throwPose } from './people6.js';
 import { feet, hands, hood } from './people5.js';
 import { cape } from './people18.js';
 
@@ -383,9 +385,131 @@ export function makeEradicator(level) {
   return own(h, 0.3);
 }
 
+// ------------------------------------------------------------------ Shrapnel Grenadier (neon violet)
+
+const NADE_NEON = 0x7c4dff;
+
+/** A white grenade in the fist (gun space) with a neon band and pin ring. Returns its top y. */
+function whiteNade(k, neon, r = 0.3) {
+  const y = -0.42;
+  k.ball(r, W, 0, y, 0, { sy: 1.25, seg: 14, rows: 9 });
+  for (let i = 0; i < 4; i++) k.torus(r, 0.02, W3, 0, y, 0, { ry: (i * PI) / 4, seg: 16, sy: 1.25 });
+  k.torus(r * 1.01, 0.035, neon, 0, y, 0, { rx: PI / 2, seg: 16 });
+  const top = y - r * 1.25;
+  k.cyl(0.1, 0.16, W3, 0, top - 0.04, 0, { seg: 10 }); // fuze
+  k.box(0.07, r * 1.7, 0.05, W2, 0, y - r * 0.35, r + 0.05, { rx: -0.08 }); // spoon
+  k.torus(0.1, 0.02, neon, 0.16, top - 0.08, 0, { ry: PI / 2, seg: 12 }); // pin ring
+  return top - 0.12;
+}
+
+/** A white grenade on the body (torso space), small, with a neon band. */
+function beltNade(k, neon, x, y, z) {
+  k.ball(0.16, W, x, y, z, { sy: 1.2, seg: 10, rows: 7 });
+  k.torus(0.165, 0.02, neon, x, y, z, { rx: PI / 2, seg: 12 });
+  k.cyl(0.06, 0.1, W3, x, y + 0.22, z, { seg: 8 });
+}
+
+/**
+ * A white grenade launcher on the fist (gun space): stock, a six-shot drum with neon shells, a
+ * fat barrel. o.heavy: a longer barrel with a muzzle brake and a glowing ring. Returns [y, z].
+ */
+function whiteLauncher(k, neon, o = {}) {
+  const r = o.heavy ? 0.3 : 0.25;
+  const len = o.heavy ? 2.3 : 1.95;
+  const B = UP + 0.06;
+  k.box(0.28, 0.8, 0.4, W2, 0, 0.5, UP - 0.08, { r: 0.07 }); // stock
+  k.box(0.3, 0.1, 0.46, neon, 0, 0.92, UP - 0.08, { r: 0.02 }); // butt pad
+  k.box(0.22, 0.26, 0.5, W3, 0, 0.08, UP - 0.34, { rx: -0.32, r: 0.05 }); // grip
+  k.box(0.32, 0.5, 0.36, W, 0, -0.1, UP, { r: 0.04 }); // receiver
+  k.cyl(0.42, 0.6, W2, 0, -0.62, B - 0.08, { seg: 18 }); // drum
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * PI * 2;
+    k.cyl(0.1, 0.62, neon, Math.sin(a) * 0.27, -0.62, B - 0.08 + Math.cos(a) * 0.27, { seg: 8 });
+  }
+  if (o.spikes) {
+    // Shrapnel: little blades round the drum
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * PI * 2;
+      k.box(0.06, 0.2, 0.2, W3, Math.sin(a) * 0.47, -0.62, B - 0.08 + Math.cos(a) * 0.47, { ry: a, rx: PI / 4 });
+    }
+  }
+  const b0 = -0.95;
+  const bl = len + b0;
+  k.cyl(r, bl, W, 0, b0 - bl / 2, B, { seg: 16 });
+  k.cyl(r - 0.07, 0.04, 0x202020, 0, -len - 0.01, B, { seg: 14 }); // bore
+  for (let i = 0; i < 3; i++) k.torus(r + 0.01, 0.02, W3, 0, b0 - 0.2 - i * 0.2, B, { rx: PI / 2, seg: 14 });
+  k.box(0.2, 0.4, 0.1, W3, 0, -0.25, B + 0.44, { rx: -0.35 }); // leaf sight
+  if (o.heavy) {
+    k.cyl(r + 0.07, 0.3, W2, 0, -len + 0.15, B, { seg: 16 }); // muzzle brake
+    for (const s of [-1, 1]) k.box(0.08, 0.16, 0.2, W3, s * (r + 0.08), -len + 0.15, B);
+    k.cyl(r + 0.08, 0.06, neon, 0, -len + 0.36, B, { seg: 16 });
+  }
+  return [-len, B];
+}
+
+/**
+ * Shrapnel Grenadier (alternate Grenadier form): a white soldier with a helmet throwing white
+ * grenades. Lv 1 Heavy Impact: a grenade belt. Lv 2 Bigger Bombs: goggles and a bigger grenade.
+ * Lv 3 Grenade Launcher: a drum launcher instead and a chest strap of grenades. Lv 4 Shrapnel
+ * Explosives: shoulder plates and blades on the drum. Lv 5 Demolition: an armoured vest, a
+ * heavy barrel and a backpack of glowing shells.
+ */
+export function makeShrapnelGrenadier(level) {
+  const h = blank();
+  const key = `grenadierShrapnel${level}`;
+  const neon = glowMat(h, NADE_NEON);
+  const hd = wear(h, h.head, `${key}:head`);
+  const t = wear(h, h.torso, `${key}:torso`);
+  helmet(hd, W, { cover: level >= 3 ? neon : W3 });
+  if (level >= 2) goggles(hd, 1.18, neon, { r: 0.77, frame: W3, strap: W2 });
+  t.box(2.14, 1.8, 1.14, W, 0, 0.05, 0, { r: 0.1 }); // jacket
+  t.box(0.06, 1.5, 0.05, W3, 0, -0.1, 0.58); // seam
+  t.box(2.16, 0.24, 1.16, W3, 0, -0.86, 0, { r: 0.04 }); // belt
+  t.box(0.34, 0.2, 0.06, neon, 0, -0.86, 0.6, { r: 0.02 }); // buckle
+  if (level >= 1) for (const x of [-0.6, 0.6]) beltNade(t, neon, x, -0.55, 0.72);
+  if (level >= 3) {
+    // a strap of grenades across the chest
+    t.box(0.28, 2.5, 1.18, W2, 0, 0, 0, { rz: 0.62 });
+    for (const s of [-0.6, 0, 0.6]) beltNade(t, neon, -Math.sin(0.62) * s, Math.cos(0.62) * s, 0.74);
+  }
+  if (level >= 4) shoulderPads(t, W2, 0.62);
+  if (level >= 5) {
+    // an armoured vest with a neon stripe, and a backpack of glowing shells
+    t.box(2.3, 1.3, 1.26, W2, 0, 0.2, 0, { r: 0.1 });
+    t.box(2.32, 0.1, 1.28, neon, 0, -0.2, 0);
+    t.box(1.4, 1.5, 0.5, W3, 0, 0.1, -0.85, { r: 0.08 });
+    for (let i = 0; i < 4; i++) t.cyl(0.13, 0.5, neon, -0.45 + i * 0.3, 0.95, -0.85, { seg: 10 });
+  }
+  hd.done();
+  t.done();
+  hands(h, key, W3, W2, (a) => {
+    if (level >= 4) a.box(0.5, 0.06, 0.06, neon, 0, -1.25, 0.6); // glove cuffs
+  });
+  feet(h, key, W3, (b) => b.box(1.12, 0.1, 1.14, neon, 0, -1.3, 0.02));
+  h.muzzles = [];
+  const g = fist(h.rightArm, -1.9, 1.2);
+  const gk = wear(h, g, `${key}:gun`);
+  if (level >= 3) {
+    const [y, z] = whiteLauncher(gk, neon, { spikes: level >= 4, heavy: level >= 5 });
+    gk.done();
+    muzzle(h, g, y, z);
+    aimLong(h);
+    h.projectile = { color: NADE_NEON, size: level >= 4 ? 0.55 : 0.45, arc: 3 };
+  } else {
+    const tip = whiteNade(gk, neon, level >= 2 ? 0.36 : 0.3);
+    gk.done();
+    muzzle(h, g, tip * 0.6, 0);
+    throwPose(h);
+    h.projectile = { color: 0xffffff, size: level >= 2 ? 0.55 : 0.5, arc: 3.5 };
+  }
+  h.tracer = NADE_NEON;
+  return own(h, level >= 3 ? 0.3 : 0);
+}
+
 export const MODELS = {
   eradicator: makeEradicator,
   priest: makePriest,
   farmer: makeFarmer,
   bandit: makeBandit,
+  grenadierShrapnel: makeShrapnelGrenadier,
 };

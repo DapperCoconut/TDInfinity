@@ -357,6 +357,7 @@ export class SimDamage {
       }
       let dmg = b.splash != null && e.id !== b.main ? b.splash : b.damage;
       if (b.airMult && e.flying) dmg *= b.airMult; // Stinger: rockets hit flyers much harder
+      if (b.hpPct) dmg += Math.min(e.maxHp * b.hpPct.pct, dmg * (b.hpPct.max - 1)); // Shrapnel Grenadier: a share of max health
       if (b.freeze && (!b.freezeMain || e.id === b.main)) {
         // Stasis: zombies with less max health stay frozen much longer (bosses much shorter).
         const secs = b.freezeHp ? b.freeze * Math.min(24, Math.max(0.25, Math.sqrt(b.freezeHp / e.maxHp))) : b.freeze;
