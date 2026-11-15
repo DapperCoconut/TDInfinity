@@ -1,5 +1,5 @@
 // Tower models: people, batch 28 (dressed with the vehicle kit in ../vehicles.js).
-// In here: Thief, Exterminator, Miner, Recon.
+// In here: Thief, Exterminator, Miner, Recon, Blaster, Programmer.
 // Like batches 26-27 these are plain white figures with no face: only their gear tells them
 // apart, white too, with accents in one neon colour per tower.
 // MODELS maps tower keys to builders; ../models.js lays it over TOWER_MODELS, so these win.
@@ -381,7 +381,178 @@ export function makeRecon(level) {
   return own(h, UP);
 }
 
+// ------------------------------------------------------------------ Blaster (neon raspberry)
+
+const BLASTER_NEON = 0xf50057;
+
+/**
+ * A white energy blaster on the fist (gun space): a chunky body, glowing coils and an emitter.
+ * o.cannon (Energy Cannon+): a wide cannon mouth and a power cell; o.mega: bigger, three coils
+ * more. Returns the bore point [y, z].
+ */
+function whiteBlaster(k, neon, o = {}) {
+  const U = UP;
+  const w = o.mega ? 1.25 : 1;
+  const len = o.mega ? 2.4 : o.cannon ? 2.1 : 1.8;
+  k.box(0.38 * w, 1.0, 0.44 * w, W, 0, -0.35, U, { r: 0.08 }); // body
+  k.box(0.2, 0.9, 0.08, W3, 0, -0.4, U + 0.25 * w); // top rib
+  const coils = o.mega ? 5 : o.cannon ? 4 : 3;
+  for (let i = 0; i < coils; i++) k.torus(0.2 * w, 0.045, i % 2 ? W3 : neon, 0, -0.95 - i * ((len - 1.25) / coils), U, { rx: PI / 2, seg: 14 }); // coils
+  k.cyl(0.13 * w, len - 0.85, W2, 0, -0.85 - (len - 0.85) / 2, U, { seg: 12 }); // barrel
+  const mouth = o.cannon ? 0.24 * w : 0.16;
+  k.cyl(mouth, 0.22, W, 0, -len, U, { seg: 14, r2: mouth * 0.8 }); // emitter
+  k.cyl(mouth * 0.7, 0.04, neon, 0, -len - 0.12, U, { seg: 14 }); // glowing core
+  k.box(0.22, 0.24, 0.5, W2, 0, 0.1, U - 0.36, { rx: -0.32, r: 0.04 }); // grip
+  k.box(0.24, 0.55, 0.32, W2, 0, 0.45, U + 0.06, { r: 0.06 }); // stock
+  if (o.cannon) {
+    k.box(0.3, 0.5, 0.3, W3, 0, -0.5, U - 0.42 * w, { r: 0.05 }); // power cell
+    k.box(0.2, 0.36, 0.05, neon, 0, -0.5, U - 0.58 * w);
+  }
+  if (o.mega) for (const sx of [-1, 1]) k.box(0.06, 0.9, 0.3, W3, sx * 0.3, -0.4, U, { r: 0.02 }); // side fins
+  return [-len - 0.12, U];
+}
+
+/**
+ * Blaster (alternate Commando): a white trooper with an energy blaster. Lv 1 Ranged Blasting:
+ * a long-range sight on the helmet. Lv 2 Enhanced Module: a visor with a neon slit (hidden
+ * detection) and a module on the back. Lv 3 Energy Cannon: the cannon mouth and a power cell.
+ * Lv 4 Supercharge: shoulder pads and glowing coil packs. Lv 5 Mega Blaster: a bigger gun and a cape.
+ */
+export function makeBlaster(level) {
+  const h = blank();
+  const key = `commandoBlaster${level}`;
+  const neon = glowMat(h, BLASTER_NEON);
+  const hd = wear(h, h.head, `${key}:head`);
+  const t = wear(h, h.torso, `${key}:torso`);
+  dome(hd, 0.8, 0.62, W2, 0, 0.9, 0); // round helmet
+  hd.box(0.2, 0.5, 0.9, W3, 0.78, 0.6, 0, { r: 0.05 }); // ear guard
+  hd.ball(0.08, neon, 0.88, 0.7, 0.2, { seg: 8, rows: 5 });
+  if (level >= 1) {
+    hd.box(0.14, 0.14, 0.5, W, -0.82, 0.8, 0.35, { r: 0.03 }); // sight arm
+    hd.cyl(0.06, 0.02, neon, -0.82, 0.8, 0.61, { axis: 'z', seg: 10 });
+  }
+  if (level >= 2) {
+    hd.box(1.34, 0.32, 0.12, W, 0, 0.72, 0.64, { r: 0.06 }); // visor
+    hd.box(1.12, 0.07, 0.04, neon, 0, 0.72, 0.71);
+  }
+  t.box(2.1, 1.6, 1.12, W2, 0, 0.1, 0, { r: 0.1 });
+  t.box(2.12, 0.24, 1.14, W3, 0, -0.84, 0, { r: 0.04 }); // belt
+  t.box(0.32, 0.2, 0.06, neon, 0, -0.84, 0.58, { r: 0.02 });
+  t.box(1.5, 1.2, 0.2, W, 0, 0.2, 0.58, { r: 0.06 }); // chest plate
+  t.cyl(0.18, 0.05, neon, 0, 0.3, 0.7, { axis: 'z', seg: 14 }); // chest core
+  if (level >= 2) {
+    t.box(1.2, 1.1, 0.5, W, 0, 0.15, -0.8, { r: 0.08 }); // module
+    t.box(0.9, 0.08, 0.05, neon, 0, 0.35, -1.06);
+  }
+  if (level >= 4) {
+    shoulderPads(t, W, 0.6);
+    for (const sx of [-1, 1]) t.cyl(0.14, 0.7, neon, sx * 0.4, 0.2, -1.1, { seg: 10 }); // coil packs
+  }
+  if (level >= 5) {
+    cape(t, W2, 1.9, { w: 2.1, clasp: BLASTER_NEON });
+    t.box(2.2, 0.06, 0.05, neon, 0, -0.95, -0.85);
+  }
+  hd.done();
+  t.done();
+  hands(h, key, W3, W2, (a) => {
+    if (level >= 3) a.box(0.5, 0.06, 0.04, neon, 0, -0.55, 0.55); // sleeve stripe
+  });
+  feet(h, key, W2, level >= 4 ? (b) => {
+    b.box(0.6, 0.45, 0.24, W, 0, -0.95, 0.56, { r: 0.06 }); // knee pad
+    b.box(0.62, 0.06, 0.26, neon, 0, -0.78, 0.57);
+  } : null);
+  h.muzzles = [];
+  const g = fist(h.rightArm, -1.9, 1.2);
+  const gk = wear(h, g, `${key}:gun`);
+  const [y, z] = whiteBlaster(gk, neon, { cannon: level >= 3, mega: level >= 5 });
+  gk.done();
+  muzzle(h, g, y, z);
+  aimLong(h);
+  h.tracer = BLASTER_NEON;
+  return own(h, UP);
+}
+
+// ------------------------------------------------------------------ Programmer (neon code green)
+
+const PROG_NEON = 0x00ff41;
+
+/**
+ * Programmer (alternate Commander): a white coder with a headset and a laptop held open in the
+ * left hand, a small data pistol in the right. Lv 1 Initialize: a glowing laptop screen. Lv 2
+ * Enhanced Interface: glasses with a neon lens line and a wrist pad. Lv 3 System Overdrive: a
+ * server pack on the back with blinking lights. Lv 4 Amplifier: an antenna dish on the pack.
+ * Lv 5 Final Protocol: a long coat with neon code lines.
+ */
+export function makeProgrammer(level) {
+  const h = blank();
+  const key = `commanderProgrammer${level}`;
+  const neon = glowMat(h, PROG_NEON);
+  const hd = wear(h, h.head, `${key}:head`);
+  const t = wear(h, h.torso, `${key}:torso`);
+  // a headset: band over the head, ear cups, a mic
+  hd.torus(0.8, 0.06, W3, 0, 0.55, 0, { seg: 20, arc: PI });
+  for (const sx of [-1, 1]) hd.cyl(0.26, 0.16, W, sx * 0.82, 0.55, 0, { axis: 'x', seg: 14 });
+  hd.box(0.06, 0.06, 0.6, W3, 0.82, 0.3, 0.35);
+  hd.ball(0.07, neon, 0.82, 0.3, 0.66, { seg: 8, rows: 5 });
+  if (level >= 2) {
+    hd.box(1.3, 0.22, 0.08, W, 0, 0.72, 0.64, { r: 0.04 }); // glasses
+    hd.box(1.1, 0.04, 0.04, neon, 0, 0.72, 0.69);
+  }
+  t.box(2.1, 1.6, 1.12, W2, 0, 0.1, 0, { r: 0.1 }); // hoodie
+  t.box(2.12, 0.24, 1.14, W3, 0, -0.84, 0, { r: 0.04 });
+  t.box(0.9, 0.5, 0.1, W3, 0, -0.35, 0.58, { r: 0.04 }); // front pocket
+  t.box(0.5, 0.06, 0.04, neon, 0, 0.5, 0.58); // logo line
+  if (level >= 3) {
+    // server pack with blinking lights
+    t.box(1.3, 1.5, 0.6, W, 0, 0.1, -0.95, { r: 0.06 });
+    for (let i = 0; i < 4; i++) {
+      t.box(1.0, 0.04, 0.05, W3, 0, -0.45 + i * 0.35, -1.26);
+      t.ball(0.05, neon, 0.38, -0.3 + i * 0.35, -1.27, { seg: 6, rows: 4 });
+    }
+  }
+  if (level >= 4) {
+    t.cyl(0.03, 0.8, W3, 0, 1.2, -0.95, { seg: 5 }); // antenna
+    t.cyl(0.3, 0.06, W, 0, 1.62, -0.95, { seg: 14, rx: 0.5 }); // dish
+    t.ball(0.07, neon, 0, 1.68, -0.9, { seg: 8, rows: 5 });
+  }
+  if (level >= 5) {
+    cape(t, W2, 2.5, { w: 2.2 });
+    for (let i = 0; i < 3; i++) t.box(0.06, 1.4 - i * 0.3, 0.04, neon, -0.6 + i * 0.6, -0.9, -0.82);
+  }
+  hd.done();
+  t.done();
+  hands(h, key, W3, W2, (a) => {
+    if (level >= 2) {
+      a.box(0.4, 0.2, 0.5, W, 0, -1.0, 0.1, { r: 0.04 }); // wrist pad
+      a.box(0.3, 0.04, 0.4, neon, 0, -0.88, 0.1);
+    }
+  });
+  feet(h, key, W2, null);
+  // the laptop, held open in the left hand
+  const lp = fist(h.leftArm, -1.9, 0.9);
+  const lk = wear(h, lp, `${key}:laptop`);
+  lk.box(1.1, 0.06, 0.75, W, 0, -0.1, 0.3, { r: 0.03 }); // base
+  lk.box(1.1, 0.7, 0.05, W2, 0, 0.25, -0.05, { rx: -0.25, r: 0.03 }); // lid
+  lk.box(0.95, 0.55, 0.02, level >= 1 ? neon : W3, 0, 0.25, -0.02, { rx: -0.25 }); // screen
+  lk.done();
+  // the data pistol in the right hand
+  h.muzzles = [];
+  const g = fist(h.rightArm, -1.9, 1.2);
+  const gk = wear(h, g, `${key}:gun`);
+  gk.box(0.26, 0.8, 0.32, W, 0, -0.3, UP, { r: 0.05 });
+  gk.cyl(0.08, 0.5, W3, 0, -0.9, UP + 0.04, { seg: 10 });
+  gk.cyl(0.09, 0.04, neon, 0, -1.16, UP + 0.04, { seg: 10 });
+  gk.box(0.2, 0.22, 0.45, W2, 0, 0.05, UP - 0.32, { rx: -0.3, r: 0.04 });
+  gk.done();
+  muzzle(h, g, -1.18, UP + 0.04);
+  aimLong(h);
+  h.tracer = PROG_NEON;
+  return own(h, UP);
+}
+
 export const MODELS = {
+  commandoBlaster: makeBlaster,
+  commanderProgrammer: makeProgrammer,
   cowboyThief: makeThief,
   mercenaryExterminator: makeExterminator,
   farmMiner: makeMiner,

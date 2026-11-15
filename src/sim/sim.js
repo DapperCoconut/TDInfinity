@@ -231,42 +231,44 @@ export class Sim {
     const dils = this.timeBubbles(dt);
     for (const e of this.enemies.values()) {
       // Status effects: frozen/stunned zombies stand still, burning ones are slowed.
-      e.stop = Math.max(0, e.stop - dt);
+      // Shatter (Blaster, Programmer): bad effects wear off slower, +1% longer per stack (never fades).
+      const sd = e.shatter ? dt / (1 + e.shatter * 0.01) : dt;
+      e.stop = Math.max(0, e.stop - sd);
       if (!e.stop) {
         e.stopKind = 0;
         e.iceVuln = 0;
         e.cubeHp = 0; // Glacier: the ice cube has melted
       }
-      e.burn = Math.max(0, e.burn - dt);
-      e.slimeT = Math.max(0, e.slimeT - dt);
+      e.burn = Math.max(0, e.burn - sd);
+      e.slimeT = Math.max(0, e.slimeT - sd);
       if (!e.slimeT) e.slime = 0;
-      e.chillT = Math.max(0, e.chillT - dt);
+      e.chillT = Math.max(0, e.chillT - sd);
       if (!e.chillT) e.chill = 0;
-      e.beatT = Math.max(0, e.beatT - dt);
+      e.beatT = Math.max(0, e.beatT - sd);
       if (!e.beatT) e.beatSlow = 0;
-      e.vulnT = Math.max(0, e.vulnT - dt);
+      e.vulnT = Math.max(0, e.vulnT - sd);
       if (!e.vulnT) e.vuln = 0;
-      if (e.physWeakT > 0 && (e.physWeakT -= dt) <= 0) e.physWeak = 0; // Berserker Physical Weakness wore off
-      if (e.artsT > 0 && (e.artsT -= dt) <= 0) e.arts = 0; // Mage Magical ARTS wore off
-      if (e.neuroT) e.neuroT = Math.max(0, e.neuroT - dt);
-      if (e.zapT) e.zapT = Math.max(0, e.zapT - dt);
-      if (e.injuredT && !(e.injuredT = Math.max(0, e.injuredT - dt))) e.injured = 0;
+      if (e.physWeakT > 0 && (e.physWeakT -= sd) <= 0) e.physWeak = 0; // Berserker Physical Weakness wore off
+      if (e.artsT > 0 && (e.artsT -= sd) <= 0) e.arts = 0; // Mage Magical ARTS wore off
+      if (e.neuroT) e.neuroT = Math.max(0, e.neuroT - sd);
+      if (e.zapT) e.zapT = Math.max(0, e.zapT - sd);
+      if (e.injuredT && !(e.injuredT = Math.max(0, e.injuredT - sd))) e.injured = 0;
       if (e.harpoons) {
         let sum = 0;
         for (let i = e.harpoons.length - 1; i >= 0; i--) {
           const h = e.harpoons[i];
-          if ((h.t -= dt) <= 0) e.harpoons.splice(i, 1);
+          if ((h.t -= sd) <= 0) e.harpoons.splice(i, 1);
           else sum += h.slow;
         }
         e.harpoonSlow = Math.min(e.harpoonMax, sum);
         if (!e.harpoons.length) e.harpoons = null;
       }
-      if (e.revealT) e.revealT = Math.max(0, e.revealT - dt); // Flare Gun
-      if (e.shockT) e.shockT = Math.max(0, e.shockT - dt); // Byte
-      if (e.confT) e.confT = Math.max(0, e.confT - dt); // confused: walking backwards
+      if (e.revealT) e.revealT = Math.max(0, e.revealT - sd); // Flare Gun
+      if (e.shockT) e.shockT = Math.max(0, e.shockT - sd); // Byte
+      if (e.confT) e.confT = Math.max(0, e.confT - sd); // confused: walking backwards
       if (e.confCd) e.confCd = Math.max(0, e.confCd - dt); // can't be confused again yet
-      if (e.thornT && !(e.thornT = Math.max(0, e.thornT - dt))) e.thornSlow = 0; // Harvester thorns
-      if (e.paraT && !(e.paraT = Math.max(0, e.paraT - dt))) e.paraSlow = 0; // Paralyzer laser
+      if (e.thornT && !(e.thornT = Math.max(0, e.thornT - sd))) e.thornSlow = 0; // Harvester thorns
+      if (e.paraT && !(e.paraT = Math.max(0, e.paraT - sd))) e.paraSlow = 0; // Paralyzer laser
       // Slows from fire, slime, chill, frostbite and Drop the Beat all stack (multiplicatively).
       let slow = (1 - (e.burn ? Math.max(e.burnSlow, ENEMIES[e.type].fireSlow ?? 0) : 0)) * (1 - e.slime) * (1 - e.chill * e.chillMax) * (1 - e.beatSlow) * (1 - e.hackSlow) * (1 - e.coldSlow) * (1 - (e.poison ? e.poison.slow : 0)) * (1 - (e.thornSlow || 0)) * (1 - (e.shockT > 0 ? e.shock : 0)) * (1 - (e.paraSlow || 0));
       // Harpoons stack on top, but never take it past `harpoonCap` (unless it already was).

@@ -440,12 +440,35 @@ export class SimDamage {
     return extra;
   }
 
+  /**
+   * Blaster / Programmer: a hit adds `s.shatter` Shatter to `e` (up to 100, never fades; bad
+   * effects wear off slower, see tick in sim.js). Blaster Core Blast: at `coreBlast.cost`+ Shatter
+   * it spends that much and the zombie explodes for (5 x damage)^1.3 on everything within `radius`.
+   */
+  addShatter(t, s, e) {
+    e.shatter = Math.min(100, (e.shatter || 0) + s.shatter);
+    const cb = s.coreBlast;
+    if (!cb || e.shatter < cb.cost) return;
+    e.shatter -= cb.cost;
+    const dmg = (5 * s.damage * buffOf(this.buffs, t.id).dmg) ** 1.3;
+    const det = this.detects(t, s);
+    const r2max = cb.radius * cb.radius;
+    this.events.push({ k: 'quake', x: r2(e.x), z: r2(e.z), r: cb.radius, c: 0xf50057 });
+    this.shattering = true; // the blast adds no Shatter and can't set off another one
+    for (const o of [...this.enemies.values()]) if (canHit(det, o) && (o.x - e.x) ** 2 + (o.z - e.z) ** 2 <= r2max) this.damage(t, o, dmg);
+    this.shattering = false;
+  }
+
   damage(t, e, dmg, pierceArmor = false, kind = undefined) {
     kind ??= this.hitKind ?? (this.dot || !t ? 'none' : damageKind(t.type, t.level));
     if (e.invulnT > 0) return; // Breakers: invincible for a moment as they pop out
     if (e.noTarget) return; // Hardcore: closed Drop Pods, a downed Void Reaver, the protected Void Caster
     if (e.consume && this.splashing) return; // Void Consumption: only direct hits work
     const ts0 = t ? TOWERS[t.type]?.levels[t.level] : null;
+    if (ts0?.shatter && !this.dot && !this.shattering && dmg > 0) {
+      this.addShatter(t, ts0, e); // Blaster, Programmer
+      if (!this.enemies.has(e.id)) return; // its own Core Blast finished it
+    }
     const hm = this.hitMods; // a Mechanic turret's or an ability's own defPierce / shieldMult
     if (t && !this.dot && dmg > 0) dmg += buffOf(this.buffs, t.id).dmgAdd || 0; // Bugler Snare Drums, Slinger boosts
     if (t && this.contract?.boost) dmg *= this.llBoost.dmg; // Last Laugh: the JESTER's boost

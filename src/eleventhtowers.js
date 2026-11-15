@@ -27,6 +27,9 @@
 //                 ability at Lv 5 boosts the damage of towers around it.
 //   Miner: an alternate Farm form. Earns cash every wave.
 //   Recon: an alternate Shotgunner form. A shotgun that fires 5 pellets (7 at Lv 4).
+//   Blaster: an alternate Commando form. Fast shots that add Shatter (bad effects last longer);
+//            Core Blast at Lv 3.
+//   Programmer: an alternate Commander form. Towers near it attack faster; System Overdrive at Lv 3.
 //   Mage: weak long-range magic shots. Builds up its owner's Arcana, shoots faster with more of it,
 //         calls down lightning every 10 shots (Stormbringer), and Artificial Ascent at Lv 5.
 //
@@ -162,6 +165,8 @@ const ARCANA = (gain) => ({ gain, cap: 200 });
 const onslaught = (boost, duration, cooldown) => ({ key: 'rage', name: 'Onslaught', cooldown, duration, radius: 27, boost,
   desc: `Towers in its range deal ${Math.round(boost * 100)}% more damage for ${duration}s` });
 const THIEF_MAX = 8000;
+// Programmer System Overdrive: `boost` on top of its own buff makes 50% (Call to Arms code).
+const overdrive = (boost, cooldown) => ({ key: 'cta', name: 'System Overdrive', desc: 'Firerate boost 50% for 10s, and it attacks', cooldown, duration: 10, boost });
 
 export const ELEVENTH_TOWERS = {
   poacher: {
@@ -620,6 +625,56 @@ export const ELEVENTH_TOWERS = {
       { name: 'Heavy Shells', desc: '+4 damage, and bigger pellets that hit more easily.', cost: 1550, damage: 8, pellets: 5, scatter: 1, cone: 0.22, cooldown: 2, range: 9, pelletW: 1.3, hidden: true },
       { name: 'Shotgun Barrage', desc: '+2 damage, 7 pellets, and +2 range.', cost: 3200, damage: 10, pellets: 7, scatter: 1, cone: 0.22, cooldown: 2, range: 11, pelletW: 1.3, hidden: true },
       { name: 'Expert Assassin', desc: '+1 range, +6 damage, and shoots faster (every 2s > 1.5s).', cost: 4500, damage: 16, pellets: 7, scatter: 1, cone: 0.22, cooldown: 1.5, range: 12, pelletW: 1.3, hidden: true },
+    ],
+  },
+  // Blaster (alternate Commando form): fast shots that each add `shatter` Shatter to the zombie
+  // (bad effects wear off slower, +1% per stack, up to 100, never fades). From Lv 3 Core Blast:
+  // a zombie with `coreBlast.cost`+ Shatter loses that much and blows up for (5 x damage)^1.3
+  // splash damage (see addShatter in sim/parts/damage.js).
+  commandoBlaster: {
+    name: 'Blaster',
+    altOf: 'commando',
+    form: 'Blaster',
+    shards: 1,
+    price: 0,
+    cost: 1750,
+    limit: Infinity,
+    lead: false,
+    blurb: 'An alternate Commando that shoots fast blasts. Every hit adds 1 Shatter to the zombie (up to 100, never fades): bad effects like burns, slows and stuns last longer on it. Sees hidden zombies from Lv 2. From Lv 3, Core Blast spends 15 Shatter on a zombie to make it explode. No placement limit.',
+    tip: 'Pair it with towers that freeze, stun, slow or burn: Shatter makes all of that last longer.',
+    levels: [
+      { name: 'Blaster', desc: 'Fast blasts at one zombie at a time. Each hit adds 1 Shatter.', damage: 3, cooldown: 0.45, range: 16, shatter: 1, hidden: false },
+      { name: 'Ranged Blasting', desc: '+3 range.', cost: 400, damage: 3, cooldown: 0.45, range: 19, shatter: 1, hidden: false },
+      { name: 'Enhanced Module', desc: 'Shoots faster (every 0.45s > 0.3s), and sees hidden zombies.', cost: 750, damage: 3, cooldown: 0.3, range: 19, shatter: 1, hidden: true },
+      { name: 'Energy Cannon', desc: '+2 damage. Core Blast: a zombie with 15+ Shatter loses 15 and explodes for (5 x damage)^1.3 damage to all zombies around it.', cost: 1600, damage: 5, cooldown: 0.3, range: 19, shatter: 1, coreBlast: { cost: 15, radius: 5 }, hidden: true },
+      { name: 'Supercharge', desc: '+1 range, +3 damage, and shoots faster (every 0.3s > 0.2s).', cost: 5500, damage: 8, cooldown: 0.2, range: 20, shatter: 1, coreBlast: { cost: 15, radius: 5 }, hidden: true },
+      { name: 'Mega Blaster', desc: '+5 range and +8 damage.', cost: 12050, damage: 16, cooldown: 0.2, range: 25, shatter: 1, coreBlast: { cost: 15, radius: 5 }, hidden: true },
+    ],
+  },
+  // Programmer (alternate Commander form): towers in its aura attack faster (`rateBoost`; boosts
+  // from several Programmers don't add up, the best one counts). System Overdrive at Lv 3 is a
+  // Call to Arms ('cta'): its `boost` tops the buff up to 50%, and the Programmer attacks too.
+  commanderProgrammer: {
+    name: 'Programmer',
+    altOf: 'commander',
+    form: 'Programmer',
+    shards: 1,
+    price: 0,
+    cost: 600,
+    limit: 6,
+    kind: 'support',
+    blurb: "An alternate Commander that makes nearby towers attack faster: 8% at first, up to 25% at max level. More Programmers don't add up. At Lv 3, System Overdrive boosts that to 50% for 10s and lets the Programmer attack too. Can't boost Commanders. Up to 6.",
+    tip: 'Put it next to your fastest-shooting towers, and use System Overdrive when a big wave or a boss shows up.',
+    levels: [
+      { name: 'Programmer', desc: 'Towers in range attack 8% faster.', aura: 12, rateBoost: 0.08, hidden: false },
+      { name: 'Initialize', desc: 'Towers in range attack 12% faster.', cost: 400, aura: 12, rateBoost: 0.12, hidden: false },
+      { name: 'Enhanced Interface', desc: 'Towers in range attack 15% faster, and +2 range.', cost: 1100, aura: 14, rateBoost: 0.15, hidden: false },
+      { name: 'System Overdrive', desc: 'Unlocks System Overdrive: for 10s the boost is 50%, and the Programmer attacks too (10 damage).', cost: 2200, aura: 14, rateBoost: 0.15, hidden: false,
+        damage: 10, cooldown: 1.5, range: 14, abilities: [overdrive(0.35, 40)] },
+      { name: 'Amplifier', desc: 'Towers in range attack 20% faster, +3 range, and its attacks during System Overdrive add 4 Shatter.', cost: 4200, aura: 17, rateBoost: 0.2, hidden: false,
+        damage: 10, cooldown: 1.5, range: 17, shatter: 4, abilities: [overdrive(0.3, 40)] },
+      { name: 'Final Protocol', desc: 'Towers in range attack 25% faster, and System Overdrive recharges in 30s.', cost: 8900, aura: 17, rateBoost: 0.25, hidden: false,
+        damage: 10, cooldown: 1.5, range: 17, shatter: 4, abilities: [overdrive(0.25, 30)] },
     ],
   },
   mage: {
