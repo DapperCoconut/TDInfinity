@@ -114,6 +114,7 @@ export class SimTowerHealth {
     }
     if (t.vDown) return; // a downed Vanguard can't be hurt more
     if (TOWERS[t.type].levels[t.level].van && t.hp - left <= 0) return this.vanguardDown(t); // it falls, but gets back up
+    if (t.hp - left <= 1 && this.shiEndless(t)) return; // Shi Director Endless Battle
     t.calmT = 0; // Doctor: its regen waits again
     const xl = TOWERS[t.type].levels[t.level].extraLife;
     if (xl && t.hp - left <= 0 && !(t.lifeCd > 0)) {

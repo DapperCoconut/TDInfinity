@@ -348,6 +348,7 @@ const TABLE = {
   exterminator: 'wide asbuilt - sway beam',
   evoLament: 'stand dwide dDown sway akimbo',
   evoVulcan: 'widebladed overhead frontM stoic swing',
+  evoShi: 'widebladed overhead frontM stoic swing',
 };
 
 // ---------------------------------------------------------------- lookup

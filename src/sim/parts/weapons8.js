@@ -1,9 +1,9 @@
 // Tower weapons, part 8: evolved towers of wave 13. Lament (Butterfly ammo, Sinking, Lament,
 // Deathseeker, Salvation, Funeral, Sinking Deluge), Vulcan (stacking burns, Ignition, Burn
-// Fragility, Vulcan Straight).
+// Fragility, Vulcan Straight), Shi Director (health for damage, Endless Battle, Boundary of Death).
 // These are methods of Sim: sim.js puts them on the Sim class, so "this" is the game.
 
-import { canHit } from '../../config.js';
+import { TOWERS, canHit } from '../../config.js';
 import { buffOf, r2 } from './shared.js';
 
 // ---------------------------------------------------------------- Lament
@@ -30,6 +30,17 @@ const VS_LEN = 8; // its area in front: this long ... (guess)
 const VS_WIDTH = 2; // ... and this wide on each side (guess)
 const CINCT_R = 6; // Cinctura Ignis radius (guess)
 export const VULCAN_FIRE = 0xff6d00;
+
+// ---------------------------------------------------------------- Shi Director
+const SHI_COST = 0.1; // each swing costs this much of its health (spec)
+const BOD_LAND = 0.4; // Boundary of Death lands this long after the swing (guess)
+const BOD_MISS = 0.4; // ... and does this much if the health no longer ends in 44 (spec: -60%)
+const EYE_PCT = 0.05; // Eye of Death: + this much of the zombie's max health ... (spec)
+const EYE_CAP = 0.44; // ... up to this much of the hit (my reading of "Max 44% Final DMG")
+export const SHI_RED = 0xd50000;
+
+/** The health a player sees on zombie `e` (the number Boundary of Death reads). */
+const shown = (e) => Math.ceil(e.hp);
 
 export class SimWeapons8 {
   /**
@@ -300,5 +311,80 @@ export class SimWeapons8 {
       }
     }
     this.events.push({ k: 'quake', x: r2(t.x), z: r2(t.z), r: CINCT_R, c: VULCAN_FIRE, soft: 1 });
+  }
+
+  // ---------------------------------------------------------------- Shi Director
+
+  /** Shi Director: t.ebT = Endless Battle time left, t.ebUsed (once a life, again every wave), t.bod = a landing Boundary of Death. */
+  updateShi(t, s, dt) {
+    const sh = s.shi;
+    if (t.ebW !== this.wave.index) {
+      t.ebW = this.wave.index;
+      t.ebUsed = false;
+    }
+    if (t.ebT > 0) {
+      t.ebT -= dt;
+      t.ghostT = sh.bod ? Math.max(t.ghostT || 0, 0.05) : t.ghostT; // Overbreathe: zombies walk through it
+      if (t.ebT <= 0 && sh.raise) t.hp = Math.max(t.hp, t.maxHp * sh.raise);
+    }
+    if (t.bod && (t.bod.left -= dt) <= 0) this.bodLand(t, s);
+    t.charge = t.maxHp ? 1 - t.hp / t.maxHp : 0;
+    const b = buffOf(this.buffs, t.id);
+    const target = this.findTarget(t, s, t.x, t.z, s.range * b.range, null);
+    if (!target) {
+      t.cooldown = Math.max(0, t.cooldown);
+      return;
+    }
+    t.yaw = Math.atan2(target.x - t.x, target.z - t.z);
+    if (t.cooldown > 0) return;
+    t.cooldown += s.cooldown;
+    this.events.push({ k: 'shot', t: t.id, e: target.id });
+    // Extreme Edge: the swing costs 10% of its health (never below 1)
+    const used = Math.min(t.hp * SHI_COST, Math.max(0, t.hp - 1));
+    t.hp -= used;
+    let dmg = s.damage + (sh.resp ? Math.max(used, t.maxHp * sh.resp) : 0); // Respiration
+    dmg *= b.dmg;
+    if (sh.enerv) dmg *= 1 + Math.min(sh.cap, (sh.enerv * (1 - t.hp / t.maxHp) * 100) / 100); // Eye of Enervation
+    if (sh.eye) {
+      dmg *= 1 + Math.max(0, 200 - (b.dmg - 1) * 100 * 1.2) / 2 / 100; // stronger with few damage boosts
+      dmg += Math.min(target.maxHp * EYE_PCT, dmg * EYE_CAP);
+    }
+    this.damage(t, target, dmg);
+    // Boundary of Death
+    if (sh.bod && !t.bod && this.enemies.has(target.id) && shown(target) >= 200 && shown(target) % 100 === 44) {
+      if (t.ebT > 0) t.ebT += 4;
+      if (t.invulnT > 0) t.invulnT += 4;
+      t.hp = Math.max(1, t.hp * 0.5);
+      t.bod = { e: target.id, left: BOD_LAND };
+      this.events.push({ k: 'chaos', x: r2(target.x), z: r2(target.z), text: 'Boundary of Death', color: '#ff1744' });
+    }
+  }
+
+  /** Boundary of Death lands: 4x (damage + 45), less if the zombie's health changed off ..44. */
+  bodLand(t, s) {
+    const e = this.enemies.get(t.bod.e);
+    t.bod = null;
+    if (!e) return;
+    const b = buffOf(this.buffs, t.id);
+    let d = 4 * (s.damage * b.dmg + 45) * (s.shi.bodMult || 1);
+    if (shown(e) % 100 !== 44) d *= BOD_MISS;
+    this.damage(t, e, d);
+    this.events.push({ k: 'quake', x: r2(e.x), z: r2(e.z), r: 2, c: SHI_RED });
+    if (this.enemies.has(e.id) && !e.bodSlowed) {
+      e.bodSlowed = true; // once per zombie
+      this.applySlime(e, { slow: 0.95, time: 2, boss: 1 });
+    }
+  }
+
+  /** Shi Director Endless Battle: a hit that would bring it to 1 or less. Returns true if it saved it. */
+  shiEndless(t) {
+    const sh = TOWERS[t.type].levels[t.level].shi;
+    if (!sh?.endless || t.ebUsed) return false;
+    t.ebUsed = true;
+    t.hp = 1;
+    t.ebT = sh.endless;
+    t.invulnT = Math.max(t.invulnT || 0, sh.endless);
+    this.events.push({ k: 'chaos', x: r2(t.x), z: r2(t.z), text: 'Endless Battle!', color: '#ff1744' });
+    return true;
   }
 }

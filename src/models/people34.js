@@ -1,10 +1,10 @@
 // Tower models: people, batch 34 (dressed with the vehicle kit in ../vehicles.js).
-// In here: Lament (evolved Gunner), Vulcan (evolved Warrior).
+// In here: Lament (evolved Gunner), Vulcan (evolved Warrior), Shi Director (evolved Samurai).
 // MODELS maps tower keys to builders; ../models.js lays it over TOWER_MODELS, so these win.
 
 import { glowMat } from '../vehicles.js';
 import { makeHumanoid } from './kit.js';
-import { aimBoth, fist, muzzle, own, wear } from './people1.js';
+import { aimBoth, dome, fist, muzzle, own, wear } from './people1.js';
 import { shoulderPads } from './people2.js';
 import { feet, hands, hood } from './people5.js';
 import { cape } from './people18.js';
@@ -302,7 +302,115 @@ export function makeVulcan(level) {
   return own(h, 0);
 }
 
+// ------------------------------------------------------------------ Shi Director (black lacquer and crimson)
+
+export const SHI_GLOW = 0xff1744;
+const K = 0x141416; // black lacquer
+const K2 = 0x232327;
+const R = 0x7f0d12; // crimson
+const R2 = 0x5a080c;
+const BONE = 0xe8e2d0;
+
+/** A long nodachi (fist space, blade down -y). o.glow: a glowing red edge; o.len: blade length. Returns the tip y. */
+function nodachi(k, glow, o = {}) {
+  const len = o.len ?? 3.0;
+  k.cyl(0.12, 1.1, K, 0, 0.0, 0, { seg: 10 }); // long hilt
+  for (let i = 0; i < 7; i++) k.torus(0.12, 0.025, R, 0, 0.45 - i * 0.15, 0, { rx: PI / 2 + (i % 2 ? 0.45 : -0.45), seg: 10 }); // wrap
+  k.cyl(0.14, 0.08, K2, 0, 0.58, 0, { seg: 10 });
+  k.cyl(0.36, 0.07, K2, 0, -0.6, 0, { seg: 6, sz: 0.8 }); // six-sided tsuba
+  k.torus(0.32, 0.025, glow, 0, -0.6, 0, { rx: PI / 2, seg: 6 });
+  k.slab(0.06, len, 0.3, 0x2b2b30, 0, -0.68 - len / 2, 0.02, { bd: 0.25, bz: 0.08 }); // dark blade
+  k.box(0.07, len * 0.92, 0.05, o.glow ? glow : 0xb0bec5, 0, -0.68 - len * 0.47, 0.15); // edge
+  return -0.68 - len;
+}
+
+/**
+ * Shi Director (evolved Samurai): a ronin in black lacquered armour with crimson cords, a torn
+ * white headband and a long nodachi. Lv 1 Eye of Enervation: a glowing red eye on its mask.
+ * Lv 2 To Overcome Crisis: a horned kabuto, a breathing mask with vents, and shoulder plates.
+ * Lv 3 Overbreathe: a torn crimson haori, bandaged arms and a glowing edge on the blade.
+ * Lv 4 Eye of Death: a huge red eye floating behind it and a longer blade.
+ */
+export function makeShi(level) {
+  const h = makeHumanoid({ skin: K2, shirt: K, pants: K, arms: K, face: 'none' });
+  const key = `evoShi${level}`;
+  const glow = glowMat(h, SHI_GLOW);
+  const hd = wear(h, h.head, `${key}:head`);
+  const t = wear(h, h.torso, `${key}:torso`);
+  // a torn white headband with long trailing ends
+  hd.box(1.32, 0.18, 1.32, BONE, 0, 0.95, 0, { r: 0.05 });
+  for (const [x, rz, l] of [[-0.15, 0.25, 1.0], [0.1, -0.1, 0.8]]) hd.box(0.16, l, 0.04, BONE, x, 0.6, -0.72, { rz, rx: 0.3 });
+  hd.box(0.9, 0.14, 0.05, R, 0, 0.55, 0.67); // a red mask band where the face would be
+  if (level >= 1) {
+    // Eye of Enervation: one tall glowing eye
+    hd.ball(0.13, glow, 0, 0.75, 0.68, { sy: 1.6, seg: 10, rows: 6 });
+    hd.torus(0.17, 0.025, R, 0, 0.75, 0.68, { seg: 12, sy: 1.6 });
+  }
+  if (level >= 2) {
+    // a black kabuto with a crimson crescent, and a breathing mask with vents
+    dome(hd, 0.82, 0.55, K, 0, 1.0, 0);
+    for (const sd of [-1, 1]) hd.box(0.5, 0.5, 0.9, K2, sd * 0.75, 0.75, -0.1, { r: 0.05, rz: sd * 0.4 }); // side flaps
+    hd.tube([[-0.7, 1.55, 0.6], [-0.3, 1.45, 0.75], [0, 1.4, 0.78], [0.3, 1.45, 0.75], [0.7, 1.55, 0.6]], 0.07, R, { seg: 14, sides: 6 });
+    for (const sd of [-1, 1]) hd.cyl(0.09, 0.6, R, sd * 0.75, 1.8, 0.55, { r2: 0.01, seg: 6, rz: -sd * 0.35 }); // crescent tips
+    hd.box(1.0, 0.42, 0.14, K2, 0, 0.25, 0.68, { r: 0.06 }); // mempo
+    for (let i = 0; i < 3; i++) hd.box(0.6, 0.04, 0.03, glow, 0, 0.16 + i * 0.09, 0.76); // vents
+  }
+  // lacquered plates with crimson cords
+  t.box(2.14, 1.8, 1.14, K, 0, 0.05, 0, { r: 0.1 });
+  for (let i = 0; i < 4; i++) {
+    t.box(2.2, 0.07, 1.2, K2, 0, 0.75 - i * 0.38, 0);
+    for (let j = 0; j < 4; j++) t.box(0.06, 0.12, 0.03, R, -0.75 + j * 0.5, 0.75 - i * 0.38, 0.61);
+  }
+  t.box(2.2, 0.3, 1.2, BONE, 0, -0.84, 0, { r: 0.04 }); // obi
+  t.box(0.3, 0.4, 0.06, R, 0.55, -0.9, 0.62, { rz: 0.3 }); // knot
+  t.box(0.24, 1.3, 0.24, K2, -0.9, -1.15, 0.25, { rz: 0.35, r: 0.05 }); // scabbard at the hip
+  for (const x of [-0.7, 0, 0.7]) t.box(0.62, 0.8, 0.12, K2, x, -1.25, 0.6, { rx: -0.12, r: 0.03 }); // tassets
+  for (const x of [-0.7, 0, 0.7]) t.box(0.05, 0.75, 0.04, R, x, -1.25, 0.67, { rx: -0.12 });
+  if (level >= 2) {
+    for (const sd of [-1, 1]) {
+      t.box(0.85, 0.9, 1.05, K2, sd * 1.35, 0.6, 0, { r: 0.05, rz: sd * 0.25 }); // sode
+      for (let i = 0; i < 2; i++) t.box(0.87, 0.05, 1.07, R, sd * 1.35, 0.8 - i * 0.35, 0, { rz: sd * 0.25 });
+    }
+  }
+  if (level >= 3) {
+    // a torn crimson haori over the shoulders
+    cape(t, R2, 2.9, { w: 2.3, tatter: true });
+    for (const sd of [-1, 1]) t.slab(0.5, 2.4, 0.08, R2, sd * 0.85, -0.5, 0.62, { bw: 1.15 });
+    t.box(0.06, 2.4, 0.04, glow, -0.62, -0.5, 0.67);
+  }
+  if (level >= 4) {
+    // Eye of Death: a huge red eye floating behind it
+    t.torus(1.15, 0.08, glow, 0, 1.4, -1.1, { seg: 28 });
+    t.slab(1.6, 0.8, 0.05, K, 0, 1.4, -1.1, { tw: 0.2, bw: 0.2 }); // the eye's almond shape (upper half)
+    t.ball(0.3, glow, 0, 1.4, -1.05, { sy: 1.3, seg: 12, rows: 8 });
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * PI * 2;
+      t.cyl(0.07, 0.45, glow, Math.sin(a) * 1.45, 1.4 + Math.cos(a) * 1.45, -1.1, { r2: 0.01, seg: 5, rz: -a });
+    }
+  }
+  hd.done();
+  t.done();
+  hands(h, key, K2, K, (a) => {
+    if (level >= 3) for (let i = 0; i < 3; i++) a.box(1.08, 0.12, 1.08, BONE, 0, -0.3 - i * 0.25, 0, { rz: (i - 1) * 0.08 }); // bandages
+  });
+  feet(h, key, K2, null);
+  h.muzzles = [];
+  const g = fist(h.rightArm, -1.9, 1.05);
+  const gk = wear(h, g, `${key}:gun`);
+  const tip = nodachi(gk, glow, { glow: level >= 3, len: level >= 4 ? 3.6 : 3.0 });
+  gk.done();
+  muzzle(h, g, tip, 0);
+  h.rightArm.rotation.set(-2.6, 0, 0.15);
+  h.leftArm.rotation.set(-0.4, 0, -0.15);
+  h.pose = { right: -2.6, left: -0.4, leftRecoil: 0 };
+  h.swing = 1.9;
+  h.melee = true;
+  h.tracer = SHI_GLOW;
+  return own(h, 0);
+}
+
 export const MODELS = {
   evoLament: makeLament,
   evoVulcan: makeVulcan,
+  evoShi: makeShi,
 };

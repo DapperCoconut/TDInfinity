@@ -116,6 +116,48 @@ export const THIRTEENTH_TOWERS = {
     ],
   },
 
+  // Shi Director (evolved Samurai): a path tower that spends its own health for damage.
+  // shi: { enerv, cap, endless, raise, resp, bod, bodMult, eye } - see sim/parts/weapons8.js.
+  // bonusSell: one extra sell refund after each upgrade (once). placeCost on a level: what placing
+  // it again costs once it has kept that level.
+  evoShi: {
+    name: 'Shi Director',
+    altOf: 'gladiator',
+    evolved: true,
+    evoFrom: 'samurai',
+    evoLevel: 20,
+    form: 'Shi Director',
+    price: 10000,
+    shards: 4,
+    cost: 1004,
+    limit: 1,
+    placement: 'path',
+    keepLevel: true,
+    sellRatio: 0.06,
+    bonusSell: 0.06,
+    exactHp: true,
+    placeCd: 10,
+    deathCd: 100,
+    melee: true,
+    flying: false,
+    lead: true,
+    kindLabel: 'Path',
+    blurb: 'The evolved Samurai. It stands ON the path and blocks zombies, and every swing costs it 10% of its health: the lower its health, the harder it hits. From Lv 1 it can\'t die easily: at 1 health it becomes unbeatable for a while. Its upgrades stay when you sell it, and it heals every wave.',
+    tip: 'Let it bleed: it is strongest when its health is low. Selling it right after an upgrade gives back a little more.',
+    levels: [
+      { name: 'Shi Director', desc: 'Stands on the path with 60 health and slashes for 11 every 1.4s. Every swing costs 10% of its health. Sells for 6% (12% once after each upgrade).', damage: 11, cooldown: 1.4, range: 6.5, hp: 60, hidden: false,
+        shi: {} },
+      { name: 'Eye of Enervation', desc: '+4 damage and can\'t be stunned. +1.1% damage for every 1% health it is missing (up to +100%). Endless Battle: at 1 health it can\'t be hurt for 6s (once a life, again every wave).', cost: 1004, damage: 15, cooldown: 1.4, range: 6.5, hp: 60, hidden: false, stunImmune: true,
+        shi: { enerv: 1.1, cap: 1, endless: 6 } },
+      { name: 'To Overcome Crisis', desc: '+40 health, +12 damage. Endless Battle ends at 66% health. Respiration: each swing does extra damage equal to the health it cost (at least 25% of its max health).', cost: 3004, damage: 27, cooldown: 1.4, range: 6.5, hp: 100, hidden: false, stunImmune: true,
+        shi: { enerv: 1.1, cap: 1, endless: 6, raise: 0.66, resp: 0.25 } },
+      { name: 'Overbreathe', desc: '+268 health, +2.2% damage per 1% missing (up to +200%). Zombies walk through it during Endless Battle. Boundary of Death: on a zombie with 200+ health ending in 44, +4s Endless Battle, spends half its health for 4x (damage + 45) and a 95% slow for 2s.', cost: 7904, evo: 5, damage: 27, cooldown: 1.4, range: 6.5, hp: 368, hidden: false, stunImmune: true,
+        shi: { enerv: 2.2, cap: 2, endless: 6, raise: 0.66, resp: 0.25, bod: true } },
+      { name: 'Eye of Death', desc: '+44 damage, +0.5 range. Boundary of Death does 4x more. Every hit adds 5% of the zombie\'s max health (up to 44% of the hit), and it hits up to twice as hard when it has few damage boosts. Placing it again costs $9,244.', cost: 14444, evo: 10, damage: 71, cooldown: 1.4, range: 7, hp: 368, hidden: false, stunImmune: true, placeCost: 9244,
+        shi: { enerv: 2.2, cap: 2, endless: 6, raise: 0.66, resp: 0.25, bod: true, bodMult: 4, eye: true } },
+    ],
+  },
+
   evoLament: {
     name: 'Lament',
     altOf: 'soldier',

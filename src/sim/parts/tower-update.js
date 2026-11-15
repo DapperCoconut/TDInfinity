@@ -248,6 +248,7 @@ export class SimTowerUpdate {
     if (s.jug) return this.updateJuggernaut(t, s, dt); // Juggernaut: mace slams, Magnetic Field
     if (s.sm) return this.updateSoulMaster(t, s, dt, rate); // Soul Master: orbiting souls
     if (s.tox) return this.updateToxicator(t, s, dt); // Toxicator: toxic blasts
+    if (s.shi) return this.updateShi(t, s, dt); // Shi Director: health for damage
     if (s.vulcan) return this.updateVulcan(t, s, dt); // Vulcan: stacking burns, Ignition
     if (s.lament) return this.updateLament(t, s, dt); // Lament: Butterfly ammo, Sinking
     if (s.frost) return this.updateFrostreaver(t, s, dt); // Frostreaver: Ice Crystals, freezing hits, Frost Wisps

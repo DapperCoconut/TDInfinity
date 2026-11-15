@@ -622,7 +622,8 @@ export class Sim {
         if (!def) return 'Unknown tower';
         if (p.loadout && !p.loadout.includes(m.type)) return `${def.name} isn't in your loadout`;
         const lmMod = p.lmMods?.[m.type]; // Liminal contract: the tower's blessing and curse
-        const cost = Math.round(towerCost(def, !!this.vs) * (lmMod?.cost ?? 1));
+        const keptCost = def.keepLevel && def.levels[p.keepLv?.[m.type] ?? 0]?.placeCost; // Shi Director Eye of Death
+        const cost = keptCost ?? Math.round(towerCost(def, !!this.vs) * (lmMod?.cost ?? 1));
         if (p.cash < cost) return `Not enough cash! ${def.name} costs $${cost}`;
         if (p.placeCd?.[m.type] > 0) return `${def.name} can be placed again in ${Math.ceil(p.placeCd[m.type])}s`; // Phantom / Vanguard
         let owned = 0;
@@ -698,7 +699,12 @@ export class Sim {
       case 'sell': {
         const t = this.ownedTower(pid, m.id);
         if (typeof t === 'string') return t;
-        const value = Math.floor(t.spent * (TOWERS[t.type].levels[t.level].sellRatio ?? TOWERS[t.type].sellRatio ?? GAME.sellRatio) * (1 + buffOf(this.buffs, t.id).sell) * (t.corrupt ? 1 + GAME.corruptSell : 1)); // EDJ sellback; VOID's corrupted towers sell for more
+        let ratio = TOWERS[t.type].levels[t.level].sellRatio ?? TOWERS[t.type].sellRatio ?? GAME.sellRatio;
+        if (p.bonusSell?.[t.type]) {
+          ratio += TOWERS[t.type].bonusSell; // Shi Director: once after each upgrade
+          delete p.bonusSell[t.type];
+        }
+        const value = Math.floor(t.spent * ratio * (1 + buffOf(this.buffs, t.id).sell) * (t.corrupt ? 1 + GAME.corruptSell : 1)); // EDJ sellback; VOID's corrupted towers sell for more
         p.cash += value;
         this.removeTower(t, 'sell', { value });
         this.sellSacrifice(t);

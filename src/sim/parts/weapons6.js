@@ -49,6 +49,7 @@ export class SimWeapons6 {
     const def = TOWERS[t.type];
     const p = this.players.get(t.owner);
     if (def.keepLevel && p) (p.keepLv ??= {})[t.type] = t.level;
+    if (def.bonusSell && p) (p.bonusSell ??= {})[t.type] = true; // Shi Director: a bigger refund once
     if (def.placement === 'path') {
       // Phantom / Vanguard: back to full health on every upgrade.
       t.vDown = false;
