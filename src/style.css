@@ -1684,97 +1684,177 @@ input:focus {
 .lo-evo-req {
   color: #18ffff;
 }
-.lo-modal {
+.lo-var-full {
   position: fixed;
   inset: 0;
   z-index: 20;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.55);
+  background: #05010c;
 }
-.lo-modal.hidden {
+.lo-var-full.hidden {
   display: none;
 }
-.lo-var-card {
-  width: min(460px, 92vw);
-  max-height: 84vh;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+#lo-var-stars {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
 }
-.lo-var-head {
+#lo-var-body {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  padding: 20px 32px 40px;
+  text-shadow: 0 2px 0 #000;
+}
+.lo-var-top {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 20px;
+  gap: 16px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.lo-var-title {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+}
+.lo-var-title small {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: #ce93d8;
+}
+.lo-var-title b {
+  font-size: 38px;
+  color: #fff;
+  text-shadow: 0 0 18px #d500f9, 0 3px 0 #000;
 }
 .lo-var-money {
   margin-left: auto;
-  font-size: 13px;
+  font-size: 16px;
   color: #ffd54f;
 }
-.lo-var-group h4 {
-  margin: 0 0 6px;
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #90a4ae;
+.lo-var-hint {
+  max-width: 1200px;
+  margin: 6px auto 0;
+  font-size: 13px;
+  color: #b39ddb;
 }
-.lo-var-group h4 small {
+.lo-vg {
+  max-width: 1200px;
+  margin: 18px auto 0;
+}
+.lo-vg h4 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #e1bee7;
+}
+.lo-vg h4 small {
   text-transform: none;
   letter-spacing: 0;
-  color: #607d8b;
+  color: #9575cd;
 }
-.lo-var {
+.lo-vg-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+.lo-vc {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 8px;
-  margin-bottom: 4px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 2px solid transparent;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(24, 10, 44, 0.66);
+  backdrop-filter: blur(2px);
+  border: 2px solid rgba(179, 136, 255, 0.35);
+  box-shadow: 0 0 18px rgba(124, 77, 255, 0.25);
   cursor: pointer;
+  transition: transform 0.12s, border-color 0.12s;
 }
-.lo-var:hover {
-  background: rgba(255, 255, 255, 0.1);
+.lo-vc:hover {
+  transform: translateY(-3px);
+  border-color: rgba(234, 128, 252, 0.8);
 }
-.lo-var.sel {
-  border-color: rgba(255, 255, 255, 0.5);
+.lo-vc.sel {
+  border-color: #fff;
+  box-shadow: 0 0 24px rgba(234, 128, 252, 0.6);
 }
-.lo-var img {
-  width: 40px;
-  height: 40px;
-  flex: none;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.25);
+.lo-vc.gold {
+  border-color: rgba(255, 213, 79, 0.55);
 }
-.lo-var.locked img {
-  filter: grayscale(0.7) brightness(0.8);
+.lo-vc.evo {
+  border-color: rgba(24, 255, 255, 0.5);
 }
-.lo-var-name {
+.lo-vc-pic {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  background: radial-gradient(circle at 50% 40%, rgba(186, 104, 200, 0.35), rgba(0, 0, 0, 0.45));
+}
+.lo-vc-pic img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.lo-vc.locked .lo-vc-pic img {
+  filter: grayscale(0.7) brightness(0.75);
+}
+.lo-vc-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: bold;
+  background: #00c853;
+  color: #fff;
+}
+.lo-vc-name {
+  font-size: 18px;
+  font-weight: bold;
+}
+.lo-vc-sub {
+  font-size: 12px;
+  color: #b0bec5;
+}
+.lo-vc-lines {
   flex: 1;
-  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
+  font-size: 13px;
+  font-weight: bold;
 }
-.lo-var-name small {
-  font-size: 12px;
-  color: #90a4ae;
+.lo-vc-line.good {
+  color: #69f0ae;
+}
+.lo-vc-line.bad {
+  color: #ff5252;
+}
+.lo-vc-line.same {
+  color: #b39ddb;
+  font-weight: normal;
+}
+.lo-vc-act {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+}
+@media (max-width: 600px) {
+  #lo-var-body { padding: 14px 16px 30px; }
+  .lo-vg-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 }
 .lo-var-prog {
   display: flex;
   align-items: center;
   gap: 6px;
-}
-.lo-var-act {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: none;
 }
 .lo-var-on {
   color: #69f0ae;

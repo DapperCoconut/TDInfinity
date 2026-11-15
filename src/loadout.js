@@ -433,10 +433,56 @@ export class LoadoutScreen {
     this.variantsOpen = on;
     $('lo-variants').classList.toggle('hidden', !on);
     if (on) this.renderVariants();
+    if (on) this.tunnel ??= new StarTunnel($('lo-var-stars'));
+    this.tunnel?.run(on);
   }
 
-  /** One row of the Variants menu: icon, name and status, and one action. */
-  variantRow(type) {
+  /**
+   * What a variant does better and worse than the main form, at max level: short lines
+   * like "+40% damage" (good) or "Less range" (bad). Returns { good: [], bad: [] }.
+   */
+  variantDiff(type) {
+    const good = [];
+    const bad = [];
+    const a = TOWERS[this.base];
+    const b = TOWERS[type];
+    if (type === this.base) return { good, bad };
+    const la = a.levels.at(-1);
+    const lb = b.levels.at(-1);
+    const pctOf = (x, y) => Math.round((x / y - 1) * 100);
+    const add = (diff, up, down) => (diff > 0 ? good.push(up) : diff < 0 ? bad.push(down) : 0);
+    if (!isNonAttacker(a) && !isNonAttacker(b)) {
+      const da = dpsValue(la);
+      const db = dpsValue(lb);
+      if (da > 0 && db > 0 && Math.abs(db / da - 1) >= 0.05) add(db - da, `+${pctOf(db, da)}% damage`, `${pctOf(db, da)}% damage`);
+      if (la.cooldown && lb.cooldown && Math.abs(lb.cooldown / la.cooldown - 1) >= 0.05) add(la.cooldown - lb.cooldown, 'Shoots faster', 'Shoots slower');
+    } else if (isNonAttacker(a) !== isNonAttacker(b)) {
+      (isNonAttacker(b) ? good : bad).push(`Becomes a ${towerKind(b).toLowerCase()} tower`);
+    }
+    if (la.range && lb.range && Math.abs(lb.range / la.range - 1) >= 0.05) add(lb.range - la.range, `+${pctOf(lb.range, la.range)}% range`, `${pctOf(lb.range, la.range)}% range`);
+    const dA = detection(a, a.levels.length - 1);
+    const dB = detection(b, b.levels.length - 1);
+    for (const [k, name] of [['hidden', 'Hidden'], ['flying', 'Flying'], ['lead', 'Lead']]) add(!!dB[k] - !!dA[k], `Sees ${name}`, `Can't see ${name}`);
+    const keys = (d) => new Map(d.levels.flatMap((l) => l.abilities ?? []).map((ab) => [ab.key, ab.name.replace(/\s+[IVX]+$/, '')]));
+    const ka = keys(a);
+    const kb = keys(b);
+    for (const [k, name] of kb) if (!ka.has(k)) good.push(`New ability: ${name}`);
+    for (const [k, name] of ka) if (!kb.has(k)) bad.push(`No ${name}`);
+    const total = (d) => d.cost + d.levels.slice(1).reduce((s, l) => s + (l.cost || 0), 0);
+    const ta = total(a);
+    const tb = total(b);
+    if (Math.abs(tb / ta - 1) >= 0.05) add(ta - tb, `${-pctOf(tb, ta)}% cheaper`, `+${pctOf(tb, ta)}% cost`);
+    const lim = (d) => (d.teamLimit ? Math.max(...d.teamLimit) : d.limit ?? Infinity);
+    add(lim(b) - lim(a), 'Can place more', 'Can place fewer');
+    if (b.placement !== a.placement) {
+      const where = { cliff: 'Cliff only', water: 'Water only', any: 'Ground or cliff' };
+      (b.placement === 'any' ? good : bad).push(where[b.placement] ?? 'Ground only');
+    }
+    return { good: good.slice(0, 4), bad: bad.slice(0, 4) };
+  }
+
+  /** One box of the Variants screen: big picture, name, better/worse lines, and one action. */
+  variantCard(type) {
     const d = TOWERS[type];
     const owned = profile.owns(this.base);
     const has = d.goldOf ? profile.ownsGold(type) : d.altOf ? profile.ownsForm(type) : owned;
@@ -445,7 +491,7 @@ export class LoadoutScreen {
     let sub = '';
     let action = '';
     if (using) {
-      action = d.goldOf ? '<button class="btn small" data-vact="goldoff" title="Play the normal version instead">Turn off</button><span class="lo-var-on">✔ Using</span>' : '<span class="lo-var-on">✔ Using</span>';
+      action = d.goldOf ? '<span class="lo-var-on">✔ Using</span><button class="btn small" data-vact="goldoff" title="Play the normal version instead">Turn off</button>' : '<span class="lo-var-on">✔ Using</span>';
     } else if (has) {
       action = owned ? `<button class="btn small blue" data-vact="use" data-type="${type}">Use</button>` : '';
       if (!owned) sub = `Buy the ${esc(TOWERS[this.base].name)} to use it`;
@@ -470,36 +516,41 @@ export class LoadoutScreen {
       action = `<button class="btn small purple" data-vact="buyform" data-type="${type}" ${owned && profile.shards >= d.shards ? '' : 'disabled'}>${SHARD} ${d.shards}</button>`;
     }
     if (!sub && d.evolved && has) sub = `Evolution Lv ${profile.levelOf(type).level}`;
-    return `<div class="lo-var${viewing ? ' sel' : ''}${has ? '' : ' locked'}" data-view="${type}" title="Click to preview">
-      <img src="${this.lobby.icons[type]}" alt="">
-      <div class="lo-var-name"><b>${esc(d.goldOf || d.evolved ? d.name : this.variantLabel(type))}</b>${sub ? `<small>${sub}</small>` : ''}</div>
-      <div class="lo-var-act">${action}</div></div>`;
+    const { good, bad } = this.variantDiff(type);
+    const lines = type === this.base
+      ? '<div class="lo-vc-line same">The main form</div>'
+      : good.map((t) => `<div class="lo-vc-line good">▲ ${esc(t)}</div>`).join('') + bad.map((t) => `<div class="lo-vc-line bad">▼ ${esc(t)}</div>`).join('') || '<div class="lo-vc-line same">Same stats, new look</div>';
+    const kind = d.goldOf ? ' gold' : d.evolved ? ' evo' : d.altOf ? ' alt' : '';
+    const pic = towerIcon(type, d.levels.length - 1) || this.lobby.icons[type];
+    return `<div class="lo-vc${kind}${viewing ? ' sel' : ''}${has ? '' : ' locked'}" data-view="${type}" title="Click to pick it in the shop">
+      <div class="lo-vc-pic"><img src="${pic}" alt="">${using ? '<span class="lo-vc-badge">IN USE</span>' : ''}</div>
+      <div class="lo-vc-name">${esc(d.goldOf || d.evolved ? d.name : this.variantLabel(type))}</div>
+      ${sub ? `<div class="lo-vc-sub">${sub}</div>` : ''}
+      <div class="lo-vc-lines">${lines}</div>
+      <div class="lo-vc-act">${action}</div></div>`;
   }
 
   renderVariants() {
     if (!this.variantsOpen) return;
     const all = this.variants();
     const group = (title, list, note = '') =>
-      list.length ? `<div class="lo-var-group"><h4>${title}${note ? ` <small>${note}</small>` : ''}</h4>${list.map((t) => this.variantRow(t)).join('')}</div>` : '';
-    $('lo-variants').innerHTML = `<div class="lo-var-card card">
-      <div class="lo-var-head"><b>${esc(TOWERS[this.base].name)}</b>
+      list.length ? `<div class="lo-vg"><h4>${title}${note ? ` <small>${note}</small>` : ''}</h4><div class="lo-vg-grid">${list.map((t) => this.variantCard(t)).join('')}</div></div>` : '';
+    const evo = all.find((t) => TOWERS[t].evolved);
+    $('lo-var-body').innerHTML = `<div class="lo-var-top">
+        <div class="lo-var-title"><small>Variants</small><b>${esc(TOWERS[this.base].name)}</b></div>
         <span class="lo-var-money">🪙 ${num(profile.credits)} · ${SHARD} ${num(profile.shards)}</span>
-        <button class="btn small" data-vact="close" title="Close (Esc)">✕</button></div>
+        <button class="btn small" data-vact="close" title="Close (Esc)">✕ Close</button></div>
+      <div class="lo-var-hint">Green = better than the main form · Red = worse (at max level)</div>
       ${group('Forms', all.filter((t) => !TOWERS[t].goldOf && !TOWERS[t].evolved))}
       ${group('Golden', all.filter((t) => TOWERS[t].goldOf))}
-      ${group('Evolutions', all.filter((t) => TOWERS[t].evolved), `unlock at tower Lv ${TOWERS[all.find((t) => TOWERS[t].evolved)]?.evoLevel ?? 20}`)}
-    </div>`;
+      ${group('Evolutions', all.filter((t) => TOWERS[t].evolved), evo ? `unlock at tower Lv ${TOWERS[evo].evoLevel ?? 20}` : '')}`;
   }
 
   onVariantClick(e) {
-    if (e.target.id === 'lo-variants') return this.showVariants(false); // clicked the dimmed backdrop
     const b = e.target.closest('[data-vact]');
     if (!b) {
       const row = e.target.closest('[data-view]');
-      if (row) {
-        this.preview(row.dataset.view);
-        this.showVariants(false);
-      }
+      if (row) this.preview(row.dataset.view);
       return;
     }
     const act = b.dataset.vact;
@@ -746,5 +797,99 @@ export class LoadoutScreen {
       if (T.flashT <= 0) T.flash.visible = false;
     }
     T.renderer.render(T.scene, T.camera);
+  }
+}
+
+/**
+ * The Variants screen's background: a space tunnel. Purple stars fly out from the middle,
+ * leaving streaks, past glowing rings that slide toward you.
+ */
+class StarTunnel {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.stars = Array.from({ length: 700 }, () => this.newStar(Math.random()));
+    this.rings = [0, 0.25, 0.5, 0.75];
+    this.on = false;
+    this.last = 0;
+    this.frame = (t) => this.draw(t);
+  }
+
+  newStar(z = 1) {
+    const hue = 265 + Math.random() * 50; // violet to pink
+    return { a: Math.random() * Math.PI * 2, r: 0.15 + Math.random() * 0.85, z, hue, size: 0.6 + Math.random() * 1.6 };
+  }
+
+  run(on) {
+    if (on === this.on) return;
+    this.on = on;
+    if (on) {
+      this.last = performance.now();
+      requestAnimationFrame(this.frame);
+    }
+  }
+
+  draw(t) {
+    if (!this.on) return;
+    const dt = Math.max(0, Math.min(0.05, (t - this.last) / 1000));
+    this.frames = (this.frames || 0) + 1;
+    this.last = t;
+    const c = this.canvas;
+    const w = (c.width = c.clientWidth);
+    const h = (c.height = c.clientHeight);
+    const x = this.ctx;
+    const cx = w / 2;
+    const cy = h / 2;
+    const reach = Math.hypot(cx, cy);
+    // Deep purple space, brightest in the far middle of the tunnel.
+    const bg = x.createRadialGradient(cx, cy, 0, cx, cy, reach);
+    bg.addColorStop(0, '#3a1466');
+    bg.addColorStop(0.25, '#1d0838');
+    bg.addColorStop(1, '#05010c');
+    x.fillStyle = bg;
+    x.fillRect(0, 0, w, h);
+    // Tunnel rings sliding toward you.
+    x.lineWidth = 2;
+    this.rings = this.rings.map((z) => {
+      z -= dt * 0.25;
+      if (z <= 0.02) z += 1;
+      const rad = (0.08 / z) * reach * 0.25;
+      x.strokeStyle = `rgba(190, 110, 255, ${Math.min(0.5, (1 - z) * 0.6)})`;
+      x.beginPath();
+      x.ellipse(cx, cy, rad * 1.4, rad, 0, 0, Math.PI * 2);
+      x.stroke();
+      return z;
+    });
+    // Stars: each sits on a spot in the tunnel wall and comes closer (z shrinks).
+    x.lineCap = 'round';
+    for (let i = 0; i < this.stars.length; i++) {
+      const s = this.stars[i];
+      const z0 = s.z;
+      s.z -= dt * 0.35;
+      if (s.z <= 0.03) {
+        this.stars[i] = this.newStar(1);
+        continue;
+      }
+      const p = (z) => (s.r * reach * 0.2) / z;
+      const r0 = p(z0);
+      const r1 = p(s.z);
+      if (r1 > reach * 1.2) {
+        this.stars[i] = this.newStar(1);
+        continue;
+      }
+      const ca = Math.cos(s.a);
+      const sa = Math.sin(s.a);
+      const bright = Math.min(1, 0.3 + (1 - s.z) * 1.4);
+      x.strokeStyle = `hsla(${s.hue}, 100%, ${70 + bright * 20}%, ${bright})`;
+      x.lineWidth = s.size * (0.9 + (1 - s.z) * 3.5);
+      x.shadowColor = `hsl(${s.hue}, 100%, 60%)`;
+      x.shadowBlur = 6;
+      x.beginPath();
+      x.moveTo(cx + ca * r0 * 1.4, cy + sa * r0);
+      x.lineTo(cx + ca * r1 * 1.4 + 0.1, cy + sa * r1);
+      x.stroke();
+    }
+    x.shadowBlur = 0;
+    requestAnimationFrame(this.frame);
   }
 }
