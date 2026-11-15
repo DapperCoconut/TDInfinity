@@ -184,9 +184,9 @@ export function makeFarmer(level) {
   gk.box(0.12, 0.3, 0.5, W3, 0, -0.9, 0.2, { r: 0.03 }); // side grip
   const hy = -len + 0.6;
   gk.box(0.2, 0.3, 0.3, W3, 0, hy, 0, { r: 0.04 });
-  const blade = [[0, 0.1], [0.5, 0.2], [1.1, 0.1], [1.6, -0.2], [1.85, -0.55], [1.45, -0.25], [0.9, -0.08], [0.3, -0.1]].map(([z, y]) => [z * (reaper ? 1.3 : 1), y * (reaper ? 1.3 : 1)]);
+  const blade = [[0, 0.1], [0.5, 0.2], [1.1, 0.1], [1.6, -0.2], [1.85, -0.55], [1.45, -0.25], [0.9, -0.08], [0.3, -0.1]].map(([z, y]) => [z * (reaper ? 1.3 : 1), -y * (reaper ? 1.3 : 1)]); // tip curves back down
   gk.prism(blade, 0.06, reaper ? neon : W, 0, hy, 0, { bevel: 0.01 });
-  if (!reaper) gk.box(0.05, 0.05, 1.5, neon, 0, hy - 0.05, 0.8, { rx: 0.15 }); // neon edge
+  if (!reaper) gk.box(0.05, 0.05, 1.5, neon, 0, hy + 0.05, 0.8, { rx: -0.15 }); // neon edge
   gk.done();
   muzzle(h, g, hy, 1);
   h.rightArm.rotation.set(-1.2, 0, 0.2);
