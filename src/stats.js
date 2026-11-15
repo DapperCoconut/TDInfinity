@@ -387,7 +387,7 @@ export function goonText(g) {
 
 export const limitText = (n) => (n === Infinity ? '∞' : `${n}`);
 /** A tower's placement limit for the shop, e.g. "4–7" when it depends on team size. */
-export const limitRange = (def) => (def.teamLimit ? `${Math.min(...def.teamLimit)}–${Math.max(...def.teamLimit)} by team size` : limitText(def.limit));
+export const limitRange = (def) => (def.teamLimit ? `${Math.min(...def.teamLimit)}–${Math.max(...def.teamLimit)} by team size` : limitText(def.limit ?? Infinity));
 
 /** One-word attack type for a tower, e.g. "Splash", "Burst", "Melee". */
 export function towerKind(def) {

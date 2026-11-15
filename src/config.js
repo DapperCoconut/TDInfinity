@@ -77,7 +77,8 @@ export const GAME = {
   // Ghost Grenade stealth doesn't drain; it just lasts its duration.
   stealthTime: 20,
   restealth: 5,
-  loadoutSize: 6, // towers a player can bring into a game
+  loadoutSize: 8, // towers a player can bring into a game
+  towerCap: 50, // most towers one player can have on the map at once (all kinds together)
   // Credits earned at the end of a game (spent in the Loadout & Shop on new towers).
   credits: (wavesCleared, win) => wavesCleared * 20 + (win ? 300 : 0), // (2026-11-11: halved, was 40 / 600)
   mpHpScale: 0.5, // in multiplayer, enemy HP is multiplied by 1 + this * (players - 1)
@@ -414,7 +415,7 @@ export const spawnExtras = (s) => [2, 3, 4, 5, 6].filter((n) => s[`unit${n}`]).m
 
 /** Placement limit of `def` with `players` on the team (`teamLimit` lowers it in bigger teams). */
 export const towerLimit = (def, players = 1) =>
-  def.teamLimit ? def.teamLimit[Math.max(0, Math.min(players, def.teamLimit.length) - 1)] : def.limit;
+  def.teamLimit ? def.teamLimit[Math.max(0, Math.min(players, def.teamLimit.length) - 1)] : (def.limit ?? Infinity); // no limit given = no limit
 
 /** The tower a branch (upgrade path) belongs to, e.g. 'pursuitBottom' -> 'pursuit'. */
 export const rootType = (type) => TOWERS[type]?.branchOf ?? type;

@@ -149,7 +149,7 @@ export class UI {
   }
 
   /** Hotbar slots follow the player's loadout; slot N is placed with key N. */
-  buildHotbar(icons, loadout, costOf = (type) => TOWERS[type].cost, limitOf = (type) => TOWERS[type].limit) {
+  buildHotbar(icons, loadout, costOf = (type) => TOWERS[type].cost, limitOf = (type) => TOWERS[type].limit ?? Infinity) {
     this.limitOf = limitOf;
     this.icons = icons;
     this.costOf = costOf;

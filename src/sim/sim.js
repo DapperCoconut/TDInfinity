@@ -591,7 +591,9 @@ export class Sim {
         const cost = Math.round(towerCost(def, !!this.vs) * (lmMod?.cost ?? 1));
         if (p.cash < cost) return `Not enough cash! ${def.name} costs $${cost}`;
         let owned = 0;
-        for (const t of this.towers.values()) if (t.owner === pid && !t.holo && rootType(t.type) === m.type) owned++;
+        let all = 0;
+        for (const t of this.towers.values()) if (t.owner === pid && !t.holo) { all++; if (rootType(t.type) === m.type) owned++; }
+        if (all >= GAME.towerCap) return `You have ${GAME.towerCap} towers, the most you can have`;
         const limit = towerLimit(def, this.vs ? 1 : this.players.size) + (p.extraSlots || 0); // Discount Dog Extra Slot
         if (owned >= limit) return `Placement limit reached (${limit})`;
         const x = Number(m.x);
