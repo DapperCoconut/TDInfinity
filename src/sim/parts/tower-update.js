@@ -434,6 +434,7 @@ export class SimTowerUpdate {
       this.events.push({ k: 'shot', t: t.id, e: target.id, c: 1 });
       this.damage(t, target, dmg);
     } else this.shoot(t, target, dmg);
+    if (s.double && !def.fly && this.enemies.has(target.id)) this.shoot(t, target, dmg); // Warrior: Double Strike
     if (s.pass) this.passThrough(t, s, target, dmg);
     if (berserk) this.berserkHit(t, s, berserk); // Berserker: Rage and Crushing Blow
     if (collat) this.collateralBounce(t, s, collat);

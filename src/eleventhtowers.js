@@ -13,6 +13,7 @@
 //   Bandit: an alternate Scout form. Shoots, and from Lv 2 slashes zombies close in front of it.
 //   Shrapnel Grenadier: an alternate Grenadier form. Cheap grenades, a grenade launcher from Lv 3,
 //               and at Lv 5 every blast also hurts by a share of each zombie's max health.
+//   Warrior: an alternate Enforcer form. Swings a sword; hidden detection at Lv 3, Double Strike at Lv 4.
 //   Eradicator: fast little energy orbs, and from Lv 3 the Raybreak: a big piercing beam. Its last
 //               three levels add ΘVERLOAD, which costs its owner money for the rest of the game.
 //
@@ -67,6 +68,8 @@
 //               in config.js; see drainOverload in sim/parts/waves.js).
 //   hpPct: { pct, max }  (blasts) each zombie hit also takes `pct` of its max health, but the
 //               hit never goes over `max` x the tower's damage. Read in explodeHits (sim/parts/damage.js).
+//   double: true  (Warrior) every swing hits its target twice. Read at the end of updateTower
+//               (sim/parts/tower-update.js).
 //   trueDmg: true  True damage (see damage in sim/parts/damage.js): no resistance, armor or
 //               defense stops it.
 //
@@ -349,6 +352,30 @@ export const ELEVENTH_TOWERS = {
       { name: 'Shrapnel Explosives', desc: '+6 damage and a bigger blast (4 > 6).', cost: 1550, damage: 16, cooldown: 1.8, range: 10, radius: 6, hidden: true, lob: 0.5 },
       { name: 'Demolition', desc: '+8 damage and +4 range. Each blast also hurts every zombie in it by 1% of its max health (up to 3x damage: 72).', cost: 3000, damage: 24, cooldown: 1.8, range: 14, radius: 6, hidden: true, lob: 0.5,
         hpPct: { pct: 0.01, max: 3 } },
+    ],
+  },
+  // Warrior (alternate Enforcer form). Stats follow the spec's table (cost 400, Lv 4 swings every 0.7s).
+  enforcerWarrior: {
+    name: 'Warrior',
+    altOf: 'enforcer',
+    form: 'Warrior',
+    shards: 1,
+    price: 0,
+    cost: 400,
+    limit: Infinity,
+    melee: true,
+    lead: false,
+    flying: false,
+    bossStop: 0.5,
+    blurb: 'An alternate Enforcer that slashes the closest zombie with a sword. At Lv 3 its blade turns ethereal and sees hidden zombies. At max level every swing hits twice. No placement limit.',
+    tip: 'Short range: put it right next to a bend in the path.',
+    levels: [
+      { name: 'Warrior', desc: 'Slashes the closest zombie with a sword.', damage: 3, cooldown: 0.6, range: 5, hidden: false },
+      { name: 'Broadsword', desc: '+2 damage.', cost: 300, damage: 5, cooldown: 0.6, range: 5, hidden: false },
+      { name: 'Sharpness', desc: '+3 damage and +1 range.', cost: 700, damage: 8, cooldown: 0.6, range: 6, hidden: false },
+      { name: 'Ethereal Blade', desc: '+6 damage and sees hidden zombies.', cost: 1200, damage: 14, cooldown: 0.6, range: 6, hidden: true },
+      { name: 'Warrior Spirit', desc: '+12 damage and Double Strike: every swing hits twice (swings every 0.7s).', cost: 3500, damage: 26, cooldown: 0.7, range: 6, hidden: true,
+        double: true },
     ],
   },
   // Eradicator: quick energy orbs, and from Lv 3 the Raybreak beam (on its own timer).

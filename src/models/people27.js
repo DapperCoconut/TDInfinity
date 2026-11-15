@@ -1,5 +1,5 @@
 // Tower models: people, batch 27 (dressed with the vehicle kit in ../vehicles.js).
-// In here: Priest, Farmer, Bandit, Eradicator, Shrapnel Grenadier.
+// In here: Priest, Farmer, Bandit, Eradicator, Shrapnel Grenadier, Warrior.
 // Like batch 26 these are plain white figures with no face: only their gear tells them apart,
 // white too, with accents in one neon colour per tower.
 // MODELS maps tower keys to builders; ../models.js lays it over TOWER_MODELS, so these win.
@@ -506,10 +506,100 @@ export function makeShrapnelGrenadier(level) {
   return own(h, level >= 3 ? 0.3 : 0);
 }
 
+// ------------------------------------------------------------------ Warrior (neon ice blue)
+
+const WARRIOR_NEON = 0x80d8ff;
+
+/**
+ * A white sword in the fist (blade down -y). o.wide: a broadsword blade; o.edge: neon edges;
+ * o.glow: the whole blade glows. Returns the tip y.
+ */
+function whiteSword(k, neon, o = {}) {
+  const bw = o.wide ? 0.42 : 0.3;
+  const bl = o.wide ? 2.5 : 2.2;
+  k.cyl(0.1, 0.55, W3, 0, 0.08, 0, { seg: 8 }); // grip
+  for (let i = 0; i < 3; i++) k.torus(0.1, 0.02, W2, 0, 0.25 - i * 0.16, 0, { rx: PI / 2, seg: 8 });
+  k.ball(0.15, o.glow ? neon : W2, 0, 0.42, 0, { seg: 10, rows: 7 }); // pommel
+  k.box(0.18, 0.14, o.wide ? 1.1 : 0.9, W2, 0, -0.26, 0, { r: 0.04 }); // crossguard
+  for (const sd of [-1, 1]) k.ball(0.08, neon, 0, -0.26, sd * (o.wide ? 0.58 : 0.48), { seg: 8, rows: 5 });
+  const body = bl * 0.84;
+  const tip = bl - body;
+  const y0 = -0.33;
+  const blade = o.glow ? neon : W;
+  k.box(0.08, body, bw, blade, 0, y0 - body / 2, 0);
+  k.slab(0.08, tip, bw, blade, 0, y0 - body - tip / 2, 0, { bd: 0.05 });
+  if (!o.glow) k.box(0.1, body * 0.8, 0.05, W3, 0, y0 - body * 0.45, 0); // fuller
+  if (o.edge && !o.glow) for (const sd of [-1, 1]) k.box(0.09, body, 0.035, neon, 0, y0 - body / 2, sd * (bw / 2 - 0.01));
+  return y0 - bl;
+}
+
+/**
+ * Warrior (alternate Enforcer): a white knight with a round helm and a sword. Lv 1 Broadsword:
+ * a wider blade and shoulder plates. Lv 2 Sharpness: neon edges and a breastplate. Lv 3 Ethereal
+ * Blade: the blade glows and a plume on the helm. Lv 4 Warrior Spirit: a second glowing sword
+ * (Double Strike) and a long cape.
+ */
+export function makeWarrior(level) {
+  const h = blank();
+  const key = `enforcerWarrior${level}`;
+  const neon = glowMat(h, WARRIOR_NEON);
+  const hd = wear(h, h.head, `${key}:head`);
+  const t = wear(h, h.torso, `${key}:torso`);
+  // a round helm with a visor slit
+  hd.box(1.3, 1.3, 1.3, W2, 0, 0.55, 0, { r: 0.3 });
+  hd.box(1.0, 0.1, 0.06, neon, 0, 0.6, 0.66); // visor slit
+  hd.box(0.08, 0.5, 0.06, W3, 0, 0.3, 0.67); // nose guard
+  if (level >= 3) {
+    // a neon plume on top
+    hd.box(0.16, 0.3, 0.9, W3, 0, 1.3, 0, { r: 0.05 });
+    hd.box(0.14, 0.4, 1.1, neon, 0, 1.6, -0.2, { r: 0.07, rx: -0.2 });
+  }
+  t.box(2.12, 1.8, 1.12, W, 0, 0.05, 0, { r: 0.1 }); // tunic
+  t.box(2.16, 0.26, 1.16, W3, 0, -0.86, 0, { r: 0.04 }); // belt
+  t.box(0.34, 0.22, 0.06, neon, 0, -0.86, 0.6, { r: 0.02 }); // buckle
+  t.box(0.26, 0.9, 0.3, W3, -0.85, -1.2, 0.2, { r: 0.05, rz: 0.2 }); // scabbard
+  if (level >= 1) shoulderPads(t, W2, 0.6);
+  if (level >= 2) {
+    // a breastplate with a neon line down the middle
+    t.box(2.24, 1.3, 1.24, W2, 0, 0.25, 0, { r: 0.12 });
+    t.box(0.08, 1.1, 0.05, neon, 0, 0.25, 0.64);
+  }
+  if (level >= 4) {
+    cape(t, W2, 2.8, { w: 2.2 });
+    t.box(2.3, 0.06, 0.05, neon, 0, -1.75, -0.8);
+  }
+  hd.done();
+  t.done();
+  hands(h, key, W3, W2, (a) => {
+    if (level >= 2) a.box(0.5, 0.06, 0.06, neon, 0, -1.25, 0.6); // gauntlet cuffs
+  });
+  feet(h, key, W3, (b) => b.box(1.12, 0.1, 1.14, neon, 0, -1.3, 0.02));
+  h.muzzles = [];
+  const g = fist(h.rightArm, -1.9, 1.15);
+  const gk = wear(h, g, `${key}:gun`);
+  const tipY = whiteSword(gk, neon, { wide: level >= 1, edge: level >= 2, glow: level >= 3 });
+  gk.done();
+  muzzle(h, g, tipY, 0);
+  if (level >= 4) {
+    const g2 = fist(h.leftArm, -1.9, 1.15);
+    const sk = wear(h, g2, `${key}:sword2`);
+    whiteSword(sk, neon, { wide: true, glow: true });
+    sk.done();
+  }
+  h.rightArm.rotation.set(-2.5, 0, 0.2);
+  h.leftArm.rotation.set(level >= 4 ? -1.6 : -0.3, 0, -0.25);
+  h.pose = { right: -2.5, left: level >= 4 ? -1.6 : -0.3, leftRecoil: 0 };
+  h.swing = 2.0;
+  h.melee = true;
+  h.tracer = WARRIOR_NEON;
+  return own(h, 0);
+}
+
 export const MODELS = {
   eradicator: makeEradicator,
   priest: makePriest,
   farmer: makeFarmer,
   bandit: makeBandit,
   grenadierShrapnel: makeShrapnelGrenadier,
+  enforcerWarrior: makeWarrior,
 };
