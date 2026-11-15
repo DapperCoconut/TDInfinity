@@ -132,8 +132,8 @@ export class SimWeapons5 {
    */
   sinkHit(t, e) {
     const n = Math.max(1, Math.round(e.sink * 0.2));
-    let dmg = n;
-    if (this.magField) dmg = n * this.magField;
+    let dmg = n * (this.sinkMult || 1); // Lament: The Departed and Lament make Sinking hit harder
+    if (this.magField) dmg *= this.magField;
     else if (!(t && TOWERS[t.type]?.levels[t.level]?.jug?.keep)) e.sink -= n; // a Lv 5 Juggernaut's hits keep it
     if (e.sink <= 0) e.sink = 0;
     const dot = this.dot;

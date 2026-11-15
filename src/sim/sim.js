@@ -50,6 +50,7 @@ import { SimWeapons4 } from './parts/weapons4.js';
 import { SimWeapons5 } from './parts/weapons5.js';
 import { SimWeapons6 } from './parts/weapons6.js';
 import { SimWeapons7 } from './parts/weapons7.js';
+import { SimWeapons8 } from './parts/weapons8.js';
 import { H2_FX, SimCarnival } from './parts/carnival.js';
 import { N3_FX, SimNightmare } from './parts/nightmare.js';
 import { SimChristmas, XM_FX } from './parts/christmas.js';
@@ -994,6 +995,8 @@ export class Sim {
         t.mode || t.nextOff || t.pad ? [t.mode || 0, t.nextOff || 0, ...(t.pad ? [r2(t.pad.x - t.x), r2(t.pad.z - t.z)] : [])] : 0,
         // Wave 13: Frostreaver Frost Wisps (the towers they sit on)
         t.wisps?.length ? t.wisps.map((w) => w.host) : 0,
+        // Wave 13 evolved: Lament [White, Black, mode, Funeral]
+        t.bw != null ? [t.bw, t.bb, t.bmode, t.funeral ? 1 : 0] : 0,
       ]),
       // Traps, plus Necromancer gravestones and Engineer sentries: [..., level, facing, health left (0-1), stunned, thermite radius].
       tr: [...this.traps.values()].map((tr) => [tr.id, tr.tower, tr.kind, r2(tr.x), r2(tr.z), tr.land > 0 ? 0 : 1, tr.lvl ?? 0, r2(tr.yaw ?? 0), tr.maxHp ? r2(tr.hp / tr.maxHp) : 1, tr.stunT > 0 ? 1 : 0, tr.kind === 'thermite' || tr.kind === 'gas' || tr.kind === 'thorns' || tr.kind === 'goo' || tr.kind === 'blade' ? tr.radius : 0]),
@@ -1024,7 +1027,7 @@ export class Sim {
 
 // Sim's methods are kept in several files (see the list at the top). This puts them all on Sim,
 // just as if they were written inside the class.
-for (const part of [SimEnemyMoves1, SimEnemyMoves2, SimTowerHealth, SimWaves, SimTowerUpdate, SimWeapons1, SimWeapons2, SimWeapons3, SimUnits, SimAbilities, SimDamage, SimWeapons4, SimWeapons5, SimWeapons6, SimWeapons7, SimCarnival, SimNightmare, SimChristmas, SimSpires, SimContract, SimLiminal, SimSandbox]) {
+for (const part of [SimEnemyMoves1, SimEnemyMoves2, SimTowerHealth, SimWaves, SimTowerUpdate, SimWeapons1, SimWeapons2, SimWeapons3, SimUnits, SimAbilities, SimDamage, SimWeapons4, SimWeapons5, SimWeapons6, SimWeapons7, SimWeapons8, SimCarnival, SimNightmare, SimChristmas, SimSpires, SimContract, SimLiminal, SimSandbox]) {
   const props = Object.getOwnPropertyDescriptors(part.prototype);
   delete props.constructor;
   Object.defineProperties(Sim.prototype, props);

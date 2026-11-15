@@ -68,7 +68,44 @@ const WANDERER = { key: 'wanderer', name: 'Wanderer', cooldown: 10, aim: true,
 const artisan = (o) => ({ cap: 200, skirm: 0, atel: -1, ...o });
 const ART_AB = (lv) => [RELOCATION, BUILD_SKIRM, ...(lv >= 2 ? [BUILD_ATEL] : []), ...(lv >= 5 ? [WANDERER] : [])];
 
+// ---------------------------------------------------------------- Lament (evolved Gunner)
+
+// Butterfly Gathering: one button that cycles White -> Black -> Sorrow (sim/parts/weapons8.js).
+const BUTTERFLY = { key: 'butterfly', name: 'Butterfly Gathering', cooldown: 0.2,
+  desc: 'Switch mode: White (after a kill, shoot White next; reloads turn some Black into White), Black (reloads turn some White into Black) or Sorrow (with 3+ Black, spend 1 more Black for 1 more Sinking)' };
+
 export const THIRTEENTH_TOWERS = {
+  // Lament (evolved Gunner): dual pistols, one white and one black, that put Sinking on zombies.
+  // lament: { ammo, chance, lv3, ds, salv, fun, funGive, deluge } - see sim/parts/weapons8.js.
+  evoLament: {
+    name: 'Lament',
+    altOf: 'soldier',
+    evolved: true,
+    evoFrom: 'soldierGunner',
+    evoLevel: 20,
+    form: 'Lament',
+    price: 6000,
+    shards: 3,
+    cost: 600,
+    limit: 2,
+    flying: false,
+    kindLabel: 'Sinking',
+    blurb: 'The evolved Gunner. Two pistols, one white and one black. Every shot hits a narrow area in front of it and puts Sinking on zombies: when a zombie with Sinking is hit, some of its Sinking turns into true damage. From Lv 1 it shoots Butterfly ammo of two shades, and its passives get stronger the more (or the less) ammo it has.',
+    tip: 'White shots add Sinking, Black shots make Sinking hit harder. Try each Butterfly Gathering mode to see which one fits your map.',
+    levels: [
+      { name: 'Lament', desc: 'Shoots a narrow area in front of it for 2 every 1.1s, and puts 2 Sinking on each zombie hit.', damage: 2, cooldown: 1.1, range: 12, hidden: false,
+        sink: 2, lament: {} },
+      { name: 'Lament for the Living', desc: 'Butterfly ammo: 5 White and 5 Black (up to 9), shot in turn, reloads when both run out. A kill makes the next shot Black. White: +1 Sinking and +1 Black. Black: +20% Sinking damage. Lament: a 40% chance (+20% per White) for an extra true damage hit, and double Sinking. New ability: Butterfly Gathering.', cost: 600, damage: 2, cooldown: 1.1, range: 12, hidden: false,
+        sink: 2, lament: { ammo: true, chance: 0.4 }, abilities: [BUTTERFLY] },
+      { name: 'Celebration for the Departed', desc: 'Deathseeker: each hit has a 50% chance (+10% for each ammo the lower shade is below 5) to hit 3 more times, with half Sinking damage. Salvation: every 2 shots, 0.08s faster (up to 5 times, fades after 2s). Funeral: while one shade is empty, shoots every 0.3s, until it stops for 3s, then reloads.', cost: 3000, damage: 2, cooldown: 1.1, range: 12, hidden: false,
+        sink: 2, lament: { ammo: true, chance: 0.4, ds: 3, salv: true, fun: 0.3 }, abilities: [BUTTERFLY] },
+      { name: 'A Butterfly Takes Flight', desc: '+1 damage, shoots every 0.9s and hidden detection. Lament: +20% damage per 3 White, +10% chance per 2 Black. Funeral: when it starts, adds 4 ammo to the lowest shade.', cost: 7000, evo: 5, damage: 3, cooldown: 0.9, range: 12, hidden: true,
+        sink: 2, lament: { ammo: true, chance: 0.4, lv3: true, ds: 3, salv: true, fun: 0.3, funGive: 4 }, abilities: [BUTTERFLY] },
+      { name: 'Funeral of Death Butterflies', desc: '+4 damage and shoots every 0.7s. Deathseeker hits 8 times. Funeral: every 0.25s. Sinking Deluge: on a zombie with 12+ Sinking, spends 8 for double damage and every Deathseeker hit lands.', cost: 29000, evo: 10, damage: 7, cooldown: 0.7, range: 12, hidden: true,
+        sink: 2, lament: { ammo: true, chance: 0.4, lv3: true, ds: 8, salv: true, fun: 0.25, funGive: 4, deluge: true }, abilities: [BUTTERFLY] },
+    ],
+  },
+
   // Technomancer (alternate Hacker form): bursts of shots. The cycle (`cooldown`) is the burst
   // time plus the spec's 3s rest.
   hackerTechnomancer: {

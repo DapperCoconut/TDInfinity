@@ -74,6 +74,7 @@ export class SimAbilities {
     }
     else if (ab.build || ab.key === 'wanderer') this.useArtisanAbility(t, s, ab, m); // Artisan
     else if (ab.crystals) this.useFrostAbility(t, s, ab, m); // Frostreaver: Crystal Burst, Path Crystal, Frost Wisp
+    else if (ab.key === 'butterfly') this.butterflyMode(t); // Lament: Butterfly Gathering
     else if (ab.key === 'hologram') this.placeHologram(t, Number(m.x), Number(m.z)); // Technomancer
     else if (ab.key === 'utopia') {} // Technomancer: the copy was made when the action was checked
     else if (ab.key === 'carpetBomb') this.carpetBomb(t, s, ab, Number(m.x), Number(m.z));
