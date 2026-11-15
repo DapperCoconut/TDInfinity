@@ -6,6 +6,8 @@
 //   tools/viewer.html?kind=unit&from=0&n=40                  (by order of first use in TOWERS)
 //   &t=1.3 freezes the animation clock at 1.3s, &fire=0.5 shows the firing pose (recoil 0..1),
 //   &cols=8 &yaw=0.5 &zoom=1 &levels=0,2,4 (one row per tower, one column per level)
+//   &since=0&step=0.06&t=0 (each copy frozen 0, 0.06, 0.12... s after its attack: the same tower repeated
+//   shows a whole strike)
 import * as THREE from 'three';
 import { TOWERS, ENEMIES } from '../src/config.js';
 import { TOWER_MODELS, makeEnemy, makeUnit } from '../src/models.js';
@@ -107,7 +109,10 @@ entries.forEach(([k, lv, ln], i) => {
   g.add(m.root);
   if (m.plane) { m.plane.position.set(0, 9, 0); g.add(m.plane); }
   scene.add(g);
-  items.push({ k, lv, ln, m, g, state: anim.newState?.() ?? {}, phase: i * 0.7 });
+  const state = anim.newState?.() ?? {};
+  // &since=0&step=0.06&t=0: each copy frozen that many seconds after its attack (a strike, frame by frame)
+  if (P.get('since') != null) Object.assign(state, { since: +P.get('since') + i * +(P.get('step') || 0.06), n: 1, aim: 1, shots: Math.floor((i * +(P.get('step') || 0.7)) / 1.4) });
+  items.push({ k, lv, ln, m, g, state, phase: i * +(P.get('step') || 0.7) });
 });
 window.__errors = errors;
 if (errors.length) console.error(errors.join('\n'));

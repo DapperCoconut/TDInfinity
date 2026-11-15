@@ -169,6 +169,7 @@ const P = {
   px: 0, py: 0, pz: 0, yaw: 0, twist: 0, lean: 0, roll: 0, hp: 0, hy: 0, hr: 0, jump: 0,
   rW: V(), lW: V(), rPitch: 0, rTurn: 0, rCant: 0, lPitch: 0, lTurn: 0, lCant: 0, grip: 0,
   rfLift: 0, lfLift: 0, rfPitch: 0, lfPitch: 0, rfZ: 0, lfZ: 0, rTuck: 0, lTuck: 0, lGest: 0,
+  rRaise: 0, rYaw: 0, rTilt: 0, // a melee strike: the weapon arm up / down, side to side, the pole's tilt
 };
 function resetP() {
   for (const k in P) {
@@ -362,6 +363,44 @@ const IDLES = {
     P.py -= (0.5 + 0.5 * Math.sin(t * 3.1 + 0.5)) * 0.04;
   },
   none() {},
+};
+
+// ---------------------------------------------------------------- melee strikes
+// A melee weapon moves through a whole strike after each hit (s: seconds since the hit).
+// Keys: [time, value] points, blended smoothly between them.
+const KEYS = (pts, s) => {
+  if (s <= pts[0][0]) return pts[0][1];
+  for (let i = 1; i < pts.length; i++) {
+    const [t1, v1] = pts[i];
+    if (s <= t1) {
+      const [t0, v0] = pts[i - 1];
+      return v0 + (v1 - v0) * smooth((s - t0) / (t1 - t0));
+    }
+  }
+  return pts[pts.length - 1][1];
+};
+const STRIKES = {
+  /** A sword cut: wound up out to the right, then swept across the body to the left. */
+  slash(s) {
+    P.rYaw += KEYS([[0, 0], [0.09, -1.15], [0.2, 0.95], [0.32, 0.95], [0.65, 0]], s);
+    P.rRaise += KEYS([[0, 0], [0.09, -0.45], [0.2, 0.35], [0.32, 0.35], [0.65, 0]], s);
+    P.twist += KEYS([[0, 0], [0.09, -0.35], [0.2, 0.4], [0.32, 0.4], [0.65, 0]], s);
+    P.pz += KEYS([[0, 0], [0.2, 0.2], [0.32, 0.2], [0.65, 0]], s);
+  },
+  /** A spear thrust: pulled back, then driven straight forward with a lunge. */
+  poke(s) {
+    P.pz += KEYS([[0, 0], [0.1, -0.35], [0.18, 0.7], [0.3, 0.7], [0.6, 0]], s);
+    P.lean += KEYS([[0, 0], [0.1, -0.08], [0.18, 0.2], [0.3, 0.2], [0.6, 0]], s);
+    P.rRaise += KEYS([[0, 0], [0.1, -0.15], [0.18, 0], [0.6, 0]], s);
+    P.rTilt += KEYS([[0, 0], [0.1, 0.15], [0.18, -0.25], [0.3, -0.25], [0.6, 0]], s);
+  },
+  /** A hammer slam: swung up over the head, then brought down hard in front. */
+  slam(s) {
+    P.rRaise += KEYS([[0, 0], [0.12, -1.35], [0.22, 1.3], [0.4, 1.3], [0.8, 0]], s);
+    P.rTilt += KEYS([[0, 0], [0.12, 0.2], [0.22, -1.0], [0.4, -1.0], [0.8, 0]], s);
+    P.lean += KEYS([[0, 0], [0.12, -0.12], [0.22, 0.3], [0.4, 0.3], [0.8, 0]], s);
+    P.py -= KEYS([[0, 0], [0.22, 0.25], [0.4, 0.25], [0.8, 0]], s);
+  },
 };
 
 // ---------------------------------------------------------------- firing animations
@@ -697,6 +736,8 @@ export function poseTower(m, st, o) {
   const amp = melee || (fire && SOFT_FIRES.has(fire[0])) ? 1 : o.kick ?? 1;
   if (fire && s < 3) FIRES[fire[0]]?.(r, s, (fire[1] ?? 1) * amp, leftFired, st, t);
   else if (!fire && s < 1) FIRES[melee ? (m.punch ? 'punch' : 'swing') : 'kick'](r, s, amp, leftFired, st, t);
+  const strike = m.swing && !m.punch ? STRIKES[m.pole?.[3] ?? (fire?.[0] === 'chop' ? 'slam' : 'slash')] : null;
+  if (strike && st.n > 0) strike(s);
 
   // --- hips and chest
   const lock = rig.lockBody || rig.torsoCustom;
@@ -810,7 +851,7 @@ export function poseTower(m, st, o) {
   if (m.punch) {
     px += leftFired ? 0 : r * m.swing;
     plx += leftFired ? r * m.swing : 0;
-  } else if (m.swing) px += r * m.swing;
+  } else if (m.swing && !strike) px += r * m.swing;
 
   // Right arm
   const tuckR = clamp(mix(hold, rest, 'tuck', k, melee || !rAim ? 0.12 : 0) + P.rTuck, 0, 0.6);
@@ -827,6 +868,7 @@ export function poseTower(m, st, o) {
     const cant = mix(hold, rest, 'cant', k) + P.rCant;
     _e.set(pitch, turn, 0, 'YXZ');
     _qH.setFromEuler(_e).multiply(_q1.setFromAxisAngle(_f, cant)).multiply(_qA);
+    if (m.pole) _qH.multiply(_q1.setFromAxisAngle(X, -lerp(m.pole[1], m.pole[0], k))); // a staff stands up
     const hr = hold.r;
     const rr = rest.r ?? hr;
     if (hr) {
@@ -854,12 +896,13 @@ export function poseTower(m, st, o) {
       solveArm(m.rightArm, rig.rFore, rig.rHand, rig.shR, rig.qR, rig.dR, _W, null, _poleR, false);
     } else {
       // As built (melee weapons, staffs, tools), with a bent elbow and the old swing.
-      _e.set(px + mix(hold, rest, 'raise', k), rig.aimR.y, rig.aimR.z + mix(hold, rest, 'splay', k), 'XYZ');
+      _e.set(px + mix(hold, rest, 'raise', k) + P.rRaise, rig.aimR.y + P.rYaw, rig.aimR.z + mix(hold, rest, 'splay', k), 'XYZ');
       _qHl.setFromEuler(_e);
       _f.copy(DOWN).applyQuaternion(_qHl);
       _W.copy(rig.shR).addScaledVector(_f, (ARM_UP + ARM_LOW) * (1 - tuckR)).add(P.rW);
       // The elbow bends the natural way for wherever the arm points.
       if (!rp) _poleR.set(-0.6, _f.y > 0.3 ? 0.2 : -0.6, _f.z > 0.5 ? -0.2 : -0.7);
+      if (m.pole) _qHl.multiply(_q1.setFromAxisAngle(X, -lerp(m.pole[1], m.pole[0], k) - P.rTilt)); // a hammer's head up
       solveArm(m.rightArm, rig.rFore, rig.rHand, rig.shR, rig.qR, rig.dR, _W, _qHl, _poleR, rig.rStiff);
     }
   }

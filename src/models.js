@@ -24,7 +24,7 @@ import { TOWER_MODELS_H } from './newmodels/h.js';
 import { TOWER_MODELS_I } from './newmodels/i.js';
 import { blitzUpgrades } from './newmodels/blitzup.js';
 import { rigify } from './rig.js';
-import { styleFor } from './visuals.js';
+import { gripPole, styleFor } from './visuals.js';
 import { armWeapons } from './weapons.js';
 export { boxGeo, faceTexture, makeHumanoid, part, setEmissive, setOpacity } from './models/kit.js';
 import { goldify } from './models/bits.js';
@@ -397,6 +397,7 @@ for (const [type, make] of Object.entries(TOWER_MODELS)) {
     if (model?.root && !model.root.userData.declipped) {
       rigify(model); // elbows, knees and a round head (rig.js)
       armWeapons(model, type, level); // bigger, more detailed weapons (weapons.js)
+      gripPole(type, model); // staffs and hammers held up the shaft, not at the end (visuals.js)
       declip(model.root);
       model.root.userData.declipped = true;
     }

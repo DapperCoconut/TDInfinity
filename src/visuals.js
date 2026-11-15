@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { TOWERS } from './config.js';
 import { ARMS } from './anim.js';
 
@@ -68,6 +69,7 @@ export const HOLDS = {
   point: { c: 'O', yaw: 0.25, r: [-1.3, 4.0, 1.85], l: 'side' },
   highdown: { c: 'O', yaw: 0.4, r: [-1.2, 5.0, 1.3], pitch: 0.35, l: 'hip' },
   braced: { c: 'O', yaw: -0.2, r: [-1.05, 3.4, 0.95], l: 'guard' },
+  staff: { c: 'O', yaw: 0.2, r: [-1.7, 3.15, 1.05], l: 'hip' }, // a staff or scythe out at the side (POLES)
   // a gun in each hand (l2: the left wrist; mirrored from r when missing)
   akimbo: { c: 'D', r: [-1.1, 3.95, 1.35] },
   dwide: { c: 'D', r: [-2.2, 4.1, 1.1], rp: [-0.3, -1, -0.3], lp: [0.3, -1, -0.3] },
@@ -100,6 +102,7 @@ export const RESTS = {
   upright: { c: 'G', r: [-1.25, 3.75, 0.65], pitch: -1.5, yaw: 0, l: 'pocket' },
   leanOn: { c: 'G', r: [-0.5, 3.0, 0.8], pitch: 1.5, yaw: -0.2, lean: 0.1, l: 'grip', g: 0.3 },
   relax: { c: 'G', r: [-1.3, 2.6, 0.5], pitch: 0.9, turn: 0.5, yaw: 0, l: 'rest' },
+  staffRest: { c: 'G', r: [-1.65, 2.85, 0.55], pitch: -1.5, yaw: 0, l: 'side' }, // a staff standing by the foot (POLES)
   // two guns
   dDown: { c: 'D', r: [-1.65, 2.5, 0.2], pitch: 1.35 },
   dUp: { c: 'D', r: [-1.35, 3.8, 0.6], pitch: -1.45 },
@@ -252,7 +255,8 @@ const TABLE = {
   toxicnatorSaboteur: 'sprint chest port twitch kick',
   toxicnatorMaitake: 'pigeon cocked lowered sway lob',
   toxicGunner: 'bladed tucked lowReady servo rattle',
-  necromancer: 'leanBack highdown upright conduct cast l:wide',
+  necromancer: 'leanBack staff staffRest conduct cast l:wide',
+  farmer: 'march staff staffRest breathe kick',
   engineer: 'wide chest port check heavy',
   engineerMechanic: 'crouch weaver trail nod kick',
   engineerStella: 'hero cocked frontM bounce swing',
@@ -406,6 +410,52 @@ function derive(base, cls) {
   };
 }
 
+// ---------------------------------------------------------------- long poles
+// Staffs, scythes, spears and big hammers are built sticking straight out of the fist, like a gun
+// barrel, gripped at the very end. These towers hold them like poles instead.
+// [tilt while fighting, tilt at rest, grip, strike, spin]: tilt turns the pole up from where the
+// arm (or the gun hold) points it; grip moves the hand that far up the shaft (a share of its
+// length); strike: how a melee pole hits (anim.js STRIKES: slash, poke, slam); spin turns the
+// pole round its shaft (a scythe blade built facing the wrong way).
+export const POLES = {
+  necromancer: [1.15, 0, 0.35],
+  priest: [1.15, 0, 0.35],
+  harvester: [1.15, 0, 0.35],
+  engineerStella: [1.0, 0.9, 0.3],
+  farmer: [1.0, 0, 0.3, null, Math.PI],
+  assassinSpearman: [0.25, 1.3, 0.35, 'poke'],
+  enforcerSlammer: [1.3, 2.9, 0.12, 'slam'],
+  enforcerSlammerBottom: [1.3, 2.9, 0.12, 'slam'],
+  sledger: [1.3, 2.9, 0.12, 'slam'],
+  sledgerIce: [1.3, 2.9, 0.12, 'slam'],
+  farmMiner: [1.2, 0, 0.12, 'slam'],
+};
+
+/** Moves the hand of a pole tower (POLES) up the shaft, and marks the model to tilt the pole. */
+export function gripPole(type, m) {
+  const p = POLES[type.replace(/_\d\d$/, '')];
+  const rig = m?.rig;
+  if (!p || !rig?.rHeld || !rig.rItems?.length || m.pole) return;
+  const hand = rig.rHand;
+  const b = new THREE.Box3();
+  const bb = new THREE.Box3();
+  hand.updateMatrixWorld(true);
+  const inv = hand.matrixWorld.clone().invert();
+  for (const c of rig.rItems) b.union(bb.setFromObject(c).applyMatrix4(inv));
+  const len = Math.max(0, -b.min.y);
+  const s = len * p[2];
+  const q = p[4] ? new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), p[4]) : null;
+  for (const c of rig.rItems) {
+    if (q) {
+      c.position.applyQuaternion(q);
+      c.quaternion.premultiply(q);
+    }
+    c.position.y += s;
+  }
+  rig.rReach = Math.max(0, rig.rReach - s);
+  m.pole = p;
+}
+
 const CACHE = new Map();
 
 /** The style of tower `type` for the model `m` just built at `level` (null: not a posable figure). */
@@ -434,6 +484,11 @@ function build(base, cls) {
   else if (rn) rest = s.o.rl ? { ...RESTS[rn], l: s.o.rl } : RESTS[rn];
   let hold = HOLDS[hn];
   if (s.o.l || s.o.g != null) hold = { ...hold, ...(s.o.l ? { l: s.o.l } : null), ...(s.o.g != null ? { g: s.o.g } : null) };
+  // A staff or scythe held like a gun: out at the side, standing by the foot at rest (POLES).
+  if (POLES[base] && (cls === 'T' || cls === 'O')) {
+    hold = { ...HOLDS.staff, l: !hold.l || hold.l === 'grip' || hold.l === 'top' ? 'hip' : hold.l };
+    rest = RESTS.staffRest;
+  }
   // A one-handed hold on a model whose left hand is free keeps that hand busy at rest too.
   const fire = cls === 'D' && !['akimbo', 'hop', 'snap', 'spin', 'kick'].includes(s.fire) ? 'akimbo' : s.fire;
   return {
