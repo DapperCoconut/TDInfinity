@@ -232,6 +232,9 @@ export class SimTowerUpdate {
     if (def.traps) return this.updateTrapper(t, def, s);
     if (s.bomber) return this.updateBomber(t, def, s); // Bomber: lobs bombs, lays them while idle
     if (s.incin) return this.updateIncinerator(t, def, s, dt); // Incinerator: Heat and burns
+    if (s.taser) return this.updateTaser(t, s); // Taser: Electrocute zaps
+    if (s.shin) return this.updateShinobi(t, s, dt); // Shinobi: Blade Stance
+    if (s.trick) return this.updateTrickster(t, s); // Trickster: knives in a wedge
     // Ice Apprentice Blizzard: its staff can't attack while it lasts.
     if (t.active > 0 && s.abilities?.some((a) => a.key === 'blizzard')) return this.updateBlizzard(t, s, dt);
     if (s.soul && t.choice?.[0] === 'beam') return this.updateSoulBeam(t, s, dt * b.rate); // Spiritual Advocate Beam mode

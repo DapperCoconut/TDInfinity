@@ -130,7 +130,7 @@ export function computeBuffs(towers) {
   const list = [...towers];
   const out = new Map();
   // (VOID's corrupted towers boost nobody.)
-  const sources = list.filter((o) => { if (o.corrupt) return false; const s = TOWERS[o.type].levels[o.level]; return s.aura || s.bless || (s.radio && o.radioT > 0) || (o.active > 0 && rageOf(s)) || s.kin || s.radar || s.globalCdCut || s.bizDisc || s.cliffBoost; });
+  const sources = list.filter((o) => { if (o.corrupt) return false; const s = TOWERS[o.type].levels[o.level]; return s.aura || s.bless || (s.radio && o.radioT > 0) || (o.active > 0 && rageOf(s)) || s.kin || s.radar || s.globalCdCut || s.bizDisc || s.cliffBoost || s.taser?.link || (s.trick?.knife?.red && o.redN > 0); });
   // (Spectre drones boost damage in Support mode; Glowups boost firerate less the farther away a tower is.)
   if (!sources.length) return out;
   const shields = medicShields(list);
@@ -200,6 +200,13 @@ export function computeBuffs(towers) {
       // Surveyor Radar Drone: more range near the drone (it hovers over the Surveyor until moved).
       if (s.radar && (t.x - (o.rx ?? o.x)) ** 2 + (t.z - (o.rz ?? o.z)) ** 2 <= s.radar.radius ** 2) range = Math.max(range, s.radar.boost);
       if (s.cliffBoost && isCliff && d2 <= s.cliffBoost.radius ** 2) cliffs.push(s.cliffBoost);
+      // Trickster Knife Trick (Lv 4+): Red towers near it hit harder for good (Vindicators attack faster).
+      const kn = s.trick?.knife;
+      if (kn?.red && o.redN > 0 && TOWERS[t.type].red && d2 <= s.range * s.range) {
+        const v = Math.min(kn.redMax, kn.red * o.redN);
+        if (TOWERS[t.type].name === 'Vindicator') rate = Math.max(rate, v);
+        else merc = Math.max(merc, v);
+      }
       if (s.bizDisc && d2 <= s.range * s.range) {
         biz += s.bizDisc.pct;
         bizCap = Math.max(bizCap, s.bizDisc.cap);
@@ -272,6 +279,23 @@ export function computeBuffs(towers) {
         killCash,
         seeHidden,
       });
+    }
+  }
+  // Taser Volt Link: other Tasers within 1.5x its range get `link` of its boosts. (If they already
+  // have as much from the same tower, nothing changes: the bigger one counts, not both.)
+  const links = sources.filter((o) => TOWERS[o.type].levels[o.level].taser?.link);
+  const own = new Map(links.map((o) => [o.id, out.get(o.id)]));
+  for (const o of links) {
+    const ob = own.get(o.id);
+    if (!ob) continue;
+    const s = TOWERS[o.type].levels[o.level];
+    const share = s.taser.link;
+    const r = s.range * 1.5 * ob.range;
+    const lift = (mine, theirs) => Math.max(mine, 1 + share * (theirs - 1));
+    for (const t of list) {
+      if (t === o || !TOWERS[t.type].levels[t.level].taser || (t.x - o.x) ** 2 + (t.z - o.z) ** 2 > r * r) continue;
+      const tb = out.get(t.id) ?? NO_BUFF;
+      out.set(t.id, { ...tb, dmg: lift(tb.dmg, ob.dmg), rate: lift(tb.rate, ob.rate), range: lift(tb.range, ob.range) });
     }
   }
   return out;

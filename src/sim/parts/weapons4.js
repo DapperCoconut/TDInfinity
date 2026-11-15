@@ -1028,4 +1028,146 @@ export class SimWeapons4 {
     e.cryoT = 5;
     if (c.slow) this.applySlime(e, { slow: c.slow, time: secs * 2, boss: 1 });
   }
+
+  // ---------------------------------------------------------------- Taser, Shinobi, Trickster
+
+  /** Taser: zaps its target (and from Lv 2 every zombie in `radius` around it). */
+  updateTaser(t, s) {
+    const target = this.findTarget(t, s, t.x, t.z, s.range, null);
+    if (target) t.yaw = Math.atan2(target.x - t.x, target.z - t.z);
+    if (!target || t.cooldown > 0) {
+      t.cooldown = Math.max(0, t.cooldown);
+      return;
+    }
+    t.cooldown += s.cooldown;
+    const hit = [target];
+    if (s.radius) {
+      const det = this.detects(t, s);
+      for (const e of this.enemies.values()) if (e !== target && canHit(det, e) && (e.x - target.x) ** 2 + (e.z - target.z) ** 2 <= s.radius * s.radius) hit.push(e);
+    }
+    this.events.push({ k: 'zap', t: t.id, es: hit.map((e) => e.id) });
+    for (const e of hit) this.taserHit(t, s, e, e === target);
+  }
+
+  /**
+   * One Taser zap: more damage the more Electrocuted the zombie is (from any Taser), then more
+   * Electrocute, which wears off 5s after this zap. Small zombies it hits head-on are slowed, a bit less each time.
+   */
+  taserHit(t, s, e, main) {
+    const tz = s.taser;
+    const el = e.elec || 0;
+    this.damage(t, e, s.damage * Math.min(tz.max, 1 + el));
+    if (!this.enemies.has(e.id)) return;
+    // Each zap's Electrocute lasts 5s on its own (e.elecS: [seconds left, amount]).
+    const add = Math.min(tz.per, Math.max(0, tz.max - 1 - el)); // up to this Taser's max
+    if (add > 0) {
+      (e.elecS ??= []).push([5, add]);
+      e.elec = el + add;
+    }
+    const sl = tz.slow;
+    if (sl && main && !e.boss && (ENEMIES[e.type].scale ?? 1) <= 1.2) {
+      const pct = sl.pct - sl.fade * (e.taseN || 0);
+      e.taseN = (e.taseN || 0) + 1;
+      if (pct > 0) this.applySlime(e, { slow: pct, time: sl.time, boss: 0 });
+    }
+  }
+
+  /** Shinobi: the Blade Stance button. Bladestorm: it starts with a big cut on every zombie in range. */
+  startBladeStance(t, s, ab) {
+    t.bladeT = ab.duration;
+    t.stunT = 0;
+    t.immuneT = Math.max(t.immuneT || 0, ab.duration);
+    const sh = s.shin;
+    if (!sh.unsheath) return;
+    const b = buffOf(this.buffs, t.id);
+    const reach = s.range * b.range;
+    const det = this.detects(t, s);
+    for (const e of [...this.enemies.values()]) {
+      if (!canHit(det, e) || (e.x - t.x) ** 2 + (e.z - t.z) ** 2 > reach * reach) continue;
+      this.damage(t, e, s.damage * sh.unsheath * (1 + (sh.blade || 0)));
+    }
+    this.events.push({ k: 'gsword', id: t.id, x: r2(t.x), z: r2(t.z), r: reach, c: 0xff1744 });
+  }
+
+  /**
+   * Shinobi: only attacks during Blade Stance (t.bladeT) or Senseless Stance (t.senseless).
+   * Mental Focus (t.focus) builds while Blade Stance is ready and makes it swing faster.
+   */
+  updateShinobi(t, s, dt) {
+    const sh = s.shin;
+    t.focus ??= 0;
+    if (t.bladeT > 0 && (t.bladeT -= dt) <= 0) {
+      t.bladeT = 0;
+      t.focus = 0; // Mental Focus is spent when Blade Stance ends
+    }
+    if (t.senseless) t.focus = Math.max(0, t.focus - dt); // fades fast
+    else if (sh.focus && !(t.bladeT > 0) && !(t.cd.bladeStance > 0)) t.focus = Math.min(sh.focusMax, t.focus + sh.focus * dt);
+    t.charge = sh.focusMax ? t.focus / sh.focusMax : 0;
+    const blade = t.bladeT > 0;
+    if (!blade && !t.senseless) {
+      t.cooldown = Math.max(0, t.cooldown);
+      return;
+    }
+    if (t.focus > 0) t.cooldown -= dt * buffOf(this.buffs, t.id).rate * t.focus; // Mental Focus: faster swings
+    const target = this.findTarget(t, s, t.x, t.z, s.range, null);
+    if (target) t.yaw = Math.atan2(target.x - t.x, target.z - t.z);
+    if (!target || t.cooldown > 0) {
+      t.cooldown = Math.max(0, t.cooldown);
+      return;
+    }
+    t.cooldown += s.cooldown;
+    let dmg = s.damage * (blade ? 1 + (sh.blade || 0) : 1);
+    if (sh.hpPct) dmg += Math.min(sh.hpPct * target.hp, sh.hpCap * dmg); // Sensing Weakness
+    this.shoot(t, target, dmg);
+    if (sh.split) {
+      // To Cut Through Life and Soul: `split` damage shared by every zombie in range.
+      const list = this.findTargets(t, s, Infinity);
+      const each = sh.split * (blade ? sh.splitBlade : 1) / Math.max(1, list.length);
+      for (const e of list) if (this.enemies.has(e.id)) this.damage(t, e, each);
+    }
+  }
+
+  /** Trickster: how many other Red towers its owner has in their loadout (or has built, without one). */
+  redCount(t) {
+    const p = this.players.get(t.owner);
+    const keys = p?.loadout ?? [...new Set([...this.towers.values()].filter((o) => o.owner === t.owner).map((o) => o.type))];
+    return keys.filter((k) => k !== t.type && TOWERS[k]?.red).length;
+  }
+
+  /** Trickster Knife Trick: shrugs off a stun, 1s stun immunity, +range (and Red tower boosts from Lv 4). */
+  knifeTrick(t, k) {
+    t.stunT = 0;
+    t.immuneT = Math.max(t.immuneT || 0, 1);
+    t.knifeN = Math.min(k.max, (t.knifeN || 0) + 1);
+    if (k.red) t.redN = (t.redN || 0) + 1;
+    t.charge = t.knifeN / k.max;
+    this.events.push({ k: 'block', id: t.id, x: t.x, z: t.z, p: 1 });
+  }
+
+  /** Trickster: knives at up to `trick.targets` zombies in a wedge toward its target (a bit past its range too). */
+  updateTrickster(t, s) {
+    const tr = s.trick;
+    const range = s.range * (1 + (t.knifeN || 0) * (tr.knife?.range || 0));
+    const target = this.findTarget(t, s, t.x, t.z, range, null);
+    if (target) t.yaw = Math.atan2(target.x - t.x, target.z - t.z);
+    if (!target || t.cooldown > 0) {
+      t.cooldown = Math.max(0, t.cooldown);
+      return;
+    }
+    t.cooldown += s.cooldown;
+    const det = this.detects(t, s);
+    const reach = range * 1.3;
+    const near = [];
+    for (const e of this.enemies.values()) {
+      if (e === target || !canHit(det, e)) continue;
+      const d2 = (e.x - t.x) ** 2 + (e.z - t.z) ** 2;
+      if (d2 > reach * reach) continue;
+      const a = Math.atan2(e.x - t.x, e.z - t.z) - t.yaw;
+      if (Math.abs(Math.atan2(Math.sin(a), Math.cos(a))) <= 0.45) near.push({ e, d2 });
+    }
+    near.sort((a, b) => a.d2 - b.d2);
+    const hit = [target, ...near.slice(0, tr.targets - 1).map((n) => n.e)];
+    const dmg = s.damage * (1 + (tr.scarlet || 0) * this.redCount(t)) * (hit.length === 1 && tr.single ? 1 + tr.single : 1);
+    for (const e of hit) this.shoot(t, e, dmg);
+  }
 }

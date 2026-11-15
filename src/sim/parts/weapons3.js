@@ -798,6 +798,11 @@ export class SimWeapons3 {
       if (kind === 'stun' && stunImmune(t)) continue;
       if (buffOf(this.buffs, t.id).invuln || t.invulnT > 0) continue; // Medigun Medic Uber / Combat Drone Shield
       if (kind === 'stun') {
+        const kn = TOWERS[t.type].levels[t.level].trick?.knife; // Trickster Knife Trick
+        if (kn) {
+          this.knifeTrick(t, kn);
+          continue;
+        }
         // Warden riot shield: blocks the stun, then double damage and stun immune for a while.
         // Gladiator parry: blocks the stun, but it stops attacking for a moment.
         if (TOWERS[t.type].parry) {

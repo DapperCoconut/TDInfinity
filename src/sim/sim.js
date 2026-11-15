@@ -250,6 +250,14 @@ export class Sim {
       if (!e.vulnT) e.vuln = 0;
       if (e.physWeakT > 0 && (e.physWeakT -= sd) <= 0) e.physWeak = 0; // Berserker Physical Weakness wore off
       if (e.gmT > 0 && (e.gmT -= sd) <= 0) e.gm = 0; // Ghost Mark wore off
+      if (e.elecS?.length) {
+        // Taser Electrocute: each zap's part wears off on its own.
+        for (const st of e.elecS) st[0] -= sd;
+        if (e.elecS[0][0] <= 0) {
+          e.elecS = e.elecS.filter((st) => st[0] > 0);
+          e.elec = e.elecS.reduce((n, st) => n + st[1], 0);
+        }
+      }
       if (e.cryoT > 0) e.cryoT -= sd; // Cryolator: a refreeze is shorter until this runs out
       if (e.artsT > 0 && (e.artsT -= sd) <= 0) e.arts = 0; // Mage Magical ARTS wore off
       if (e.neuroT) e.neuroT = Math.max(0, e.neuroT - sd);
@@ -647,6 +655,7 @@ export class Sim {
         this.setTowerLevelHp(t);
         t.spent += cost;
         if (next.chargeRate) t.beamT = 0; // Prophet: an upgrade resets its charge
+        if (next.selfStun) this.hexTowers(t.x, t.z, 0.5, 'stun', next.selfStun, false, (o) => o === t); // Trickster Oopsie Daisy! (Knife Trick shrugs it off)
         if (next.overload) p.overload = (p.overload || 0) + next.overload; // Eradicator: ΘVERLOAD for good
         t.costRoll = Math.random(); // Chaos Jester: a new random price for the next upgrade
         if (next.ammo) {
@@ -785,6 +794,7 @@ export class Sim {
         if (ab.key === 'crossbow' && Math.hypot(Number(m.x) - t.x, Number(m.z) - t.z) > ab.reach) return `Too far! ${ab.name} reaches ${ab.reach} studs`;
         if (ab.key === 'chargedThrow' && ![...this.enemies.values()].some((e) => canHit({ hidden: !!s.hidden, flying: true, lead: true }, e))) return 'No zombie to throw at';
         if (ab.key === 'raise' && !this.buildsOf(t.id, 'grave').length) return 'No gravestones to raise yet';
+        if (ab.key === 'senseless' && t.bladeT > 0) return 'Not during Blade Stance';
         if (ab.key === 'massLethality' && (t.mlOn || !(t.slashes > 0))) return t.mlOn ? 'Mass Lethality is already on' : 'No Slashes saved yet';
         if (ab.key === 'bounty' && !this.bountyTarget(t, s)) return 'No zombie in range to put a bounty on';
         if (ab.key === 'kritz' && !this.chargeTarget(t, s, ab)) return 'No tower in range to Kritz';

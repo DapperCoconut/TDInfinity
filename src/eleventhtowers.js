@@ -177,6 +177,9 @@ const overdrive = (boost, cooldown) => ({ key: 'cta', name: 'System Overdrive', 
 const COOL_DOWN = { key: 'coolDown', name: 'Cool Down', desc: 'On: stops attacking and cools down fast. Press again to switch it off', cooldown: 1 };
 // Smuggler Hunting Crew (towers named in `names` get `fav`, the rest `boost`).
 const MASS_LETHALITY = { key: 'massLethality', name: 'Mass Lethality', desc: 'Spends its Slashes to cut every zombie near it, then Echo Slashes', cooldown: 20 };
+// Shinobi abilities (their "$N" prices are ignored). Blade Stance: it can attack for `duration` s.
+const BLADE_STANCE = { key: 'bladeStance', name: 'Blade Stance', desc: 'Draws its blade: can\'t be stunned and attacks for 15s', cooldown: 30, duration: 15 };
+const SENSELESS = { key: 'senseless', name: 'Senseless Stance', desc: 'On: attacks all the time, but Mental Focus stays at 0. Press again to switch it off', cooldown: 0.3 };
 const CREW = { boost: 0.1, fav: 0.25, names: ['Bandit', 'Archer', 'Thief', 'Mercenary', 'Mercenary Base', 'Bomber', 'Hunter', 'Berserker'], cash: 0.2, max: 0.5 };
 
 export const ELEVENTH_TOWERS = {
@@ -299,6 +302,7 @@ export const ELEVENTH_TOWERS = {
     altOf: 'slugger',
     form: 'Berserker',
     shards: 1,
+    red: true, // a Red tower (Trickster's Scarlet Red)
     price: 0,
     cost: 750,
     limit: 10,
@@ -499,6 +503,7 @@ export const ELEVENTH_TOWERS = {
     altOf: 'assassin',
     form: 'Spearman',
     shards: 1,
+    red: true, // a Red tower (Trickster's Scarlet Red)
     price: 0,
     cost: 450,
     limit: Infinity,
@@ -647,6 +652,7 @@ export const ELEVENTH_TOWERS = {
     altOf: 'commando',
     form: 'Blaster',
     shards: 1,
+    red: true, // a Red tower (Trickster's Scarlet Red)
     price: 0,
     cost: 1750,
     limit: Infinity,
@@ -796,6 +802,7 @@ export const ELEVENTH_TOWERS = {
     altOf: 'dj',
     form: 'Smuggler',
     shards: 1,
+    red: true, // a Red tower (Trickster's Scarlet Red)
     price: 0,
     cost: 700,
     limit: 4,
@@ -860,6 +867,7 @@ export const ELEVENTH_TOWERS = {
     altOf: 'knifer',
     form: 'Vindicator',
     shards: 1,
+    red: true, // a Red tower (Trickster's Scarlet Red)
     price: 0,
     cost: 1300,
     melee: true,
@@ -912,6 +920,103 @@ export const ELEVENTH_TOWERS = {
         cryo: { freeze: 2.2, slow: 0.25 } },
       { name: 'Glacier Blast', desc: '+145 damage, freezes for 3s, then slows by 35%. Freezing the same zombie again no longer freezes it for less.', cost: 8600, damage: 200, cooldown: 4.5, range: 25.6, cliff: { range: 32 }, hidden: true,
         cryo: { freeze: 3, slow: 0.35, stack: true } },
+    ],
+  },
+  // Taser (alternate Tesla form): single zaps (splash from Lv 2). taser { per, max, slow, link }:
+  // every hit gives the zombie Electrocute (e.elec/e.elecT, see taserHit in sim/parts/weapons4.js):
+  // +`per` damage taken from every Taser (each zap's part lasts 5s), up to `max` x damage. slow { pct, time, fade }:
+  // small zombies (not bosses) are slowed by `pct`, `fade` less each time. link: Volt Link, other
+  // Tasers within 1.5x its range get `link` of its boosts (computeBuffs in sim/parts/shared.js).
+  teslaTaser: {
+    name: 'Taser',
+    altOf: 'tesla',
+    form: 'Taser',
+    shards: 1,
+    price: 0,
+    cost: 450,
+    lead: false,
+    blurb: 'An alternate Tesla that zaps one zombie at a time. Every zap Electrocutes it: for 5s it takes more damage from every Taser (up to 3x, 6x from Lv 3). Weak alone, strong in a group of Tasers. From Lv 2 its zaps hit an area, and from Lv 4 Volt Link shares its boosts with other Tasers.',
+    tip: 'Build several Tasers together: each zap makes the next one hit harder.',
+    levels: [
+      { name: 'Taser', desc: 'Zaps one zombie for 3 damage every 3s (up to 9 on Electrocuted zombies).', damage: 3, cooldown: 3, range: 9, hidden: false,
+        taser: { per: 0.25, max: 3 } },
+      { name: 'Taser', desc: '+1 damage (4-12). Slows small zombies by 50% for 1s, 4% less each time it slows the same one.', cost: 425, damage: 4, cooldown: 3, range: 9, hidden: false,
+        taser: { per: 0.25, max: 3, slow: { pct: 0.5, time: 1, fade: 0.04 } } },
+      { name: 'Lightning Cannon', desc: '+5 damage (9-27), +6 range, and its zaps hit an area.', cost: 2300, damage: 9, cooldown: 3, range: 15, radius: 4, hidden: false,
+        taser: { per: 0.25, max: 3, slow: { pct: 0.5, time: 1, fade: 0.04 } } },
+      { name: 'Electroshock', desc: '+10 damage (19-114). Electrocute goes up to 6x, and each zap adds more of it.', cost: 4800, damage: 19, cooldown: 3, range: 15, radius: 4, hidden: false,
+        taser: { per: 0.5, max: 6, slow: { pct: 0.5, time: 1, fade: 0.04 } } },
+      { name: 'Volt Link', desc: '+3 range, +2 damage (21-126), bigger area. Volt Link: other Tasers near it get 1/3 of its boosts (not ones they already get from the same tower).', cost: 5000, damage: 21, cooldown: 3, range: 18, radius: 5, hidden: false,
+        taser: { per: 0.5, max: 6, slow: { pct: 0.5, time: 1, fade: 0.04 }, link: 1 / 3 } },
+      { name: 'Thunder Storm', desc: '+11 damage (32-192), zaps faster (every 3s > 2.5s), and Volt Link shares 2/3 of its boosts.', cost: 9500, damage: 32, cooldown: 2.5, range: 18, radius: 5, hidden: false,
+        taser: { per: 0.5, max: 6, slow: { pct: 0.5, time: 1, fade: 0.04 }, link: 2 / 3 } },
+    ],
+  },
+  // Shinobi (alternate Gladiator form): only attacks during Blade Stance (or Senseless Stance).
+  // shin { focus, focusMax, hpPct, hpCap, unsheath, blade, split } (see updateShinobi in
+  // sim/parts/weapons4.js): Mental Focus +`focus` firerate a second while Blade Stance is ready
+  // (up to `focusMax`); hits do +`hpPct` of the zombie's health (at most `hpCap` x damage);
+  // `unsheath`: Blade Stance starts with that x damage on every zombie in range; `blade`: more
+  // damage in Blade Stance; `split`: every swing also does that much, shared by every zombie in range.
+  gladiatorShinobi: {
+    name: 'Shinobi',
+    altOf: 'gladiator',
+    form: 'Shinobi',
+    shards: 1,
+    price: 0,
+    cost: 600,
+    melee: true,
+    flying: false,
+    lead: true,
+    blurb: 'An alternate Gladiator that waits with its blade sheathed. It only attacks during Blade Stance (15s, every 30s), but waiting builds Mental Focus to swing faster. Its hits do extra damage based on the zombie\'s health, so it is great for a boss.',
+    tip: 'Save Blade Stance for the zombie your other towers can\'t stop.',
+    levels: [
+      { name: 'Shinobi', desc: 'Only attacks during Blade Stance: 6 damage every 1.1s for 15s. Can\'t be stunned meanwhile.', damage: 6, cooldown: 1.1, range: 6, hidden: true,
+        shin: {}, abilities: [BLADE_STANCE] },
+      { name: 'Mental Focus', desc: '+4 damage. While Blade Stance is ready it gains +2% firerate a second (up to 60%), until Blade Stance ends.', cost: 900, damage: 10, cooldown: 1.1, range: 6, hidden: true,
+        shin: { focus: 0.02, focusMax: 0.6 }, abilities: [BLADE_STANCE] },
+      { name: 'Sensing Weakness', desc: '+2 damage. Hits do +2% of the zombie\'s health (up to 3x its damage), and ignore half of any resistance.', cost: 1500, damage: 12, cooldown: 1.1, range: 6, hidden: true, resistPierce: 0.5,
+        shin: { focus: 0.02, focusMax: 0.6, hpPct: 0.02, hpCap: 3 }, abilities: [BLADE_STANCE] },
+      { name: 'Bladestorm', desc: '+14 damage. Blade Stance starts with a 10x damage cut on every zombie in range. Mental Focus goes up to 100%.', cost: 5800, damage: 26, cooldown: 1.1, range: 6, hidden: true, resistPierce: 0.5,
+        shin: { focus: 0.02, focusMax: 1, hpPct: 0.02, hpCap: 3, unsheath: 10 }, abilities: [BLADE_STANCE] },
+      { name: 'Demonblade', desc: 'Swings faster (every 1.1s > 0.9s), +50% damage in Blade Stance, and hits do +10% of the zombie\'s health. Senseless Stance: attacks all the time, but without Mental Focus.', cost: 8500, damage: 26, cooldown: 0.9, range: 6, hidden: true, resistPierce: 0.5,
+        shin: { focus: 0.02, focusMax: 1, hpPct: 0.1, hpCap: 3, unsheath: 10, blade: 0.5 }, abilities: [BLADE_STANCE, SENSELESS] },
+      { name: 'To Cut Through Life and Soul', desc: 'Every swing also does 200 damage shared by all zombies in range (a third of that in Blade Stance). Health damage up to 6x, and +100% damage in Blade Stance.', cost: 18000, damage: 26, cooldown: 0.9, range: 6, hidden: true, resistPierce: 0.5,
+        shin: { focus: 0.02, focusMax: 1, hpPct: 0.1, hpCap: 6, unsheath: 10, blade: 1, split: 200, splitBlade: 0.33 }, abilities: [BLADE_STANCE, SENSELESS] },
+    ],
+  },
+  // Trickster (alternate Jester form): throws knives at up to trick.targets zombies in a wedge in
+  // front of it (it can reach a bit past its range). trick { targets, scarlet, single, knife }:
+  // Scarlet Red, +`scarlet` damage for every other Red tower in its owner's loadout; `single`:
+  // more damage when it hits only 1; knife { range, max, red, redMax }: Knife Trick, when stunned
+  // it shrugs it off (1s stun immunity) and gets +`range` range (up to `max` times); with `red`,
+  // nearby Red towers get +`red` damage per Knife Trick (Vindicators firerate), up to `redMax`.
+  // selfStun (level): this upgrade stuns it.
+  jesterTrickster: {
+    name: 'Trickster',
+    altOf: 'jester',
+    form: 'Trickster',
+    shards: 1,
+    price: 0,
+    cost: 900,
+    red: true,
+    flying: true,
+    lead: false,
+    blurb: 'An alternate Jester that throws knives at 2 zombies in a wedge in front of it (up to 4 later), and can hit some just past its range. It gets stronger with other Red towers in your loadout, and from Lv 2 its Knife Trick turns stuns into more range.',
+    tip: 'Bring other Red towers (Berserker, Blaster, Vindicator, Smuggler, Spearman) and put it where zombies stun towers.',
+    levels: [
+      { name: 'Trickster', desc: 'Throws knives at 2 zombies in front of it for 2 damage every 0.8s.', damage: 2, cooldown: 0.8, range: 12, hidden: false,
+        trick: { targets: 2 } },
+      { name: 'Scarlet Bane', desc: '+2 damage and hidden detection. Scarlet Red: +5% damage for every other Red tower in your loadout.', cost: 950, damage: 4, cooldown: 0.8, range: 12, hidden: true,
+        trick: { targets: 2, scarlet: 0.05 } },
+      { name: 'Smoke and Mirrors', desc: '+1 damage, 3 zombies, throws faster (0.8s > 0.7s). Knife Trick: when stunned it shrugs it off and gets +10% range (up to 4 times).', cost: 1650, damage: 5, cooldown: 0.7, range: 12, hidden: true,
+        trick: { targets: 3, scarlet: 0.05, knife: { range: 0.1, max: 4 } } },
+      { name: 'Butterfly Red', desc: '+4 range, +3 damage, and +30% damage when it hits only 1 zombie.', cost: 2400, damage: 8, cooldown: 0.7, range: 16, hidden: true,
+        trick: { targets: 3, scarlet: 0.05, single: 0.3, knife: { range: 0.1, max: 4 } } },
+      { name: 'Our Scarlet Masks', desc: '+1 damage, 4 zombies, throws faster (0.7s > 0.5s), and Scarlet Red is doubled. Each Knife Trick gives nearby Red towers +10% damage for good (up to 30%; Vindicators get firerate).', cost: 5750, damage: 9, cooldown: 0.5, range: 16, hidden: true,
+        trick: { targets: 4, scarlet: 0.1, single: 0.3, knife: { range: 0.1, max: 4, red: 0.1, redMax: 0.3 } } },
+      { name: 'Oopsie Daisy!', desc: 'It stuns itself for 6s. (That\'s all this upgrade does.)', cost: 4000, damage: 9, cooldown: 0.5, range: 16, hidden: true, selfStun: 6,
+        trick: { targets: 4, scarlet: 0.1, single: 0.3, knife: { range: 0.1, max: 4, red: 0.1, redMax: 0.3 } } },
     ],
   },
   mage: {
