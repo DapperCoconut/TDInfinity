@@ -839,7 +839,7 @@ export class SimWeapons3 {
   /** Every unit on this map takes `dmg` (Pyrotechnics). */
   hurtUnits(dmg) {
     for (const u of [...this.units.values()]) {
-      if (u.ghostT > 0) continue; // Gold Commander cyber tank ghost
+      if (u.ghostT > 0 || u.def.untouchable) continue; // Gold Commander cyber tank ghost; Bliss of Finality
       u.hp -= dmg;
       if (u.def.soldiers) u.alive = Math.max(0, Math.ceil(u.hp / u.def.hp - 1e-6));
       if (u.hp <= 0 && !u.def.ghost) this.destroyUnit(u, this.towers.get(u.tower) ?? null); // a cyber tank turns into a ghost on its next update
@@ -849,7 +849,7 @@ export class SimWeapons3 {
   /** Units within `r` of (x, z) take `dmg` (Hard mode slams, Necrotic Skeletons, the Fallen King). */
   hurtUnitsNear(x, z, r, dmg, filter = null) {
     for (const u of [...this.units.values()]) {
-      if (u.ghostT > 0 || (u.x - x) ** 2 + (u.z - z) ** 2 > r * r || (filter && !filter(u))) continue;
+      if (u.ghostT > 0 || u.def.untouchable || (u.x - x) ** 2 + (u.z - z) ** 2 > r * r || (filter && !filter(u))) continue;
       u.hp -= dmg;
       if (u.def.soldiers) u.alive = Math.max(0, Math.ceil(u.hp / u.def.hp - 1e-6));
       if (u.hp <= 0 && !u.def.ghost) this.destroyUnit(u, this.towers.get(u.tower) ?? null);

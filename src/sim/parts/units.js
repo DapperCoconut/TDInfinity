@@ -190,8 +190,8 @@ export class SimUnits {
     };
     if (TOWERS[t.type].noBuff) u.rate = 1; // Elf Camp / Biologist: support towers can't boost them
     this.placeUnit(u);
-    if (def.free) {
-      // Crows, bees and Volt Points live off the path: they start at their tower.
+    if (def.free || def.chase) {
+      // Crows, bees and Volt Points live off the path: they start at their tower (so does Bliss of Finality).
       u.x = t.x;
       u.z = t.z;
     }
@@ -245,6 +245,7 @@ export class SimUnits {
         continue;
       }
       if (d.life && (u.life -= dt) <= 0) {
+        if (d.sweep) this.sweepBeam(u, tower, true); // Bliss of Finality fires once more as it leaves (no damage)
         this.units.delete(u.id); // a plant wilts / an Ice Turret melts
         this.events.push({ k: 'udie', u: u.id, x: r2(u.x), z: r2(u.z), wilt: 1 });
         continue;
@@ -267,6 +268,7 @@ export class SimUnits {
         }
       }
       if (d.builds) this.buildAlong(u, tower); // Ducky Engineer sentries
+      if (d.chase) this.chaseFly(u, dt); // Bliss of Finality flies after the first zombie
       u.cooldown = Math.max(-dt, u.cooldown - dt * u.rate);
       u.gap = Math.max(0, u.gap - dt);
       const g = d.gun;
@@ -381,6 +383,12 @@ export class SimUnits {
         }
       }
       u.pauseT = Math.max(0, u.pauseT - dt);
+      if (d.missiles) this.blissMissiles(u, tower, dt);
+      if (d.sweep) {
+        u.sweepT = (u.sweepT ?? d.sweep.every) - dt * u.rate;
+        if (u.sweepT <= 0 && this.sweepBeam(u, tower, false)) u.sweepT = d.sweep.every;
+      }
+      if (d.chase) continue; // it flies, so it never drives the path or crashes
 
       // Squads stop while they have something to shoot; vehicles keep driving.
       u.speed = (d.soldiers && (target || u.healing)) || u.pauseT > 0 ? 0 : target && d.slowFire ? d.speed * 0.4 : d.speed; // slowFire: Turret Trucks, Void Port carts
@@ -488,6 +496,66 @@ export class SimUnits {
   }
 
   /** The zombie closest to the castle within `range` of the unit. Units only see hidden / flying / lead zombies if their def says so. */
+  /** Bliss of Finality: flies toward the first zombie it can see (anywhere) and hovers over it. */
+  chaseFly(u, dt) {
+    const e = this.unitTarget(u, 1e9);
+    if (!e) return;
+    const dx = e.x - u.x;
+    const dz = e.z - u.z;
+    const d = Math.hypot(dx, dz);
+    const step = Math.min(Math.max(0, d - 2), u.def.speed * dt);
+    if (d > 0.01) {
+      u.x += (dx / d) * step;
+      u.z += (dz / d) * step;
+      u.flyYaw = Math.atan2(dx, dz);
+    }
+  }
+
+  /** Wing missiles: a volley of homing splash missiles shared out over the zombies in front. */
+  blissMissiles(u, tower, dt) {
+    const m = u.def.missiles;
+    u.missileT = (u.missileT ?? m.every / 2) - dt * u.rate;
+    if (u.missileT > 0) return;
+    const det = unitDetection(u.def);
+    const list = [...this.enemies.values()].filter((e) => canHit(det, e)).sort((a, b) => b.dist - a.dist).slice(0, m.count);
+    if (!list.length) return;
+    u.missileT = m.every;
+    const shots = [];
+    for (let i = 0; i < m.count; i++) {
+      const e = list[i % list.length];
+      const time = 0.7 + i * 0.05;
+      this.shells.push({ tower: u.tower, enemy: e.id, x: e.x, z: e.z, time, damage: m.damage, radius: m.radius, det, main: e.id });
+      shots.push(e.id);
+    }
+    this.events.push({ k: 'bliss', u: u.id, m: shots });
+  }
+
+  /**
+   * Sweeper Beam: `count` blasts in a row along the track, from the first zombie back toward the
+   * start, one after another. `leaving`: the last sweep as the ship goes, for show only.
+   * Returns false when there is nothing to fire at.
+   */
+  sweepBeam(u, tower, leaving) {
+    const w = u.def.sweep;
+    const e = this.unitTarget(u, 1e9);
+    if (!e && !leaving) return false;
+    const pts = [];
+    const p = {};
+    for (let i = 0; i < w.count; i++) {
+      const time = 0.4 + i * 0.06;
+      if (e) {
+        path.at(Math.max(0, e.dist - i * w.gap), p, e.route);
+      } else {
+        p.x = u.x + Math.sin(u.flyYaw ?? 0) * i * w.gap;
+        p.z = u.z + Math.cos(u.flyYaw ?? 0) * i * w.gap;
+      }
+      pts.push(r2(p.x - u.x), r2(p.z - u.z)); // from the ship (Versus moves x/z per lane)
+      if (!leaving) this.shells.push({ tower: u.tower, x: p.x, z: p.z, time, damage: w.damage, radius: w.radius, det: unitDetection(u.def) });
+    }
+    this.events.push({ k: 'bliss', u: u.id, s: pts, x: r2(u.x), z: r2(u.z), ...(leaving ? { fake: 1 } : {}) });
+    return true;
+  }
+
   unitTarget(u, range, def = u.def) {
     const r2max = range * range;
     const det = unitDetection(def);

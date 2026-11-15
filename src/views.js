@@ -1795,6 +1795,12 @@ export class UnitView {
   }
 
   /** World position of the unit's (first) muzzle. */
+  /** Where a part of the model (a missile pod, the railcannon tip) is in the world. */
+  partPosition(o, out) {
+    this.root.updateMatrixWorld(true);
+    return simPos(o, out);
+  }
+
   muzzlePosition(out) {
     this.root.updateMatrixWorld(true);
     return simPos(this.m.muzzles[0] ?? this.root, out);
@@ -1804,7 +1810,8 @@ export class UnitView {
   shoot(enemyView, effects, audio, i, cannon, rail) {
     const m = this.m;
     // A cannon shot from a model with no cannon of its own (mortar carts...) comes from its gun.
-    const muzzle = (cannon ? m.cannon : null) ?? m.muzzles[(i ?? this.shots++) % (m.muzzles.length || 1)];
+    // m.cannons: two big guns taking turns (Bliss of Finality); m.rotate: its four miniguns take turns.
+    const muzzle = (cannon ? (m.cannons ? m.cannons[(this.cshots = (this.cshots || 0) + 1) % m.cannons.length] : m.cannon) : null) ?? m.muzzles[(m.rotate ? this.shots++ : i ?? this.shots++) % (m.muzzles.length || 1)];
     if (!muzzle) return;
     this.root.updateMatrixWorld(true);
     const from = simPos(muzzle, new THREE.Vector3());
@@ -1820,7 +1827,7 @@ export class UnitView {
         effects.blade({ ox: from.x, oz: from.z, tx: tmp.x, tz: tmp.z }, 0.2, from.y, { ...m.arrow, knife: true });
       } else {
         // Laser Behemoth railguns: a thick glowing beam right across the map.
-        effects.tracer(from, tmp, cannon ? 0xff9100 : m.tracer, cannon ? 0.3 : rail ? 0.5 : undefined);
+        effects.tracer(from, tmp, cannon ? m.cannonTracer ?? 0xff9100 : m.tracer, cannon ? 0.3 : rail ? 0.5 : undefined);
       }
       enemyView.hit();
     }

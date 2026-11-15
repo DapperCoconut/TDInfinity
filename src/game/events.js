@@ -350,6 +350,37 @@ export class GameEvents {
           audio.flame();
           break;
         }
+        case 'bliss': {
+          // Bliss of Finality: a missile volley from the wing pods, or the Sweeper Beam walking
+          // its blasts down the track (fake: the last sweep as it leaves, for show).
+          const v = this.unitViews.get(ev.u);
+          if (!v) break;
+          if (ev.m) {
+            ev.m.forEach((id, i) =>
+              this.effects.later(i * 0.05, () => {
+                const ez = this.enemyViews.get(id);
+                if (!ez || !this.unitViews.has(ev.u)) return;
+                const from = v.partPosition(v.m.pods[i % v.m.pods.length], new THREE.Vector3());
+                this.effects.lob(from, ez.aimPoint(new THREE.Vector3()), 0.65, { color: 0xeceff1, size: 0.3, arc: 2, glowing: true });
+              }),
+            );
+            audio.lob('grenadier');
+          }
+          if (ev.s) {
+            const from = v.partPosition(v.m.rail, new THREE.Vector3());
+            this.effects.flash(from, 0x40c4ff, 2.5);
+            audio.boom(4);
+            for (let i = 0; i < ev.s.length / 2; i++) {
+              const to = new THREE.Vector3(ev.x + ev.s[i * 2], 0.3, ev.z + ev.s[i * 2 + 1]);
+              this.effects.later(0.4 + i * 0.06, () => {
+                if (!this.unitViews.has(ev.u)) return;
+                this.effects.tracer(v.partPosition(v.m.rail, new THREE.Vector3()), to, 0x18ffff, 0.6);
+                if (ev.fake) this.effects.explosion(to, 3);
+              });
+            }
+          }
+          break;
+        }
         case 'ulob': {
           // Mercenary Grenadier: a grenade arcing from the unit to where the zombie will be.
           const v = this.unitViews.get(ev.u);

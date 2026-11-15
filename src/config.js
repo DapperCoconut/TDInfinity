@@ -332,7 +332,7 @@ const tuneCost = (v, m) => {
   // and swapped in its text afterwards. (A level's own description is written by hand, to match.)
   const told = new Map(); // described thing -> Map(old number -> new number, or null if two disagree)
   const scale = (o, dmg, hp, deep, in_ = '', said = null) => {
-    if (!o || typeof o !== 'object' || seen.has(o) || shared.has(o)) return;
+    if (!o || typeof o !== 'object' || seen.has(o) || shared.has(o) || o.noTune) return; // noTune: numbers given exactly
     seen.add(o);
     if (deep && typeof o.desc === 'string') said = o;
     const set = (k, n) => {

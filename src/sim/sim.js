@@ -468,6 +468,7 @@ export class Sim {
     }
     // Unit crashes and the like are never bullets or lasers; unit guns say what they fire.
     this.hitKind = 'none';
+    if (this.globalCds) for (const k in this.globalCds) this.globalCds[k] = Math.max(0, this.globalCds[k] - dt);
     try {
       this.updateUnits(dt);
     } finally {
@@ -751,6 +752,12 @@ export class Sim {
         if (t.curseBy && this.enemies.has(t.curseBy)) return 'Cursed! It can\'t do anything until the enemy that cursed it is gone';
         if (t.corrupt) return 'Corrupted by VOID! It only works for him now. Sell it!';
         if (t.cd[ab.key] > 0) return `${ab.name} is recharging (${Math.ceil(t.cd[ab.key])}s)`;
+        if (ab.vehicle && ab.globalCd) {
+          // Bliss of Finality: one at a time on the whole map, and a wait between any two (cooldown cuts don't help).
+          if ([...this.units.values()].some((u) => u.def === ab.unit || u.def.name === ab.unit.name)) return `Only one ${ab.name} at a time`;
+          const left = this.globalCds?.[ab.key] ?? 0;
+          if (left > 0) return `${ab.name} is recharging for everyone (${Math.ceil(left)}s)`;
+        }
         const price = abilityCost(t, ab); // rising prices / limited uses (Magic Boost, Volt Points...)
         if (price == null) return `${ab.name} is all used up`;
         if (price && p.cash < price) return `Need $${price.toLocaleString()} for ${ab.name}`;
@@ -786,6 +793,7 @@ export class Sim {
         if (price) p.cash -= price;
         if (ab.costs || ab.costStep || ab.maxUses) (t.uses ??= {})[ab.key] = (t.uses[ab.key] || 0) + 1;
         t.cd[ab.key] = ab.cooldown * (1 - buffOf(this.buffs, t.id).cdCut); // EDJ DJ Rave: shorter cooldowns
+        if (ab.vehicle && ab.globalCd) (this.globalCds ??= {})[ab.key] = ab.globalCd;
         this.useAbility(t, s, ab, m);
         this.events.push({ k: 'ability', id: t.id, owner: pid, name: ab.name, x: t.x, z: t.z });
         return null;
@@ -930,7 +938,7 @@ export class Sim {
       // Traps, plus Necromancer gravestones and Engineer sentries: [..., level, facing, health left (0-1), stunned, thermite radius].
       tr: [...this.traps.values()].map((tr) => [tr.id, tr.tower, tr.kind, r2(tr.x), r2(tr.z), tr.land > 0 ? 0 : 1, tr.lvl ?? 0, r2(tr.yaw ?? 0), tr.maxHp ? r2(tr.hp / tr.maxHp) : 1, tr.stunT > 0 ? 1 : 0, tr.kind === 'thermite' || tr.kind === 'gas' || tr.kind === 'thorns' || tr.kind === 'goo' || tr.kind === 'blade' ? tr.radius : 0]),
       // Units: free ones (crows, bees, Volt Points) also send where they are, [x, z].
-      u: [...this.units.values()].map((u) => [u.id, u.tower, u.model, Math.ceil(u.hp), u.maxHp, r2(u.dist), r2(u.lateral), u.alive, r2(u.speed), r2(u.yaw), u.def.free ? [r2(u.x), r2(u.z)] : 0, u.route || 0]),
+      u: [...this.units.values()].map((u) => [u.id, u.tower, u.model, Math.ceil(u.hp), u.maxHp, r2(u.dist), r2(u.lateral), u.alive, r2(u.speed), r2(u.yaw), u.def.free || u.def.chase ? [r2(u.x), r2(u.z)] : 0, u.route || 0]),
       // (Inhuman contract jumpers send speed 0 so the client doesn't slide them.)
       e: [...this.enemies.values()].map((e) => [e.id, e.type, e.hp, e.maxHp, r2(e.dist), e.glitch ? 0 : r2(e.speed), r2(e.lateral), e.st, e.route || 0]),
       // Insane mode: the time dimension, and Beholder time bombs [id, x, z, seconds left].

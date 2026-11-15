@@ -432,103 +432,138 @@ function drone(model) {
 
 // ------------------------------------------------------------------ Bliss of Finality
 
-/** Bliss of Finality: a huge mining warship hovering high above the path, a railgun turret under its bow. */
+/**
+ * Bliss of Finality: a white armoured gunship. Wing plates carry missile pods, two black
+ * Electricizer cannons sit on its shoulders, four miniguns hang under it and the big Sweeper Beam
+ * railcannon (blue claw prongs) is slung under its belly.
+ */
 function blissShip(model) {
   const u = unitBase();
   const g = u.body;
   const k = kit(u, g, model);
-  const HULL = 0x37474f;
-  const DECK = 0x455a64;
-  const POD = 0x263238;
-  const cyan = glowMat(u, 0x40c4ff);
-  const pink = glowMat(u, 0xff4081);
-  const rail = glowMat(u, 0x18ffff);
-  // Hull: a long wedge-bowed body on a keel
-  k.prism([[-5.5, -0.8], [-5.5, 0.8], [3.2, 0.8], [5.7, 0.15], [5.7, -0.3], [3.6, -0.8]], 5.0, HULL, 0, 0, 0, { bevel: 0.3 });
-  k.slab(3.2, 0.55, 8.2, POD, 0, -1.05, -0.6, { bw: 0.55, bd: 0.85 });
-  for (const z of [-4.2, -2.4, -0.6, 1.2, 2.8]) k.box(5.02, 0.05, 0.06, 0x263238, 0, 0.81, z); // deck plates
+  const WHITE = 0xe9edf0;
+  const LIGHT = 0xcdd5db;
+  const GREY = 0x98a3ac;
+  const DARK = 0x262a2e;
+  const GLASS = 0x5d7489;
+  const blue = glowMat(u, 0x80d8ff);
+  const rail = glowMat(u, 0x40c4ff, 1.2);
+  // Hull: a chunky wedge with a chamfered nose
+  k.prism([[-5.2, -1.1], [-5.2, 1.2], [2.6, 1.2], [5.0, 0.5], [6.1, 0.1], [6.1, -0.8], [5.0, -1.3], [-4.4, -1.3]], 4.4, WHITE, 0, 0, 0, { bevel: 0.35 });
+  k.slab(3.0, 0.5, 8.6, LIGHT, 0, -1.5, 0, { bw: 0.7, bd: 0.85 }); // keel
   for (const sd of [-1, 1]) {
-    k.box(0.06, 0.3, 9.2, 0xfdd835, sd * 2.5, 0.35, -0.9); // hazard stripe
-    for (let i = 0; i < 6; i++) k.box(0.07, 0.22, 0.4, cyan, sd * 2.5, -0.15, -4.4 + i * 1.5); // portholes
-    k.box(0.07, 0.07, 0.07, sd < 0 ? NAV_L : NAV_R, sd * 2.5, 0.9, 3.0);
+    k.box(0.05, 0.08, 9.0, DARK, sd * 2.21, 0.5, 0.2); // panel lines
+    k.box(0.05, 0.08, 7.5, DARK, sd * 2.21, -0.5, -0.3);
+    for (let i = 0; i < 4; i++) k.box(0.06, 0.75, 0.14, DARK, sd * 2.22, 0, 1.6 + i * 0.4); // side vents
+    for (let i = 0; i < 3; i++) k.box(0.06, 0.6, 0.12, DARK, sd * 2.22, -0.1, -2.6 + i * 0.35);
+    // Nose rake: four flat blades sticking out of the bow
+    for (let i = 0; i < 4; i++) k.box(0.1, 0.07, 2.3, LIGHT, sd * (0.6 + i * 0.42), -0.35 - i * 0.12, 6.6, { ry: sd * 0.1, rx: 0.12 });
   }
-  // Mining maw at the bow: two prongs, grinder drum and the collector glow
+  k.box(1.1, 0.7, 0.9, GREY, 0, -1.6, 4.8, { r: 0.12 }); // chin sensor
+  k.ball(0.22, blue, 0, -1.85, 5.2, { seg: 8, rows: 5 });
+  // Spine: two long armoured rails on the fore deck
+  for (const x of [-0.75, 0.75]) {
+    k.box(0.55, 0.4, 5.2, LIGHT, x, 1.4, 2.6, { r: 0.08 });
+    k.box(0.58, 0.06, 5.0, DARK, x, 1.45, 2.7);
+  }
+  // Superstructure: three stepped decks, window bands, antennas and a glowing dome
+  k.slab(3.6, 0.9, 5.0, WHITE, 0, 1.65, -1.6, { tw: 0.9, td: 0.9 });
+  k.slab(2.4, 0.8, 3.0, WHITE, 0, 2.5, -1.9, { tw: 0.85, td: 0.85 });
+  k.slab(1.3, 0.7, 1.5, LIGHT, 0, 3.25, -2.1, { tw: 0.8, td: 0.8 });
+  for (const x of [-0.6, 0.6]) k.box(0.7, 0.45, 0.06, GLASS, x, 1.7, 0.86);
+  k.box(1.6, 0.3, 0.06, GLASS, 0, 2.55, -0.45);
+  k.box(0.9, 0.22, 0.06, GLASS, 0, 3.3, -1.4);
+  k.ball(0.2, blue, 0, 3.65, -2.0, { seg: 8, rows: 5 });
   for (const sd of [-1, 1]) {
-    k.prism([[4.6, -0.55], [4.6, 0.3], [7.3, -0.05], [7.3, -0.4]], 0.7, POD, sd * 1.5, 0, 0, { bevel: 0.1 });
-    k.box(0.3, 0.3, 0.5, 0xfdd835, sd * 1.5, -0.2, 7.3);
+    k.box(0.05, 1.2, 0.05, GREY, sd * 1.4, 2.6, -3.6);
+    k.box(2.6, 0.08, 0.3, LIGHT, sd * 2.4, 2.9, -2.6); // the thin top vanes
   }
-  k.cyl(0.42, 2.2, 0x6d7478, 0, -0.2, 6.3, { axis: 'x', seg: 10 });
-  for (let i = 0; i < 6; i++) for (const a of [0, 1, 2, 3]) k.box(0.16, 0.16, 0.16, 0xb0bec5, -0.9 + i * 0.36, -0.2 + Math.sin((a * PI) / 2 + i) * 0.45, 6.3 + Math.cos((a * PI) / 2 + i) * 0.45, { rx: (a * PI) / 2 + i });
-  k.box(2.0, 0.5, 0.1, pink, 0, -0.15, 5.72);
-  // Outrigger engine pods on pylons
+  // Main engines at the back
+  for (const x of [-1.2, 1.2]) {
+    k.cyl(0.6, 0.6, DARK, x, -0.1, -5.4, { axis: 'z', r2: 0.7, seg: 12 });
+    k.cyl(0.52, 0.06, blue, x, -0.1, -5.72, { axis: 'z', seg: 12 });
+  }
+  // Wings: two thin plates each side with a missile pod between them and fins at the tips
+  u.pods = [];
   for (const sd of [-1, 1]) {
-    k.box(1.25, 1.25, 8.0, POD, sd * 3.2, -0.2, 0, { r: 0.28 });
-    k.slab(1.0, 0.7, 1.6, tone(POD, 1.3), sd * 3.2, -0.2, 4.5, { tw: 0.5, td: 1 });
-    k.box(0.9, 0.9, 0.08, 0x08090a, sd * 3.2, -0.2, 4.02);
-    for (const z of [-2.2, 1.4]) k.box(1.2, 0.4, 1.6, HULL, sd * 2.4, -0.1, z);
-    k.cyl(0.5, 0.5, 0x1a1c1e, sd * 3.2, -0.2, -4.15, { axis: 'z', r2: 0.58, seg: 10 });
-    k.cyl(0.44, 0.06, pink, sd * 3.2, -0.2, -4.42, { axis: 'z', seg: 10 });
-    k.prism([[-3.6, 0], [-1.6, 0], [-2.6, 0.9], [-3.7, 0.9]], 0.12, HULL, sd * 3.2, 0.42, 0, { bevel: 0.03 });
-    for (const z of [-2.8, -0.8, 1.2, 3.2]) k.torus(0.64, 0.03, 0x1a1c1e, sd * 3.2, -0.2, z, { seg: 4, rz: PI / 4 });
-    k.box(0.06, 0.2, 6.5, cyan, sd * 3.84, -0.2, 0);
+    k.box(6.0, 0.14, 1.0, LIGHT, sd * 5.0, 1.0, -0.8);
+    k.box(6.0, 0.14, 1.0, LIGHT, sd * 5.0, -0.6, -0.8);
+    k.box(6.0, 0.05, 0.08, DARK, sd * 5.0, 1.08, -0.35);
+    k.box(6.0, 0.05, 0.08, DARK, sd * 5.0, -0.52, -0.35);
+    k.box(0.14, 2.6, 0.9, LIGHT, sd * 8.0, 0.4, -0.8, { r: 0.04 }); // tip fin
+    k.box(0.1, 1.6, 0.5, WHITE, sd * 8.0, 2.2, -1.0, { rz: sd * 0.06 });
+    k.box(0.1, 1.4, 0.5, WHITE, sd * 3.4, 1.8, -1.0); // root fin
+    k.box(0.2, 0.2, 1.0, blue, sd * 8.12, 1.0, -0.8); // tip lights
+    k.box(0.2, 0.2, 1.0, blue, sd * 8.12, -0.6, -0.8);
+    // Missile pod: a block with a 3x3 grid of tubes
+    k.box(1.5, 1.4, 1.5, WHITE, sd * 5.3, 0.2, -0.8, { r: 0.08 });
+    k.box(1.3, 1.2, 0.08, GREY, sd * 5.3, 0.2, -0.04);
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) {
+      k.cyl(0.13, 0.1, DARK, sd * 5.3 + (c - 1) * 0.38, 0.2 + (r - 1) * 0.36, 0.0, { axis: 'z', seg: 8 });
+      k.cyl(0.07, 0.04, blue, sd * 5.3 + (c - 1) * 0.38, 0.2 + (r - 1) * 0.36, 0.05, { axis: 'z', seg: 6 });
+    }
+    k.cyl(0.4, 0.3, blue, sd * 5.3, 0.2, -1.6, { axis: 'z', seg: 10 }); // pod thruster
+    const pod = new THREE.Object3D();
+    pod.position.set(sd * 5.3, 0.2, 0.1);
+    g.add(pod);
+    u.pods.push(pod);
+    // Electricizer cannon on the shoulder: a fat black barrel in a white collar
+    k.box(1.3, 1.3, 1.6, WHITE, sd * 2.75, 0.3, 1.2, { r: 0.1 });
+    k.cyl(0.6, 3.0, DARK, sd * 2.75, 0.3, 2.1, { axis: 'z', seg: 14 });
+    k.cyl(0.66, 0.2, GREY, sd * 2.75, 0.3, 3.0, { axis: 'z', seg: 14 });
+    k.cyl(0.42, 0.06, rail, sd * 2.75, 0.3, 3.62, { axis: 'z', seg: 12 });
+    k.torus(0.5, 0.05, blue, sd * 2.75, 0.3, 3.6, { seg: 12 });
   }
-  // Main engines
-  for (const x of [-1.6, 1.6]) {
-    k.cyl(0.62, 0.6, 0x1a1c1e, x, 0, -5.7, { axis: 'z', r2: 0.72, seg: 12 });
-    k.cyl(0.56, 0.06, pink, x, 0, -6.02, { axis: 'z', seg: 12 });
-  }
-  k.box(1.2, 0.6, 0.5, 0x1a1c1e, 0, 0, -5.6);
-  // Superstructure: deck house, bridge with a window band, mast and funnel
-  k.slab(3.4, 1.0, 6.0, DECK, 0, 1.3, -1.5, { tw: 0.86, td: 0.92 });
-  k.slab(1.9, 1.0, 2.2, 0x546e7a, 0, 2.3, -2.7, { tw: 0.82, td: 0.85 });
-  k.box(1.66, 0.3, 0.08, cyan, 0, 2.38, -1.66, { rx: -0.14 });
-  for (const sd of [-1, 1]) k.box(0.08, 0.3, 1.5, cyan, sd * 0.87, 2.38, -2.7, { rz: sd * 0.14 });
-  k.box(1.3, 0.12, 1.5, 0x263238, 0, 2.86, -2.7);
-  k.cyl(0.05, 1.3, 0x1a1c1e, 0.4, 3.5, -3.2, { seg: 5 });
-  k.box(0.5, 0.04, 0.04, 0x1a1c1e, 0.4, 3.8, -3.2);
-  k.ball(0.07, 0xff1744, 0.4, 4.18, -3.2, { seg: 6, rows: 4 });
-  antenna(k, -0.5, 2.9, -3.3, 1.1);
-  k.cyl(0.36, 0.9, 0x263238, 0, 2.2, -4.0, { r2: 0.28, seg: 10 });
-  k.cyl(0.24, 0.05, 0x08090a, 0, 2.66, -4.0, { seg: 10 });
-  // Ore hoppers and a crane on the fore deck
-  for (const [x, z, col] of [[-1.2, 1.3, 0xbf360c], [0.1, 1.5, 0x1565c0], [1.3, 1.2, 0x2e7d32], [-0.5, 2.7, 0x6d4c41]]) {
-    k.box(1.0, 0.7, 1.1, col, x, 1.17, z, { r: 0.04 });
-    for (const dz of [-0.3, 0, 0.3]) k.box(1.02, 0.6, 0.05, tone(col, 0.7), x, 1.17, z + dz);
-  }
-  k.cyl(0.14, 1.1, 0xfdd835, 1.6, 1.35, 3.2, { seg: 8 });
-  k.tube([[1.6, 1.9, 3.2], [1.2, 2.4, 3.8], [0.6, 2.5, 4.6]], 0.07, 0xfdd835, { seg: 8 });
-  k.cyl(0.015, 0.8, 0x101010, 0.6, 2.1, 4.6, { seg: 4 });
-  k.box(0.2, 0.14, 0.2, 0x3a3d40, 0.6, 1.66, 4.6);
-  // Turning radar on the bridge
-  const radar = spinner(u, g, 0, 2.95, -2.4, 'y', 1.6);
-  const kr = kit(u, radar, `${model}:radar`);
-  kr.cyl(0.07, 0.3, 0x1a1c1e, 0, 0.15, 0, { seg: 6 });
-  kr.box(1.3, 0.34, 0.06, 0xb0bec5, 0, 0.42, 0, { rx: -0.12 });
-  kr.box(1.34, 0.05, 0.1, 0x3a3d40, 0, 0.26, 0);
-  kr.done();
-  // Miniguns under the pods
-  for (const x of [-2.6, 2.6]) {
-    k.box(0.3, 0.3, 0.5, 0x1a1c1e, x, -0.82, 3.6);
-    for (let i = 0; i < 4; i++) k.cyl(0.03, 0.9, 0x0e0f10, x + Math.cos((i * PI) / 2) * 0.06, -0.82 + Math.sin((i * PI) / 2) * 0.06, 4.2, { axis: 'z', seg: 5 });
-    muzzleAt(u, g, x, -0.6, 4.5);
-  }
+  u.cannons = [-1, 1].map((sd) => {
+    const m = new THREE.Object3D();
+    m.position.set(sd * 2.75, 0.3, 3.7);
+    g.add(m);
+    return m;
+  });
+  u.cannon = u.cannons[0];
   k.done();
-  // The railgun turret under the bow
-  const t = turretAt(u, g, -1.0, 2.5);
-  const kt = kit(u, t, `${model}:t`);
-  kt.cyl(0.8, 0.3, 0x1a1c1e, 0, 0.2, 0, { seg: 12 });
-  kt.slab(1.5, 0.8, 1.9, 0x212121, 0, -0.3, 0.1, { bw: 0.8, bd: 0.8 });
-  for (const sd of [-1, 1]) {
-    kt.box(0.12, 0.3, 4.8, 0x2a2c2e, sd * 0.22, -0.3, 3.0);
-    for (let i = 0; i < 5; i++) kt.box(0.62, 0.4, 0.16, 0x455a64, 0, -0.3, 1.2 + i * 0.95);
+  // Four miniguns hanging under it, barrels spinning
+  for (const [x, y, z] of [[-1.5, -2.0, 3.0], [1.5, -2.0, 3.0], [-3.4, -1.2, 0.2], [3.4, -1.2, 0.2]]) {
+    const km = kit(u, g, `${model}:gun${x}${z}`);
+    km.box(0.25, 0.6, 0.3, GREY, x, y + 0.5, z - 0.3);
+    km.box(0.6, 0.55, 1.0, DARK, x, y, z - 0.2, { r: 0.08 });
+    km.done();
+    const sp = spinner(u, g, x, y, z + 0.3, 'z', 14);
+    const kb = kit(u, sp, `${model}:barrels`);
+    for (let i = 0; i < 6; i++) kb.cyl(0.05, 1.3, 0x14171a, Math.cos((i * PI) / 3) * 0.15, Math.sin((i * PI) / 3) * 0.15, 0.6, { axis: 'z', seg: 5 });
+    kb.cyl(0.24, 0.1, GREY, 0, 0, 1.1, { axis: 'z', seg: 8 });
+    kb.done();
+    muzzleAt(u, g, x, y, z + 1.6);
   }
-  kt.box(0.22, 0.22, 4.9, rail, 0, -0.3, 3.0);
-  kt.box(0.5, 0.5, 0.3, 0x1a1c1e, 0, -0.3, 5.45);
+  // The Sweeper Beam: a big railcannon slung under the belly, ending in four glowing claws
+  const t = turretAt(u, g, -1.6, 0.6);
+  const kt = kit(u, t, `${model}:rail`);
+  kt.cyl(0.85, 0.5, GREY, 0, 0.1, 0, { seg: 12 });
+  kt.box(1.0, 0.8, 1.6, DARK, 0, -0.45, -0.2, { r: 0.1 });
+  kt.cyl(0.75, 4.2, DARK, 0, -0.8, 1.6, { axis: 'z', seg: 14 });
+  for (let i = 0; i < 5; i++) {
+    kt.torus(0.8, 0.09, GREY, 0, -0.8, 0.1 + i * 0.75, { seg: 14 });
+    kt.torus(0.78, 0.04, rail, 0, -0.8, 0.45 + i * 0.75, { seg: 14 });
+  }
+  kt.box(0.25, 0.25, 3.8, rail, 0, -0.03, 1.6); // charge rail along the top
+  kt.cyl(0.95, 0.5, GREY, 0, -0.8, 3.9, { axis: 'z', seg: 12 }); // muzzle collar
+  kt.ball(0.4, rail, 0, -0.8, 4.3, { seg: 10, rows: 7 });
+  for (let i = 0; i < 4; i++) {
+    const a = (i * PI) / 2 + PI / 4;
+    const cx = Math.cos(a);
+    const cy = Math.sin(a);
+    kt.box(0.18, 0.18, 1.0, DARK, cx * 0.7, -0.8 + cy * 0.7, 4.4, { rx: -cy * 0.35, ry: cx * 0.35 });
+    kt.box(0.13, 0.13, 1.1, rail, cx * 0.95, -0.8 + cy * 0.95, 5.2, { rx: cy * 0.4, ry: -cx * 0.4 });
+  }
   kt.done();
-  muzzleAt(u, t, 0, -0.3, 5.6, true);
-  u.fly = 14;
+  u.rail = new THREE.Object3D();
+  u.rail.position.set(0, -0.8, 5.4);
+  t.add(u.rail);
+  u.fly = 12;
   u.height = 2;
-  u.tracer = 0x18ffff;
+  u.rotate = true; // shots take turns between the four miniguns
+  u.tracer = 0xfff59d;
+  u.cannonTracer = 0x40c4ff;
   return u;
 }
 

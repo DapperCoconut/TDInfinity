@@ -182,10 +182,18 @@ const RB_TANK = { name: 'Tank', model: 'rbTank', hp: 3600, speed: 2.5, flying: f
   gun: { damage: 8, cooldown: 0.15, range: 12 }, cannon: { damage: 183, every: 2.17, radius: 2 } };
 const RB_SCYTHER = { name: 'Scyther Tank', model: 'rbScyther', hp: 4000, speed: 2.5, flying: false, lead: true,
   gun: { damage: 25, cooldown: 0.05, range: 14 }, cannon: { damage: 525, every: 2, radius: 3 } };
-// Bliss of Finality: an 8,000,000 HP mining warship that flies over the map for 70s. Miniguns,
-// missiles, splash Electricizer cannons and a railgun of 26 explosions (up to 6,500 a shot).
-const RB_BLISS = { name: 'Bliss of Finality', model: 'rbBliss', hp: 8000000, speed: 1.2, air: true, life: 70, flying: true, lead: true, hidden: true,
-  gun: { damage: 30, cooldown: 0.05, range: 30 }, cannon: { damage: 6500, every: 6, radius: 5 } };
+// Bliss of Finality: an 8,000,000 HP warship that flies after the first zombie for 70s (chase: it
+// leaves the path). untouchable: zombies can't hurt it. Four weapons that reach the whole map:
+// miniguns (gun), wing missiles (missiles: `count` homing splash missiles every `every` s),
+// two Electricizer cannons (cannon) and the Sweeper Beam railgun (sweep: `count` blasts along the
+// track from the first zombie back, every `every` s; one more harmless sweep as it leaves).
+// noTune: Recon Base's TOWER_TUNE does not scale these numbers (they are the spec's).
+const RB_BLISS = { name: 'Bliss of Finality', model: 'rbBliss', hp: 8000000, speed: 6, air: true, life: 70, flying: true, lead: true, hidden: true,
+  chase: true, untouchable: true, noTune: true,
+  gun: { damage: 45, cooldown: 0.07, range: 999999 },
+  missiles: { damage: 90, count: 20, every: 6, radius: 2.5 },
+  cannon: { damage: 500, every: 2, radius: 4, range: 999999 },
+  sweep: { damage: 250, count: 26, every: 30, radius: 3, gap: 1.6 } };
 
 const truckAb = (unit, cost) => ({ key: 'rbTruck', vehicle: true, name: 'Missile Truck', desc: `Sends a Missile Truck (${unit.hp} HP) that stops to fire 7-missile volleys every 10s (flyers too)`, cooldown: 70, cost, unit });
 const tankAb = (unit, cost, cooldown) => ({ key: 'rbTank', vehicle: true, name: unit.name, desc: `Sends a ${unit.name} (${unit.hp.toLocaleString()} HP) with a machine gun and a cannon. It keeps moving while firing`, cooldown, cost, unit });
@@ -676,8 +684,8 @@ export const CROSS_TOWERS = {
       { name: 'Special Air Service', desc: 'A Private Squad trio (360 HP), range 24 → 28, firing every 0.12s. Ghouls become Phantoms (540 HP, much faster).', cost: 4000,
         set: { unit: RB_TRIO }, fn: (s) => { if (s.unit2) s.unit2 = s.unit2.gun ? RB_PHANTOM2 : RB_PHANTOM; } },
       { name: 'Fireteam Solemn', desc: 'A 4-unit squad sharing 540 HP: SMG and sniper (flyers too), a minigun and a splash rocket launcher.', cost: 18000, set: { unit: RB_SOLEMN } },
-      { name: 'Bliss of Finality', perk: 'bliss', desc: '🔒 Beat Insane mode to unlock. Bliss of Finality ($45,000, 240s cooldown): a 24,000,000 HP mining warship flies over the map for 70s with miniguns and a 19,500-damage railgun. Each one in the match costs 35% more.', cost: 140000, stack: 0.35,
-        abilities: [{ key: 'rbBliss', vehicle: true, name: 'Bliss of Finality', desc: 'A 24,000,000 HP warship flies over the path for 70s: miniguns and a 19,500-damage railgun', cooldown: 240, cost: 45000, unit: RB_BLISS, globalCd: 105 }] },
+      { name: 'Bliss of Finality', perk: 'bliss', desc: '🔒 Beat Insane mode to unlock. Bliss of Finality ($45,000, 240s cooldown): a warship flies after the first zombie for 70s and hits anything on the map, flyers too, about 1,410 DPS. Miniguns, 20-missile volleys, two Electricizer cannons and a Sweeper Beam of 26 blasts (up to 6,500) every 30s. Zombies can\'t touch it. Only one at a time (105s wait between any two). Each one in the match costs 35% more.', cost: 140000, stack: 0.35,
+        abilities: [{ key: 'rbBliss', vehicle: true, name: 'Bliss of Finality', desc: 'A warship chases the first zombie for 70s: miniguns (643 DPS), 20 missiles every 6s, Electricizer cannons (500 splash every 2s) and a Sweeper Beam (26 blasts of 250 every 30s). Hits anything on the map', cooldown: 240, cost: 45000, unit: RB_BLISS, globalCd: 105 }] },
     ],
   }),
 
