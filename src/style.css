@@ -3251,3 +3251,46 @@ input:focus {
 #enemy-tip span { padding: 1px 6px; border-radius: 6px; font-size: 11px; font-weight: 700; }
 #enemy-tip .et-good span { background: rgba(239, 83, 80, 0.3); color: #ffab91; }
 #enemy-tip .et-bad span { background: rgba(102, 187, 106, 0.3); color: #b9f6ca; }
+
+/* Sandbox bar (under the health bar) and the Dummy King warnings */
+#sandbox-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  max-width: 92vw;
+}
+#sandbox-bar .btn { font-size: 13px; padding: 5px 10px; }
+#sandbox-bar select {
+  font: inherit;
+  font-size: 13px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 2px solid rgba(0, 0, 0, 0.45);
+  background: #37474f;
+  color: #fff;
+}
+#sandbox-bar .sb-summon { background: #2e7d32; }
+#sandbox-bar .sb-king { background: #b71c1c; }
+#sb-warn {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(40, 0, 0, 0.55);
+}
+#sb-warn .sb-warn-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(480px, 92vw);
+  padding: 18px;
+  border-radius: 14px;
+  background: #1b0d0d;
+  border: 3px solid #e53935;
+}
+#sb-warn .sb-warn-title { text-align: center; font-weight: 900; font-size: 18px; color: #ff8a80; }
+#sb-warn .sb-warn-btn { background: #c62828; text-align: left; font-size: 14px; }
+#sb-warn .sb-warn-btn.done { background: #424242; opacity: 0.6; cursor: default; }

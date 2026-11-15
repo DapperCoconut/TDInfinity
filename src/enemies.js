@@ -5,6 +5,7 @@ import { addHalloweenEnemies } from './halloween.js';
 import { addHalloween2Enemies } from './halloween2.js';
 import { addHalloween3Enemies } from './halloween3.js';
 import { addChristmasEnemies } from './christmas.js';
+import { addSandboxEnemies } from './sandbox.js';
 import { addChristmas2Enemies } from './christmas2.js';
 import { addChristmas3Enemies } from './christmas3.js';
 import { addLastLaughEnemies } from './lastlaugh.js';
@@ -686,3 +687,4 @@ addChristmasEnemies(ENEMIES); // and Christmas Night 1's (see christmas.js)
 addChristmas2Enemies(ENEMIES); // and Night 2's (see christmas2.js)
 addChristmas3Enemies(ENEMIES); // and Night 3's (see christmas3.js)
 addLastLaughEnemies(ENEMIES); // the Last Laugh contract's Jester (see lastlaugh.js)
+addSandboxEnemies(ENEMIES); // Sandbox mode's Dummy, Imperfect Dummy and Dummy King (see sandbox.js)

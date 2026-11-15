@@ -603,6 +603,11 @@ export const DIFFICULTIES = {
     baseHp: 600, startCash: 700, groupBonus: 100, flatHp: true, mpPerEnemy: true, mpHp: [0.15, 0.25, 0.4, 0.55, 0.7],
     hpCurve: [[1, 0.4], [10, 0.45], [25, 0.5]], bossHp: 0.3,
     mimic: { type: 'thWicky', chance: 1 / 1700, from: 10 } },
+  // Sandbox (2026-11-15 spec, see sandbox.js): no waves of its own. `sandbox`: endless cash, no
+  // per-tower limits (the 50-tower cap stays), the base can't fall (until the Dummy King's nuke),
+  // and the Sandbox bar summons any mode's waves (SANDBOX_SOURCES), Dummies and the Dummy King.
+  sandbox: { name: 'Sandbox', icon: '🧪', color: '#8d6e63', boss: 'sbKing', desc: 'Endless cash, no tower limits, a base that cannot fall. Summon any wave, a Dummy, or the Dummy King.',
+    waves: [], sandbox: true, cash: 1, dmgCash: 0, credits: 0, shards: 0, flatHp: true },
   // Halloween Event (2026-11-10 spec, see halloween.js). `event`: not one of the mode cards, it has
   // its own button in the top right of the menus. `maps`: the event's own maps (the player picks one
   // on the event banner; `map` is the one picked first). No other mode can play them (the maps say
@@ -645,6 +650,16 @@ export const DIFFICULTIES = {
     mpHp: [0, 0, 0, 0, 0] },
 };
 export const DEFAULT_DIFFICULTY = 'easy';
+/** Sandbox: the waves it can summon, one entry per mode (and per event map with its own waves): { key, name, waves }. */
+export function sandboxSources() {
+  const out = [];
+  for (const [k, d] of Object.entries(DIFFICULTIES)) {
+    if (d.sandbox || d.endless) continue;
+    if (d.waves?.length) out.push({ key: k, name: d.name, waves: d.waves.length });
+    for (const [m, v] of Object.entries(d.mapModes ?? {})) if (v.waves?.length) out.push({ key: `${k}:${m}`, name: `${d.name}: ${m[0].toUpperCase()}${m.slice(1)}`, waves: v.waves.length });
+  }
+  return out;
+}
 /** The modes on the mode cards, and the special events (each has its own button and its own map). */
 export const MODE_KEYS = Object.keys(DIFFICULTIES).filter((k) => !DIFFICULTIES[k].event && !DIFFICULTIES[k].hidden);
 export const EVENT_KEYS = Object.keys(DIFFICULTIES).filter((k) => DIFFICULTIES[k].event && !DIFFICULTIES[k].hidden);

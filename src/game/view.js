@@ -6,6 +6,7 @@ import { ENEMIES, GAME, TOWERS, VERSUS, difficulty, facesCone, rootType } from '
 import { BeamView, BombView, EnemyView, MarkView, OrbView, RemotePlayerView, TowerView, TrapView, UnitView } from '../views.js';
 import { audio } from '../audio.js';
 import { subInfo } from '../substats.js';
+import { SandboxBar } from '../sandboxbar.js';
 import { clamp } from '../utils.js';
 import { WORLD_SCALE } from '../scale.js';
 import { heightAt, mapInfo } from '../sim/map.js';
@@ -217,7 +218,9 @@ export class GameView {
     this.ui.setOverload(st.overload?.get(s.myId) ?? 0); // Eradicator ΘVERLOAD
     this.ui.setArcana(st.arcana?.get(s.myId) ?? 0); // Mage Arcana
     const gate = !this.versus && mapInfo?.gate; // Frostgate Citadel: the gate's health is the base's
-    this.ui.setBase(this.versus ? (this.me?.baseHp ?? 0) : st.baseHp, this.versus ? GAME.baseHp : gate || (difficulty(st.mode).baseHp ?? GAME.baseHp));
+    const sandbox = !this.versus && difficulty(st.mode).sandbox;
+    if (sandbox && !this.sbBar && !this.spectating) this.sbBar = new SandboxBar((m) => this.session?.send(m)); // Sandbox: the bar under the health bar
+    this.ui.setBase(this.versus ? (this.me?.baseHp ?? 0) : st.baseHp, this.versus ? GAME.baseHp : gate || (difficulty(st.mode).baseHp ?? GAME.baseHp), sandbox && !st.sbMortal);
     this.ui.setRepair(gate && !this.spectating ? mapInfo.repair : null, st.baseHp < gate);
     this.ui.setWave(st, s.mp, this.spectating);
     this.ui.setSpeed(st.speed, s.isHost);
@@ -352,8 +355,8 @@ export class GameView {
       if (def.hidden) good.push('Hidden');
       if (def.flying) good.push('Flying');
       for (const [bit, name, isBad] of ENEMY_EFFECTS) if (e.st & bit) (isBad ? bad : good).push(name);
-      const hp = e.maxHp === Infinity || e.hp === Infinity ? '∞' : `${Math.ceil(e.hp).toLocaleString()} / ${Math.ceil(e.maxHp).toLocaleString()}`;
-      const share = e.maxHp > 0 && e.maxHp !== Infinity ? Math.max(0, Math.min(1, e.hp / e.maxHp)) : 1;
+      const hp = def.dummy || e.maxHp === Infinity || e.hp === Infinity ? '∞' : `${Math.ceil(e.hp).toLocaleString()} / ${Math.ceil(e.maxHp).toLocaleString()}`;
+      const share = !def.dummy && e.maxHp > 0 && e.maxHp !== Infinity ? Math.max(0, Math.min(1, e.hp / e.maxHp)) : 1;
       tip.innerHTML = `<div class="et-name">${def.name}</div>`
         + `<div class="et-bar"><div style="width:${share * 100}%"></div></div><div class="et-hp">❤ ${hp}</div>`
         + (good.length ? `<div class="et-good">${good.map((n) => `<span>${n}</span>`).join('')}</div>` : '')

@@ -7,6 +7,7 @@ import { hwParts } from '../newmodels/halloween.js';
 import { H2_CREATURES, hw2Parts } from '../newmodels/halloween2.js';
 import { N3_CREATURES, hw3Parts } from '../newmodels/halloween3.js';
 import { xmParts } from '../newmodels/christmas.js';
+import { sbParts } from '../newmodels/sandbox.js';
 import { LL_CREATURES } from '../newmodels/jester.js';
 import { rigify } from '../rig.js';
 import { gaitFor, shapeEnemy } from '../visuals.js';
@@ -71,7 +72,7 @@ export function makeZombie(def) {
       h.wings.push(w);
     }
   }
-  if (def.boss && !def.look && !def.crystal && !def.insane && !def.vlook && !def.mlook && !def.flook && !def.xlook && !def.ilook && !def.blook && !def.hk && !def.hw2 && !def.hw3 && !def.xm) {
+  if (def.boss && !def.look && !def.crystal && !def.insane && !def.vlook && !def.mlook && !def.flook && !def.xlook && !def.ilook && !def.blook && !def.hk && !def.hw2 && !def.hw3 && !def.xm && !def.sb) {
     const spikeM = M(0xb0bec5);
     part(h.torso, boxGeo(0.7, 0.5, 0.9), spikeM, -1.5, 1.2, 0);
     part(h.torso, boxGeo(0.7, 0.5, 0.9), spikeM, 1.5, 1.2, 0);
@@ -95,6 +96,7 @@ export function makeZombie(def) {
   if (def.hw2) hw2Parts(h, def); // Halloween Night 2 looks (newmodels/halloween2.js)
   if (def.hw3) hw3Parts(h, def); // Halloween Night 3 looks (newmodels/halloween3.js)
   if (def.xm) xmParts(h, def); // Christmas Night 1 looks (newmodels/christmas.js)
+  if (def.sb) sbParts(h, def); // Sandbox: Dummy, Imperfect Dummy, Dummy King (newmodels/sandbox.js)
   if (!h.anim && rigify(h)) {
     // Elbows, knees and a round head, and its own way of walking (visuals.js, anim.js).
     h.gait = gaitFor(def, h);

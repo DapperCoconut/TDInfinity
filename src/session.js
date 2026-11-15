@@ -91,6 +91,7 @@ export class NetSession {
     st.speed = s.sp;
     st.over = s.o;
     st.timeWorld = !!s.tw; // Insane mode: the Beholder's time dimension
+    st.sbMortal = !!s.sb; // Sandbox: the Dummy King is out, so the base can fall
     st.inhuman = s.ih ?? null; // Inhuman contract: [the glitchy bot's lane, its id]
     st.ct = s.ct ?? null; // Last Laugh contract (see GameClient.contractInfo)
     if (s.ct) {

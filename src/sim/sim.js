@@ -35,6 +35,7 @@ export {
   spyCircles, upgradeCost,
 } from './parts/shared.js';
 import { SimEnemyMoves1 } from './parts/enemy-moves1.js';
+import { SimSandbox } from './parts/sandbox.js';
 import { SimEnemyMoves2 } from './parts/enemy-moves2.js';
 import { SimTowerHealth } from './parts/tower-health.js';
 import { SimWaves } from './parts/waves.js';
@@ -95,6 +96,8 @@ export class Sim {
     this.mpHp = dm.mpHp ?? null; // Hard: enemy health bonus per number of extra players
     this.mpPerEnemy = !!dm.mpPerEnemy; // Expert: each enemy has its own multiplayer health (mpTop / mpPow)
     this.voidArmor = dm.voidArmor ?? null; // Void mode: the void armor mutation (see armorUp)
+    this.sandbox = !this.vs && !!dm.sandbox; // Sandbox: endless cash, no tower limits, a safe base (parts/sandbox.js)
+    this.sbMortal = false; // Sandbox: the Dummy King is out, so the base can fall
     this.bossSeen = new Set(); // Hard: `bossFirst` enemies already spawned this game
     this.goos = []; // Hard: Necrotic Skeleton goo puddles that heal enemies: { x, z, r, left, heal, every, t }
     // Medium sets its own starting cash, plus a group bonus when playing with others.
@@ -112,6 +115,10 @@ export class Sim {
     this.speed = 1;
     this.over = 0; // 0 = playing, 1 = victory, -1 = defeat
     this.wave = { state: 'intermission', index: 0, countdown: dm.firstIntermission ?? GAME.firstIntermission, t: 0, left: 0, votes: 0, total: this.waves.length };
+    if (this.sandbox) {
+      this.wave.state = 'sandbox'; // no waves of its own: the Sandbox bar summons them
+      for (const p of this.players.values()) p.cash = Infinity;
+    }
     if (dm.endless) this.initLiminal(); // Liminal contract: endless waves made up as you go
     this.queue = [];
     this.shells = []; // bombs and missiles in flight
@@ -181,6 +188,8 @@ export class Sim {
         while (this.queue.length && this.queue[0].t <= w.t) this.spawnQueued(this.queue.shift());
         w.left = this.queue.length;
       }
+    } else if (w.state === 'sandbox') {
+      this.sandboxTick(dt);
     } else if (w.state === 'intermission') {
       w.countdown -= dt;
       if (w.countdown <= 0) this.startWave();
@@ -332,6 +341,8 @@ export class Sim {
       if (e.rangeUpT > 0) e.rangeUpT -= dt; // Night 3 Scout Bot aura
       if (e.dmgUpT > 0) e.dmgUpT -= dt; // Night 3 Commander / Kritz damage boost
       if (def.jester) this.jesterMoves(e, def, dt); // Last Laugh contract's JESTER
+      if (def.dummy) e.hp = e.maxHp; // Sandbox Dummy: heals right back
+      if (def.nuke) this.dummyKingMoves(e, def, dt); // Sandbox: the Dummy King's nukes
       e.st = (e.stopKind === 'ice' ? ST_FROZEN : e.stopKind === 'stun' ? ST_STUNNED : e.stopKind === 'dance' ? ST_DANCE : e.stopKind === 'float' ? ST_FLOAT : 0) | (e.burn || e.taints?.has('burn') ? ST_BURNING : 0)
         | (e.slime ? ST_SLIMED : 0) | (e.chill ? ST_CHILLED : 0) | (e.hackEv || e.fraud ? ST_HACKED : 0) | (e.gas?.size || e.poison || e.taints?.has('radioactive') ? ST_GASSED : 0) | (e.confT > 0 ? ST_CONFUSED : 0)
         | (e.shockT > 0 ? ST_SHOCKED : 0) | (e.taints?.has('biohazard') ? ST_BIOHAZARD : 0)
@@ -595,7 +606,7 @@ export class Sim {
         for (const t of this.towers.values()) if (t.owner === pid && !t.holo) { all++; if (rootType(t.type) === m.type) owned++; }
         if (all >= GAME.towerCap) return `You have ${GAME.towerCap} towers, the most you can have`;
         const limit = towerLimit(def, this.vs ? 1 : this.players.size) + (p.extraSlots || 0); // Discount Dog Extra Slot
-        if (owned >= limit) return `Placement limit reached (${limit})`;
+        if (owned >= limit && !this.sandbox) return `Placement limit reached (${limit})`; // (Sandbox: no limits)
         const x = Number(m.x);
         const z = Number(m.z);
         if (!canPlace(x, z, this.towers.values(), def.placement, m.type)) {
@@ -825,6 +836,11 @@ export class Sim {
         }
         return null;
       }
+      case 'sbSummon':
+      case 'sbDummy':
+      case 'sbKing':
+      case 'sbClear':
+        return this.sandboxAction(m); // Sandbox bar
       case 'skip': {
         if (this.wave.state !== 'intermission' && !this.canSkipWave) return null;
         this.skipVotes.add(pid);
@@ -919,6 +935,8 @@ export class Sim {
       e: [...this.enemies.values()].map((e) => [e.id, e.type, e.hp, e.maxHp, r2(e.dist), e.glitch ? 0 : r2(e.speed), r2(e.lateral), e.st, e.route || 0]),
       // Insane mode: the time dimension, and Beholder time bombs [id, x, z, seconds left].
       ...(this.timeWorld ? { tw: 1 } : {}),
+      // Sandbox: 1 while the Dummy King is out (the base can fall), else 0.
+      ...(this.sandbox ? { sb: this.sbMortal ? 1 : 0 } : {}),
       // Contract (Last Laugh): [key, spins, next spin's price, flags, jester x, z, route tile ids, fence tile ids, fence price].
       ...(this.contract ? { ct: this.contractSnap() } : {}),
       ...(this.bombs.length ? { tb: this.bombs.map((b) => [b.id, r2(b.x), r2(b.z), r2(b.left)]) } : {}),
@@ -938,7 +956,7 @@ export class Sim {
 
 // Sim's methods are kept in several files (see the list at the top). This puts them all on Sim,
 // just as if they were written inside the class.
-for (const part of [SimEnemyMoves1, SimEnemyMoves2, SimTowerHealth, SimWaves, SimTowerUpdate, SimWeapons1, SimWeapons2, SimWeapons3, SimUnits, SimAbilities, SimDamage, SimWeapons4, SimCarnival, SimNightmare, SimChristmas, SimSpires, SimContract, SimLiminal]) {
+for (const part of [SimEnemyMoves1, SimEnemyMoves2, SimTowerHealth, SimWaves, SimTowerUpdate, SimWeapons1, SimWeapons2, SimWeapons3, SimUnits, SimAbilities, SimDamage, SimWeapons4, SimCarnival, SimNightmare, SimChristmas, SimSpires, SimContract, SimLiminal, SimSandbox]) {
   const props = Object.getOwnPropertyDescriptors(part.prototype);
   delete props.constructor;
   Object.defineProperties(Sim.prototype, props);

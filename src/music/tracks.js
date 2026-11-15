@@ -75,6 +75,7 @@ export const TRACKS = {
 
   // ---------------------------------------------------------------- bosses: first game, Easy, Medium
   'boss:boss': t('stomp', 120, 'E', 'minor', [0, 0, 5, 6], [3, 3, 5, 4]),
+  'boss:sbKing': t('industrial', 152, 'C', 'harmonic', [0, 1, 0, 6], [5, 6, 1, 0], { C: [0, 1, 6, 5], form: 'big', lead: 'brass' }), // Sandbox's Dummy King
   'boss:kingSlime': t('chip', 148, 'C', 'dorian', [0, 3, 0, 6], [5, 6, 0, 0], { C: [3, 0, 3, 4], form: 'big' }),
   'boss:mPredator': t('dnb', 160, 'F', 'minor', [0, 0, 5, 6], [3, 5, 6, 0]),
   'boss:mEradicator': t('industrial', 140, 'D', 'minor', [0, 5, 6, 0], [3, 3, 5, 6], { C: [0, 6, 5, 4], form: 'big', lead: 'brass' }),

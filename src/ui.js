@@ -295,7 +295,14 @@ export class UI {
     el.classList.add('bump');
   }
 
-  setBase(hp, max = GAME.baseHp) {
+  setBase(hp, max = GAME.baseHp, endless = false) {
+    if (endless) {
+      // Sandbox: the base can't fall.
+      this.el.baseFill.style.width = '100%';
+      this.el.baseFill.style.background = 'linear-gradient(#66bb6a,#388e3c)';
+      this.el.baseText.textContent = '❤ ∞';
+      return;
+    }
     const r = Math.max(0, hp / max);
     this.el.baseFill.style.width = `${r * 100}%`;
     this.el.baseFill.style.background =
@@ -326,6 +333,12 @@ export class UI {
       const showSkip = w.state !== 'over' && !spectating;
       this.el.skip.classList.toggle('hidden', !showSkip);
       if (showSkip) this.el.skip.textContent = `${w.state === 'intermission' ? 'Start Wave ▶' : 'Next Wave ▶'} ${w.votes}/${st.votesNeeded}`;
+      return;
+    }
+    if (w.state === 'sandbox') {
+      this.el.waveLabel.textContent = 'Sandbox';
+      this.el.waveStatus.textContent = st.sbMortal ? '👑 The Dummy King is here!' : `${st.enemies.size} enemies out`;
+      this.el.skip.classList.add('hidden');
       return;
     }
     this.el.waveLabel.textContent = w.total ? `Wave ${Math.min(w.index + 1, w.total)} / ${w.total}` : `Wave ${w.index + 1} / ∞`; // (total 0: the endless Backrooms)

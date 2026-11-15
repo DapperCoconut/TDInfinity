@@ -789,6 +789,31 @@ export class GameEvents {
           if (ev.n) this.ui.toast(`⚔️ Sword Swing stunned ${ev.n} tower${ev.n > 1 ? 's' : ''}!`, 1200);
           break;
         }
+        // ---------------------------------------------------------------- Sandbox
+        case 'sbToast':
+          this.ui.toast(ev.text, 2200);
+          break;
+        case 'sbNukeWarn': {
+          // The Dummy King launches the nuke on his back: a red ring shows where it will land.
+          const at = new THREE.Vector3(ev.x, 0.3, ev.z);
+          this.enemyViews.get(ev.e)?.attack();
+          for (let i = 0; i < ev.d * 2; i++) this.effects.later(i * 0.5, () => this.effects.pulse(at, ev.r, 0.45, 0xff1744));
+          audio.waveStart();
+          this.ui.toast('☢ The Dummy King launched a NUKE! Look out for the red ring!', 2500);
+          break;
+        }
+        case 'sbNuke': {
+          const at = new THREE.Vector3(ev.x, 0.5, ev.z);
+          this.effects.nuke(at, ev.r);
+          this.effects.scorch(at, ev.r, 0x2a2a2a, 12);
+          audio.boom(10);
+          this.shake?.(1.8, 2.5);
+          this.ui.screenFlash('#ffffff', 900);
+          if (ev.base) {
+            this.ui.banner('THE DUMMY KING', 'His nuke hit your base: 1 health left!', 5000);
+          }
+          break;
+        }
         case 'comet': {
           // Fallen Comet: purple spikes rain down on the whole map.
           const v = this.enemyViews.get(ev.e);

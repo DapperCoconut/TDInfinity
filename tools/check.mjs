@@ -127,7 +127,7 @@ await section('data', async () => {
     return [`${k}:${m}`, { ...d, ...v }];
   })]);
   for (const [mode, d] of modeList) {
-    if (d.endless) continue; // the Liminal mode makes its waves up as it goes (checked in modes)
+    if (d.endless || d.sandbox) continue; // the Liminal mode makes its waves up as it goes (checked in modes); Sandbox has none
     if (!Array.isArray(d.waves) || !d.waves.length) {
       fail('data', `mode ${mode} has no waves`);
       continue;
@@ -282,6 +282,30 @@ await section('modes', async () => {
           while (lab.upgrade(sim, 'c', t));
         }
       }
+      if (DIFFICULTIES[mode].sandbox) {
+        // Sandbox: summon the last wave of every mode, a Dummy and the Dummy King, and let it run.
+        const t0 = Date.now();
+        for (const src of cfg.sandboxSources()) {
+          const err = sim.action('c', { a: 'sbSummon', src: src.key, wave: src.waves - 1 });
+          if (err) fail('modes', `sandbox: summoning ${src.key} wave ${src.waves}: ${err}`);
+        }
+        if (sim.action('c', { a: 'sbDummy' })) fail('modes', 'sandbox: sbDummy failed');
+        const run = (secs) => {
+          for (let t = 0; t < secs && !sim.over; t += 0.05) {
+            sim.step(0.05);
+            sim.events.length = 0;
+          }
+        };
+        run(150);
+        if (sim.over) fail('modes', 'sandbox: the base fell without the Dummy King');
+        if (sim.action('c', { a: 'sbClear' }) || sim.enemies.size) fail('modes', 'sandbox: Clear left enemies');
+        if (sim.action('c', { a: 'sbKing' })) fail('modes', 'sandbox: sbKing failed');
+        if (sim.baseHp !== 1) fail('modes', `sandbox: the Dummy King's nuke left the base at ${sim.baseHp}`);
+        run(150);
+        JSON.stringify(sim.snapshot());
+        out.push(`${label} ${Date.now() - t0}ms`);
+        continue;
+      }
       const kinds = new Set();
       const t0 = Date.now();
       const last = DIFFICULTIES[mode].endless ? 54 : sim.waves.length - 1; // the endless Liminal mode: 55 waves (two room shifts)
@@ -335,7 +359,7 @@ await section('bots', async () => {
   if (!cfg) return 'skipped';
   const { createHub } = await import('../src/hub.js');
   const out = [];
-  const games = [...Object.keys(DIFFICULTIES).map((d) => ['coop', d]), ['versus', 'easy']];
+  const games = [...Object.keys(DIFFICULTIES).filter((d) => !DIFFICULTIES[d].sandbox).map((d) => ['coop', d]), ['versus', 'easy']]; // (no bots in Sandbox)
   for (const [mode, diff] of games) {
     const key = mode === 'versus' ? 'versus' : diff;
     if (!picked(key)) continue;

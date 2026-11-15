@@ -361,6 +361,10 @@ export class SimWaves {
   }
 
   end(win) {
+    if (!win && this.sandbox && !this.sbMortal) {
+      this.baseHp = this.maxBaseHp; // Sandbox: the base can't fall (except while the Dummy King is out)
+      return;
+    }
     this.over = win ? 1 : -1;
     this.wave.state = win ? 'victory' : 'defeat';
     const bonus = win ? this.winCredits() : null;

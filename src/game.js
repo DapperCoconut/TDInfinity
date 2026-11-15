@@ -586,6 +586,9 @@ export class GameClient {
     this.dying = [];
     this.player?.dispose();
     this.player = null;
+    this.sbBar?.dispose(); // Sandbox bar
+    this.sbBar = null;
+    if (this.hoverTip) this.hoverTip.style.display = 'none';
     for (const v of this.bombViews?.values() ?? []) v.dispose();
     this.bombViews?.clear();
     for (const v of this.markViews?.values() ?? []) v.dispose();
