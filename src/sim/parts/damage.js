@@ -490,7 +490,7 @@ export class SimDamage {
     if (t && this.contract?.boost) dmg *= this.llBoost.dmg; // Last Laugh: the JESTER's boost
     if (t && this.inhumanPow) dmg *= this.inhumanPow.dmg; // Inhuman contract: the glitchy bot's towers
     if (t?.lm) dmg *= t.lm.dmg; // Liminal contract: the tower's blessing or curse
-    const tru = !this.dot && (ts0?.trueDmg || this.trueHit); // True damage (Future Sniper Lv 5, Shirayuki Shuriken): no resistance, armor or defense stops it
+    const tru = !this.dot && (ts0?.trueDmg || this.trueHit || (ts0?.markTrue && e.gmT > 0)); // Ghost Spectral Assassin: true damage on marked zombies // True damage (Future Sniper Lv 5, Shirayuki Shuriken): no resistance, armor or defense stops it
     const nores = tru || (!this.dot && ts0?.noResist); // Eradicator: no resistance stops it (armor still does)
     const adapt = ENEMIES[e.type].adapt;
     if (adapt && !nores) this.adaptResist(e, kind, dmg, adapt); // Void Colossus: its resistance wears down
@@ -498,7 +498,7 @@ export class SimDamage {
     if (nores) { /* skips every resistance below */ } else if (kind === 'bullet' && e.bulletResist && !this.ignoresBulletResist(t)) dmg *= 1 - e.bulletResist * rk; // Shielders, Drones...
     else if (kind === 'laser') {
       const lr = Math.max(e.laserResist, e.glitchT > 0 ? e.glitchRes : 0); // Rushers, UFOs; Glitches lend it out
-      if (lr) dmg *= 1 - lr * rk;
+      if (lr && !(e.gmT > 0)) dmg *= 1 - lr * rk; // a Ghost Mark turns laser resistance off
     } else if (kind === 'explosive' && e.explosiveResist) dmg *= 1 - e.explosiveResist * rk; // Chained
     else if (kind === 'golden' && e.goldResist && !this.ignoresGoldResist(t)) dmg *= 1 - e.goldResist * rk; // Warpers, the Beholder
     const mr = ENEMIES[e.type].meleeResist; // Halloween Night 2 Executioner: melee towers barely hurt it
@@ -517,6 +517,7 @@ export class SimDamage {
     if (block && !this.dot && !pierceArmor && !tru) dmg = Math.max(0, dmg - block * (1 - Math.min(1, dp)));
     if (e.vuln) dmg *= 1 + e.vuln; // softened up by a DJ Booth's Red Drop the Beat
     if (e.arts > 0) dmg *= 1 + e.arts; // Mage Magical ARTS: more damage from everything
+    if (e.gmT > 0 && kind === 'laser') dmg *= 1 + e.gm; // Ghost Mark: Energy ARTS, more damage from lasers
     if (e.physWeak > 0 && t && !this.dot && kind !== 'laser' && kind !== 'golden') dmg *= 1 + e.physWeak; // Berserker Physical Weakness: physical hits do more
     if (e.sacrificing && !this.bloodPass && !tru) {
       // Rebirther Blood Sacrifice: almost nothing gets through, except crashes from some units.

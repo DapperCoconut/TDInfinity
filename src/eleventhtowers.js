@@ -176,6 +176,7 @@ const overdrive = (boost, cooldown) => ({ key: 'cta', name: 'System Overdrive', 
 // Incinerator Cool Down: switches on and off (see updateIncinerator in sim/parts/weapons4.js).
 const COOL_DOWN = { key: 'coolDown', name: 'Cool Down', desc: 'On: stops attacking and cools down fast. Press again to switch it off', cooldown: 1 };
 // Smuggler Hunting Crew (towers named in `names` get `fav`, the rest `boost`).
+const MASS_LETHALITY = { key: 'massLethality', name: 'Mass Lethality', desc: 'Spends its Slashes to cut every zombie near it, then Echo Slashes', cooldown: 20 };
 const CREW = { boost: 0.1, fav: 0.25, names: ['Bandit', 'Archer', 'Thief', 'Mercenary', 'Mercenary Base', 'Bomber', 'Hunter', 'Berserker'], cash: 0.2, max: 0.5 };
 
 export const ELEVENTH_TOWERS = {
@@ -811,6 +812,106 @@ export const ELEVENTH_TOWERS = {
         lowHpMult: 1.5, plunder: { base: 100, mult: 1.3 }, hitSlow: { slow: 0.2, time: 2, boss: 1 } },
       { name: 'Hunting Crew', desc: '+9 damage, but the splash does half. Hunting Crew: other towers in range deal 10% more damage (25% for Bandits, Archers, Thieves, Mercenaries, Bombers, Hunters and Berserkers). Plunder: +20% for every max-level tower of yours it boosts (up to +50%).', cost: 4700, damage: 12, splash: 6, cooldown: 1.1, range: 15, radius: 3, hidden: true,
         lowHpMult: 1.5, plunder: { base: 100, mult: 1.3 }, hitSlow: { slow: 0.2, time: 2, boss: 1 }, aura: 15, crew: CREW },
+    ],
+  },
+  // Ghost (alternate Exterminator form): bursts of lasers. spectral { every, mult, mark, cap, time,
+  // min, reveal, shock }: Spectral Shot, its own shot every `every` s for `mult` x damage that puts
+  // a Ghost Mark on the zombie for `time` s (e.gm/e.gmT): +`mark` laser damage taken per shot, up
+  // to `cap`, and laser resistance stops working. Each Spectral Shot on a marked zombie cuts the
+  // next cooldown by 1s (down to `min`); one on an unmarked zombie puts it back to `every`.
+  // reveal: marked zombies can be seen by everyone. shock: the shot also shocks (slows).
+  // markTrue (level): its hits on marked zombies are true damage. A level's `cliff` = cliff stats.
+  exterminatorGhost: {
+    name: 'Ghost',
+    altOf: 'exterminator',
+    form: 'Ghost',
+    shards: 1,
+    price: 0,
+    cost: 1100,
+    limit: 5,
+    laser: true,
+    placement: 'any',
+    lead: false,
+    blurb: 'An alternate Exterminator that fires bursts of 5 lasers, on a cliff or on the ground (20% more range on a cliff). From Lv 1 its Spectral Shot puts a Ghost Mark on zombies: marked zombies take more damage from every laser, and their laser resistance stops working. Up to 5.',
+    tip: 'Put it next to other laser towers: every Ghost Mark makes all of their lasers hit harder.',
+    levels: [
+      { name: 'Ghost', desc: 'Bursts of 5 lasers (2 damage each, 0.3s apart), every 1.5s.', damage: 2, burst: 5, burstGap: 0.3, cooldown: 2.7, range: 14, cliff: { range: 16.8 }, hidden: false },
+      { name: 'EMP Discharge', desc: '+1 damage, +2 range, faster bursts (0.3s > 0.2s apart, every 1.5s > 1.2s). Spectral Shot every 10s: 3x damage and a Ghost Mark for 7s (+2% laser damage taken, up to 8%). Hitting a marked zombie cuts its cooldown by 1s (down to 4s).', cost: 1450, damage: 3, burst: 5, burstGap: 0.2, cooldown: 2, range: 16, cliff: { range: 19.2 }, hidden: false,
+        spectral: { every: 10, mult: 3, mark: 0.02, cap: 0.08, time: 7, min: 4 } },
+      { name: 'Haunted Target', desc: '+2 damage, +3 range, and hidden detection. Ghost Marks reveal hidden zombies for everyone.', cost: 4000, damage: 5, burst: 5, burstGap: 0.2, cooldown: 2, range: 19, cliff: { range: 22.8 }, hidden: true,
+        spectral: { every: 10, mult: 3, mark: 0.02, cap: 0.08, time: 7, min: 4, reveal: true } },
+      { name: 'Static Shade', desc: '+2 damage, +2 range, 7 lasers per burst (0.15s apart). Spectral Shot also shocks: 30% slower for 3s (10% on bosses).', cost: 9600, damage: 7, burst: 7, burstGap: 0.15, cooldown: 2.1, range: 21, cliff: { range: 25.2 }, hidden: true,
+        spectral: { every: 10, mult: 3, mark: 0.02, cap: 0.08, time: 7, min: 4, reveal: true, shock: { slow: 0.3, boss: 0.1, time: 3 } } },
+      { name: 'Spectral Assassin', desc: '+4 range, 10 lasers per burst (0.1s apart, every 1s). Ghost Marks stack up to 16%, and it does true damage to marked zombies.', cost: 12300, damage: 7, burst: 10, burstGap: 0.1, cooldown: 1.9, range: 25, cliff: { range: 30 }, hidden: true, markTrue: true,
+        spectral: { every: 10, mult: 3, mark: 0.02, cap: 0.16, time: 7, min: 4, reveal: true, shock: { slow: 0.3, boss: 0.1, time: 3 } } },
+    ],
+  },
+  // Vindicator (alternate Knifer form): two big daggers. exec { at, mult, first }: Execution, a hit
+  // that leaves the zombie below `at` of its health does `mult` x damage (`first` x the first time
+  // a zombie is executed). ml: Mass Lethality (see updateVindicator in sim/parts/weapons4.js):
+  // `max` Slashes; +`idle.n` every `idle.every` s with no zombie in its second range `range`,
+  // +1 per Execution (+2 while it runs); `trickle`: +1 every that many s while it isn't running;
+  // `refresh`: the cooldown ends when the Slashes are full. Using it slashes every zombie in
+  // `range` every `tick` s, one Slash each, then Echo Slashes: every zombie it hit that is still
+  // alive takes `max` x `echo` x damage. `kill`: Slashes back per kill; `stalk`: hits that don't
+  // kill add +(10 - X)% damage until it ends; `lastExec`: the last Slash is always an Execution.
+  kniferVindicator: {
+    name: 'Vindicator',
+    altOf: 'knifer',
+    form: 'Vindicator',
+    shards: 1,
+    price: 0,
+    cost: 1300,
+    melee: true,
+    flying: false,
+    lead: false,
+    blurb: 'An alternate Knifer with two big daggers. From Lv 1 its Execution hits do extra damage to zombies it brings below 70% health (3x the first time). At Lv 3 it gets Mass Lethality: it saves up Slashes, then cuts every zombie around it until they run out.',
+    tip: 'Let it save Slashes between waves, then use Mass Lethality when a big group walks past.',
+    levels: [
+      { name: 'Vindicator', desc: 'Slashes one zombie for 5 damage every 0.5s.', damage: 5, cooldown: 0.5, range: 5, hidden: false },
+      { name: 'Execution Strike', desc: 'Hidden detection. Execution: hits that leave a zombie below 70% health do 1.5x damage (3x the first time on each zombie).', cost: 700, damage: 5, cooldown: 0.5, range: 5, hidden: true,
+        exec: { at: 0.7, mult: 1.5, first: 3 } },
+      { name: 'Killer Edge', desc: '+3 damage. Executions do 2x damage.', cost: 1600, damage: 8, cooldown: 0.5, range: 5, hidden: true,
+        exec: { at: 0.7, mult: 2, first: 3 } },
+      { name: 'Mass Lethality', desc: 'Saves up Slashes (up to 10): +2 every 2s with no zombie near, +1 per Execution. Mass Lethality: spends one Slash every 0.2s to cut every zombie near it, then Echo Slashes hit the ones still alive. It can\'t be stunned meanwhile.', cost: 3250, damage: 8, cooldown: 0.5, range: 5, hidden: true,
+        exec: { at: 0.7, mult: 2, first: 3 }, ml: { range: 12, max: 10, idle: { n: 2, every: 2 }, tick: 0.2, echo: 0.5 }, abilities: [MASS_LETHALITY] },
+      { name: 'Execution Strike', desc: '+5 damage, swings faster (every 0.5s > 0.4s), and Executions do 3x damage.', cost: 5000, damage: 13, cooldown: 0.4, range: 5, hidden: true,
+        exec: { at: 0.7, mult: 3, first: 3 }, ml: { range: 12, max: 10, idle: { n: 2, every: 2 }, tick: 0.2, echo: 0.5 }, abilities: [MASS_LETHALITY] },
+      { name: 'Mass Lethality X', desc: '+2 damage, up to 15 Slashes, +1 Slash every 4s while Mass Lethality is off, and its cooldown ends as soon as the Slashes are full.', cost: 5250, damage: 15, cooldown: 0.4, range: 5, hidden: true,
+        exec: { at: 0.7, mult: 3, first: 3 }, ml: { range: 12, max: 15, idle: { n: 2, every: 2 }, tick: 0.2, echo: 0.5, trickle: 4, refresh: true }, abilities: [MASS_LETHALITY] },
+      { name: 'Deathstalker', desc: '+8 damage. In Mass Lethality, kills give back 2 Slashes, other hits add up to +10% damage until it ends (less the more damage boosts it has), and the last Slash is always an Execution.', cost: 22000, damage: 23, cooldown: 0.4, range: 5, hidden: true,
+        exec: { at: 0.7, mult: 3, first: 3 }, ml: { range: 12, max: 15, idle: { n: 2, every: 2 }, tick: 0.2, echo: 0.5, trickle: 4, refresh: true, kill: 2, stalk: true, lastExec: true }, abilities: [MASS_LETHALITY] },
+    ],
+  },
+  // Cryolator (alternate Harpoon Hunter form): a freeze rifle. Its lasers freeze the zombie they hit
+  // for cryo.freeze s (never bosses); a zombie it froze in the last CRYO_PENALTY s freezes only half
+  // as long (until `stack`). cryo.slow: after that, a slow of that much (the strongest slow wins)
+  // for as long again. On the ground it has 20% less range than on a cliff (`cliff` = cliff stats).
+  harpoonCryolator: {
+    name: 'Cryolator',
+    altOf: 'harpoonHunter',
+    form: 'Cryolator',
+    shards: 1,
+    price: 0,
+    cost: 1600,
+    limit: 4,
+    laser: true,
+    placement: 'any',
+    lead: false,
+    bossStop: 0,
+    blurb: 'An alternate Harpoon Hunter with a freeze rifle: big laser shots that freeze the zombie they hit (never bosses). Goes on a cliff or on the ground, but has 20% less range on the ground. Up to 4.',
+    tip: 'Put it on a cliff and aim it at the strongest zombie: every shot stops it in its tracks.',
+    levels: [
+      { name: 'Cryolator', desc: '30 damage every 6s, and a 1.5s freeze.', damage: 30, cooldown: 6, range: 18.4, cliff: { range: 23 }, hidden: false,
+        cryo: { freeze: 1.5 } },
+      { name: 'Frostbite', desc: '+20 damage, and shoots faster (every 6s > 5s).', cost: 1000, damage: 50, cooldown: 5, range: 18.4, cliff: { range: 23 }, hidden: false,
+        cryo: { freeze: 1.5 } },
+      { name: 'Permafrost Bullets', desc: '+5 damage, freezes for 2.2s (from 1.5s), then slows by 25% for as long.', cost: 1200, damage: 55, cooldown: 5, range: 18.4, cliff: { range: 23 }, hidden: false,
+        cryo: { freeze: 2.2, slow: 0.25 } },
+      { name: 'Arctic Sight', desc: '+9 range, hidden detection, and shoots faster (every 5s > 4.5s).', cost: 1550, damage: 55, cooldown: 4.5, range: 25.6, cliff: { range: 32 }, hidden: true,
+        cryo: { freeze: 2.2, slow: 0.25 } },
+      { name: 'Glacier Blast', desc: '+145 damage, freezes for 3s, then slows by 35%. Freezing the same zombie again no longer freezes it for less.', cost: 8600, damage: 200, cooldown: 4.5, range: 25.6, cliff: { range: 32 }, hidden: true,
+        cryo: { freeze: 3, slow: 0.35, stack: true } },
     ],
   },
   mage: {

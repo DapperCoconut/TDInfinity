@@ -1,12 +1,12 @@
 // Tower models: people, batch 29 (dressed with the vehicle kit in ../vehicles.js).
-// In here: Cyborg, Incinerator, Smuggler.
+// In here: Cyborg, Incinerator, Smuggler, Ghost, Vindicator, Cryolator.
 // Like batches 26-28 these are plain faceless figures: only their gear tells them apart, with
 // accents in one neon colour per tower.
 // MODELS maps tower keys to builders; ../models.js lays it over TOWER_MODELS, so these win.
 
 import { glowMat } from '../vehicles.js';
 import { makeHumanoid } from './kit.js';
-import { UP, aimLong, dome, fist, muzzle, own, wear } from './people1.js';
+import { UP, aimLong, dome, fist, goggles, muzzle, own, wear } from './people1.js';
 import { shoulderPads } from './people2.js';
 import { feet, hands } from './people5.js';
 import { cape } from './people18.js';
@@ -302,8 +302,215 @@ export function makeSmuggler(level) {
   return own(h, UP);
 }
 
+// ------------------------------------------------------------------ Ghost (neon periwinkle)
+
+const GHOST_NEON = 0xa7b4ff;
+
+/**
+ * Ghost (alternate Exterminator): a white hooded sniper-ghost with a glowing visor and a laser
+ * burst rifle. Lv 1 EMP Discharge: an EMP pack with antennas. Lv 2 Haunted Target: a tattered
+ * cloak. Lv 3 Static Shade: coils on the shoulders. Lv 4 Spectral Assassin: a bigger rifle and
+ * a glowing hood trim.
+ */
+export function makeGhost(level) {
+  const h = blank();
+  const key = `exterminatorGhost${level}`;
+  const neon = glowMat(h, GHOST_NEON);
+  const hd = wear(h, h.head, `${key}:head`);
+  const t = wear(h, h.torso, `${key}:torso`);
+  // a hood over the head, open at the front, with a glowing visor band
+  hd.box(1.5, 1.45, 1.4, W2, 0, 0.55, -0.1, { r: 0.35 });
+  hd.slab(1.3, 0.5, 1.2, W2, 0, 1.4, -0.25, { bw: 0.4, bz: -0.3 }); // hood peak
+  hd.box(1.12, 0.14, 0.06, neon, 0, 0.55, 0.62); // visor
+  if (level >= 4) hd.torus(0.72, 0.04, neon, 0, 0.55, 0.0, { rx: 0.15, seg: 20 }); // glowing hood trim
+  t.box(2.1, 1.8, 1.1, W, 0, 0.05, 0, { r: 0.1 }); // suit
+  t.box(0.08, 1.4, 0.05, neon, 0, 0.1, 0.57); // neon seam
+  t.box(2.14, 0.24, 1.14, W3, 0, -0.84, 0, { r: 0.04 }); // belt
+  t.box(0.3, 0.2, 0.06, neon, 0, -0.84, 0.58, { r: 0.02 });
+  if (level >= 1) {
+    t.box(1.2, 1.2, 0.6, W2, 0, 0.2, -0.85, { r: 0.08 }); // EMP pack
+    t.cyl(0.25, 0.1, neon, 0, 0.2, -1.16, { rx: PI / 2, seg: 14 }); // glowing core
+    for (const sx of [-1, 1]) {
+      t.cyl(0.03, 0.9, W3, sx * 0.4, 1.2, -0.9, { seg: 6 }); // antennas
+      t.ball(0.07, neon, sx * 0.4, 1.68, -0.9, { seg: 8, rows: 5 });
+    }
+  }
+  if (level >= 2) cape(t, W2, 2.4, { w: 2.1, clasp: GHOST_NEON });
+  if (level >= 3) {
+    shoulderPads(t, W2, 0.55);
+    for (const sx of [-1, 1]) for (let i = 0; i < 3; i++) t.torus(0.18, 0.04, neon, sx * 1.25, 0.95 + i * 0.13, 0, { rx: PI / 2, seg: 10 }); // static coils
+  }
+  hd.done();
+  t.done();
+  hands(h, key, W3, W2, (a) => a.box(0.5, 0.06, 0.06, neon, 0, -1.25, 0.6));
+  feet(h, key, W2, null);
+  h.muzzles = [];
+  const g = fist(h.rightArm, -1.9, 1.2);
+  const gk = wear(h, g, `${key}:gun`);
+  const [y, z] = whiteBurstRifle(gk, neon, { big: level >= 4, belt: level >= 3 });
+  gk.done();
+  muzzle(h, g, y, z);
+  aimLong(h);
+  h.tracer = GHOST_NEON;
+  return own(h, UP);
+}
+
+// ------------------------------------------------------------------ Vindicator (neon magenta)
+
+const VINDI_NEON = 0xd500f9;
+
+/** A big white dagger in the fist (blade down -y). o.glow: the blade glows; o.serrated: teeth on the back. */
+function whiteDagger(k, neon, o = {}) {
+  k.cyl(0.1, 0.45, W3, 0, 0.05, 0, { seg: 8 }); // grip
+  k.ball(0.13, neon, 0, 0.3, 0, { seg: 10, rows: 7 }); // pommel
+  k.box(0.16, 0.12, 0.62, W2, 0, -0.22, 0, { r: 0.04 }); // guard
+  const bl = 1.3;
+  const blade = o.glow ? neon : W;
+  k.box(0.07, bl * 0.75, 0.28, blade, 0, -0.28 - bl * 0.375, 0.02);
+  k.slab(0.07, bl * 0.25, 0.28, blade, 0, -0.28 - bl * 0.875, 0.02, { bd: 0.04 });
+  if (!o.glow) k.box(0.08, bl * 0.7, 0.04, neon, 0, -0.28 - bl * 0.375, 0.15); // neon edge
+  if (o.serrated) for (let i = 0; i < 4; i++) k.box(0.06, 0.1, 0.1, W3, 0, -0.45 - i * 0.22, -0.15, { rx: 0.6 });
+  return -0.28 - bl;
+}
+
+/**
+ * Vindicator (alternate Knifer): a white assassin in a face wrap with two big daggers. Lv 1
+ * Execution Strike: a neon sash. Lv 2 Killer Edge: serrated blades. Lv 3 Mass Lethality: a
+ * hood and a bandolier of throwing knives. Lv 4: arm guards. Lv 5 Mass Lethality X: the blades
+ * glow. Lv 6 Deathstalker: a long tattered coat and horned hood.
+ */
+export function makeVindicator(level) {
+  const h = blank();
+  const key = `kniferVindicator${level}`;
+  const neon = glowMat(h, VINDI_NEON);
+  const hd = wear(h, h.head, `${key}:head`);
+  const t = wear(h, h.torso, `${key}:torso`);
+  hd.box(1.66, 0.5, 1.66, W2, 0, 0.25, 0.02, { r: 0.12 }); // face wrap
+  hd.box(1.0, 0.06, 0.05, neon, 0, 0.45, 0.85);
+  if (level >= 3) {
+    hd.box(1.55, 1.3, 1.45, W3, 0, 0.75, -0.12, { r: 0.35 }); // hood
+    if (level >= 6) for (const sx of [-1, 1]) hd.cyl(0.12, 0.7, neon, sx * 0.55, 1.55, -0.1, { seg: 8, r2: 0.02, rz: -sx * 0.4 }); // horns
+  } else dome(hd, 0.8, 0.5, W, 0, 0.92, 0);
+  t.box(2.0, 1.7, 1.05, W, 0, 0.1, 0, { r: 0.1 });
+  t.box(2.05, 0.24, 1.1, W3, 0, -0.84, 0, { r: 0.04 }); // belt
+  for (const sx of [-1, 1]) t.box(0.22, 0.9, 0.3, W3, sx * 0.9, -1.15, 0.15, { r: 0.04, rz: sx * 0.15 }); // dagger sheaths
+  if (level >= 1) {
+    t.box(2.08, 0.18, 1.12, neon, 0, -0.6, 0); // sash
+    t.box(0.3, 0.7, 0.06, neon, 0.5, -0.95, 0.56, { rz: 0.2 }); // sash tail
+  }
+  if (level >= 3) {
+    t.box(0.24, 2.2, 0.1, W3, 0.2, 0.1, 0.56, { rz: 0.6 }); // bandolier
+    for (let i = 0; i < 5; i++) t.box(0.08, 0.3, 0.06, neon, 0.75 - i * 0.27, -0.35 + i * 0.22, 0.64, { rz: 0.6 });
+  }
+  if (level >= 6) cape(t, W2, 2.6, { w: 2.1, clasp: VINDI_NEON });
+  hd.done();
+  t.done();
+  hands(h, key, W3, W2, (a) => {
+    if (level >= 4) a.box(0.46, 0.5, 0.46, W2, 0, -0.95, 0, { r: 0.08 }); // arm guards
+    if (level >= 4) a.box(0.48, 0.06, 0.48, neon, 0, -0.75, 0);
+  });
+  feet(h, key, W2, null);
+  h.muzzles = [];
+  const o = { glow: level >= 5, serrated: level >= 2 };
+  const g = fist(h.rightArm, -1.9, 1.15);
+  const gk = wear(h, g, `${key}:gun`);
+  const tipY = whiteDagger(gk, neon, o);
+  gk.done();
+  muzzle(h, g, tipY, 0);
+  const g2 = fist(h.leftArm, -1.9, 1.15);
+  const sk = wear(h, g2, `${key}:dagger2`);
+  whiteDagger(sk, neon, o);
+  sk.done();
+  h.rightArm.rotation.set(-2.3, 0, 0.2);
+  h.leftArm.rotation.set(-1.4, 0, -0.3);
+  h.pose = { right: -2.3, left: -1.4, leftRecoil: 0 };
+  h.swing = 1.8;
+  h.melee = true;
+  h.tracer = VINDI_NEON;
+  return own(h, 0);
+}
+
+// ------------------------------------------------------------------ Cryolator (neon pale aqua)
+
+const CRYO_NEON = 0x84ffff;
+
+/**
+ * A white freeze rifle on the fist (gun space): a long body, a frost tank under it, and a wide
+ * emitter. o.scope (Arctic Sight+): a long scope. o.big (Glacier Blast): a bigger emitter with
+ * ice crystals. Returns the bore point [y, z].
+ */
+function whiteFreezeRifle(k, neon, o = {}) {
+  const U = UP;
+  const len = o.big ? 2.7 : 2.4;
+  k.box(0.4, 1.4, 0.44, W, 0, -0.45, U, { r: 0.08 }); // body
+  k.cyl(0.1, len - 1.2, W3, 0, -1.15 - (len - 1.2) / 2 + 0.1, U, { seg: 10 }); // barrel
+  const er = o.big ? 0.26 : 0.2;
+  k.cyl(er, 0.3, W2, 0, -len + 0.1, U, { seg: 14 }); // emitter
+  k.torus(er, 0.04, neon, 0, -len - 0.05, U, { rx: PI / 2, seg: 14 });
+  for (let i = 0; i < 3; i++) k.torus(0.13, 0.03, neon, 0, -1.4 - i * 0.25, U, { rx: PI / 2, seg: 10 }); // cooling rings
+  k.cyl(0.18, 0.8, W2, 0, -0.55, U - 0.36, { seg: 12 }); // frost tank
+  k.cyl(0.19, 0.12, neon, 0, -0.55, U - 0.36, { seg: 12 });
+  k.box(0.24, 0.24, 0.5, W2, 0, 0.12, U - 0.38, { rx: -0.32, r: 0.04 }); // grip
+  k.box(0.26, 0.7, 0.36, W2, 0, 0.55, U + 0.04, { r: 0.06 }); // stock
+  if (o.scope) {
+    k.cyl(0.1, 0.9, W3, 0, -0.5, U + 0.36, { seg: 10 });
+    k.cyl(0.11, 0.04, neon, 0, -0.96, U + 0.36, { seg: 10 });
+  }
+  if (o.big) for (const sd of [-1, 1]) k.slab(0.1, 0.4, 0.14, neon, sd * 0.2, -len + 0.3, U + 0.2, { rz: sd * 0.5, bd: 0.04 }); // ice crystals
+  return [-len - 0.1, U];
+}
+
+/**
+ * Cryolator (alternate Harpoon Hunter): a white trooper in a fur-lined parka hood with a freeze
+ * rifle. Lv 1 Frostbite: goggles. Lv 2 Permafrost Bullets: a frost canister on the back. Lv 3
+ * Arctic Sight: a scope and an antenna. Lv 4 Glacier Blast: the big rifle and ice shards on the
+ * shoulders.
+ */
+export function makeCryolator(level) {
+  const h = blank();
+  const key = `harpoonCryolator${level}`;
+  const neon = glowMat(h, CRYO_NEON);
+  const hd = wear(h, h.head, `${key}:head`);
+  const t = wear(h, h.torso, `${key}:torso`);
+  hd.box(1.55, 1.4, 1.45, W2, 0, 0.6, -0.1, { r: 0.4 }); // parka hood
+  hd.torus(0.68, 0.14, W3, 0, 0.55, 0.62, { seg: 18 }); // fur ring round the face
+  if (level >= 1) goggles(hd, 0.6, CRYO_NEON, { frame: W3, strap: W3 });
+  t.box(2.2, 1.85, 1.2, W, 0, 0.05, 0, { r: 0.18 }); // parka
+  t.box(0.08, 1.5, 0.05, neon, 0, 0.1, 0.62); // zip
+  t.box(2.24, 0.24, 1.24, W3, 0, -0.84, 0, { r: 0.05 }); // belt
+  if (level >= 2) {
+    t.cyl(0.36, 1.3, W2, 0, 0.15, -0.9, { seg: 14 }); // frost canister
+    t.cyl(0.37, 0.12, neon, 0, 0.45, -0.9, { seg: 14 });
+    t.cyl(0.37, 0.12, neon, 0, -0.15, -0.9, { seg: 14 });
+  }
+  if (level >= 3) {
+    t.cyl(0.03, 1.1, W3, 0.6, 1.4, -0.9, { seg: 6 }); // antenna
+    t.ball(0.07, neon, 0.6, 1.98, -0.9, { seg: 8, rows: 5 });
+  }
+  if (level >= 4) {
+    shoulderPads(t, W2, 0.6);
+    for (const sx of [-1, 1]) for (let i = 0; i < 2; i++) t.slab(0.14, 0.5, 0.14, neon, sx * (1.2 + i * 0.15), 1.25, -0.1 + i * 0.25, { rz: -sx * 0.3, bd: 0.05 }); // ice shards
+  }
+  hd.done();
+  t.done();
+  hands(h, key, W3, W2, (a) => a.box(0.5, 0.12, 0.5, W3, 0, -1.2, 0, { r: 0.05 })); // fur cuffs
+  feet(h, key, W2, null);
+  h.muzzles = [];
+  const g = fist(h.rightArm, -1.9, 1.2);
+  const gk = wear(h, g, `${key}:gun`);
+  const [y, z] = whiteFreezeRifle(gk, neon, { scope: level >= 3, big: level >= 4 });
+  gk.done();
+  muzzle(h, g, y, z);
+  aimLong(h);
+  h.tracer = CRYO_NEON;
+  return own(h, UP);
+}
+
 export const MODELS = {
   djSmuggler: makeSmuggler,
   commandoCyborg: makeCyborg,
   hallowboomerIncinerator: makeIncinerator,
+  exterminatorGhost: makeGhost,
+  kniferVindicator: makeVindicator,
+  harpoonCryolator: makeCryolator,
 };

@@ -88,6 +88,7 @@ export class SimWeapons1 {
     // Sleeter: every shot freezes the zombie it hits (bosses for `bossStop` of the time).
     if (s.freeze && !s.radius) this.iceFreeze(target, s.freeze, { freezeBoss: def.bossStop ?? 0, frostbite: s.frostbite, ignoreIceResist: s.ignoreIceResist });
     if (s.slime) this.applySlime(target, s.slime);
+    if (s.cryo) this.cryoFreeze(def, s.cryo, target); // Cryolator
     if (s.chill && t) this.applyChill(t, s, target);
     if (s.harpoon) this.applyHarpoon(def, target, s.harpoon);
     if (s.cube && t) this.iceCube(t, s, target); // Glacier

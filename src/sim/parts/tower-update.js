@@ -156,6 +156,7 @@ export class SimTowerUpdate {
     if (t.liveT > 0) this.updateLiveShow(t, s, dt); // Glowup Live Show
     if (s.slash) this.banditSlash(t, s, b, dt); // Bandit: its sword swings on its own timer
     if (s.ray) this.updateRay(t, s, b, dt); // Eradicator: Raybreak on its own timer
+    if (s.ml) this.updateVindicator(t, s, b, dt); // Vindicator: Slashes and Mass Lethality
     if (s.scare) return this.updateScare(t, def, s, b, dt); // Scarecrow
     if (def.bait) return; // bait never attacks
     if (def.kind === 'spawner') return this.updateSpawner(t, def, s, dt);
@@ -191,6 +192,7 @@ export class SimTowerUpdate {
       ...(self.burn ? { fire: { dps: self.burn, time: self.burnTime } } : {}), // Jet Trooper Fire Rounds
       ...(self.burst ? { burst: self.burst, burstGap: self.burstGap, cooldown: self.cycle } : {}) }; // Yasuke Dragon Flame
     if (t.magic) s = { ...s, damage: s.damage + t.magic }; // Wizard Magic Boost
+    if (s.spectral) this.ghostSpectral(t, s, dt); // Ghost: Spectral Shot on its own timer
     if (t.uses?.soulSurge) s = { ...s, targets: 1 + t.uses.soulSurge }; // Lure Soul Surge: more zombies per shot
     // Balloon Pal: bigger splash too.
     if (b.splash > 1 && (s.radius || s.area)) s = { ...s, ...(s.radius ? { radius: s.radius * b.splash } : {}), ...(s.area ? { area: s.area * b.splash } : {}) };
@@ -444,6 +446,7 @@ export class SimTowerUpdate {
       dmg = Math.round(dmg * (1 + Math.min(s.focus.max, t.focusN * s.focus.per)) * 100) / 100;
     }
     if ((s.spool || s.howitzer) && this.cyborgShot(t, s, target, dmg)) return; // Cyborg: Magnum Howitzer
+    if (s.exec) dmg = this.execHit(t, s, target, dmg); // Vindicator: Execution
     const berserk = s.crush ? { x: target.x, z: target.z, weak: target.physWeakT > 0 } : null; // Berserker: where it hit, and was it weakened
     if (s.combo) {
       // Brawler: every `hits`th punch is the combo finisher (harder, with knockback). The next

@@ -886,4 +886,146 @@ export class SimWeapons4 {
     e.arts = Math.min(a.cap, (e.arts || 0) + a.add);
     e.artsT = Math.max(e.artsT || 0, a.time);
   }
+
+  // ---------------------------------------------------------------- Ghost, Vindicator, Cryolator
+
+  /**
+   * Ghost Spectral Shot: every few seconds a strong shot at its target that puts a Ghost Mark on
+   * it (more laser damage taken, no laser resistance). A shot on a zombie that was already marked
+   * makes the next one come 1s sooner (down to `min`); one on an unmarked zombie starts over.
+   */
+  ghostSpectral(t, s, dt) {
+    const sp = s.spectral;
+    t.specT = (t.specT ?? sp.every) - dt;
+    if (t.specT > 0) return;
+    const target = this.findTargets(t, s, 1)[0];
+    if (!target) {
+      t.specT = 0;
+      return;
+    }
+    const marked = target.gmT > 0;
+    t.specCd = marked ? Math.max(sp.min, (t.specCd ?? sp.every) - 1) : sp.every;
+    t.specT = t.specCd;
+    t.yaw = Math.atan2(target.x - t.x, target.z - t.z);
+    this.events.push({ k: 'shot', t: t.id, e: target.id, c: 1 });
+    this.damage(t, target, s.damage * sp.mult);
+    if (!this.enemies.has(target.id)) return;
+    target.gm = Math.min(sp.cap, (marked ? target.gm : 0) + sp.mark);
+    target.gmT = sp.time;
+    if (sp.reveal && target.hidden) target.revealT = Math.max(target.revealT || 0, sp.time);
+    if (sp.shock && !target.statusImmune && !target.shockImmune) {
+      target.shock = Math.max(target.shockT > 0 ? target.shock : 0, target.boss ? sp.shock.boss : sp.shock.slow);
+      target.shockT = Math.max(target.shockT || 0, sp.shock.time);
+    }
+  }
+
+  /**
+   * Vindicator Execution: a hit that leaves the zombie below `exec.at` of its health does `mult`
+   * x damage (`first` x the first time any zombie is executed). `force`: always an Execution.
+   * Each Execution adds a Slash (2 while Mass Lethality runs), once per swing or Slash.
+   */
+  execHit(t, s, e, dmg, force = false, gain = true) {
+    const x = s.exec;
+    if (!force && e.hp - dmg >= e.maxHp * x.at) return dmg;
+    const first = !e.execd;
+    e.execd = true;
+    if (s.ml && gain && !force) this.addSlashes(t, s, t.mlOn ? 2 : 1);
+    return dmg * (first ? Math.max(x.first, x.mult) : x.mult);
+  }
+
+  addSlashes(t, s, n) {
+    t.slashes = Math.min(s.ml.max, (t.slashes || 0) + n);
+    t.charge = t.slashes / s.ml.max;
+  }
+
+  /** Vindicator: the Mass Lethality button. */
+  startMassLethality(t) {
+    if (!(t.slashes > 0)) return;
+    t.mlOn = true;
+    t.mlT = 0;
+    t.mlHit = new Set();
+    t.mlBuff = 0;
+    t.stunT = 0;
+  }
+
+  /**
+   * Vindicator: saves up Slashes while Mass Lethality is off; while it's on, spends one every
+   * `tick` s to hit every zombie in its second range, and can't be stunned.
+   */
+  updateVindicator(t, s, b, dt) {
+    const ml = s.ml;
+    t.slashes ??= 0;
+    const det = this.detects(t, s);
+    const reach = ml.range * b.range;
+    const near = [];
+    for (const e of this.enemies.values()) if (canHit(det, e) && (e.x - t.x) ** 2 + (e.z - t.z) ** 2 <= reach * reach) near.push(e);
+    if (!t.mlOn) {
+      if (near.length) t.idleT = 0;
+      else if ((t.idleT = (t.idleT || 0) + dt) >= ml.idle.every) {
+        t.idleT -= ml.idle.every;
+        this.addSlashes(t, s, ml.idle.n);
+      }
+      if (ml.trickle && (t.trickT = (t.trickT || 0) + dt) >= ml.trickle) {
+        t.trickT -= ml.trickle;
+        this.addSlashes(t, s, 1);
+      }
+      if (ml.refresh && t.slashes >= ml.max) t.cd.massLethality = 0; // Mass Lethality X
+      t.charge = t.slashes / ml.max;
+      return;
+    }
+    t.immuneT = Math.max(t.immuneT || 0, ml.tick + 0.1);
+    t.stunT = 0;
+    if ((t.mlT -= dt) > 0) return;
+    t.mlT = Math.max(0, t.mlT + ml.tick);
+    if (!near.length) return this.endMassLethality(t, s); // nothing left near: it stops, the rest of the Slashes are kept
+    t.slashes--;
+    const last = t.slashes <= 0;
+    let got = false;
+    for (const e of near) {
+      let dmg = s.damage * (1 + (t.mlBuff || 0));
+      if (s.exec) {
+        const before = t.slashes;
+        dmg = this.execHit(t, s, e, dmg, last && ml.lastExec, !got);
+        if (t.slashes !== before) got = true;
+      }
+      t.mlHit.add(e.id);
+      this.damage(t, e, dmg);
+      if (!this.enemies.has(e.id)) {
+        if (ml.kill) this.addSlashes(t, s, ml.kill); // Deathstalker: kills give Slashes back
+      } else if (ml.stalk) {
+        // Deathstalker: +(10 - X)% damage, X = (damage boosts on it % - 60) / 15, from 0 to 8.
+        const boost = ((b.dmg - 1) + t.mlBuff) * 100;
+        t.mlBuff += (10 - Math.min(8, Math.max(0, (boost - 60) / 15))) / 100;
+      }
+    }
+    this.events.push({ k: 'gsword', id: t.id, x: r2(t.x), z: r2(t.z), r: reach, c: 0xd500f9 });
+    t.charge = Math.max(0, t.slashes) / ml.max;
+    if (t.slashes <= 0) this.endMassLethality(t, s);
+  }
+
+  /** Vindicator: Mass Lethality ends with Echo Slashes: every zombie it cut that is still alive takes `max` more. */
+  endMassLethality(t, s) {
+    const ml = s.ml;
+    for (const id of t.mlHit) {
+      const e = this.enemies.get(id);
+      if (e) this.damage(t, e, s.damage * ml.echo * ml.max * (1 + t.mlBuff));
+    }
+    t.slashes = Math.max(0, t.slashes);
+    t.charge = t.slashes / ml.max;
+    t.mlOn = false;
+    t.mlHit = null;
+    t.mlBuff = 0;
+  }
+
+  /**
+   * Cryolator: freezes the zombie it hit (bosses never). A zombie it froze in the last 5s freezes
+   * only half as long, unless `stack` is on. Then a slow of `slow` for as long again.
+   */
+  cryoFreeze(def, c, e) {
+    if (!this.enemies.has(e.id)) return;
+    const secs = !c.stack && e.cryoT > 0 ? c.freeze / 2 : c.freeze;
+    this.iceFreeze(e, secs, { freezeBoss: def.bossStop ?? 0 });
+    e.cryoT = 5;
+    if (c.slow) this.applySlime(e, { slow: c.slow, time: secs * 2, boss: 1 });
+  }
 }
