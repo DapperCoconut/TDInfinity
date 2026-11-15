@@ -10,6 +10,7 @@ import { WORLD_SCALE } from '../scale.js';
 import { heightAt, mapInfo } from '../sim/map.js';
 import { CITADEL, borrowsHidden, buffOf, computeBuffs, mediCharge, medicShields, nextUpgrade, spyCircles } from '../sim/sim.js';
 import { CAM_GROUND_GAP, CAM_PITCH_MIN, EMPTY, innerRings, ringRadius } from './shared.js';
+const CLOSE_ZOOM = 7; // camera closer than this (drawn units) hides your own player
 
 export class GameView {
 
@@ -281,6 +282,7 @@ export class GameView {
     }
     if (this.player) {
       const p = this.player.pos;
+      this.player.h.root.visible = cam.dist > CLOSE_ZOOM; // zoomed right in: hide yourself so you can see
       cam.target.lerp({ x: p.x * WORLD_SCALE, y: p.y * WORLD_SCALE + 4, z: p.z * WORLD_SCALE }, Math.min(1, dt * 12));
     }
     const cp = Math.cos(cam.pitch);
