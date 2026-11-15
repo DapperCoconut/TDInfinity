@@ -94,19 +94,27 @@ function moveFace(mesh, n, d, dist) {
   pos.needsUpdate = true;
 }
 
-/** One de-clipping pass over `root`. Returns how many faces it had to move. */
+/** One de-clipping pass over `root`. Returns the faces it moved, as "part|plane|distance" keys. */
 function declipPass(root) {
   const meshes = [];
   declipGroup(clipFaces(root, meshes).sort((a, b) => a.d - b.d), meshes);
-  let moved = 0;
+  const moved = [];
   for (const mesh of meshes) {
     for (const f of mesh.push.values()) {
       if (Math.abs(f.dist) < 1e-5) continue;
       moveFace(mesh, f.n, f.d, f.dist);
-      moved++;
+      moved.push({ id: mesh.m.id, n: f.n, from: f.d, to: f.d + f.dist });
     }
   }
   return moved;
+}
+
+/** Did pass `b` put back exactly what pass `a` moved (every face back where it was)? */
+function undoes(b, a) {
+  if (!a || a.length !== b.length) return false;
+  const key = (id, n, x, y) => `${id}|${n.x.toFixed(4)},${n.y.toFixed(4)},${n.z.toFixed(4)}|${x.toFixed(4)}>${y.toFixed(4)}`;
+  const want = new Set(a.map((f) => key(f.id, f.n, f.to, f.from)));
+  return b.every((f) => want.delete(key(f.id, f.n, f.from, f.to))) && want.size === 0;
 }
 
 /** Finds the fighting pairs among `faces` (sorted by depth) and plans how far each face moves. */
@@ -134,7 +142,19 @@ function declipGroup(faces, meshes) {
 
 /** De-clips `root` (see above) and swaps edited geometries for cached copies. */
 export function declip(root) {
-  for (let pass = 0; pass < CLIP_PASSES && declipPass(root); pass++);
+  // Some faces never settle: two parts push the same face out and back, every pass. Once a pass
+  // just undoes the one before, the rest would only flip it back and forth, so skip to where the
+  // last pass would leave it (one more flip if an odd number of passes is left).
+  let prev = null;
+  for (let pass = 0; pass < CLIP_PASSES; pass++) {
+    const moved = declipPass(root);
+    if (!moved.length) break;
+    if (undoes(moved, prev)) {
+      if ((CLIP_PASSES - 1 - pass) % 2) declipPass(root);
+      break;
+    }
+    prev = moved;
+  }
   root.traverse((m) => {
     if (!m.userData.clipOwn) return;
     const g = m.geometry;

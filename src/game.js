@@ -685,7 +685,7 @@ export class GameClient {
     } else {
       this.cam.yaw += realDt * 0.05; // slow orbit behind the menus
       // Menu map pictures: one per frame, once the menu's own backdrop has been drawn a few times.
-      if (this.thumbJob && (this.menuFrames = (this.menuFrames ?? 0) + 1) > 3) {
+      if (this.thumbJob && !this.thumbsPaused && (this.menuFrames = (this.menuFrames ?? 0) + 1) > 3) {
         this.stepThumbs();
         return;
       }

@@ -9,7 +9,7 @@ import { PAD_COLORS, driftFx } from './views.js';
 import { profile } from './profile.js';
 import { audio } from './audio.js';
 import { damageText, detectText, dpsText, dpsValue, extrasText, isNonAttacker, limitRange, towerKind } from './stats.js';
-import { cachedTowerIcon, towerIcon } from './icons.js';
+import { cachedTowerIcon, towerBox, towerIcon } from './icons.js';
 import { blurbHtml, descHtml } from './text.js';
 
 // Shop order: cheapest to most expensive. Credit towers by price (free ones first), then shard
@@ -69,7 +69,10 @@ export class LoadoutScreen {
     $('lo-search').addEventListener('input', (e) => {
       this.search = e.target.value;
       this.applySearch();
+      this.fillIcons();
     });
+    // Card pictures are only drawn once scrolled into sight.
+    $('lo-grid').closest('.lo-left').addEventListener('scroll', () => this.fillIcons(), { passive: true });
     $('lo-slots').addEventListener('click', (e) => {
       const b = e.target.closest('[data-pick]');
       if (b) this.select(b.dataset.pick);
@@ -114,6 +117,7 @@ export class LoadoutScreen {
 
   show() {
     this.open = true;
+    if (this.lobby.client) this.lobby.client.thumbsPaused = true; // the menu's map pictures wait: they'd stall the shop
     if (!this.three) this.initThree();
     this.render();
     this.buildModel();
@@ -124,6 +128,7 @@ export class LoadoutScreen {
 
   hide() {
     this.open = false;
+    if (this.lobby.client) this.lobby.client.thumbsPaused = false;
     this.showVariants(false);
     cancelAnimationFrame(this.raf);
   }
@@ -246,7 +251,8 @@ export class LoadoutScreen {
 
   /**
    * Draws the missing card portraits a few per frame, so opening the shop doesn't freeze while
-   * hundreds of tower models are built and drawn at once.
+   * hundreds of tower models are built and drawn at once. Cards scrolled out of sight wait until
+   * they are scrolled to.
    */
   fillIcons() {
     if (this.iconRaf) return;
@@ -254,7 +260,15 @@ export class LoadoutScreen {
       this.iconRaf = 0;
       if (!this.open) return;
       // The info panel's level pictures first: they are the ones being looked at.
-      const imgs = [...document.querySelectorAll('#lo-info img[data-icon], #lo-slots img[data-icon], #lo-grid img[data-icon], #lo-events img[data-icon]')];
+      const view = $('lo-grid').closest('.lo-left').getBoundingClientRect();
+      const inSight = (im) => {
+        const r = im.getBoundingClientRect();
+        return r.height > 0 && r.bottom > view.top - 150 && r.top < view.bottom + 150;
+      };
+      const imgs = [
+        ...document.querySelectorAll('#lo-info img[data-icon]'),
+        ...[...document.querySelectorAll('#lo-slots img[data-icon], #lo-grid img[data-icon], #lo-events img[data-icon]')].filter(inSight),
+      ];
       if (!imgs.length) return;
       const end = performance.now() + 8; // about half a frame
       for (const im of imgs) {
@@ -385,7 +399,7 @@ export class LoadoutScreen {
     const playing = profile.playedAs(this.base);
     const varBtn = variants.length > 1
       ? `<button class="btn lo-var-btn" data-act="variants" title="Pick, buy and unlock versions of this tower">
-          <img src="${this.lobby.icons[cur]}" alt=""><span><small>Variant · ${variants.length} total</small><b>${esc(this.variantLabel(cur))}${owned && playing === cur ? ' ✔' : ''}</b></span><i>▾</i></button>`
+          ${this.img(cur)}<span><small>Variant · ${variants.length} total</small><b>${esc(this.variantLabel(cur))}${owned && playing === cur ? ' ✔' : ''}</b></span><i>▾</i></button>`
       : '';
 
     // What you can do with this tower.
@@ -711,11 +725,9 @@ export class LoadoutScreen {
     const job = T.fitJob;
     if (!job) return;
     if (job.type !== this.shown) return (T.fitJob = null);
-    const m = TOWER_MODELS[job.type](job.lv);
-    m.root.position.y = 0.4;
-    m.root.updateMatrixWorld(true);
-    job.box.expandByObject(m.root);
-    for (const mat of m.mats) mat.dispose();
+    // The level pictures build every level anyway: their bounds are kept, so nothing is built twice.
+    const box = towerBox(job.type, job.lv);
+    if (box) job.box.union(box.clone().translate(new THREE.Vector3(0, 0.4, 0)));
     if (++job.lv < TOWERS[job.type].levels.length) return;
     T.fitJob = null;
     T.fit.set(job.type, this.fitOf(job.type, job.box));

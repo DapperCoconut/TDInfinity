@@ -8,6 +8,7 @@ import { newState, poseTower } from './anim.js';
 
 const SIZE = 128;
 const cache = new Map();
+const boxes = new Map(); // type|level -> the model's bounds, unturned at the origin (the loadout frames its camera with these)
 const _pose = { t: 0.6, dt: 0, recoil: 0, shots: 0, snap: true, aim: false };
 let stage = null;
 
@@ -72,6 +73,13 @@ export function cachedTowerIcon(type, level = 0) {
   return cache.get(`${type}|${lv}`);
 }
 
+/** A tower model's bounds at a level, measured when its portrait was drawn (draws it if needed). */
+export function towerBox(type, level = 0) {
+  towerIcon(type, level);
+  const lv = Math.max(0, Math.min(level, (TOWERS[type]?.levels.length ?? 1) - 1));
+  return boxes.get(`${type}|${lv}`) ?? null;
+}
+
 /** The portrait of a tower at a level (0 = as placed). */
 export function towerIcon(type, level = 0) {
   const make = TOWER_MODELS[type];
@@ -82,6 +90,8 @@ export function towerIcon(type, level = 0) {
   if (url === undefined) {
     try {
       const m = make(lv);
+      m.root.updateMatrixWorld(true);
+      boxes.set(key, new THREE.Box3().setFromObject(m.root));
       url = renderIcon(m);
       for (const mat of m.mats ?? []) mat.dispose();
     } catch {
