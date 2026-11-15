@@ -1784,7 +1784,7 @@ export class GameEvents {
           this.effects.puff(new THREE.Vector3(ev.x, 2, ev.z), 0x616161, 14, 0.6, 8);
           this.effects.sparks(new THREE.Vector3(ev.x, 3, ev.z), 0xffd54f, 10, 13);
           this.effects.smokePuff(new THREE.Vector3(ev.x, 3, ev.z), 1.6, 6);
-          if (ev.owner === myId) this.ui.toast('💫 One of your towers was knocked out! Heal it with a Medic or Health Pack', 2200);
+          if (ev.owner === myId) this.ui.toast(ev.gone ? '💥 One of your towers was destroyed! You got 25% of its cost back' : '💫 One of your towers was knocked out! It will get back up', 2200);
           break;
         case 'bounty': {
           // Mobster Place Bounty: a gold tag over the marked zombie.

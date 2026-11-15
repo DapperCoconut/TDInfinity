@@ -117,13 +117,23 @@ export class SimTowerHealth {
     if (t.hp <= 0) this.knockOut(t);
   }
 
-  /** Tower `t` just ran out of health: it's knocked out until healed. */
+  /**
+   * Tower `t` just ran out of health. If a Revive Pack or an XWM rebuild can save it, it waits
+   * knocked out. Otherwise it is gone, and its owner gets back GAME.deathRefund of what it cost.
+   */
   knockOut(t) {
     t.hp = 0;
-    this.events.push({ k: 'towerDown', id: t.id, owner: t.owner, x: t.x, z: t.z });
     this.lifeInsurance(t);
     this.deathBlast(t);
     this.revivePack(t);
+    const def = TOWERS[t.type];
+    const saved = t.reviveT > 0 || (def.rebuilds && t.rebuilt < def.rebuilds) || t.owner === 'citadel'; // Citadel Sentries belong to the map
+    this.events.push({ k: 'towerDown', id: t.id, owner: t.owner, x: t.x, z: t.z, ...(saved ? {} : { gone: 1 }) });
+    if (saved || !this.towers.has(t.id)) return;
+    const value = t.holo ? 0 : Math.floor((t.spent || 0) * GAME.deathRefund);
+    const p = this.players.get(t.owner);
+    if (p) p.cash += value;
+    this.removeTower(t, 'sell', { value });
   }
 
   /** Towers within `r` of (x, z) deal `weak` less damage for a while; `silence` s: they can't use abilities. */

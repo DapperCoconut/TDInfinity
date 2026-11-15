@@ -56,6 +56,7 @@ export const GAME = {
   waveBonus: (wave) => GAME.earnMult * (100 + 40 * wave + 3 * wave * wave), // wave is 1-based; ramps up quadratically
   hpScalePerWave: 0.06, // enemy HP multiplier grows by this much each wave
   sellRatio: 0.5,
+  deathRefund: 0.25, // a tower that dies (no Revive Pack or rebuild left) is gone and gives back this much of its cost
   // Eradicator ΘVERLOAD (a player's, never goes down): costs that much money every second of a
   // wave. Above `threshold` it costs it every 0.5s, and hit cash shrinks by `per` for every point
   // over, up to `max`.
