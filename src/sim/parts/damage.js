@@ -4,7 +4,7 @@
 
 import { ENEMIES, GAME, TOWERS, canHit, damageKind, rootType } from '../../config.js';
 import { angleDiff, lerpAngle } from '../../utils.js';
-import { BOMB_FALL, MISSILE_TIME, TAU, buffOf, planePos, r2 } from './shared.js';
+import { BOMB_FALL, MISSILE_TIME, TAU, buffOf, isShocker, planePos, r2 } from './shared.js';
 
 export class SimDamage {
 
@@ -518,6 +518,7 @@ export class SimDamage {
     if (e.vuln) dmg *= 1 + e.vuln; // softened up by a DJ Booth's Red Drop the Beat
     if (e.arts > 0) dmg *= 1 + e.arts; // Mage Magical ARTS: more damage from everything
     if (e.gmT > 0 && kind === 'laser') dmg *= 1 + e.gm; // Ghost Mark: Energy ARTS, more damage from lasers
+    if (e.elec > 0 && t && !this.dot && isShocker(t.type)) dmg *= 1 + e.elec; // Taser Electrocute: every shocker hits harder
     if (e.physWeak > 0 && t && !this.dot && kind !== 'laser' && kind !== 'golden') dmg *= 1 + e.physWeak; // Berserker Physical Weakness: physical hits do more
     if (e.sacrificing && !this.bloodPass && !tru) {
       // Rebirther Blood Sacrifice: almost nothing gets through, except crashes from some units.

@@ -84,6 +84,20 @@ export const beamHealable = (t) => {
   return def.kind !== 'income' && !def.noHeal && !def.packHealOnly && !t.holo;
 };
 /** Can tower `t` be stunned? (`stunImmune` on the tower, or on its current level.) */
+// Shockers (Taser Electrocute and Volt Link): the Plasma Trooper, Electroshocker and Paralyzer
+// families with every form, path, golden and crosspath version (Tesla, Volt, Byte, Taser...).
+const SHOCK_ROOTS = new Set(['plasma', 'electro', 'paralyzer']);
+const shockMemo = new Map();
+export const isShocker = (type) => {
+  let v = shockMemo.get(type);
+  if (v == null) {
+    let f = familyOf(type);
+    for (let i = 0; i < 6 && TOWERS[f]?.altOf; i++) f = familyOf(f);
+    v = SHOCK_ROOTS.has(f) || SHOCK_ROOTS.has(familyOf(type));
+    shockMemo.set(type, v);
+  }
+  return v;
+};
 export const stunImmune = (t) => t.immuneT > 0 || !!(TOWERS[t.type].levels[t.level].stunImmune ?? TOWERS[t.type].stunImmune); // immuneT: Spectre Defense drone, Eldritch Rift
 /** A level's deadzone (it can't shoot zombies closer than this), or 0. */
 export const minRangeOf = (def, s) => s.minRange ?? def.minRange ?? 0;
@@ -281,7 +295,7 @@ export function computeBuffs(towers) {
       });
     }
   }
-  // Taser Volt Link: other Tasers within 1.5x its range get `link` of its boosts. (If they already
+  // Taser Volt Link: other shockers (isShocker) within 1.5x its range get `link` of its boosts. (If they already
   // have as much from the same tower, nothing changes: the bigger one counts, not both.)
   const links = sources.filter((o) => TOWERS[o.type].levels[o.level].taser?.link);
   const own = new Map(links.map((o) => [o.id, out.get(o.id)]));
@@ -293,7 +307,7 @@ export function computeBuffs(towers) {
     const r = s.range * 1.5 * ob.range;
     const lift = (mine, theirs) => Math.max(mine, 1 + share * (theirs - 1));
     for (const t of list) {
-      if (t === o || !TOWERS[t.type].levels[t.level].taser || (t.x - o.x) ** 2 + (t.z - o.z) ** 2 > r * r) continue;
+      if (t === o || !isShocker(t.type) || (t.x - o.x) ** 2 + (t.z - o.z) ** 2 > r * r) continue;
       const tb = out.get(t.id) ?? NO_BUFF;
       out.set(t.id, { ...tb, dmg: lift(tb.dmg, ob.dmg), rate: lift(tb.rate, ob.rate), range: lift(tb.range, ob.range) });
     }

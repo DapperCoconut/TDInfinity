@@ -924,9 +924,9 @@ export const ELEVENTH_TOWERS = {
   },
   // Taser (alternate Tesla form): single zaps (splash from Lv 2). taser { per, max, slow, link }:
   // every hit gives the zombie Electrocute (e.elec/e.elecT, see taserHit in sim/parts/weapons4.js):
-  // +`per` damage taken from every Taser (each zap's part lasts 5s), up to `max` x damage. slow { pct, time, fade }:
-  // small zombies (not bosses) are slowed by `pct`, `fade` less each time. link: Volt Link, other
-  // Tasers within 1.5x its range get `link` of its boosts (computeBuffs in sim/parts/shared.js).
+  // +`per` damage taken from every shocker (isShocker in sim/parts/shared.js: Plasma Trooper, Electroshocker, Paralyzer, Tesla and all their forms) (each zap's part lasts 5s), up to `max` x damage. slow { pct, time, fade }:
+  // small zombies (not bosses) are slowed by `pct`, `fade` less each time. link: Volt Link, it can also zap out to
+  // 1.5x its range, and other shockers within that get `link` of its boosts (computeBuffs in sim/parts/shared.js).
   teslaTaser: {
     name: 'Taser',
     altOf: 'tesla',
@@ -935,8 +935,8 @@ export const ELEVENTH_TOWERS = {
     price: 0,
     cost: 450,
     lead: false,
-    blurb: 'An alternate Tesla that zaps one zombie at a time. Every zap Electrocutes it: for 5s it takes more damage from every Taser (up to 3x, 6x from Lv 3). Weak alone, strong in a group of Tasers. From Lv 2 its zaps hit an area, and from Lv 4 Volt Link shares its boosts with other Tasers.',
-    tip: 'Build several Tasers together: each zap makes the next one hit harder.',
+    blurb: 'An alternate Tesla that zaps one zombie at a time. Every zap Electrocutes it: for 5s it takes more damage from every shocker: Tasers, Teslas, Electroshockers, Paralyzers, Plasma Troopers and all their forms (up to 3x, 6x from Lv 3). Weak alone, strong with other shockers. From Lv 2 its zaps hit an area, and from Lv 4 Volt Link gives it an outer range and shares its boosts with other shockers.',
+    tip: 'Build it next to other shockers (Teslas, Electroshockers, Plasma Troopers...): each zap makes all of them hit harder.',
     levels: [
       { name: 'Taser', desc: 'Zaps one zombie for 3 damage every 3s (up to 9 on Electrocuted zombies).', damage: 3, cooldown: 3, range: 9, hidden: false,
         taser: { per: 0.25, max: 3 } },
@@ -946,7 +946,7 @@ export const ELEVENTH_TOWERS = {
         taser: { per: 0.25, max: 3, slow: { pct: 0.5, time: 1, fade: 0.04 } } },
       { name: 'Electroshock', desc: '+10 damage (19-114). Electrocute goes up to 6x, and each zap adds more of it.', cost: 4800, damage: 19, cooldown: 3, range: 15, radius: 4, hidden: false,
         taser: { per: 0.5, max: 6, slow: { pct: 0.5, time: 1, fade: 0.04 } } },
-      { name: 'Volt Link', desc: '+3 range, +2 damage (21-126), bigger area. Volt Link: other Tasers near it get 1/3 of its boosts (not ones they already get from the same tower).', cost: 5000, damage: 21, cooldown: 3, range: 18, radius: 5, hidden: false,
+      { name: 'Volt Link', desc: '+3 range, +2 damage (21-126), bigger area. Volt Link: it can also zap zombies out to 1.5x its range, and other shockers in that range get 1/3 of its boosts (not ones they already get from the same tower).', cost: 5000, damage: 21, cooldown: 3, range: 18, radius: 5, hidden: false,
         taser: { per: 0.5, max: 6, slow: { pct: 0.5, time: 1, fade: 0.04 }, link: 1 / 3 } },
       { name: 'Thunder Storm', desc: '+11 damage (32-192), zaps faster (every 3s > 2.5s), and Volt Link shares 2/3 of its boosts.', cost: 9500, damage: 32, cooldown: 2.5, range: 18, radius: 5, hidden: false,
         taser: { per: 0.5, max: 6, slow: { pct: 0.5, time: 1, fade: 0.04 }, link: 2 / 3 } },

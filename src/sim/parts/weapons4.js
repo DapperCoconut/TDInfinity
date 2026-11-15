@@ -1031,9 +1031,10 @@ export class SimWeapons4 {
 
   // ---------------------------------------------------------------- Taser, Shinobi, Trickster
 
-  /** Taser: zaps its target (and from Lv 2 every zombie in `radius` around it). */
+  /** Taser: zaps its target (and from Lv 2 every zombie in `radius` around it). Volt Link: it can also zap out to 1.5x its range. */
   updateTaser(t, s) {
-    const target = this.findTarget(t, s, t.x, t.z, s.range, null);
+    let target = this.findTarget(t, s, t.x, t.z, s.range, null);
+    if (!target && s.taser.link) target = this.findTarget(t, s, t.x, t.z, s.range * 1.5, null);
     if (target) t.yaw = Math.atan2(target.x - t.x, target.z - t.z);
     if (!target || t.cooldown > 0) {
       t.cooldown = Math.max(0, t.cooldown);
@@ -1050,13 +1051,13 @@ export class SimWeapons4 {
   }
 
   /**
-   * One Taser zap: more damage the more Electrocuted the zombie is (from any Taser), then more
+   * One Taser zap: more damage the more Electrocuted the zombie is (any shocker's hits get it), then more
    * Electrocute, which wears off 5s after this zap. Small zombies it hits head-on are slowed, a bit less each time.
    */
   taserHit(t, s, e, main) {
     const tz = s.taser;
     const el = e.elec || 0;
-    this.damage(t, e, s.damage * Math.min(tz.max, 1 + el));
+    this.damage(t, e, s.damage); // (damage() adds the Electrocute bonus)
     if (!this.enemies.has(e.id)) return;
     // Each zap's Electrocute lasts 5s on its own (e.elecS: [seconds left, amount]).
     const add = Math.min(tz.per, Math.max(0, tz.max - 1 - el)); // up to this Taser's max
