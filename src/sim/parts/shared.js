@@ -130,7 +130,7 @@ export function computeBuffs(towers) {
   const list = [...towers];
   const out = new Map();
   // (VOID's corrupted towers boost nobody.)
-  const sources = list.filter((o) => { if (o.corrupt) return false; const s = TOWERS[o.type].levels[o.level]; return s.aura || (s.radio && o.radioT > 0) || (o.active > 0 && rageOf(s)) || s.kin || s.radar || s.globalCdCut || s.bizDisc || s.cliffBoost; });
+  const sources = list.filter((o) => { if (o.corrupt) return false; const s = TOWERS[o.type].levels[o.level]; return s.aura || s.bless || (s.radio && o.radioT > 0) || (o.active > 0 && rageOf(s)) || s.kin || s.radar || s.globalCdCut || s.bizDisc || s.cliffBoost; });
   // (Spectre drones boost damage in Support mode; Glowups boost firerate less the farther away a tower is.)
   if (!sources.length) return out;
   const shields = medicShields(list);
@@ -151,6 +151,8 @@ export function computeBuffs(towers) {
     let radio = 0;
     let rage = 0;
     let kritz = 0;
+    let bless = 0; // Priest: a damage blessing on one tower
+    let seeHidden = false; // Priest Guardian Angel: the blessed tower sees hidden zombies
     let invuln = false;
     let sell = 0;
     let cdCut = globalCut;
@@ -184,6 +186,10 @@ export function computeBuffs(towers) {
       const charge = o.active > 0 && s.beamHeal ? mediCharge(s) : null;
       if (charge?.key === 'uberBeam' && (o === t || o.lock === t.id)) invuln = true;
       if (charge?.key === 'kritz' && o.lock === t.id) kritz = Math.max(kritz, charge.boost);
+      if (s.bless && o.lock === t.id && o !== t) {
+        bless = Math.max(bless, s.bless);
+        if (s.blessHidden) seeHidden = true;
+      }
       if (family(o) === family(t)) continue;
       const d2 = (t.x - o.x) ** 2 + (t.z - o.z) ** 2;
       // Ranger Intelligence Radio: a range boost for a while after each wave starts.
@@ -244,13 +250,13 @@ export function computeBuffs(towers) {
       if (discount || sell || invuln || biz || cdCut || costUp) out.set(t.id, { ...NO_BUFF, discount, sell, invuln, biz, bizTier, cdCut, costUp });
       continue;
     }
-    if (range || cliffRange || rate || cta || music || discount || boothRange || boothDmg || merc || radio || rage || m || kritz || invuln || sell || cdCut || dmgAdd || kinRate || kinDmg || kinRange || biz || costUp || dmgLoss || rateLoss || splash || killCash > 1 || goldRate || ctaD) {
+    if (range || cliffRange || rate || cta || music || discount || boothRange || boothDmg || merc || radio || rage || m || kritz || bless || seeHidden || invuln || sell || cdCut || dmgAdd || kinRate || kinDmg || kinRange || biz || costUp || dmgLoss || rateLoss || splash || killCash > 1 || goldRate || ctaD) {
       out.set(t.id, {
         range: TOWERS[t.type].noRangeBuff ? 1 : (1 + range) * (1 + cliffRange) * (1 + boothRange) * (1 + radio) * (1 + kinRange), // Slammer: range can't be boosted
         rate: (1 + rate + cta) * (1 + music) * (1 + (ms?.shieldRate ?? 0)) * (1 + kinRate) * (1 - rateLoss) * (1 + goldRate),
         discount,
         cta: cta > 0,
-        dmg: TOWERS[t.type].noDmgBuff ? 1 : (1 + uberBoost) * (1 + boothDmg) * (1 + merc) * (1 + rage) * (1 + kritz) * (1 - dmgLoss) * (1 + ctaD), // Refractor: no damage boosts
+        dmg: TOWERS[t.type].noDmgBuff ? 1 : (1 + uberBoost) * (1 + boothDmg) * (1 + merc) * (1 + rage) * (1 + kritz) * (1 + bless) * (1 - dmgLoss) * (1 + ctaD), // Refractor: no damage boosts
         shield: m ? m.id : 0,
         uber,
         recharge: ms?.recharge ?? 0,
@@ -263,6 +269,7 @@ export function computeBuffs(towers) {
         costUp,
         splash: TOWERS[t.type].noRangeBuff ? 1 : 1 + splash,
         killCash,
+        seeHidden,
       });
     }
   }

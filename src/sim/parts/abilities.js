@@ -27,6 +27,7 @@ export class SimAbilities {
           }
         }
       }
+      if (ab.key === 'riceVoid') this.riceVoid(t, s, ab); // Farmer: cash in every paycheck now
       if (ab.heal) this.healTower(t, ab.heal); // Juggernaut Overcharge
       if (ab.unstunSelf) t.stunT = 0; // Golden Juggernaut Reboot Systems
       if (ab.immune) {
@@ -156,6 +157,15 @@ export class SimAbilities {
     } else if (ab.key === 'radarMove') {
       t.rx = Number(m.x); // Surveyor Radar Drone
       t.rz = Number(m.z);
+    } else if (ab.key === 'changeTarget') this.priestNext(t, s); // Priest: bless the next tower
+    else if (ab.key === 'divineShield') {
+      // Priest Divine Shield: towers in range shake off stuns and can't be stunned for a while.
+      for (const o of this.towers.values()) {
+        if ((o.x - t.x) ** 2 + (o.z - t.z) ** 2 > s.aura * s.aura) continue;
+        o.immuneT = Math.max(o.immuneT || 0, ab.duration);
+        o.stunT = 0;
+      }
+      this.events.push({ k: 'rave', id: t.id, x: t.x, z: t.z, r: s.aura });
     } else if (ab.key === 'forcefield') {
       // Mechanic Forcefield Generator: towers nearby can't be stunned for a while.
       for (const o of this.towers.values()) {

@@ -68,6 +68,7 @@ export class SimWaves {
     this.startRadios();
     this.lightFireworks();
     this.loadCrates();
+    this.loadPaychecks();
     this.skipVotes.clear();
     w.votes = 0;
     this.events.push({ k: 'waveStart', i: w.index, ...(this.waves[w.index]?.note ? { note: this.waves[w.index].note } : {}), ...(this.waves[w.index]?.glow ? { glow: 1 } : {}) }); // glow: Halloween Night 3's portal lights up
@@ -501,7 +502,8 @@ export class SimWaves {
     const d = detection(t.type, t.level);
     if (!d.hidden && this.spies.some((c) => (t.x - c.x) ** 2 + (t.z - c.z) ** 2 <= c.r2)) d.hidden = true;
     if (t.fwT > 0) d.hidden = true; // Firework Technician: hidden detection for a while each wave
-    if (t.seeT > 0 || s?.hidden) d.hidden = true; // Spark Now-You-See-Me; Submerge's Submerged mode
+    if (t.seeT > 0 || s?.hidden) d.hidden = true;
+    if (this.buffs?.get(t.id)?.seeHidden) d.hidden = true; // blessed by a Guardian Angel Priest // Spark Now-You-See-Me; Submerge's Submerged mode
     if (s?.bombs && !this.bombsOf(t, s).some((b) => b.key === 'fire')) d.lead = false; // Jester: only Fire bombs hurt lead
     return d;
   }

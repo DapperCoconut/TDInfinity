@@ -8,6 +8,9 @@
 //           nothing is in range. Time Bomb ability at Lv 4.
 //   Berserker: an alternate Slugger form. Chops with two axes; Crushing Blow slams the ground
 //              and makes zombies weaker to physical damage. Fatal Frenzy ability at Lv 4.
+//   Priest: an alternate Medic (Doctor) form. Never attacks; blesses one tower for more damage.
+//   Farmer: an alternate Farm form. Pays out paychecks during the wave; Rice From The Void at Lv 4.
+//   Bandit: an alternate Enforcer form. Shoots, and from Lv 2 slashes zombies close in front of it.
 //
 // New mechanic (see computeBuffs in sim/parts/shared.js):
 //   cliffBoost: { boost, stacks, radius }  Bullseye Support: other cliff towers (placement 'cliff')
@@ -35,6 +38,17 @@
 //   rage: { per, max, weakStacks, idle }  Berserker Rage: +1 stack per hit (`weakStacks` on
 //               weakened zombies), each +`per` Crushing Blow damage, up to `max` stacks; all
 //               lost after `idle` s without a hit.
+//   bless: n  Priest (see updatePriest in sim/parts/weapons4.js and computeBuffs): locks onto the
+//               nearest tower in its `aura` that attacks and gives it +n damage (Priests don't add
+//               up: the best one counts). blessHidden: that tower also sees hidden zombies.
+//   maxOne: true  (on a level) only one of a player's towers of this type can have this level.
+//   pay: { cash, count, every }  Farmer (see updateFarmer in sim/parts/weapons4.js): gets `count`
+//               paychecks at the start of every wave (unused ones are kept), and pays one, worth
+//               `cash`, every `every` s while the wave is on. organize: other Farmers within its
+//               `range` pay that much faster.
+//   slash: { damage, cooldown, radius, arc, min }  Bandit (see banditSlash in sim/parts/weapons4.js):
+//               besides its gun, a sword swing on its own timer that hits every zombie within
+//               `radius` in front of it (an `arc` wide), only when at least `min` zombies are that close.
 //   trueDmg: true  True damage (see damage in sim/parts/damage.js): no resistance, armor or
 //               defense stops it.
 //
@@ -63,6 +77,21 @@ const fatalFrenzy = { key: 'fatalFrenzy', name: 'Fatal Frenzy', cooldown: 40, du
   desc: 'For 10s: swings 15% faster and can\'t be stunned' };
 const crush = (cap, after = false) => ({ every: 5, radius: 3, weak: 0.03, time: 15, cap, after });
 const RAGE = { per: 0.05, max: 10, weakStacks: 2, idle: 4 };
+
+// Priest abilities. Their "($N)" prices are ignored (abilities are free).
+const changeTarget = (cooldown) => ({ key: 'changeTarget', name: 'Change Target', cooldown,
+  desc: 'Blesses the next tower in range instead' });
+const divineShield = { key: 'divineShield', name: 'Divine Shield', cooldown: 30, duration: 6,
+  desc: 'Towers in range shake off stuns and can\'t be stunned for 6s' };
+
+// Farmer: Rice From The Void. Pays every paycheck it has left right away (35% less), then fights
+// with melee swings for `duration` s, earning nothing meanwhile.
+const riceVoid = { key: 'riceVoid', name: 'Rice From The Void', cooldown: 300, duration: 30, cut: 0.35, damage: 120, swing: 1, reach: 6,
+  desc: 'Pays all its paychecks now (35% less), then swings at zombies for 120 damage for 30s (no paychecks meanwhile)' };
+const pay = (cash, count, every) => ({ cash, count, every });
+
+// Bandit: the sword swing (`radius` 6 and the arc are guesses; the spec only says "inner ring").
+const slash = (damage, cooldown, min = 1) => ({ damage, cooldown, radius: 6, arc: 2.1, min });
 
 export const ELEVENTH_TOWERS = {
   poacher: {
@@ -202,6 +231,78 @@ export const ELEVENTH_TOWERS = {
         crush: crush(0.1, true), rage: RAGE },
       { name: 'Berserker', desc: 'Faster swings (every 0.6s), Physical Weakness goes up to 20%, and unlocks Fatal Frenzy.', cost: 7500, damage: 12, cooldown: 0.6, range: 5, hidden: false,
         crush: crush(0.2, true), rage: RAGE, abilities: [fatalFrenzy] },
+    ],
+  },
+  // Priest (alternate Doctor form, like the Medic): never attacks. Its `aura` is its range.
+  priest: {
+    name: 'Priest',
+    altOf: 'doctor',
+    form: 'Priest',
+    shards: 1,
+    price: 0,
+    cost: 600,
+    limit: 5,
+    kind: 'support',
+    blurb: 'Never attacks. Blesses the closest tower in range that attacks: it deals more damage (burns and poisons too). Change Target picks the next tower. At max level the blessed tower sees hidden zombies, and Divine Shield stops stuns. Only one Priest can be maxed.',
+    tip: 'Bless your strongest tower. At max level, pick a strong tower that cannot see hidden zombies.',
+    levels: [
+      { name: 'Priest', desc: 'Blesses the closest tower in range: +12% damage.', aura: 8, bless: 0.12, hidden: false,
+        abilities: [changeTarget(15)] },
+      { name: 'Lesser Blessing', desc: 'Blessing: +18% damage.', cost: 400, aura: 8, bless: 0.18, hidden: false,
+        abilities: [changeTarget(15)] },
+      { name: 'Holy Favor', desc: 'Blessing: +30% damage, and +5 range.', cost: 3000, aura: 13, bless: 0.3, hidden: false,
+        abilities: [changeTarget(15)] },
+      { name: 'Divinity', desc: 'Blessing: +50% damage. Change Target recharges in 5s.', cost: 6000, aura: 13, bless: 0.5, hidden: false,
+        abilities: [changeTarget(5)] },
+      { name: 'Guardian Angel', desc: 'Blessing: +150% damage, and the blessed tower sees hidden zombies. Unlocks Divine Shield. Only one Priest can have this.', cost: 22500, aura: 13, bless: 1.5, blessHidden: true, maxOne: true, hidden: false,
+        abilities: [changeTarget(5), divineShield] },
+    ],
+  },
+  // Farmer (alternate Farm form): pays during the wave, not at the end.
+  farmer: {
+    name: 'Farmer',
+    altOf: 'farm',
+    form: 'Farmer',
+    shards: 1,
+    price: 0,
+    cost: 1000,
+    limit: 2,
+    kind: 'income',
+    blurb: 'Never attacks (until Lv 4). Gets paychecks at the start of every wave and pays them out one by one during the wave. Paychecks it does not use are kept for later. At Lv 4, Rice From The Void cashes them all in at once and lets it fight for 30s.',
+    tip: 'Do not skip waves too fast: it pays during the wave. Use Rice From The Void when lots of paychecks have piled up.',
+    levels: [
+      { name: 'Farmer', desc: '8 paychecks every wave: $30 each, one every 4s.', range: 11, pay: pay(30, 8, 4), hidden: false },
+      { name: 'Plantation', desc: '+$20 per paycheck.', cost: 800, range: 11, pay: pay(50, 8, 4), hidden: false },
+      { name: 'Farming Skillz', desc: '+$10 per paycheck, one every 3s, and 15 paychecks every wave.', cost: 1950, range: 11, pay: pay(60, 15, 3), hidden: false },
+      { name: 'Farmers Organization', desc: '+$40 per paycheck. Other Farmers nearby pay 20% faster.', cost: 3100, range: 11, pay: pay(100, 15, 3), organize: 0.2, hidden: false },
+      { name: 'Shadow Reaper of the Rice Dimension', desc: '50 paychecks every wave, one every 2s. Unlocks Rice From The Void.', cost: 17000, range: 11, pay: pay(100, 50, 2), organize: 0.2, hidden: false,
+        abilities: [riceVoid] },
+    ],
+  },
+  // Bandit (alternate Enforcer form): a gun plus, from Lv 2, a sword swing on its own timer.
+  // Lv 5 is the spec's "Potential" level (the Potential: Bandit shop perk isn't built, so every
+  // Bandit can reach it). Its other perks (Candy Corn, Deadeye Bandit, Perk Mastery) aren't built.
+  bandit: {
+    name: 'Bandit',
+    altOf: 'enforcer',
+    form: 'Bandit',
+    shards: 1,
+    price: 0,
+    cost: 400,
+    burstGap: 0.2,
+    blurb: 'An alternate Enforcer that shoots from range. From Lv 2 it also swings a sword at every zombie close in front of it, and from Lv 3 it fires two shots at a time and sees hidden zombies. No placement limit.',
+    tip: 'Put it near the path so zombies walk into its sword range too.',
+    levels: [
+      { name: 'Bandit', desc: 'Shoots one zombie at a time.', damage: 2, cooldown: 1.2, range: 12, hidden: false },
+      { name: 'Combat Ready', desc: '+1 damage.', cost: 200, damage: 3, cooldown: 1.2, range: 12, hidden: false },
+      { name: 'Bladeworks', desc: 'Shoots faster (every 1s) and +1 range. Adds a sword swing: 6 damage to every zombie close in front of it, every 2s.', cost: 380, damage: 3, cooldown: 1, range: 13, hidden: false,
+        slash: slash(6, 2) },
+      { name: 'Twinshot', desc: 'Fires two shots at a time, and sees hidden zombies.', cost: 800, damage: 3, burst: 2, cooldown: 1, range: 13, hidden: true,
+        slash: slash(6, 2) },
+      { name: 'Combat Mastery', desc: '+3 range, +6 damage, and the sword does 18 damage.', cost: 2000, damage: 9, burst: 2, cooldown: 1, range: 16, hidden: true,
+        slash: slash(18, 2) },
+      { name: 'Potential', desc: '+25 damage and +4 range, but slower (every 1.7s). The sword does 68 damage every 1.7s, only when more than one zombie is close.', cost: 4800, damage: 34, cooldown: 1.7, range: 20, hidden: true,
+        slash: slash(68, 1.7, 2) },
     ],
   },
 };

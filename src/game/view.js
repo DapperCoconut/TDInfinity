@@ -158,6 +158,12 @@ export class GameView {
     }
     for (const t of st.towers.values()) {
       const lv = TOWERS[t.type].levels[t.level];
+      if (lv.bless) {
+        // Priest: a glowing link to the tower it blesses.
+        const pv = t.lock ? this.towerViews.get(t.lock) : null;
+        this.towerViews.get(t.id)?.updateLinks(pv ? [pv] : [], false);
+        continue;
+      }
       if (lv.beamHeal) {
         // Medigun Medic: one beam to its patient (blue during Uber, red during Kritz).
         const pv = t.lock ? this.towerViews.get(t.lock) : null;

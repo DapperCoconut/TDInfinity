@@ -647,7 +647,7 @@ export class UI {
       row('Income', `+$${s.lemon.pay}/s per zombie in range`, 'yes');
       row('Counts', `Up to ${s.lemon.cap} zombies at once (hidden ones too), only while they are in range`);
       row('Range', s.range);
-    } else if (def.kind === 'income' && (s.income || !s.oil)) row('Income', `+$${s.income ?? 0} / wave`, 'yes');
+    } else if (def.kind === 'income' && (s.income || !(s.oil || s.pay))) row('Income', `+$${s.income ?? 0} / wave`, 'yes');
     if (def.kind === 'income' && s.dmgCash) row('Cash back', `+${Math.round(s.dmgCash * 100)}% cash from damage${def.noStack ? ' (best Derrick only)' : ''}`, 'yes');
     if (s.shield) row('Shield', `${s.shield.amount.toLocaleString()} ${s.shield.shared ? 'shared by every tower in range' : 'for each tower in range'}, every ${s.shield.every}s`, 'yes');
     if (s.shield) row('Range', s.aura);
@@ -660,6 +660,11 @@ export class UI {
     if (s.burnMult) row('Burning zombies', `take ${s.burnMult.mult}x damage${s.burnMult.hot ? ` (${s.burnMult.hot}x if the burn deals over ${s.burnMult.over}/s)` : ''}`, 'yes');
     if (s.crush) row('Crushing Blow', `every ${s.crush.every}th hit slams within ${s.crush.radius}: +${Math.round(s.crush.weak * 100)}% Physical Weakness for ${s.crush.time}s (up to ${Math.round(s.crush.cap * 100)}%)${s.crush.after ? ', Aftershock at full Rage' : ''}`, 'yes');
     if (s.rage) row('Rage', `+${Math.round(s.rage.per * 100)}% Crushing Blow damage per stack (up to ${s.rage.max}), lost after ${s.rage.idle}s without a hit`, 'yes');
+    if (s.bless) row('Blessing', `+${Math.round(s.bless * 100)}% damage to one tower in range${s.blessHidden ? ', and it sees hidden zombies' : ''}`, 'yes');
+    if (s.maxOne) row('Limit', `only one ${def.name} can have this level`, 'no');
+    if (s.pay) row('Paychecks', `${s.pay.count} every wave, $${s.pay.cash} each, one every ${s.pay.every}s during the wave (unused ones are kept)`, 'yes');
+    if (s.organize) row('Farmers Organization', `other Farmers within ${s.range} pay ${Math.round(s.organize * 100)}% faster`, 'yes');
+    if (s.slash) row('Sword', `${s.slash.damage} damage to every zombie within ${s.slash.radius} in front of it, every ${s.slash.cooldown}s${s.slash.min > 1 ? ' (only when more than one is close)' : ''}`, 'yes');
     if (s.cliffBoost) row('Bullseye Support', `cliff towers within ${s.cliffBoost.radius} get +${Math.round(s.cliffBoost.boost * 100)}% range (stacks ${s.cliffBoost.stacks} times)`, 'yes');
     if (def.noHeal) row('Healing', "Medics can't heal it", 'no');
     if (def.kind === 'spawner' && s.roster) {

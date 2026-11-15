@@ -367,11 +367,11 @@ export class GameEvents {
           break;
         }
         case 'gsword': {
-          // Gold Commander: a huge golden broadsword sweep all around him.
+          // Gold Commander: a huge golden broadsword sweep all around him. Bandit: a neon blue sword swing (ev.c).
           const at = new THREE.Vector3(ev.x, 0.3, ev.z);
           this.effects.whirl(at, ev.r);
-          this.effects.pulse(at, ev.r, 0.35, 0xffd740);
-          this.effects.puff(at.clone().setY(2), 0xffe082, 10, 0.4, ev.r);
+          this.effects.pulse(at, ev.r, 0.35, ev.c ?? 0xffd740);
+          this.effects.puff(at.clone().setY(2), ev.c ?? 0xffe082, 10, 0.4, ev.r);
           this.towerViews.get(ev.id)?.swingSword();
           audio.lob('grenadierAssaultBottom');
           break;

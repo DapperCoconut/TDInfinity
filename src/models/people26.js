@@ -1,5 +1,6 @@
 // Tower models: people, batch 26 (dressed with the vehicle kit in ../vehicles.js).
 // In here: Poacher, Gunner, Future Sniper, Ninja, Bomber, Berserker.
+// (Priest, Farmer and Bandit are in people27.js.)
 // These towers are plain white figures with no face. Only their armor and weapons tell them
 // apart: white too, with accents in one neon colour per tower.
 // MODELS maps tower keys to builders; ../models.js lays it over TOWER_MODELS, so these win.

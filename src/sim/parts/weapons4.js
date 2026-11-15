@@ -599,4 +599,128 @@ export class SimWeapons4 {
     t.after = null;
     if (s.crush) this.crushSlam(t, s, a.x, a.z, a.dmg, a.time);
   }
+
+  // ---------------------------------------------------------------- Priest
+
+  /** Priest: towers it can bless (in its range, attacking towers only), closest first. */
+  priestTargets(t, s) {
+    const r2max = s.aura * s.aura;
+    const out = [];
+    for (const o of this.towers.values()) {
+      const d = TOWERS[o.type];
+      if (o === t || d.kind === 'support' || d.kind === 'income' || d.noBuff || d.noDmgBuff) continue;
+      const d2 = (o.x - t.x) ** 2 + (o.z - t.z) ** 2;
+      if (d2 <= r2max) out.push([o, d2]);
+    }
+    return out.sort((a, b) => a[1] - b[1] || a[0].id - b[0].id).map(([o]) => o);
+  }
+
+  /** Priest: keeps blessing the same tower while it can, else the closest one. */
+  updatePriest(t, s) {
+    const list = this.priestTargets(t, s);
+    const p = list.find((o) => o.id === t.lock) ?? list[0] ?? null;
+    t.lock = p ? p.id : 0;
+    if (p) t.yaw = Math.atan2(p.x - t.x, p.z - t.z);
+  }
+
+  /** Priest Change Target: bless the next tower in range (by distance, going round). */
+  priestNext(t, s) {
+    const list = this.priestTargets(t, s);
+    if (!list.length) return;
+    const i = list.findIndex((o) => o.id === t.lock);
+    t.lock = list[(i + 1) % list.length].id;
+  }
+
+  // ---------------------------------------------------------------- Farmer
+
+  /** Farmers get their paychecks for the wave when it starts (unused ones are kept). */
+  loadPaychecks() {
+    for (const t of this.towers.values()) {
+      const s = TOWERS[t.type].levels[t.level];
+      if (s.pay && !t.holo) t.payN = (t.payN || 0) + s.pay.count;
+    }
+  }
+
+  /**
+   * Farmer: pays one paycheck every `pay.every` s while a wave is on (faster near a Lv 3+
+   * Farmer). During Rice From The Void it swings at zombies instead and pays nothing.
+   */
+  updateFarmer(t, s, dt) {
+    const rice = t.active > 0 ? s.abilities?.find((a) => a.key === 'riceVoid') : null;
+    if (rice) {
+      t.swingT = (t.swingT || 0) - dt;
+      if (t.swingT > 0) return;
+      const e = this.findTarget(t, s, t.x, t.z, rice.reach);
+      if (!e) {
+        t.swingT = 0;
+        return;
+      }
+      t.swingT = rice.swing;
+      t.yaw = Math.atan2(e.x - t.x, e.z - t.z);
+      this.events.push({ k: 'shot', t: t.id, e: e.id });
+      this.damage(t, e, rice.damage);
+      return;
+    }
+    if (this.wave.state !== 'wave' || !(t.payN > 0)) return;
+    // Farmers Organization: other Farmers nearby pay faster (the best one counts).
+    let org = 0;
+    for (const o of this.towers.values()) {
+      const os = TOWERS[o.type].levels[o.level];
+      if (o !== t && os.organize && (o.x - t.x) ** 2 + (o.z - t.z) ** 2 <= os.range * os.range) org = Math.max(org, os.organize);
+    }
+    t.payT = (t.payT || 0) + dt * (1 + org);
+    if (t.payT < s.pay.every) return;
+    t.payT -= s.pay.every;
+    t.payN--;
+    const owner = this.players.get(t.owner);
+    if (!owner) return;
+    owner.cash += s.pay.cash;
+    this.events.push({ k: 'income', id: t.id, owner: t.owner, v: s.pay.cash, x: t.x, z: t.z });
+  }
+
+  /** Farmer Rice From The Void: every paycheck it has left, paid now at `cut` less. */
+  riceVoid(t, s, ab) {
+    const v = Math.floor((t.payN || 0) * s.pay.cash * (1 - ab.cut));
+    t.payN = 0;
+    t.payT = 0;
+    t.swingT = 0;
+    const owner = this.players.get(t.owner);
+    if (!owner || v <= 0) return;
+    owner.cash += v;
+    this.events.push({ k: 'income', id: t.id, owner: t.owner, v, x: t.x, z: t.z });
+  }
+
+  // ---------------------------------------------------------------- Bandit
+
+  /**
+   * Bandit: its sword swings on its own timer (firerate boosts speed it up), hitting every zombie
+   * within `slash.radius` in front of it (an `arc` wide, centred on the closest one), but only
+   * when at least `slash.min` zombies are that close.
+   */
+  banditSlash(t, s, b, dt) {
+    const sl = s.slash;
+    t.slashT = (t.slashT || 0) - dt * b.rate;
+    if (t.slashT > 0) return;
+    const det = this.detects(t, s);
+    const r2max = sl.radius * sl.radius;
+    const near = [];
+    for (const e of this.enemies.values()) {
+      const d2 = (e.x - t.x) ** 2 + (e.z - t.z) ** 2;
+      if (d2 <= r2max && canHit(det, e)) near.push([e, d2]);
+    }
+    if (near.length < sl.min) {
+      t.slashT = 0;
+      return;
+    }
+    near.sort((a, c) => a[1] - c[1]);
+    const face = Math.atan2(near[0][0].x - t.x, near[0][0].z - t.z);
+    t.slashT = sl.cooldown;
+    t.yaw = face;
+    for (const [e] of near) {
+      let da = Math.atan2(e.x - t.x, e.z - t.z) - face;
+      da = Math.atan2(Math.sin(da), Math.cos(da));
+      if (Math.abs(da) <= sl.arc / 2) this.damage(t, e, sl.damage);
+    }
+    this.events.push({ k: 'gsword', id: t.id, x: r2(t.x), z: r2(t.z), r: sl.radius, c: 0x2979ff });
+  }
 }

@@ -146,14 +146,17 @@ export class SimTowerUpdate {
     if (s.drop?.units) this.updateDrops(t, s, dt); // Buccaneer pirate barrel (Airdrop Farms / Markets use `drop` for crate timing)
     if (s.drone) this.updateSpectreDrone(t, s, dt); // Spectre drone
     if (t.liveT > 0) this.updateLiveShow(t, s, dt); // Glowup Live Show
+    if (s.slash) this.banditSlash(t, s, b, dt); // Bandit: its sword swings on its own timer
     if (s.scare) return this.updateScare(t, def, s, b, dt); // Scarecrow
     if (def.bait) return; // bait never attacks
     if (def.kind === 'spawner') return this.updateSpawner(t, def, s, dt);
     if (s.goons && this.updateGoons(t, def, s, dt)) return;
     if (s.lemon) return this.updateLemon(t, s, b, dt); // Lemonade Cat: cash for zombies in range
+    if (s.pay) return this.updateFarmer(t, s, dt); // Farmer: paychecks during the wave
     if (def.kind === 'income') return;
     if (s.chaos) return this.updateChaos(t, s, dt); // Chaos Jester
     if (s.tracks) return this.updateBooth(t, s, dt);
+    if (s.bless) return this.updatePriest(t, s); // Priest: keeps its blessing on a tower
     if (s.beamHeal) {
       this.updateMediBeam(t, s, dt);
       if (!s.damage) return; // Doctor: its pistol keeps shooting
