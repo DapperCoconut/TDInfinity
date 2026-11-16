@@ -35,7 +35,7 @@ export {
 } from './models/bits.js';
 export {
   makeBubbleBuddy, makeCampUnit, makeFieldSoldier, makeGoon, makeHeavyUnit, makeMerc, makeMobGoon, makePlantUnit,
-  makeRelicUnit, makeSkeleton, makeTrooper, makeUnit, makeVoidSoldier, makeVoidTank, wheels,
+  isHumanoidUnit, makeRelicUnit, makeSkeleton, makeTrooper, makeUnit, makeVoidSoldier, makeVoidTank, wheels,
 } from './models/units.js';
 
 export { makePlane } from './models/towers01.js';

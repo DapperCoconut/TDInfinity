@@ -102,6 +102,15 @@ export function makeFieldSoldier(model) {
 
 const GOONS = ['pistolgoon', 'tommygoon', 'dongoon', 'mgoon', 'mgoon2', 'mgoon3', 'agent', 'agent2', 'agent3'];
 
+/** True for summons that are people (or walking dead): the game draws these a third bigger (views.js UnitView). */
+export function isHumanoidUnit(model) {
+  if (model.startsWith('gold') && !SUMMON_MODELS[model]) model = model.slice(4);
+  if (VEHICLE_UNITS[model]) return false;
+  return !!SUMMON_MODELS[model] || UNDEAD_MODELS.includes(model) || GOONS.includes(model) || model.startsWith('skel')
+    || /^m(rifle|gren|riot|medic)\d*$/.test(model) || /^b(scout\d?|spec|rail|m202|riot|flame)$/.test(model)
+    || ['squad', 'specops', 'legion', 'fortress', 'voidneuron', 'voidempress'].includes(model);
+}
+
 /**
  * Unit models, facing +Z. Returns { root, body, mats, turret?, muzzles, wheels, legs?, soldiers?, height }.
  * model: jeep, gunjeep, tank, humvee, humvee2, humvee3, lav25, railtank, m1, m2, m11, stryker, apc, missileapc,

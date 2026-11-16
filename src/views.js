@@ -2,7 +2,7 @@
 // whatever the session (local sim or network snapshots) says and play effects for events.
 import * as THREE from 'three';
 import { ENEMIES } from './config.js';
-import { TOWER_MODELS, makeEnemy, makeGrave, makeHologram, makeHumanoid, makeSentry, makeUnit, setEmissive, setOpacity } from './models.js';
+import { TOWER_MODELS, makeEnemy, makeGrave, makeHologram, makeHumanoid, isHumanoidUnit, makeSentry, makeUnit, setEmissive, setOpacity } from './models.js';
 import { path } from './sim/path.js';
 import { heightAt } from './sim/map.js';
 import { TOWERS, TRACKS } from './config.js';
@@ -1813,7 +1813,8 @@ export class UnitView {
     if (u.fx != null) this.pos.set(u.fx, (this.m.fly || 0) * K, u.fz + (u.oz || 0)); // crows, bees, Volt Points
     this.root.position.copy(this.pos);
     this.root.rotation.y = u.fx != null ? u.yaw ?? 0 : Math.atan2(-tmpPt.dx, -tmpPt.dz);
-    this.root.scale.multiplyScalar(K);
+    this.sz = isHumanoidUnit(u.model) ? 1.33 : 1; // people summons are drawn a third bigger
+    this.root.scale.multiplyScalar(K * this.sz);
     this.root.traverse((o) => (o.userData.unitId = u.id)); // clickable: Game.pickAny
     scene.add(this.root);
     // Aiming: the sim's yaw only means something while the unit has a target, so the view keeps
@@ -1858,7 +1859,7 @@ export class UnitView {
       this.pos.lerp(tmp, Math.min(1, dt * 12));
       this.root.position.copy(this.pos);
       this.root.rotation.y = lerpAngle(this.root.rotation.y, u.yaw ?? 0, Math.min(1, dt * 8));
-      this.bar.position.set(this.pos.x, (m.height + (m.fly || 0) + 0.8) * K, this.pos.z);
+      this.bar.position.set(this.pos.x, (m.height * this.sz + (m.fly || 0) + 0.8) * K, this.pos.z);
       this.bar.quaternion.copy(camera.quaternion);
       return;
     }
@@ -1915,7 +1916,7 @@ export class UnitView {
         h.root.rotation.y = lerpAngle(h.root.rotation.y, local, Math.min(1, dt * 10));
       });
     }
-    this.bar.position.set(this.pos.x, this.ground + (m.height + (m.fly || 0) + 0.8) * K, this.pos.z);
+    this.bar.position.set(this.pos.x, this.ground + (m.height * this.sz + (m.fly || 0) + 0.8) * K, this.pos.z);
     this.bar.quaternion.copy(camera.quaternion);
     const r = Math.max(0, u.hp / u.maxHp);
     this.fg.scale.x = Math.max(0.001, this.barW * r);
