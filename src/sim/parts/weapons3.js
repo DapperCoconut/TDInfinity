@@ -436,6 +436,14 @@ export class SimWeapons3 {
     e.slimeT = Math.max(e.slimeT, sl.time);
   }
 
+  /** Bowman Arrow In The Knee: slows like slime, and every hit adds `time` s more, up to `max` s. */
+  applyKnee(e, k) {
+    if (e.statusImmune) return;
+    const left = e.slimeT > 0 ? e.slimeT : 0;
+    this.applySlime(e, { slow: k.slow, time: k.time, boss: k.boss });
+    if (e.slimeT > 0) e.slimeT = Math.min(k.max, left + k.time);
+  }
+
   /**
    * Freezer: every hit adds `s.chill` chill (0..1). Chill slows up to `maxSlow` (half for bosses)
    * and hurts `chillDps` per second while it lasts. At full chill, `chillFreeze` freezes the zombie.

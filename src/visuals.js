@@ -290,6 +290,7 @@ const TABLE = {
   huntsman: 'leanBack cheek shoulderRest wander bolt',
   hunter: 'stagger shoulder trail scan bolt',
   archer: 'bladed asbuilt - scan bolt',
+  bowman: 'bladed asbuilt - scan bolt',
   archerBow: 'widebladed asbuilt - check bolt',
   archerCrossbower: 'kneel shoulder port check bolt',
   stunner: 'fencer duelist upright twitch snap',

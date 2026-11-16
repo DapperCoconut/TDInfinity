@@ -1044,7 +1044,7 @@ export class UI {
         ${def.parry ? `<span>Parry</span><span class="yes">Blocks stuns, then pauses ${def.parry}s</span>` : ''}
         ${s.fireAspect ? `<span>Fire Aspect</span><span>${fireAspectText(s.fireAspect)}</span>` : ''}
         ${s.bleed ? `<span>Bleed</span><span>${bleedText(s.bleed, def.bleedFx)}</span>` : ''}
-        ${s.bees ? `<span>Bee stings</span><span>${beesText(s.bees)}</span>` : ''}
+        ${s.bees ? `<span>${s.bees.name ?? 'Bee stings'}</span><span>${beesText(s.bees)}</span>` : ''}
         ${wave8Rows(s)}
         ${s.axe ? `<span>Axe</span><span>${axeText(s.axe)}</span>` : ''}
         ${s.bounce ? `<span>Bounce</span><span>Hits ${s.bounce.hits} zombies (jumps up to ${s.bounce.jump})</span>` : ''}

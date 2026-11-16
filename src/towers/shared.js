@@ -321,7 +321,7 @@ export const arrowName = (s, i) => {
   const m = arrowModes(s);
   return { normal: 'Normal', flame: 'Flame', explosive: 'Explosive', shock: 'Shock' }[m[(i || 0) % m.length]];
 };
-export const timedAbility = (ab) => ['cta', 'uber', 'rage', 'he', 'overcharge', 'uberBeam', 'kritz', 'encore', 'drone', 'ap', 'chase', 'shock', 'warcry', 'snowStorm', 'fireRounds', 'overload', 'dragonFlame', 'blizzard', 'fatalFrenzy', 'riceVoid'].includes(ab.key);
+export const timedAbility = (ab) => ['cta', 'uber', 'rage', 'he', 'overcharge', 'uberBeam', 'kritz', 'encore', 'drone', 'ap', 'chase', 'shock', 'warcry', 'snowStorm', 'fireRounds', 'overload', 'dragonFlame', 'blizzard', 'fatalFrenzy', 'riceVoid', 'rapidFire'].includes(ab.key);
 
 /**
  * What using ability `ab` of tower `t` costs right now, or null once it's used up. `costs`: a

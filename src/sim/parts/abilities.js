@@ -252,6 +252,7 @@ export class SimAbilities {
       t.orb = { x, z, tx: x, tz: z, left: ab.time, dps: ab.dps, radius: ab.radius, speed: ab.speed };
     }
     else if (ab.key === 'harpoon') this.harpoonShot(t, s, ab);
+    else if (ab.key === 'barrage') this.barrage(t, s, ab); // Ground Mortar
     else if (ab.key === 'rally') this.setRally(t, Number(m.x), Number(m.z)); // Footman
     else if (ab.key === 'roam') this.setRally(t);
     else if (ab.key === 'deploy') {
@@ -958,9 +959,31 @@ export class SimAbilities {
     }
     // Snowballer: aims as if no zombie is faster than `leadCap`, so fast ones walk out of the way.
     // Artillery: shells land right on its Target Select spot.
-    const p = t.spotOn ? t.spot : this.leadPoint(target, time, def.leadCap);
-    this.shells.push({ tower: t.id, x: p.x, z: p.z, time, ...blast });
-    this.events.push({ k: 'lob', t: t.id, x: r2(p.x), z: r2(p.z), d: time });
+    // Ground Mortar: shells land up to `inacc` studs off (Barrage: `t.barrage` shells, `spread` x as far off).
+    const n = t.barrage?.shots || 1;
+    for (let i = 0; i < n; i++) {
+      const d = time + i * 0.15;
+      let p = t.spotOn ? t.spot : this.leadPoint(target, d, def.leadCap);
+      if (s.inacc) {
+        const r = s.inacc * (t.barrage?.spread || 1) * Math.sqrt(Math.random());
+        const a = Math.random() * TAU;
+        p = { x: p.x + Math.cos(a) * r, z: p.z + Math.sin(a) * r };
+      }
+      this.shells.push({ tower: t.id, x: p.x, z: p.z, time: d, ...blast });
+      this.events.push({ k: 'lob', t: t.id, x: r2(p.x), z: r2(p.z), d });
+    }
+  }
+
+  /** Ground Mortar Barrage: `ab.shots` shells at once at its target (outside its blind spot). */
+  barrage(t, s, ab) {
+    const def = TOWERS[t.type];
+    const mr = minRangeOf(def, s);
+    const e = this.findTargets(t, s, 1, mr ? (o) => !this.deadzone(t, mr)(o) : null)[0];
+    if (!e) return;
+    t.yaw = Math.atan2(e.x - t.x, e.z - t.z);
+    t.barrage = ab;
+    this.fireSplash(t, def, s, e);
+    t.barrage = null;
   }
 
   /** Where enemy `e` will be after `time` seconds at its current speed (at most `maxSpeed`). */

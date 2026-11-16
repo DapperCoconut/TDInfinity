@@ -96,6 +96,7 @@ export class SimWeapons1 {
     if (s.taint && t) this.applyTaint(t, target, s.taint); // Dumpster Child
     if (s.bees && t) this.applyBees(t, target, s.bees); // Swarmer
     if (s.bleed && t) this.applyBleed(t, def, target, s.bleed); // Slasher
+    if (s.knee) this.applyKnee(target, s.knee); // Bowman Arrow In The Knee
     if (s.paraSlow && !target.statusImmune && !target.shockImmune) {
       // Paralyzer laser: every tick slows the zombie a bit more.
       target.paraSlow = Math.min(s.paraSlow.max, (target.paraT > 0 ? target.paraSlow || 0 : 0) + s.paraSlow.per);

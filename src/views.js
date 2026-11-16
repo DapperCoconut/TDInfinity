@@ -112,6 +112,7 @@ const HERO_SHOTS = {
   marksmanFracture: { kind: 'gem' },
   goldFracture: { kind: 'gem', color: 0xffd740 },
   poacher: { kind: 'arrow', color: 0x39ff14 },
+  bowman: { kind: 'arrow', color: 0xb08850 },
   ninja: { kind: 'shuriken', color: 0xbf00ff },
   eradicator: { kind: 'orb', color: 0x18ffff },
 };

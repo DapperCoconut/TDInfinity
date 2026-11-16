@@ -321,7 +321,7 @@ export function extrasText(l) {
     l.whirl && 'Whirlwind',
     l.fireAspect && `Fire Aspect ${fireAspectText(l.fireAspect)}`,
     l.bleed && `Bleed +${l.bleed} stacks per hit`,
-    l.bees && `Bee stings ${beesText(l.bees)}`,
+    l.bees && `${l.bees.name ?? 'Bee stings'} ${beesText(l.bees)}`,
     l.axe && `Bouncing axe ${axeText(l.axe)}`,
     l.bounce && `Arrows bounce, ${l.bounce.hits} zombies`,
     l.arrows && `Arrows: ${arrowsText(l.arrows)}`,
