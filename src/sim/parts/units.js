@@ -66,13 +66,14 @@ export class SimUnits {
 
   /**
    * A guard walks along the path inside its tower's range to the zombie it should fight (guards
-   * share out the first zombies in range), and back home when there are none. With a rally point
-   * set it stays there and fights what comes.
+   * share out the first zombies in range), and waits where it is when there are none. With a rally
+   * point set it goes there, stays and fights what comes. `walkV` is how fast it walks this tick
+   * (minus = toward the castle), for the walk animation.
    */
   moveGuard(u, t, dt) {
     if (!t) return;
     const d = u.def;
-    let goal = t.rallyD ?? u.dist;
+    let goal = t.rallySet ? t.rallyD : u.dist;
     if (!t.rallySet) {
       const range = TOWERS[t.type].levels[t.level].range ?? 0;
       const det = unitDetection(d);
@@ -88,7 +89,9 @@ export class SimUnits {
       }
     }
     const gap = goal - u.dist;
-    u.dist += Math.sign(gap) * Math.min(Math.abs(gap), (d.walk ?? 6) * dt);
+    const step = Math.min(Math.abs(gap), (d.walk ?? 6) * dt);
+    u.dist += Math.sign(gap) * step;
+    u.walkV = step > 1e-4 ? -Math.sign(gap) * (d.walk ?? 6) : 0;
     this.placeUnit(u);
   }
 
@@ -503,7 +506,7 @@ export class SimUnits {
       if (d.block) for (const e of this.enemies.values()) if (!e.flying && !e.remains && !ENEMIES[e.type].noCollide && e.route === u.route && Math.abs(e.dist - u.dist) <= CONTACT) u.speed = 0;
       if (d.still) {
         // Plants and Ice Turrets stay put; zombies walking over them still wear them down.
-        u.speed = 0;
+        u.speed = d.guard ? u.walkV ?? 0 : 0; // Footmen move themselves (moveGuard); this drives their walk animation
       }
       const from = u.dist; // where it was before this tick's move (for the pass-through check below)
       if (!d.still) {

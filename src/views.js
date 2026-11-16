@@ -1852,13 +1852,15 @@ export class UnitView {
     }
     this.aimT = Math.max(0, this.aimT - dt);
     const aiming = this.aimT > 0;
-    this.heading = lerpAngle(this.heading, Math.atan2(-tmpPt.dx, -tmpPt.dz), Math.min(1, dt * 6));
+    if (u.speed < 0) this.back = true; // Footmen walking toward the castle face that way
+    else if (u.speed > 0) this.back = false;
+    this.heading = lerpAngle(this.heading, Math.atan2(-tmpPt.dx, -tmpPt.dz) + (this.back ? Math.PI : 0), Math.min(1, dt * 6));
     // What turns to face the zombie: the turret (or a mech's whole upper body) if it has one, each
     // soldier of a squad, and otherwise the whole thing, which turns back to the road afterwards.
     const turnsWhole = !m.turret && !m.soldiers && !m.noTurn;
     this.root.rotation.y = turnsWhole ? lerpAngle(this.root.rotation.y, aiming ? this.aimYaw : this.heading, Math.min(1, dt * (aiming ? 9 : 5))) : this.heading;
     const local = aiming ? this.aimYaw - this.root.rotation.y : 0; // aim direction relative to the body
-    const speed = u.speed ?? 0;
+    const speed = Math.abs(u.speed ?? 0);
     this.phase += (dt * speed * 1.4) / K;
     if (m.turret) m.turret.rotation.y = lerpAngle(m.turret.rotation.y, local, Math.min(1, dt * (aiming ? 10 : 4)));
     // Wheels roll as far as the ground goes by (userData.r: the wheel's radius), tracks crawl with them.
