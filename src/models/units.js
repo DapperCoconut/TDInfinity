@@ -102,7 +102,7 @@ export function makeFieldSoldier(model) {
 
 const GOONS = ['pistolgoon', 'tommygoon', 'dongoon', 'mgoon', 'mgoon2', 'mgoon3', 'agent', 'agent2', 'agent3'];
 
-/** True for summons that are people (or walking dead): the game draws these a third bigger (views.js UnitView). */
+/** True for summons that are people (or walking dead): the game draws these half again as big (views.js UnitView). */
 export function isHumanoidUnit(model) {
   if (model.startsWith('gold') && !SUMMON_MODELS[model]) model = model.slice(4);
   if (VEHICLE_UNITS[model]) return false;

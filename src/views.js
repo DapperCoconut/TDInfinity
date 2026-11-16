@@ -1813,7 +1813,7 @@ export class UnitView {
     if (u.fx != null) this.pos.set(u.fx, (this.m.fly || 0) * K, u.fz + (u.oz || 0)); // crows, bees, Volt Points
     this.root.position.copy(this.pos);
     this.root.rotation.y = u.fx != null ? u.yaw ?? 0 : Math.atan2(-tmpPt.dx, -tmpPt.dz);
-    this.sz = isHumanoidUnit(u.model) ? 1.33 : 1; // people summons are drawn a third bigger
+    this.sz = isHumanoidUnit(u.model) ? 1.5 : 1; // people summons are drawn half again as big
     this.root.scale.multiplyScalar(K * this.sz);
     this.root.traverse((o) => (o.userData.unitId = u.id)); // clickable: Game.pickAny
     scene.add(this.root);
