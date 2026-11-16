@@ -6,6 +6,7 @@
 //
 // "Haste" in the spec is how fast it fires: 100% is the base speed, +100% haste fires twice as
 // often, so the cooldown is the base cooldown / (haste / 100%).
+// Damage (hits, bleed, burn) is the spec's divided by 10, to fit this game's numbers (user, 2026-11-15).
 //
 // New mechanics (sim code):
 //   bees with a `name` (Bowman Bleed): the Swarmer's sting stacks, shown under that name.
@@ -20,7 +21,7 @@
 // Not used by the game yet (kept for later): `supercharge` (after the last tier, buy a
 // Supercharge again and again), `lethality` (the spec's lethality %).
 
-const BLEED = { name: 'Bleed', damage: 5, tick: 1, time: 2, stacks: 10 };
+const BLEED = { name: 'Bleed', damage: 1, tick: 2, time: 2, stacks: 10 };
 const KNEE = { slow: 0.5, time: 3, max: 9, boss: 0.5 };
 const BARRAGE = { key: 'barrage', name: 'Barrage', desc: 'Fires 3 cannonballs at once, but they land twice as far off', cooldown: 15, shots: 3, spread: 2 };
 const RAPID = { key: 'rapidFire', name: 'Rapid Fire', desc: 'For 5s it fires 4 times as fast', cooldown: 30, duration: 5, self: true, rate: 4 };
@@ -39,13 +40,13 @@ export const FIFTEENTH_TOWERS = {
     blurb: 'An alternate Poacher that stands on the ground. A longbow with very long range that hits one zombie at a time. Upgrades make zombies bleed, add critical hits and slow zombies down. It can\'t shoot zombies that get too close, so put it near the path, not on it.',
     tip: 'Strong early. Armored zombies, late waves and zombies that can\'t bleed or be slowed give it trouble.',
     levels: [
-      { name: 'Bowman', desc: 'A longbow: 30 damage an arrow, from very far away. Can\'t hit zombies right next to it.', damage: 30, cooldown: 3, range: 24, hidden: false },
-      { name: 'Serrated Edges', desc: 'Bleed (10 damage over 2s, stacks), +50 damage, fires twice as fast, 3% critical hits for 2x damage, +5 range.', cost: 500,
-        damage: 80, cooldown: 1.5, range: 29, hidden: false, bees: BLEED, critChance: 0.03, critMult: 2 },
-      { name: 'Steel Arrowheads', desc: '+60 damage, fires faster, 6% critical hits, +5 range.', cost: 750,
-        damage: 140, cooldown: 1, range: 34, hidden: false, bees: BLEED, critChance: 0.06, critMult: 2 },
-      { name: 'Arrow In The Knee', desc: 'Arrows slow zombies by 50% for 3s (stacks), +75 damage, fires faster, 10% critical hits, +5 range.', cost: 1200,
-        damage: 215, cooldown: 0.75, range: 39, hidden: false, bees: BLEED, critChance: 0.1, critMult: 2, knee: KNEE },
+      { name: 'Bowman', desc: 'A longbow: 3 damage an arrow, from very far away. Can\'t hit zombies right next to it.', damage: 3, cooldown: 3, range: 24, hidden: false },
+      { name: 'Serrated Edges', desc: 'Bleed (1 damage over 2s, stacks), +5 damage, fires twice as fast, 3% critical hits for 2x damage, +5 range.', cost: 500,
+        damage: 8, cooldown: 1.5, range: 29, hidden: false, bees: BLEED, critChance: 0.03, critMult: 2 },
+      { name: 'Steel Arrowheads', desc: '+6 damage, fires faster, 6% critical hits, +5 range.', cost: 750,
+        damage: 14, cooldown: 1, range: 34, hidden: false, bees: BLEED, critChance: 0.06, critMult: 2 },
+      { name: 'Arrow In The Knee', desc: 'Arrows slow zombies by 50% for 3s (stacks), +7.5 damage, fires faster, 10% critical hits, +5 range.', cost: 1200,
+        damage: 21.5, cooldown: 0.75, range: 39, hidden: false, bees: BLEED, critChance: 0.1, critMult: 2, knee: KNEE },
     ],
   },
   mortarGround: {
@@ -63,13 +64,13 @@ export const FIFTEENTH_TOWERS = {
     blurb: 'An alternate Mortar: a big cannon built into the ground. It reaches the whole map, but its cannonballs are slow and land a bit off. Big blasts. It can\'t hit flying zombies or anything within 20 of it.',
     tip: 'Put it far from the path. Its blasts are big enough that landing a bit off still hits the crowd.',
     levels: [
-      { name: 'Ground Mortar', desc: 'Lobs slow cannonballs anywhere on the map: 300 damage in a blast. They land a bit off. Not within 20.', damage: 300, cooldown: 6, range: 999, radius: 8, inacc: 3, hidden: false },
-      { name: 'More Gunpowder', desc: '+300 damage, and Barrage: fire 3 cannonballs at once (they land twice as far off).', cost: 1200,
-        damage: 600, cooldown: 6, range: 999, radius: 8, inacc: 3, hidden: false, abilities: [BARRAGE] },
-      { name: 'Heavy Artillery', desc: '+300 damage, a much bigger blast, and Rapid Fire: 4 times as fast for 5s.', cost: 1900,
-        damage: 900, cooldown: 6, range: 999, radius: 17, inacc: 3, hidden: false, abilities: [BARRAGE, RAPID] },
-      { name: 'The Bigger, The Better', desc: '+500 damage, an even bigger blast, and the cannonballs set zombies on fire (15 damage over 3s).', cost: 4000,
-        damage: 1400, cooldown: 6, range: 999, radius: 21, inacc: 3, hidden: false, ignite: { dps: 5, time: 3 }, abilities: [BARRAGE, RAPID] },
+      { name: 'Ground Mortar', desc: 'Lobs slow cannonballs anywhere on the map: 30 damage in a blast. They land a bit off. Not within 20.', damage: 30, cooldown: 6, range: 999, radius: 8, inacc: 3, hidden: false },
+      { name: 'More Gunpowder', desc: '+30 damage, and Barrage: fire 3 cannonballs at once (they land twice as far off).', cost: 1200,
+        damage: 60, cooldown: 6, range: 999, radius: 8, inacc: 3, hidden: false, abilities: [BARRAGE] },
+      { name: 'Heavy Artillery', desc: '+30 damage, a much bigger blast, and Rapid Fire: 4 times as fast for 5s.', cost: 1900,
+        damage: 90, cooldown: 6, range: 999, radius: 17, inacc: 3, hidden: false, abilities: [BARRAGE, RAPID] },
+      { name: 'The Bigger, The Better', desc: '+50 damage, an even bigger blast, and the cannonballs set zombies on fire (1.5 damage over 3s).', cost: 4000,
+        damage: 140, cooldown: 6, range: 999, radius: 21, inacc: 3, hidden: false, ignite: { dps: 0.5, time: 3 }, abilities: [BARRAGE, RAPID] },
     ],
   },
 };
