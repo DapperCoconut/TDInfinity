@@ -252,6 +252,8 @@ export class SimAbilities {
       t.orb = { x, z, tx: x, tz: z, left: ab.time, dps: ab.dps, radius: ab.radius, speed: ab.speed };
     }
     else if (ab.key === 'harpoon') this.harpoonShot(t, s, ab);
+    else if (ab.key === 'rally') this.setRally(t, Number(m.x), Number(m.z)); // Footman
+    else if (ab.key === 'roam') this.setRally(t);
     else if (ab.key === 'deploy') {
       // Valkyr / Punkbuster / Squadron / Borealis: units now start from the path closest to this spot.
       t.dropD = path.project(Number(m.x), Number(m.z));

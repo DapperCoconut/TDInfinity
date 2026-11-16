@@ -64,6 +64,55 @@ export class SimUnits {
     this.spawnGuard(t, s.unit);
   }
 
+  /**
+   * A guard walks along the path inside its tower's range to the zombie it should fight (guards
+   * share out the first zombies in range), and back home when there are none. With a rally point
+   * set it stays there and fights what comes.
+   */
+  moveGuard(u, t, dt) {
+    if (!t) return;
+    const d = u.def;
+    let goal = t.rallyD ?? u.dist;
+    if (!t.rallySet) {
+      const range = TOWERS[t.type].levels[t.level].range ?? 0;
+      const det = unitDetection(d);
+      const list = [];
+      for (const e of this.enemies.values()) {
+        if (e.flying || e.remains || e.route !== u.route || ENEMIES[e.type].noCollide || !canHit(det, e)) continue;
+        if ((e.x - t.x) ** 2 + (e.z - t.z) ** 2 > range * range) continue;
+        list.push(e);
+      }
+      if (list.length) {
+        list.sort((a, b) => b.dist - a.dist);
+        goal = Math.min(path.length - 1, list[(u.slot ?? 0) % list.length].dist + CONTACT * 0.5); // stand just in front of it
+      }
+    }
+    const gap = goal - u.dist;
+    u.dist += Math.sign(gap) * Math.min(Math.abs(gap), (d.walk ?? 6) * dt);
+    this.placeUnit(u);
+  }
+
+  /** Set Rally Point: the tower's guards go to the path closest to (x, z) and stay there. Roam: they move freely again. */
+  setRally(t, x, z) {
+    if (x == null) {
+      t.rallySet = false;
+      t.rallyD = path.project(t.x, t.z);
+      t.rallyR = path.lastRoute ?? 0;
+      this.events.push({ k: 'chaos', x: r2(t.x), z: r2(t.z), text: 'Free to roam', color: '#ffd54f' });
+    } else {
+      t.rallySet = true;
+      t.rallyD = path.project(x, z);
+      t.rallyR = path.lastRoute ?? 0;
+      const p = path.at(t.rallyD, {}, t.rallyR);
+      this.events.push({ k: 'chaos', x: r2(p.x), z: r2(p.z), text: '⚑ Rally Point', color: '#ffd54f' });
+    }
+    for (const u of this.unitsOf(t.id)) if (u.def.guard && u.route !== t.rallyR) {
+      u.route = t.rallyR; // another lane: they walk over to it
+      u.dist = t.rallyD;
+      this.placeUnit(u);
+    }
+  }
+
   /** A guard takes the first free spot at its tower's rally point (the path closest to it), side by side across the path. */
   spawnGuard(t, def) {
     if (t.rallyD == null) {
@@ -75,7 +124,7 @@ export class SimUnits {
     while (taken.has(slot)) slot++;
     const u = this.spawnUnit(t, def, 0, t.rallyD, t.rallyR);
     u.slot = slot;
-    u.lateral = ((slot % 4) - 1.5) * 0.8 * (slot < 4 ? 1 : 0.5);
+    u.lateral = ((slot % 4) - 1.5) * 0.8;
     this.placeUnit(u);
     return u;
   }
@@ -445,6 +494,7 @@ export class SimUnits {
         if (u.sweepT <= 0 && this.sweepBeam(u, tower, false)) u.sweepT = d.sweep.every;
       }
       if (d.chase) continue; // it flies, so it never drives the path or crashes
+      if (d.guard) this.moveGuard(u, tower, dt); // Footman: walks to the zombies in its tower's range
 
       // Squads stop while they have something to shoot; vehicles keep driving.
       u.speed = (d.soldiers && (target || u.healing)) || u.pauseT > 0 ? 0 : target && d.slowFire ? d.speed * 0.4 : d.speed; // slowFire: Turret Trucks, Void Port carts
