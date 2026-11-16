@@ -253,7 +253,6 @@ export const SEVENTEENTH_TOWERS = {
     limit: 1,
     lead: false,
     flying: false,
-    supercharge: { cost: 400000, lethality: 0.1 },
     blurb: "An alternate Cowboy: a stern man in a top hat with a ledger and a revolver. After every wave he makes money: a gold minimum (your cash is topped up to it), a pension (a share of your cash) and Tax (a share of the other players' tower income). Can't hit lead or flying zombies. Only one per player.",
     tip: 'Save cash between waves: the pension pays more the more you have. Tax only works with other players.',
     levels: [
