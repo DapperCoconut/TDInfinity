@@ -940,7 +940,7 @@ export const ELEVENTH_TOWERS = {
   // 1.5x its range, and other shockers within that get `link` of its boosts (computeBuffs in sim/parts/shared.js).
   teslaTaser: {
     name: 'Taser',
-    altOf: 'tesla',
+    altOf: 'paralyzer',
     form: 'Taser',
     shards: 1,
     price: 0,
