@@ -175,6 +175,7 @@ export class SimTowerUpdate {
     if (s.crow) return this.updateStrawman(t, s, dt); // Strawman
     if (s.atelier) return this.updateAtelier(t, s, dt); // Artisan Atelier: boost pulses
     if (s.spells) this.updateSpells(t, s, dt * b.rate * this.haste17(t)); // wave 17: spells on their own timers
+    if (s.guard18) this.updateGuard18(t, def, s, dt); // Helloc tier 4: the Spawn of Helloc
     if (s.augur) return this.updateAugur(t, s, dt, b.rate * this.haste17(t)); // Augur Solis: its beam
     if (def.bait) return; // bait never attacks
     if (def.kind === 'spawner') return this.updateSpawner(t, def, s, dt);
@@ -406,6 +407,7 @@ export class SimTowerUpdate {
     if (s.shock) return this.byteZap(t, def, s, target); // Byte
     if (s.potions) return this.throwPotion(t, def, s, target); // Mad Alchemist
     if (s.hit17) return this.fire17(t, def, s, target); // Stardaughter, Sunwalker, John Roblox
+    if (s.hit18) return this.fire18(t, def, s, target); // wave 18: Hoplite, Great Cannon, Cygor, Helloc...
     if (s.radius) return this.fireSplash(t, def, s, target);
     if (s.targets) {
       // Gladiator Fire Aspect: this swing sets every zombie it hits on fire.

@@ -17,6 +17,7 @@ import { FOURTEENTH_TOWERS } from './fourteenthtowers.js';
 import { FIFTEENTH_TOWERS } from './fifteenthtowers.js';
 import { SIXTEENTH_TOWERS } from './sixteenthtowers.js';
 import { SEVENTEENTH_TOWERS } from './seventeenthtowers.js';
+import { EIGHTEENTH_TOWERS } from './eighteenthtowers.js';
 import { HARDCORE_WAVES } from './hardcore.js';
 import { HALLOWEEN_TIMERS, HALLOWEEN_WAVES } from './halloween.js';
 import { HALLOWEEN2_TIMERS, HALLOWEEN2_WAVES } from './halloween2.js';
@@ -189,6 +190,8 @@ export const TOWERS = {
   ...SIXTEENTH_TOWERS,
   // Wave 17: Stardaughter, Magei, Sunwalker, Aquamancer, Augur Solis, John Roblox. See seventeenthtowers.js.
   ...SEVENTEENTH_TOWERS,
+  // Wave 18: Hoplite, Great Cannon, Crossbowman, Arcantech Commando, Cygor, Oathsworn Revenant, Astrapomancer, Helloc. See eighteenthtowers.js.
+  ...EIGHTEENTH_TOWERS,
 };
 
 /**

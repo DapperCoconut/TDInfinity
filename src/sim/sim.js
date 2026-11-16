@@ -59,6 +59,7 @@ import { SimContract } from './parts/contract.js';
 import { SimLiminal } from './parts/liminal.js';
 import { SimSixteenth } from './parts/sixteenth.js';
 import { SimSeventeenth } from './parts/seventeenth.js';
+import { SimEighteenth, mapLimitWhy } from './parts/eighteenth.js';
 import { siloSlots } from '../sixteenthtowers.js';
 
 // Frostgate Citadel: an enemy at the gate hits it every GATE_HIT_EVERY seconds for GATE_HIT x its
@@ -485,6 +486,7 @@ export class Sim {
     this.medicRepair(dt);
     this.towerRegen(dt);
     this.sxTick(dt); // wave 16: Supercharge boosts, Paladin / Cleric / Grove Warden auras, King Lethal Tempo
+    this.x18Tick(dt); // wave 18: spear marks, Challenge, Conduit, Souldrain
     this.x17Tick(dt); // wave 17: Time Warp, Inspire, John Roblox's GO, GO, GO!, Firestorm and Sacred Flame zones
     this.pathTowerTick(dt); // Phantom / Vanguard block zombies; placement waits; Afterimage cooldowns
     if (mapInfo.pathTowers) this.trample(dt);
@@ -637,6 +639,8 @@ export class Sim {
         if (all >= GAME.towerCap) return `You have ${GAME.towerCap} towers, the most you can have`;
         const limit = towerLimit(def, this.vs ? 1 : this.players.size) + (p.extraSlots || 0) + (m.type === 'silo' ? 0 : siloSlots(this.towers.values(), pid)); // Discount Dog Extra Slot, Silo
         if (owned >= limit && !this.sandbox) return `Placement limit reached (${limit})`; // (Sandbox: no limits)
+        const mapWhy = !this.sandbox && mapLimitWhy(this.towers.values(), m.type); // Helloc, Arcantech: a limit for the whole map
+        if (mapWhy) return mapWhy;
         const x = Number(m.x);
         const z = Number(m.z);
         if (!canPlace(x, z, this.towers.values(), def.placement, m.type)) {
@@ -675,8 +679,8 @@ export class Sim {
         const next = up.next;
         if (next.evo && p.evo && (p.evo[rootType(t.type)] ?? 0) < next.evo) return `Needs evolution level ${next.evo}`;
         if (next.perk && p.evo && !p.evo[`perk:${next.perk}`]) return `Locked: ${PERKS[next.perk] ?? 'win a mode'} to unlock this upgrade`;
-        const capN = next.maxOne ? 1 : next.maxCount; // Priest Guardian Angel, Snowman Endless Blizzard
-        if (capN && [...this.towers.values()].filter((o) => o !== t && o.owner === pid && o.type === up.type && o.level >= t.level + 1).length >= capN) return capN === 1 ? `Only one ${def.name} can have ${next.name}` : `Only ${capN} ${def.name} towers can have ${next.name}`;
+        const capN = next.maxOne || next.mapOne ? 1 : next.maxCount; // Priest Guardian Angel, Snowman Endless Blizzard, Great Cannon (mapOne: every player counts)
+        if (capN && [...this.towers.values()].filter((o) => o !== t && (next.mapOne || o.owner === pid) && o.type === up.type && o.level >= t.level + 1).length >= capN) return capN === 1 ? `Only one ${def.name} can have ${next.name}` : `Only ${capN} ${def.name} towers can have ${next.name}`;
         const cost = up.cost;
         if (p.cash < cost) return `Need $${cost} to upgrade`;
         p.cash -= cost;
@@ -1049,7 +1053,7 @@ export class Sim {
 
 // Sim's methods are kept in several files (see the list at the top). This puts them all on Sim,
 // just as if they were written inside the class.
-for (const part of [SimEnemyMoves1, SimEnemyMoves2, SimTowerHealth, SimWaves, SimTowerUpdate, SimWeapons1, SimWeapons2, SimWeapons3, SimUnits, SimAbilities, SimDamage, SimWeapons4, SimWeapons5, SimWeapons6, SimWeapons7, SimWeapons8, SimCarnival, SimNightmare, SimChristmas, SimSpires, SimContract, SimLiminal, SimSandbox, SimSixteenth, SimSeventeenth]) {
+for (const part of [SimEnemyMoves1, SimEnemyMoves2, SimTowerHealth, SimWaves, SimTowerUpdate, SimWeapons1, SimWeapons2, SimWeapons3, SimUnits, SimAbilities, SimDamage, SimWeapons4, SimWeapons5, SimWeapons6, SimWeapons7, SimWeapons8, SimCarnival, SimNightmare, SimChristmas, SimSpires, SimContract, SimLiminal, SimSandbox, SimSixteenth, SimSeventeenth, SimEighteenth]) {
   const props = Object.getOwnPropertyDescriptors(part.prototype);
   delete props.constructor;
   Object.defineProperties(Sim.prototype, props);

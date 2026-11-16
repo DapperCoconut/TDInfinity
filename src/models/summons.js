@@ -13,5 +13,6 @@ import { SUMMONS as S7 } from './summons7.js';
 import { SUMMONS as S8 } from './people31.js'; // Soul Master Revenants
 import { SUMMONS as S9 } from './people35.js'; // Footmen
 import { SUMMONS as S10 } from './people38.js'; // Defenders and the King
+import { SUMMONS as S11 } from './people40.js'; // Spawn of Helloc
 
-export const SUMMON_MODELS = { ...S1, ...S2, ...S3, ...S4, ...S5, ...S6, ...S7, ...S8, ...S9, ...S10 };
+export const SUMMON_MODELS = { ...S1, ...S2, ...S3, ...S4, ...S5, ...S6, ...S7, ...S8, ...S9, ...S10, ...S11 };

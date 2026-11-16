@@ -301,8 +301,8 @@ export class GameEvents {
             this.effects.bomb(new THREE.Vector3(ev.x - 20, 50, ev.z - 10), to, ev.d);
             setTimeout(() => this.effects.pulse(to, ev.r, 0.6, ev.ball ? 0x90a4ae : 0xff6d00), ev.d * 1000);
           } else if (ev.f === 'wave') {
-            this.effects.pulse(to, 12, 0.9, 0x29b6f6);
-            for (const v of this.enemyViews.values()) if (Math.random() < 0.3) this.effects.puff(v.pos.clone(), 0x4fc3f7, 3, 0.5, 2);
+            this.effects.pulse(to, 12, 0.9, ev.c ?? 0x29b6f6); // (Helloc Lava Waves: orange)
+            for (const v of this.enemyViews.values()) if (Math.random() < 0.3) this.effects.puff(v.pos.clone(), ev.c ? 0xff9100 : 0x4fc3f7, 3, 0.5, 2);
             audio.boom(2);
           }
           break;

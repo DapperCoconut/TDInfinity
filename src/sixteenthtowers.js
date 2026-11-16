@@ -307,6 +307,7 @@ export function superchargeText(sc) {
   if (sc.haste) out.push(`+${Math.round(sc.haste * 100)}% speed`);
   if (sc.clusters) out.push(`+${sc.clusters} cluster bombs (up to ${sc.clusterMax})`);
   if (sc.income) out.push(`+$${sc.income.toLocaleString()} a wave`);
+  if (sc.units) out.push(`+${sc.units} troop room`); // Helloc (every full 1 is one more Spawn)
   return out.join(', ');
 }
 

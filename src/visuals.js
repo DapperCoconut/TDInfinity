@@ -362,6 +362,13 @@ const TABLE = {
   aquamancer: 'attention asbuilt - sway none',
   johnRoblox: 'bladed cheek lowReady servo kick',
   taxCollector: 'contra point atSide proud snap',
+  hoplite: 'widebladed asbuilt - stoic lob',
+  crossbowman: 'bladed asbuilt - check bolt',
+  arcantech: 'bladed cheek lowReady servo kick',
+  cygor: 'wide asbuilt - stoic lob',
+  oathsworn: 'power asbuilt - stoic chop',
+  astrapomancer: 'stand asbuilt - sway none',
+  helloc: 'crouch asbuilt - stoic chop',
 };
 
 // ---------------------------------------------------------------- lookup

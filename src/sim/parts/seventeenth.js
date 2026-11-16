@@ -46,7 +46,7 @@ export class SimSeventeenth {
 
   /** Haste from Time Warp, Inspire and Ebb and Flow (1 = none). */
   haste17(t) {
-    return 1 + (t.warpT > 0 ? t.warp : 0) + (t.inspT > 0 ? t.inspH : 0);
+    return 1 + (t.warpT > 0 ? t.warp : 0) + (t.inspT > 0 ? t.inspH : 0) + this.haste18(t); // (wave 18 Conduit)
   }
 
   /** Lethality from wave 17: the level's own, John's GO, GO, GO!, Inspire. */
@@ -66,7 +66,7 @@ export class SimSeventeenth {
         for (const e of [...this.enemies.values()]) {
           if (!canHit(ALL, e) || !near(e, z, z.r)) continue;
           if (z.dps) this.damage(t, e, z.dps * dt);
-          if (z.hpDmg && this.enemies.has(e.id)) this.damage(t, e, e.maxHp * z.hpDmg * dt, true); // through armor
+          if (z.hpDmg && this.enemies.has(e.id)) this.damage(t, e, Math.min(z.hpCap ?? Infinity, e.maxHp * z.hpDmg) * dt, true); // through armor (Damnation: capped)
           if (z.burn && this.enemies.has(e.id)) this.ignite(e, z.tower, z.burn, z.burnTime, 0);
         }
         if (z.heal) for (const u of this.units.values()) if (u.hp > 0 && u.def.guard && near(u, z, z.r)) u.hp = Math.min(u.maxHp, u.hp + (z.heal + u.maxHp * z.pct) * dt);
@@ -256,8 +256,9 @@ export class SimSeventeenth {
         fx({ f: 'zone', x: r2(u.x), z: r2(u.z), r: c.radius, d: c.time, c: 0xffe082 });
         return true;
       }
+      default:
+        return this.cast18(t, s, c); // wave 18 spells
     }
-    return true;
   }
 
   /** Sunwalker Sunbeam / Solarion: damage every tick while they last. */
