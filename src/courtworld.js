@@ -5,7 +5,7 @@ import { boxGeo, part } from './models.js';
 import { mulberry32 } from './utils.js';
 import { CASTLE, mapInfo } from './sim/map.js';
 import { COURT_CARDS, COURT_CELL, COURT_CRYSTALS, COURT_GRID, courtCell, courtLight, courtTile } from './sim/maps.js';
-import { TREES, lambert } from './worldkit.js';
+import { TREES, buildPool, lambert, themeMats } from './worldkit.js';
 
 /** Black starfield with faint red-magenta nebula clouds, mostly upper left and right. */
 function courtSky() {
@@ -248,6 +248,7 @@ export function buildCourt(parent, { oz = 0, versus = false } = {}) {
   const mid = courtIsland(scene, m, hx, -2.5, hz, 9.5);
   courtTower(mid, m, 0, 0, 0, 2, 5, false);
   courtTrees(mid, m, [[-5, -4, 0.8], [5, 3, 0.7], [-3, 5, 0.6]]);
+  buildPool(mid, { x: 3.5, z: -4, r: 2.4 }, themeMats()); // a little pond, just to look at
 
   // --- Violet crystal clusters standing on tiles.
   for (const [c, i] of COURT_CRYSTALS) {

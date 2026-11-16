@@ -94,7 +94,7 @@ function corners(cells) {
 
 /**
  * The layout for `seed`: { path, spawn, fixed, style }. `fixed` holds the walls (brWall), pillars
- * (brPillar) and lights (brLight) that map.js turns into obstacles and world.js draws.
+ * (brPillar), lights (brLight) and puddles (brPuddle) that map.js turns into obstacles and world.js draws.
  */
 export function backroomsLayout(seed) {
   const rand = mulberry32((seed | 0) + 7777);
@@ -157,5 +157,11 @@ export function backroomsLayout(seed) {
   }
   // Ceiling lights: buzzing panels over some of the rooms (drawn high up, decor only).
   for (let c = 0; c < BR_COLS; c++) for (let r = 0; r < BR_ROWS; r++) if (rand() < 0.22) fixed.push({ kind: 'brLight', x: brCell(c, r)[0], z: brCell(c, r)[1], on: rand() < 0.85 });
+  // Damp carpet: a few shallow puddles in rooms off the path (decor only).
+  for (let c = 0; c < BR_COLS; c++) for (let r = 0; r < BR_ROWS; r++) {
+    if (onPath.has(`${c},${r}`) || rand() > 0.12) continue;
+    const [x, z] = brCell(c, r);
+    fixed.push({ kind: 'brPuddle', x: x + (rand() - 0.5) * 3, z: z + (rand() - 0.5) * 3, s: 1.4 + rand() * 1.6, rot: rand() * Math.PI });
+  }
   return { path: corners(cells), spawn: { x: sx, z: sz }, fixed, style: st.name };
 }

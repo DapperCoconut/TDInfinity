@@ -1014,6 +1014,7 @@ export function canPlace(x, z, towers, placement = 'ground', type = null) {
     return !MAP.obstacles.some((o) => Math.hypot(o.x - x, o.z - z) < o.r + 1.6 * TOWER_SIZE);
   }
   if (mapInfo.grid && !path.time) {
+    if (pool) return placement === 'water' && Math.hypot(x - pool.x, z - pool.z) <= pool.r - POOL_INSET; // Sunset Crossing's pond
     if (placement === 'water') return false;
     if (x < BOUNDS.minX + 2 || x > BOUNDS.maxX - 2) return false;
     const kind = gridSpot(x, z);
@@ -1021,7 +1022,7 @@ export function canPlace(x, z, towers, placement = 'ground', type = null) {
     if (kind === 'ground' && path.distanceTo(x, z) < PATH_WIDTH / 2 + 1.6 * TOWER_SIZE) return false;
     return !MAP.obstacles.some((o) => Math.hypot(o.x - x, o.z - z) < o.r + 1.6 * TOWER_SIZE);
   }
-  if (placement === 'water') return !!pool && Math.hypot(x - pool.x, z - pool.z) <= pool.r - POOL_INSET;
+  if (placement === 'water') return !!pool && !pool.lava && Math.hypot(x - pool.x, z - pool.z) <= pool.r - POOL_INSET;
   if (pool) return false;
   const cliff = cliffAt(x, z);
   if (cliff) return placement !== 'ground' && Math.hypot(x - cliff.x, z - cliff.z) <= cliff.r - CLIFF_INSET;

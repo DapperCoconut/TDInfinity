@@ -19,7 +19,7 @@ import { FR_PROPS } from './frostworld.js';
 import { CG_PROPS } from './citadelworld.js';
 import { SKY_PROPS } from './skyworld.js';
 import { CC_PROPS } from './corruptworld.js';
-import { TREES, lambert, placed, snowMat, themeMats, tileTexture } from './worldkit.js';
+import { TREES, buildPool, lambert, placed, snowMat, themeMats, tileTexture } from './worldkit.js';
 import { buildNexus } from './nexusworld.js';
 import { buildCrossing } from './crossingworld.js';
 import { buildCourt } from './courtworld.js';
@@ -171,42 +171,6 @@ export function versusWalkable(x, z, lanes) {
   // Between maps: only on the bridge (not past the first or last map).
   if (Math.abs(x - BRIDGE_X) > BRIDGE_WIDTH / 2 - 0.9) return false;
   return local > 0 ? lane < lanes - 1 : lane > 0;
-}
-
-const sandMat = new THREE.MeshLambertMaterial({ color: 0xd8c38e });
-const reedMat = new THREE.MeshLambertMaterial({ color: 0x4f8f3a });
-const lilyMat = new THREE.MeshLambertMaterial({ color: 0x6fbf4a });
-
-/** A round pond with a sandy shore. Water towers (Patrol Boat) float in it. */
-function buildPool(scene, { x, z, r }, { pool: poolMat, poolDeep: poolDeepMat }) {
-  const rand = mulberry32(Math.round(x * 13 + z * 29 + 4242));
-  const g = new THREE.Group();
-  g.position.set(x, 0, z);
-  const disc = (radius, y, mat) => {
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, 0.04, 28), mat);
-    m.position.y = y;
-    m.receiveShadow = true;
-    g.add(m);
-    return m;
-  };
-  disc(r + 1, 0.03, sandMat); // shore
-  disc(r, 0.06, poolMat); // water
-  disc(r * 0.55, 0.07, poolDeepMat); // deeper middle
-  // Reeds around the shore and a few lily pads near the edge.
-  for (let i = 0; i < 10; i++) {
-    const a = rand() * Math.PI * 2;
-    const d = r + 0.3 + rand() * 0.5;
-    const tall = 0.8 + rand() * 0.9;
-    part(g, boxGeo(0.12, tall, 0.12), reedMat, Math.cos(a) * d, tall / 2, Math.sin(a) * d).rotation.z = (rand() - 0.5) * 0.4;
-  }
-  for (let i = 0; i < 4; i++) {
-    const a = rand() * Math.PI * 2;
-    const d = r - 0.8 - rand() * 0.6;
-    const lily = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.03, 8), lilyMat);
-    lily.position.set(Math.cos(a) * d, 0.09, Math.sin(a) * d);
-    g.add(lily);
-  }
-  scene.add(g);
 }
 
 /** A blocky rock plateau; cliff towers stand on its grassy top. */

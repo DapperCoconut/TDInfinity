@@ -48,8 +48,9 @@ export function themeMats() {
     cliff: lambert(t.cliff[0], { flatShading: true }),
     cliffDark: lambert(t.cliff[1], { flatShading: true }),
     cliffTop: lambert(t.cliff[2], { flatShading: true }),
-    pool: lambert(t.water[0], { emissive: 0x0b2f55 }),
-    poolDeep: lambert(t.water[1], { emissive: 0x08223f }),
+    // waterGlow: a lava or goo pool lights itself up.
+    pool: lambert(t.water[0], { emissive: t.waterGlow?.[0] ?? 0x0b2f55 }),
+    poolDeep: lambert(t.water[1], { emissive: t.waterGlow?.[1] ?? 0x08223f }),
   };
   return mats;
 }
@@ -163,4 +164,49 @@ export function instanced(parent, geo, mat, spots) {
   });
   parent.add(im);
   return im;
+}
+
+const sandMat = lambert(0xd8c38e);
+const reedMat = lambert(0x4f8f3a);
+const lilyMat = lambert(0x6fbf4a);
+
+const lavaRimMat = lambert(0x2b2523, { flatShading: true });
+
+/**
+ * A round pond with a sandy shore. Water towers (Patrol Boat) float in it.
+ * A `lava` pool glows orange in a dark rock rim, with no reeds or lily pads.
+ */
+export function buildPool(scene, { x, z, r, lava, y = 0 }, { pool: poolMat, poolDeep: poolDeepMat }) {
+  const rand = mulberry32(Math.round(x * 13 + z * 29 + 4242));
+  const g = new THREE.Group();
+  g.position.set(x, y, z);
+  const disc = (radius, y, mat) => {
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, 0.04, 28), mat);
+    m.position.y = y;
+    m.receiveShadow = true;
+    g.add(m);
+    return m;
+  };
+  disc(r + 1, 0.03, lava ? lavaRimMat : sandMat); // shore
+  disc(r, 0.06, poolMat); // water
+  disc(r * 0.55, 0.07, poolDeepMat); // deeper middle
+  if (lava) {
+    scene.add(g);
+    return;
+  }
+  // Reeds around the shore and a few lily pads near the edge.
+  for (let i = 0; i < 10; i++) {
+    const a = rand() * Math.PI * 2;
+    const d = r + 0.3 + rand() * 0.5;
+    const tall = 0.8 + rand() * 0.9;
+    part(g, boxGeo(0.12, tall, 0.12), reedMat, Math.cos(a) * d, tall / 2, Math.sin(a) * d).rotation.z = (rand() - 0.5) * 0.4;
+  }
+  for (let i = 0; i < 4; i++) {
+    const a = rand() * Math.PI * 2;
+    const d = r - 0.8 - rand() * 0.6;
+    const lily = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.03, 8), lilyMat);
+    lily.position.set(Math.cos(a) * d, 0.09, Math.sin(a) * d);
+    g.add(lily);
+  }
+  scene.add(g);
 }

@@ -1630,7 +1630,7 @@ export const MAPS = {
       { x: 62, z: 40, r: 7, h: 6 },
       { x: 76, z: -30, r: 6.5, h: 6 },
     ],
-    pools: [],
+    pools: [{ x: -34, z: -14, r: 6 }],
     trees: 6, tree: 'cactus', rocks: 3, border: 'none',
     fixed: [
       { kind: 'crater', x: -6, z: 2, rx: 24, rz: 18 },
@@ -1687,13 +1687,13 @@ export const MAPS = {
     spawn: { x: courtCell(22, 4)[0], z: courtCell(22, 4)[1] },
     bounds: { minX: -76, maxX: 80, minZ: -82, maxZ: 82 },
     cliffs: [],
-    pools: [],
+    pools: [], // a little decor pond sits on the middle island (courtworld.js)
     trees: 0, tree: 'dead', rocks: 0, border: 'none',
     theme: {
       ground: ['#9c9c9c', '#4a4a4a', '#9c9c9c', '#4a4a4a'], path: ['#e8b04a', '#e8b04a', '#e8b04a', '#e8b04a'],
       sky: 0x050508, fog: 0x0a0610, fogNear: 140, fogFar: 320, night: true,
       leaves: [0x3c4a30, 0x3c4a30, 0x3c4a30], rock: 0x5a3e2a,
-      cliff: [0x5a3e2a, 0x3a3a3a, 0x3c4a30], water: [0x050508, 0x050508],
+      cliff: [0x5a3e2a, 0x3a3a3a, 0x3c4a30], water: [0x4fc3f7, 0x0288d1],
     },
   },
   ember: {
@@ -1768,7 +1768,7 @@ export const MAPS = {
     base: 'cave', // the base is a cave in the north cliff, not the castle
     floors: CROSS_FLOORS,
     cliffs: [],
-    pools: [],
+    pools: [{ x: 8, z: -7, r: 5 }],
     trees: 0, tree: 'round', rocks: 0, border: 'none',
     theme: {
       ground: ['#5c9a3e', '#58943b', '#619f42', '#549038'], path: ['#9e9a96', '#99958f', '#a39f9b', '#96928e'],
@@ -1788,14 +1788,14 @@ export const MAPS = {
     spawn: { x: graveCell(6, 11)[0], z: graveCell(6, 11)[1] },
     bounds: { minX: -42, maxX: 42, minZ: -34, maxZ: 34 },
     cliffs: GRAVE_CLIFFS,
-    pools: [],
+    pools: [{ x: -9, z: 7, r: 3 }],
     trees: 0, tree: 'dead', rocks: 0, border: 'none',
     fixed: graveFixed(),
     theme: {
       ground: ['#2a2418', '#262014', '#2e281b', '#231e14'], path: ['#7a6146', '#4a3826', '#7a6146', '#6e573e'],
       sky: 0x0a0a0c, fog: 0x1a1814, fogNear: 70, fogFar: 190, night: true, lamps: true,
       leaves: [0x1e2216, 0x242a1a, 0x1a1e12], rock: 0x6e5a40,
-      cliff: [0x6e5a40, 0x5a4934, 0x7a6650], water: [0x38a3e8, 0x2585d0],
+      cliff: [0x6e5a40, 0x5a4934, 0x7a6650], water: [0x3d5a4a, 0x2a4236],
     },
   },
   carnival: {
@@ -1811,7 +1811,7 @@ export const MAPS = {
     portal: false, // no portal: enemies come out of the big tent's door
     bounds: { minX: -56, maxX: 56, minZ: -40, maxZ: 40 },
     cliffs: [],
-    pools: [],
+    pools: [{ x: 8, z: 30, r: 6 }],
     trees: 0, tree: 'round', rocks: 0, border: 'none',
     fixed: carnFixed(),
     theme: {
@@ -1837,14 +1837,14 @@ export const MAPS = {
     portal: false, // the Nightmare Realm portal is a prop (nmPortal)
     bounds: { minX: -108, maxX: 108, minZ: -64, maxZ: 64 },
     cliffs: [],
-    pools: [],
+    pools: [{ x: -38, z: -22, r: 6, lava: true }], // lava: no boats
     trees: 0, tree: 'round', rocks: 0, border: 'none',
     fixed: nmFixed(),
     theme: {
       ground: ['#c47a44', '#a85e32', '#c8804a', '#bc7340'], path: ['#5e4636', '#584132', '#634a3a', '#55402f'],
       sky: 0xc88a3a, fog: 0xb07a40, fogNear: 100, fogFar: 250, dusk: true,
       leaves: [0x6a4a2a, 0x6a4a2a, 0x6a4a2a], rock: 0xb8643a,
-      cliff: [0xb87848, 0x9a6038, 0xc88a58], water: [0x38a3e8, 0x2585d0],
+      cliff: [0xb87848, 0x9a6038, 0xc88a58], water: [0xff6d00, 0xffd54f], waterGlow: [0xc43c00, 0xffb300],
     },
   },
   frost: {
@@ -1894,7 +1894,7 @@ export const MAPS = {
     pathTowers: { radius: 2.5, hurt: 1 }, // towers may go on the lanes; enemies walking through one hurt it (`hurt` x their damage a second)
     bounds: { minX: -78, maxX: 47, minZ: -38, maxZ: 42 },
     cliffs: [],
-    pools: [],
+    pools: [{ x: -11, z: -20, r: 4 }, { x: -11, z: 20, r: 4 }],
     trees: 0, tree: 'pine', rocks: 0, border: 'none',
     fixed: cgFixed(),
     theme: {
@@ -1921,14 +1921,14 @@ export const MAPS = {
     noGround: true, // world.js draws no ground plane: the platforms float over clouds (skyworld.js)
     bounds: { minX: -60, maxX: 60, minZ: -75, maxZ: 75 },
     cliffs: [],
-    pools: [],
+    pools: [{ x: 0, z: -32, r: 6 }],
     trees: 0, tree: 'round', rocks: 0, border: 'none',
     fixed: skyFixed(),
     theme: {
       ground: ['#cdb48a', '#c8af85', '#d2b98f', '#c4ab80'], path: ['#e8d9b8', '#e3d4b2', '#ecdec0', '#dfcfac'],
       sky: 0xd9b985, fog: 0xd9b985, fogNear: 110, fogFar: 300,
       leaves: [0xfff0a0, 0xfff0a0, 0xfff0a0], rock: 0xc9a675,
-      cliff: [0xcdb48a, 0xc9a675, 0xe8d9b8], water: [0xe9d4a6, 0xd9b985],
+      cliff: [0xcdb48a, 0xc9a675, 0xe8d9b8], water: [0x5ec8f0, 0x3aa8e0],
     },
   },
   rig: {
@@ -1959,14 +1959,14 @@ export const MAPS = {
     path: CC_ROUTE,
     spawn: { x: -40, z: 8 },
     cliffs: [],
-    pools: [],
+    pools: [{ x: -3, z: -14, r: 6 }],
     trees: 0, tree: 'dead', rocks: 0, border: 'none',
     fixed: ccFixed(),
     theme: {
       ground: ['#5e5a66', '#585460', '#64606c', '#524e5a'], path: ['#2c2a33', '#29272f', '#302d37', '#26242c'],
       sky: 0x0c0614, fog: 0x2a1640, fogNear: 110, fogFar: 260, voidCity: true,
       leaves: [0x2a1a3a, 0x2a1a3a, 0x2a1a3a], rock: 0x3a3444,
-      cliff: [0x4a4456, 0x3a3444, 0x5e5a66], water: [0x2a0a4a, 0x1a0630],
+      cliff: [0x4a4456, 0x3a3444, 0x5e5a66], water: [0x6a1b9a, 0x2a0a4a], waterGlow: [0x2a0a4a, 0x1a0630],
     },
   },
   // The Backrooms (Liminal contract, see lastlaugh.js): only the Liminal mode plays it. Its rooms

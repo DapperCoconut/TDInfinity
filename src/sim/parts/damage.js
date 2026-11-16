@@ -524,7 +524,7 @@ export class SimDamage {
     if (mr && !nores && t && !this.dot && (TOWERS[t.type]?.melee || ts0?.melee)) dmg *= 1 - mr * rk;
     const tr = ENEMIES[e.type].towerResist; // Christmas Night 3 Ardent: the Elite tower barely hurts it
     if (tr && !nores && t && t.type.startsWith(tr.prefix)) dmg *= 1 - tr.amt * rk;
-    // Armor tops out at 90%, except Hard mode Corpses (100%: only defense piercing gets through).
+    // Armor tops out at 90% (armor 1 or more would mean only defense piercing gets through).
     const cap = e.armor >= 1 ? 1 : 0.9;
     let armor = Math.min(cap, e.armor + (e.gear || 0) + (e.auraArmor || 0) + (e.blessed || 0) + (e.vShield > 0 ? this.voidArmor.armor : 0) + (e.osh > 0 ? ENEMIES[e.type].shieldArmor ?? 0 : 0)); // Mechanics bolt extra armor on; VOID's aura; Jester Blessed; void armor; Frost Ravager's shield
     // Defense piercing: ignores that share of the armor (negative: armor counts for more).

@@ -5,7 +5,8 @@ import { boxGeo, part } from './models.js';
 import { mulberry32 } from './utils.js';
 import { path } from './sim/path.js';
 import { CROSS_CELL, CROSS_GRID, CROSS_ROAD, crossCh, crossGround, crossH } from './sim/maps.js';
-import { TREES, canvasTex, instanced, themeMats, tileTexture } from './worldkit.js';
+import { TREES, buildPool, canvasTex, instanced, themeMats, tileTexture } from './worldkit.js';
+import { POOLS, heightAt } from './sim/map.js';
 
 const CX0 = (c) => (c - 20) * CROSS_CELL; // west edge of column c (0 = A)
 const RZ0 = (i) => (i - 11.5) * CROSS_CELL; // north edge of row index i (0 = row 1)
@@ -663,5 +664,7 @@ export function buildCrossing(parent, { oz = 0, versus = false } = {}) {
     const hh = 15 + rand() * 9;
     part(scene, boxGeo(6 + rand() * 4, hh + 30, 5.5), m.side.east, PW / 2 + 3 + rand() * 3, (hh - 30) / 2, z).castShadow = false;
   }
+  // A little pond on the plateau (boats can go in it).
+  for (const p of POOLS) buildPool(scene, { ...p, y: heightAt(p.x, p.z) }, tm);
   return scene;
 }

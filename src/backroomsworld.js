@@ -39,11 +39,23 @@ function brMats() {
     panel: new THREE.MeshBasicMaterial({ color: 0xfff6d0 }),
     panelOff: lambert(0x8a8466),
     frame: lambert(0xd0ccb8),
+    puddle: new THREE.MeshLambertMaterial({ color: 0x8fb4b0, emissive: 0x2a3a30, transparent: true, opacity: 0.75 }),
   };
   return mats;
 }
 
 export const BR_PROPS = {
+  brPuddle(scene, p) {
+    // A flat, uneven puddle of water on the damp carpet: a few overlapping blobs.
+    const m = brMats();
+    const g = placed(scene, { x: p.x, z: p.z, rot: p.rot });
+    for (const [dx, dz, r] of [[0, 0, 1], [0.8, 0.4, 0.7], [-0.7, -0.3, 0.6], [0.2, -0.8, 0.5]]) {
+      const d = new THREE.Mesh(new THREE.CylinderGeometry(r * p.s, r * p.s, 0.02, 14), m.puddle);
+      d.position.set(dx * p.s, 0.03, dz * p.s);
+      d.receiveShadow = true;
+      g.add(d);
+    }
+  },
   brWall(scene, p) {
     const m = brMats();
     const g = placed(scene, { x: p.x, z: p.z, rot: p.rot ? Math.PI / 2 : 0 });
