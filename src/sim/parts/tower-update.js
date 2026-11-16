@@ -8,6 +8,13 @@ import { buffOf, minRangeOf, modeStats, r2 } from './shared.js';
 
 export class SimTowerUpdate {
 
+  /** Gold Commander Orbital Airstrike beams, in the shape the client draws (solo reads the Sim directly). */
+  get beams() {
+    const out = [];
+    for (const t of this.towers.values()) if (t.orb) out.push({ id: t.id, x: t.orb.x, z: t.orb.z, left: t.orb.left, r: t.orb.radius });
+    return out;
+  }
+
   /**
    * Gold Commander: his giant broadsword hits every zombie around him once a second while Call to
    * Battle is on (always at max level; the ability multiplies its damage), and the Orbital
