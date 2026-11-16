@@ -145,6 +145,8 @@ export function subInfo(st, sel, buff) {
       }
       if (def.ram) rows.push(['Rams', `Crashes into zombies${def.ramArmor ? ` (takes ${Math.round(def.ramArmor * 100)}% less damage)` : ''}`]);
       if (def.bump) rows.push(['Bumps', `${def.bump} dmg/s to zombies it touches`]);
+      if (def.guard) rows.push(['Guards', 'Stands on the path and stops the zombies that reach it']);
+      if (def.blockChance) rows.push(['Shield', `Blocks ${Math.round(def.blockChance * 100)}% of hits`]);
       if (def.explode) rows.push(['Explodes', `${def.explode.damage} dmg when destroyed`]);
       const dps = unitDps({ ...def, count: 1 });
       if (dps) rows.push(['DPS', `${dps}`]);

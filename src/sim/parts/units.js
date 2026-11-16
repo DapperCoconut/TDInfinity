@@ -11,6 +11,7 @@ export class SimUnits {
 
   /** Spawner towers send a unit every `spawnEvery` seconds of wave time. */
   updateSpawner(t, def, s, dt) {
+    if (s.unit?.guard) return this.updateGuards(t, def, s, dt);
     if (this.wave.state !== 'wave') return;
     if (s.roster) return this.updateQueues(t, s, dt);
     if (s.plants) return this.updatePlants(t, def, s, dt);
@@ -38,6 +39,57 @@ export class SimUnits {
     }
     t.spawnT = s.spawnEvery ?? def.spawnEvery;
     this.spawnUnits(t, s.unit);
+  }
+
+  /**
+   * Barracks (Footman): keeps `maxUnits` guards on the path. During a wave a fallen guard comes
+   * back every `spawnEvery` s; between waves the tower fills up at once and its guards heal.
+   */
+  updateGuards(t, def, s, dt) {
+    const cap = s.maxUnits ?? def.maxUnits ?? 1;
+    const out = this.unitsOf(t.id);
+    if (this.wave.state !== 'wave') {
+      for (const u of out) u.hp = u.maxHp;
+      for (let i = out.length; i < cap; i++) this.spawnGuard(t, s.unit);
+      t.spawnT = 0;
+      return;
+    }
+    if (out.length >= cap) {
+      t.spawnT = s.spawnEvery ?? def.spawnEvery; // the wait starts when one falls
+      return;
+    }
+    t.spawnT -= dt;
+    if (t.spawnT > 0) return;
+    t.spawnT = s.spawnEvery ?? def.spawnEvery;
+    this.spawnGuard(t, s.unit);
+  }
+
+  /** A guard takes the first free spot at its tower's rally point (the path closest to it), side by side across the path. */
+  spawnGuard(t, def) {
+    if (t.rallyD == null) {
+      t.rallyD = path.project(t.x, t.z);
+      t.rallyR = path.lastRoute ?? 0;
+    }
+    const taken = new Set(this.unitsOf(t.id).map((u) => u.slot));
+    let slot = 0;
+    while (taken.has(slot)) slot++;
+    const u = this.spawnUnit(t, def, 0, t.rallyD, t.rallyR);
+    u.slot = slot;
+    u.lateral = ((slot % 4) - 1.5) * 0.8 * (slot < 4 ? 1 : 0.5);
+    this.placeUnit(u);
+    return u;
+  }
+
+  /** The tower was upgraded: its guards out now get the new level's look, damage and health. */
+  refreshGuards(t, next) {
+    if (!next.unit?.guard) return;
+    for (const u of this.unitsOf(t.id)) {
+      if (!u.def.guard) continue;
+      u.hp = Math.max(1, u.hp + next.unit.hp - u.def.hp);
+      u.maxHp = next.unit.hp;
+      u.def = next.unit;
+      u.model = next.unit.model;
+    }
   }
 
   /**
@@ -450,7 +502,7 @@ export class SimUnits {
         } else {
           // Field Barracks soldiers hurt the zombies they bump into.
           if (d.bump) this.damage(tower, e, d.bump * u.alive * dt);
-          u.hp -= ENEMIES[e.type].damage * GAME.unitContact * (d.hurt ?? 1) * dt * (medics.length ? 1 - shieldOf(u) : 1) * (1 - (d.defense || 0)); // hurt: Bubble Companions pop faster
+          u.hp -= ENEMIES[e.type].damage * GAME.unitContact * (d.hurt ?? 1) * dt * (medics.length ? 1 - shieldOf(u) : 1) * (1 - (d.defense || 0)) * (1 - (d.blockChance || 0)); // blockChance: Footman shields; hurt: Bubble Companions pop faster
         }
         if (u.hp <= 0) break;
       }

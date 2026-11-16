@@ -56,6 +56,7 @@ export class SimWeapons6 {
       t.hp = t.maxHp;
     }
     if (next.tempest?.upField) this.tempestField(t, next);
+    this.refreshGuards(t, next); // Footman: the guards out now get the upgrade too
   }
 
   /** Player `p` can't place `type` again for `secs` s (Phantom: 10s after selling, 100s after dying). */

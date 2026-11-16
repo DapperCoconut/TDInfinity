@@ -349,6 +349,7 @@ const TABLE = {
   evoLament: 'stand dwide dDown sway akimbo',
   evoVulcan: 'widebladed overhead frontM stoic swing',
   evoShi: 'widebladed overhead frontM stoic swing',
+  footman: 'stand asbuilt - stoic swing',
 };
 
 // ---------------------------------------------------------------- lookup
