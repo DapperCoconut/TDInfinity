@@ -13,6 +13,7 @@ export class SimAbilities {
   useAbility(t, s, ab, m) {
     if (ab.sx) return this.useSixteenth(t, s, ab); // Paladin, Cleric, Grove Warden
     if (ab.x17) return this.use17(t, s, ab); // Time Warp, Inspire, Purge By Fire
+    if (ab.x19) return this.use19(t, s, ab); // TimeBender
     const fury = TOWERS[t.type].fury;
     if (fury) t.fury = Math.max(t.fury, fury); // Classic Commander fights for a while after any ability
     if (timedAbility(ab)) {

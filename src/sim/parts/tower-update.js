@@ -408,6 +408,7 @@ export class SimTowerUpdate {
     if (s.potions) return this.throwPotion(t, def, s, target); // Mad Alchemist
     if (s.hit17) return this.fire17(t, def, s, target); // Stardaughter, Sunwalker, John Roblox
     if (s.hit18) return this.fire18(t, def, s, target); // wave 18: Hoplite, Great Cannon, Cygor, Helloc...
+    if (s.hit19) return this.fire19(t, def, s, target); // wave 19: Siphoner, Dreamknight Eldritch Blast
     if (s.radius) return this.fireSplash(t, def, s, target);
     if (s.targets) {
       // Gladiator Fire Aspect: this swing sets every zombie it hits on fire.

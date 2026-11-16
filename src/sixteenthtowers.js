@@ -308,6 +308,10 @@ export function superchargeText(sc) {
   if (sc.clusters) out.push(`+${sc.clusters} cluster bombs (up to ${sc.clusterMax})`);
   if (sc.income) out.push(`+$${sc.income.toLocaleString()} a wave`);
   if (sc.units) out.push(`+${sc.units} troop room`); // Helloc (every full 1 is one more Spawn)
+  if (sc.unitHp) out.push(`+${sc.unitHp.toLocaleString()} troop health`); // Dreamknight, Golem
+  if (sc.unitDmg) out.push(`+${sc.unitDmg} troop damage`); // Golem
+  if (sc.reverse) out.push(`+${sc.reverse} zombies sent back (up to +${sc.reverseMax})`); // TimeBender
+  if (sc.thirstMax) out.push(`+${sc.thirstMax} Sanguine Thirst cap`); // Siphoner
   return out.join(', ');
 }
 

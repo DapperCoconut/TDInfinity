@@ -369,6 +369,8 @@ const TABLE = {
   oathsworn: 'power asbuilt - stoic chop',
   astrapomancer: 'stand asbuilt - sway none',
   helloc: 'crouch asbuilt - stoic chop',
+  timeBender: 'attention asbuilt - breathe none',
+  siphoner: 'stand asbuilt - sway none',
 };
 
 // ---------------------------------------------------------------- lookup

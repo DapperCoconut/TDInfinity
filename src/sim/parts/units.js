@@ -436,6 +436,7 @@ export class SimUnits {
             // Oddport students: harder hits the closer the zombie (`dmgMin` at the edge of their range).
             const gd = g.dmgMin != null ? Math.round((g.dmgMin + (g.damage - g.dmgMin) * Math.max(0, 1 - Math.hypot(e.x - u.x, e.z - u.z) / g.range)) * 100) / 100 : g.damage;
             if (d.multi != null || d.tempo) this.kingSwing(u, tower, e, gd); // King: Multi-Attack, Lethal Tempo
+            else if (d.x19) this.swing19(u, tower, e, gd, unitGunKind(d, g)); // wave 19: Berserker, Knight, Dreamknight, Golem
             else this.damage(tower, e, gd, false, unitGunKind(d, g));
             if (this.enemies.has(e.id)) {
               if (g.chill && tower) this.applyChill(tower, g.chill, e); // Ice Turret
