@@ -480,6 +480,9 @@ export class SimWaves {
         continue;
       }
       let income = !t.holo && TOWERS[t.type].levels[t.level].income;
+      const decay = TOWERS[t.type].levels[t.level].decay;
+      if (income && t.sc) income += (TOWERS[t.type].supercharge?.income || 0) * t.sc; // Gold Mine Supercharge
+      if (income && decay) income = Math.round(income * decay ** this.wave.index); // Gold Mine: the gold runs out
       const thief = TOWERS[t.type].levels[t.level].thief;
       if (thief) {
         // Thief: the damage it dealt since the last payout becomes cash (capped per wave).

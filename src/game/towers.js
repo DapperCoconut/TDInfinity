@@ -1,6 +1,7 @@
 // The selected tower: selecting, upgrading, abilities, aiming, and first-person mode.
 // These are methods of GameClient: game.js puts them on the class, so "this" is the game client.
 
+import { canSupercharge, superchargeCost } from '../sixteenthtowers.js';
 import { PERKS, TOWERS, cloneCost, rootType, timedAbility, xpKey } from '../config.js';
 import { profile } from '../profile.js';
 import { audio } from '../audio.js';
@@ -154,6 +155,14 @@ export class GameTowers {
       if (!up && def.cross && !path) {
         up = nextUpgrade(t, 'bottom', this.state.towers.values(), computeBuffs(this.state.towers.values()));
         if (up) path = 'bottom';
+      }
+      if (!up && canSupercharge(def)) {
+        // After the last tier: Supercharge.
+        const cost = superchargeCost(def.supercharge, t.sc || 0);
+        if (this.myCash < cost) return this.fail(`Need $${cost} to supercharge`);
+        this.session.send({ a, id: t.id });
+        this.uiTimer = 0;
+        return;
       }
       if (!up) return this.fail(def.cross && def.cross.a + def.cross.b > 0 ? "That path can't go any higher" : 'Already max level!');
       const next = up.next;

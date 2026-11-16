@@ -412,7 +412,7 @@ export class SimWeapons3 {
 
   /** After an upgrade: the new max health, keeping the damage the tower has taken. */
   setTowerLevelHp(t) {
-    const max = towerMaxHp(t.type, t.level);
+    const max = towerMaxHp(t.type, t.level) + (t.hpAdd || 0); // (hpAdd: a timed health boost, like Aura of Faith)
     if (t.hp > 0) t.hp = Math.max(1, t.hp + max - t.maxHp);
     t.maxHp = max;
   }

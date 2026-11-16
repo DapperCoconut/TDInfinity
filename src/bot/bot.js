@@ -8,6 +8,7 @@
 //   bot.pos();                  // where its avatar is (for the other players' screens)
 //   bot.order({ cmd: 'upgrade', id });   // a player's order: returns what the bot says back
 import { ENEMIES, TOWERS, VERSUS, rootType, towerCost, towerLimit } from '../config.js';
+import { siloSlots } from '../sixteenthtowers.js';
 import { computeBuffs, nextUpgrade } from '../sim/sim.js';
 import { PLAYER_SPAWN, path } from '../sim/path.js';
 import { heightAt, laneOz } from '../sim/map.js';
@@ -456,7 +457,7 @@ export class Bot {
     for (const type of this.loadout) {
       const def = TOWERS[type];
       const kind = def.kind ?? 'attack';
-      if ((owned[type] ?? 0) >= towerLimit(def, players) + (this.player.extraSlots || 0)) continue;
+      if ((owned[type] ?? 0) >= towerLimit(def, players) + (this.player.extraSlots || 0) + (type === 'silo' ? 0 : siloSlots(this.sim.towers.values(), this.id))) continue; // Silo
       const cost = towerCost(def, !!sim.vs);
       if (kind === 'income') {
         const wantFarm = this.role === 'farmer' || this.t < this.hold.farm || (defenseFine && this.role !== 'dps' && wavesLeft > sim.waves.length * 0.5);

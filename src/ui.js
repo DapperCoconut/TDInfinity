@@ -3,6 +3,7 @@ import { levelAt } from './sim/map.js';
 import { droneMode } from './sim/sim.js';
 
 const DRONE_NAMES = { offense: 'Offense', defense: 'Defense', support: 'Support' }; // Spectre drone modes
+import { canSupercharge, superchargeCost, superchargeText } from './sixteenthtowers.js';
 import { ENEMIES, GAME, SPEEDS, arrowName, TARGET_MODES, TOWERS, TRACKS, VERSUS, WAVES, detection, facesCone, spawnExtras, timedAbility, towerMaxHp, pickOptions, choiceOptions, choicesOf, rootType, abilityCost } from './config.js';
 import {
   abilityText, chopText, railText, cloneText, hackText, ammoText, bombText, radioText, sweeperOf, boostText, buffText, cannonText, cashText, chainText, clusterText, rosterText, chillText, m203Name, m203Text, critText, damageText, detectText, dpsText, dpsValue, fanText, goonText, gunText, isBeam, limitText, missileText, slimeText,
@@ -963,6 +964,18 @@ export class UI {
         ${mine && !def.building && !ctx.upgradeLock?.(nextType, next) ? `<button class="btn green" data-action="${action}" ${ctx.cash < upCost ? 'disabled' : ''}>Upgrade $${upCost.toLocaleString()}${upCost < next.cost ? ` <s>$${next.cost.toLocaleString()}</s>` : ''}${key}</button>` : ''}
       </div>`;
     };
+    if (!next && !t.holo && canSupercharge(def)) {
+      // After the last tier: Supercharge again and again, each one dearer.
+      const sc = def.supercharge;
+      const cost = superchargeCost(sc, t.sc || 0);
+      nextHtml = `<div class="next">
+        <div class="next-head"><div class="next-main">
+          <div class="next-title">⚡ Supercharge${t.sc ? ` (${t.sc} so far)` : ''}</div>
+          <div class="next-desc">${superchargeText(sc)}. Buy it again and again; each one costs 25% more.</div>
+        </div></div>
+        ${mine ? `<button class="btn green" data-action="upgrade" ${ctx.cash < cost ? 'disabled' : ''}>Supercharge $${cost.toLocaleString()} <small>(E)</small></button>` : ''}
+      </div>`;
+    }
     if (t.holo) nextHtml = '<div class="maxed">Hologram: can\'t be upgraded</div>';
     else if (def.cross) {
       // Crosspathing: one path can go all the way, the other up to 2.

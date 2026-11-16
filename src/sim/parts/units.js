@@ -138,7 +138,7 @@ export class SimUnits {
     for (const u of this.unitsOf(t.id)) {
       if (!u.def.guard) continue;
       u.hp = Math.max(1, u.hp + next.unit.hp - u.def.hp);
-      u.maxHp = next.unit.hp;
+      u.maxHp = next.unit.hp + (u.hpAdd || 0); // (hpAdd: a timed health boost, like Aura of Fortitude)
       u.def = next.unit;
       u.model = next.unit.model;
     }
@@ -435,7 +435,8 @@ export class SimUnits {
             }
             // Oddport students: harder hits the closer the zombie (`dmgMin` at the edge of their range).
             const gd = g.dmgMin != null ? Math.round((g.dmgMin + (g.damage - g.dmgMin) * Math.max(0, 1 - Math.hypot(e.x - u.x, e.z - u.z) / g.range)) * 100) / 100 : g.damage;
-            this.damage(tower, e, gd, false, unitGunKind(d, g));
+            if (d.multi != null || d.tempo) this.kingSwing(u, tower, e, gd); // King: Multi-Attack, Lethal Tempo
+            else this.damage(tower, e, gd, false, unitGunKind(d, g));
             if (this.enemies.has(e.id)) {
               if (g.chill && tower) this.applyChill(tower, g.chill, e); // Ice Turret
               if (g.poison && tower) this.applyPoison(tower, e, g.poison);
@@ -560,7 +561,8 @@ export class SimUnits {
             if (fighting.has(e.id)) continue; // Footman: this zombie is already hurting another one
             fighting.add(e.id);
           }
-          u.hp -= ENEMIES[e.type].damage * GAME.unitContact * (d.hurt ?? 1) * dt * (medics.length ? 1 - shieldOf(u) : 1) * (1 - (d.defense || 0)) * (1 - (d.blockChance || 0)); // blockChance: Footman shields; hurt: Bubble Companions pop faster
+          u.hp -= ENEMIES[e.type].damage * GAME.unitContact * (d.hurt ?? 1) * dt * (medics.length ? 1 - shieldOf(u) : 1) * (1 - (d.defense || 0)) * (1 - (d.blockChance || 0)) * (u.barkT > 0 ? 1 - u.barkBlock : 1); // blockChance: Footman shields; hurt: Bubble Companions pop faster; Grove Warden Barkskin
+          if (d.guard) this.preserve(u); // Grove Warden Preservation
         }
         if (u.hp <= 0) break;
       }
@@ -587,6 +589,12 @@ export class SimUnits {
         this.events.push({ k: 'chaos', x: r2(u.x), z: r2(u.z), text: '★ Star power!', color: '#ffd740' });
       }
       if (d.soldiers) u.alive = Math.max(0, Math.ceil(u.hp / d.hp - 1e-6));
+      if (u.hp <= 0 && d.guard && tower?.angel) {
+        // Cleric Resurrection: the angel brings this troop straight back.
+        tower.angel = false;
+        u.hp = u.maxHp;
+        this.events.push({ k: 'chaos', x: r2(u.x), z: r2(u.z), text: '😇 Resurrected!', color: '#fffde7' });
+      }
       if (u.hp <= 0) this.destroyUnit(u, tower);
     }
     for (const e of this.enemies.values()) e.ud = e.dist; // for next tick's pass-through check

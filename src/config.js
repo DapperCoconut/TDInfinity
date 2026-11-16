@@ -15,6 +15,7 @@ import { TWELFTH_TOWERS } from './twelfthtowers.js';
 import { THIRTEENTH_TOWERS } from './thirteenthtowers.js';
 import { FOURTEENTH_TOWERS } from './fourteenthtowers.js';
 import { FIFTEENTH_TOWERS } from './fifteenthtowers.js';
+import { SIXTEENTH_TOWERS } from './sixteenthtowers.js';
 import { HARDCORE_WAVES } from './hardcore.js';
 import { HALLOWEEN_TIMERS, HALLOWEEN_WAVES } from './halloween.js';
 import { HALLOWEEN2_TIMERS, HALLOWEEN2_WAVES } from './halloween2.js';
@@ -183,6 +184,8 @@ export const TOWERS = {
   ...FOURTEENTH_TOWERS,
   // Wave 15: Bowman (Poacher form), Ground Mortar (Mortar form). See fifteenthtowers.js.
   ...FIFTEENTH_TOWERS,
+  // Wave 16: Rocket Battery, Mad Alchemist, Paladin, Cleric, Grove Warden, Gold Mine, Silo, Defender, King. See sixteenthtowers.js.
+  ...SIXTEENTH_TOWERS,
 };
 
 /**

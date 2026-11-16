@@ -351,6 +351,11 @@ const TABLE = {
   evoVulcan: 'widebladed overhead frontM stoic swing',
   evoShi: 'widebladed overhead frontM stoic swing',
   footman: 'stand asbuilt - stoic swing',
+  rocketBattery: 'wide asbuilt - check lob',
+  madAlchemist: 'stagger overhead frontM twitch lob',
+  paladin: 'power overhead frontM stoic chop',
+  cleric: 'attention asbuilt - breathe none',
+  groveWarden: 'stand asbuilt - sway kick',
 };
 
 // ---------------------------------------------------------------- lookup
@@ -434,6 +439,7 @@ export const POLES = {
   sledger: [1.3, 2.9, 0.12, 'slam'],
   sledgerIce: [1.3, 2.9, 0.12, 'slam'],
   farmMiner: [1.2, 0, 0.12, 'slam'],
+  paladin: [1.3, 2.9, 0.12, 'slam'],
 };
 
 /** Moves the hand of a pole tower (POLES) up the shaft, and marks the model to tilt the pole. */

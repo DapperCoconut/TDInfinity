@@ -116,6 +116,7 @@ export class SimTowerHealth {
     if (TOWERS[t.type].levels[t.level].van && t.hp - left <= 0) return this.vanguardDown(t); // it falls, but gets back up
     if (t.hp - left <= 1 && this.shiEndless(t)) return; // Shi Director Endless Battle
     t.calmT = 0; // Doctor: its regen waits again
+    if (t.barkT > 0 && Math.random() < t.barkBlock) return; // Grove Warden Barkskin: blocks the hit
     const xl = TOWERS[t.type].levels[t.level].extraLife;
     if (xl && t.hp - left <= 0 && !(t.lifeCd > 0)) {
       // Second life: back to full health and immortal for a moment.
@@ -127,6 +128,7 @@ export class SimTowerHealth {
     }
     t.hp = Math.max(0, t.hp - left);
     if (t.hp <= 0) this.knockOut(t);
+    else this.preserve(t); // Grove Warden Preservation
   }
 
   /**

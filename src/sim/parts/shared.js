@@ -146,7 +146,7 @@ export function computeBuffs(towers) {
   // (VOID's corrupted towers boost nobody.)
   const sources = list.filter((o) => { if (o.corrupt) return false; const s = TOWERS[o.type].levels[o.level]; return s.aura || s.bless || (s.radio && o.radioT > 0) || (o.active > 0 && rageOf(s)) || s.kin || s.radar || s.globalCdCut || s.bizDisc || s.cliffBoost || s.taser?.link || (s.trick?.knife?.red && o.redN > 0) || (s.crow?.buff && o.mode) || (s.techno?.hijack && o.padOn) || s.atelier; });
   // (Spectre drones boost damage in Support mode; Glowups boost firerate less the farther away a tower is.)
-  if (!sources.length && !list.some((o) => o.atel)) return out; // (Atelier boosts outlast their Atelier)
+  if (!sources.length && !list.some((o) => o.atel || o.sc)) return out; // (Atelier boosts outlast their Atelier; Supercharges)
   const shields = medicShields(list);
   const family = (o) => familyOf(o.type); // a tower, its alternate forms, upgrade paths and golden versions
   // Businessman Stimulus Booster: every tower's ability cooldowns are shorter, 5% per one (up to 30%).
@@ -353,6 +353,13 @@ export function computeBuffs(towers) {
       dmg: Math.max(tb.dmg, gain(vs.damage, s.damage)),
       rate: Math.max(tb.rate, gain((vs.burst || 1) / vs.cooldown, (s.burst || 1) / s.cooldown)),
       range: Math.max(tb.range, gain(vs.range || 0, s.range)) });
+  }
+  // Supercharge haste: attacks faster, and abilities come back sooner.
+  for (const t of list) {
+    const h = t.sc && (TOWERS[t.type].supercharge?.haste || 0) * t.sc;
+    if (!h) continue;
+    const tb = out.get(t.id) ?? NO_BUFF;
+    out.set(t.id, { ...tb, rate: tb.rate * (1 + h), cdCut: 1 - (1 - tb.cdCut) / (1 + h) });
   }
   return out;
 }

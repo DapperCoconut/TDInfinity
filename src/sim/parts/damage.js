@@ -319,7 +319,7 @@ export class SimDamage {
       if (sh.gas) {
         // Toxicnator: a gas cloud where the grenade landed.
         const g = sh.gas;
-        const p = { id: this.nextId++, tower: sh.tower, kind: 'gas', x: sh.x, z: sh.z, land: 0, radius: sh.radius, left: g.cloud, dps: g.dps, time: g.time, targets: g.targets, hits: new Set(), det: sh.det };
+        const p = { id: this.nextId++, tower: sh.tower, kind: 'gas', x: sh.x, z: sh.z, land: 0, radius: g.radius ?? sh.radius, left: g.cloud, dps: g.dps, time: g.time, targets: g.targets, hits: new Set(), det: sh.det, slow: g.slow }; // (Mad Alchemist Noxious Fumes: its own radius and a slow)
         this.traps.set(p.id, p);
       }
       if (sh.patch) {
@@ -400,6 +400,7 @@ export class SimDamage {
       if (b.toxic) this.weaken(e, b.toxic);
       if (b.chill && t) this.applyChill(t, b.chill, e); // Snowballer / Jester Ice Bomb
       if (b.melt && e.armor) e.armor = Math.min(e.armor, (ENEMIES[e.type].armor ?? 0) * (1 - b.melt));
+      if (b.shred && e.armor > 0) e.armor = Math.max(0, e.armor - b.shred); // Mad Alchemist Metal Transmutations: stacks, for good
       if (b.poison && t) this.applyPoison(t, e, b.poison); // Jester Poison Bomb
       if (b.confuse) this.confuse(e, b.confuse.time, b.confuse.cd); // Jester Confusion Bomb
       if (dmg > 0) this.damage(t, e, dmg, b.pierceArmor, boomKind); // explosions are never bullets or lasers
@@ -507,6 +508,7 @@ export class SimDamage {
     if (t && this.contract?.boost) dmg *= this.llBoost.dmg; // Last Laugh: the JESTER's boost
     if (t && this.inhumanPow) dmg *= this.inhumanPow.dmg; // Inhuman contract: the glitchy bot's towers
     if (t?.lm) dmg *= t.lm.dmg; // Liminal contract: the tower's blessing or curse
+    if (t && dmg > 0) dmg = this.sxDamage(t, dmg); // Aura of Faith, Supercharge / Heroism lethality, Mysterious Elixir
     const tru = !this.dot && (ts0?.trueDmg || this.trueHit || (ts0?.markTrue && e.gmT > 0)); // Ghost Spectral Assassin: true damage on marked zombies // True damage (Future Sniper Lv 5, Shirayuki Shuriken): no resistance, armor or defense stops it
     const nores = tru || (!this.dot && ts0?.noResist); // Eradicator: no resistance stops it (armor still does)
     const adapt = ENEMIES[e.type].adapt;
@@ -897,6 +899,7 @@ export class SimDamage {
     if (t?.forceE === e.id) focus += 1e14; // Bugler Unit Commander: its towers attack this one first
     // King: towers near him have to attack him.
     if (e.aggro && t && (t.x - e.x) ** 2 + (t.z - e.z) ** 2 <= e.aggro * e.aggro) focus += 1e13;
+    if (t && TOWERS[t.type]?.randomTarget) return focus + Math.random(); // Mad Alchemist: a random zombie
     switch (mode) {
       case 0: return focus + e.dist; // First
       case 1: return focus - e.dist; // Last

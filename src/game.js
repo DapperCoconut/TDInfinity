@@ -11,6 +11,7 @@
 // the frame loop. The bottom of the file puts the parts' methods on GameClient.
 import * as THREE from 'three';
 import { GAME, TOWERS, VERSUS, difficulty, towerCost, towerLimit } from './config.js';
+import { siloSlots } from './sixteenthtowers.js';
 import { profile } from './profile.js';
 import { buildTimeWorld, buildVersusLinks, buildWorld, versusWalkable } from './world.js';
 import { Player, fitColliders } from './player.js';
@@ -229,7 +230,8 @@ export class GameClient {
 
   /** Placement limit of `type` (Field Barracks: lower in bigger teams; each Versus player is on their own). */
   limitOf(type) {
-    return towerLimit(TOWERS[type], this.versus ? 1 : (this.state?.players.size ?? 1));
+    const silo = type === 'silo' || !this.state ? 0 : siloSlots(this.state.towers.values(), this.session.myId); // Silo: +1 per tier
+    return towerLimit(TOWERS[type], this.versus ? 1 : (this.state?.players.size ?? 1)) + silo;
   }
 
   // ------------------------------------------------------------------ lifecycle

@@ -497,6 +497,7 @@ export class SimWeapons2 {
       }
       // One gas stack per cloud, so gas from several clouds adds up.
       (e.gas ??= new Map()).set(p.id, { dps: p.dps, left: p.time, by: p.tower });
+      if (p.slow) this.applySlime(e, { slow: p.slow, time: 0.3, boss: 0.5 }); // Mad Alchemist Noxious Fumes
     }
   }
 

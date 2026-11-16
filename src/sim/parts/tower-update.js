@@ -394,6 +394,7 @@ export class SimTowerUpdate {
     if (s.flask) this.flask(t, s, target); // Maitake: heals summons, frees towers, leaves a cloud
     if (s.area) return this.areaHit(t, def, s, target); // Hotdog Frank / Mako
     if (s.shock) return this.byteZap(t, def, s, target); // Byte
+    if (s.potions) return this.throwPotion(t, def, s, target); // Mad Alchemist
     if (s.radius) return this.fireSplash(t, def, s, target);
     if (s.targets) {
       // Gladiator Fire Aspect: this swing sets every zombie it hits on fire.

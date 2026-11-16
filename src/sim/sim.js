@@ -57,6 +57,8 @@ import { SimChristmas, XM_FX } from './parts/christmas.js';
 import { SimSpires, XS_FX, dmgMult } from './parts/spires.js';
 import { SimContract } from './parts/contract.js';
 import { SimLiminal } from './parts/liminal.js';
+import { SimSixteenth } from './parts/sixteenth.js';
+import { siloSlots } from '../sixteenthtowers.js';
 
 // Frostgate Citadel: an enemy at the gate hits it every GATE_HIT_EVERY seconds for GATE_HIT x its
 // `damage` (the number a leak would take off the base). Both are guesses.
@@ -481,6 +483,7 @@ export class Sim {
     }
     this.medicRepair(dt);
     this.towerRegen(dt);
+    this.sxTick(dt); // wave 16: Supercharge boosts, Paladin / Cleric / Grove Warden auras, King Lethal Tempo
     this.pathTowerTick(dt); // Phantom / Vanguard block zombies; placement waits; Afterimage cooldowns
     if (mapInfo.pathTowers) this.trample(dt);
     this.updateHealZones(dt);
@@ -630,7 +633,7 @@ export class Sim {
         let all = 0;
         for (const t of this.towers.values()) if (t.owner === pid && !t.holo && !TOWERS[t.type].building) { all++; if (rootType(t.type) === m.type) owned++; } // (Artisan buildings don't count)
         if (all >= GAME.towerCap) return `You have ${GAME.towerCap} towers, the most you can have`;
-        const limit = towerLimit(def, this.vs ? 1 : this.players.size) + (p.extraSlots || 0); // Discount Dog Extra Slot
+        const limit = towerLimit(def, this.vs ? 1 : this.players.size) + (p.extraSlots || 0) + (m.type === 'silo' ? 0 : siloSlots(this.towers.values(), pid)); // Discount Dog Extra Slot, Silo
         if (owned >= limit && !this.sandbox) return `Placement limit reached (${limit})`; // (Sandbox: no limits)
         const x = Number(m.x);
         const z = Number(m.z);
@@ -661,6 +664,10 @@ export class Sim {
         // Upgrade paths: picking the bottom path turns the tower into its branch type; crosspath
         // towers turn into the type of their new Top / Bottom combo.
         const up = nextUpgrade(t, m.path === 'bottom' ? 'bottom' : 'top', this.towers.values(), computeBuffs(this.towers.values()));
+        if (!up) {
+          const sc = this.scBuy(t, p); // after the last tier: Supercharge
+          if (sc !== undefined) return sc;
+        }
         if (!up) return TOWERS[t.type].cross ? (TOWERS[t.type].cross.a + TOWERS[t.type].cross.b > 0 ? "That path can't go any higher" : 'Already max level!') : 'Already max level!';
         const def = TOWERS[up.type];
         const next = up.next;
@@ -744,6 +751,7 @@ export class Sim {
       case 'target': {
         const t = this.ownedTower(pid, m.id);
         if (typeof t === 'string') return t;
+        if (TOWERS[t.type].randomTarget) return `The ${TOWERS[t.type].name} always aims at random`;
         t.targetMode = (t.targetMode + 1) % TARGET_MODES.length;
         return null;
       }
@@ -1007,6 +1015,8 @@ export class Sim {
         t.wisps?.length ? t.wisps.map((w) => w.host) : 0,
         // Wave 13 evolved: Lament [White, Black, mode, Funeral]
         t.bw != null ? [t.bw, t.bb, t.bmode, t.funeral ? 1 : 0] : 0,
+        // Wave 16: [Supercharges bought, angel on it (Cleric Resurrection)]
+        t.sc || t.angel ? [t.sc || 0, t.angel ? 1 : 0] : 0,
       ]),
       // Traps, plus Necromancer gravestones and Engineer sentries: [..., level, facing, health left (0-1), stunned, thermite radius].
       tr: [...this.traps.values()].map((tr) => [tr.id, tr.tower, tr.kind, r2(tr.x), r2(tr.z), tr.land > 0 ? 0 : 1, tr.lvl ?? 0, r2(tr.yaw ?? 0), tr.maxHp ? r2(tr.hp / tr.maxHp) : 1, tr.stunT > 0 ? 1 : 0, tr.kind === 'thermite' || tr.kind === 'gas' || tr.kind === 'thorns' || tr.kind === 'goo' || tr.kind === 'blade' ? tr.radius : 0]),
@@ -1037,7 +1047,7 @@ export class Sim {
 
 // Sim's methods are kept in several files (see the list at the top). This puts them all on Sim,
 // just as if they were written inside the class.
-for (const part of [SimEnemyMoves1, SimEnemyMoves2, SimTowerHealth, SimWaves, SimTowerUpdate, SimWeapons1, SimWeapons2, SimWeapons3, SimUnits, SimAbilities, SimDamage, SimWeapons4, SimWeapons5, SimWeapons6, SimWeapons7, SimWeapons8, SimCarnival, SimNightmare, SimChristmas, SimSpires, SimContract, SimLiminal, SimSandbox]) {
+for (const part of [SimEnemyMoves1, SimEnemyMoves2, SimTowerHealth, SimWaves, SimTowerUpdate, SimWeapons1, SimWeapons2, SimWeapons3, SimUnits, SimAbilities, SimDamage, SimWeapons4, SimWeapons5, SimWeapons6, SimWeapons7, SimWeapons8, SimCarnival, SimNightmare, SimChristmas, SimSpires, SimContract, SimLiminal, SimSandbox, SimSixteenth]) {
   const props = Object.getOwnPropertyDescriptors(part.prototype);
   delete props.constructor;
   Object.defineProperties(Sim.prototype, props);
