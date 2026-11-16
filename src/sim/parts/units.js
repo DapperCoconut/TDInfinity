@@ -327,6 +327,7 @@ export class SimUnits {
       return best;
     };
     for (const u of this.units.values()) u.healed = u.shielded = false; // for the hover card
+    const fighting = new Set(); // zombies already hurting a Footman this tick (each hurts only one)
     for (const m of medics) {
       const h = m.def.heal;
       m.healing = false;
@@ -555,6 +556,10 @@ export class SimUnits {
         } else {
           // Field Barracks soldiers hurt the zombies they bump into.
           if (d.bump) this.damage(tower, e, d.bump * u.alive * dt);
+          if (d.guard) {
+            if (fighting.has(e.id)) continue; // Footman: this zombie is already hurting another one
+            fighting.add(e.id);
+          }
           u.hp -= ENEMIES[e.type].damage * GAME.unitContact * (d.hurt ?? 1) * dt * (medics.length ? 1 - shieldOf(u) : 1) * (1 - (d.defense || 0)) * (1 - (d.blockChance || 0)); // blockChance: Footman shields; hurt: Bubble Companions pop faster
         }
         if (u.hp <= 0) break;
