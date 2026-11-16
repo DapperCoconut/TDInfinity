@@ -226,6 +226,8 @@ export class SimWeapons2 {
       this.damage(t, e, i && s.chainMult != null ? Math.round(s.damage * s.chainMult * 100) / 100 : s.damage);
       if (s.stun && this.enemies.has(e.id)) this.stop(def, e, s.stun, 'stun');
     });
+    // Magei Chain Lightning: each jump it missed makes the next cast come sooner.
+    if (s.refund) t.cooldown -= s.cooldown * s.refund.pct * Math.min(s.refund.max, s.chains - list.length);
     // Tesla Smite: every zombie hit fills the meter; when it's full, a thunderbolt hits the target.
     const sm = s.smite;
     if (!sm) return;

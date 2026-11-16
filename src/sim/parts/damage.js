@@ -397,6 +397,7 @@ export class SimDamage {
       }
       if (b.slime) this.applySlime(e, b.slime);
       if (b.burn) this.ignite(e, t?.id ?? 0, b.burn, b.burnTime, b.burnSlow ?? 0);
+      if (b.burn && b.fireproof && e.fireImmune) this.ignite(e, t?.id ?? 0, b.burn * b.fireproof, b.burnTime, 0, true); // Sunwalker Fireproof
       if (b.toxic) this.weaken(e, b.toxic);
       if (b.chill && t) this.applyChill(t, b.chill, e); // Snowballer / Jester Ice Bomb
       if (b.melt && e.armor) e.armor = Math.min(e.armor, (ENEMIES[e.type].armor ?? 0) * (1 - b.melt));

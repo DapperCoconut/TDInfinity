@@ -33,7 +33,7 @@ export class SimSixteenth {
   /** Damage from tower `t` after Aura of Faith, lethality (Supercharge, Heroism) and a Mysterious Elixir. */
   sxDamage(t, dmg) {
     if (t.faithT > 0 && !this.dot) dmg += t.faithDmg;
-    let leth = 0;
+    let leth = this.leth17(t); // wave 17: the level's own, GO, GO, GO!, Inspire
     if (t.sc) leth += (TOWERS[t.type].supercharge?.lethality || 0) * t.sc;
     if (this.heroism?.left > 0) leth += this.heroism.amt;
     if (t.elixT > 0) leth += 0.5;

@@ -174,6 +174,8 @@ export class SimTowerUpdate {
     if (s.scare) return this.updateScare(t, def, s, b, dt); // Scarecrow
     if (s.crow) return this.updateStrawman(t, s, dt); // Strawman
     if (s.atelier) return this.updateAtelier(t, s, dt); // Artisan Atelier: boost pulses
+    if (s.spells) this.updateSpells(t, s, dt * b.rate * this.haste17(t)); // wave 17: spells on their own timers
+    if (s.augur) return this.updateAugur(t, s, dt, b.rate * this.haste17(t)); // Augur Solis: its beam
     if (def.bait) return; // bait never attacks
     if (def.kind === 'spawner') return this.updateSpawner(t, def, s, dt);
     if (s.goons && this.updateGoons(t, def, s, dt)) return;
@@ -196,6 +198,7 @@ export class SimTowerUpdate {
     }
     const rangeMult = (def.noRangeBuff ? 1 : b.range) * (t.smoke > 0 ? VERSUS.smokeRange : 1) * (t.lm?.range ?? 1); // (Liminal blessing/curse)
     if (rangeMult !== 1) s = { ...s, range: s.range * rangeMult };
+    if (t.goRange) s = { ...s, range: s.range + t.goRange }; // John Roblox GO, GO, GO!
     // Electricizer: zombies within part of its range switch it to its short-range mode.
     if (s.near) {
       t.near = this.anyNear(t.x, t.z, s.range * s.near.within, this.detects(t, s));
@@ -219,7 +222,7 @@ export class SimTowerUpdate {
     // Cyborg: fires faster the more shots in a row (it starts over after `spool.decay` s without one).
     if (s.spool?.decay && (t.spoolIdle = (t.spoolIdle || 0) + dt) > s.spool.decay) t.spoolN = 0;
     const spool = s.spool ? 1 + Math.min(s.spool.max, (t.spoolN || 0) * s.spool.per) : 1;
-    const rate = def.noRateBuff ? 1 : b.rate * dpRate * arcRate * spool * (self?.rate ?? 1); // Prophet: firerate boosts don't work
+    const rate = def.noRateBuff ? 1 : b.rate * dpRate * arcRate * spool * (self?.rate ?? 1) * this.haste17(t); // (Time Warp, Inspire) // Prophet: firerate boosts don't work
     t.cooldown = Math.max(-dt, t.cooldown - dt * rate); // Machine Gunner Overcharge: faster firing
     t.gap = Math.max(0, t.gap - dt);
     // Ammo towers stop shooting while they reload (firerate boosts don't speed that up).
@@ -402,6 +405,7 @@ export class SimTowerUpdate {
     if (s.area) return this.areaHit(t, def, s, target); // Hotdog Frank / Mako
     if (s.shock) return this.byteZap(t, def, s, target); // Byte
     if (s.potions) return this.throwPotion(t, def, s, target); // Mad Alchemist
+    if (s.hit17) return this.fire17(t, def, s, target); // Stardaughter, Sunwalker, John Roblox
     if (s.radius) return this.fireSplash(t, def, s, target);
     if (s.targets) {
       // Gladiator Fire Aspect: this swing sets every zombie it hits on fire.

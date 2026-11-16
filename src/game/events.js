@@ -280,6 +280,33 @@ export class GameEvents {
           }
           break;
         }
+        case 'fx17': {
+          // Wave 17 spells (sim/parts/seventeenth.js).
+          const to = new THREE.Vector3(ev.x, 0.3, ev.z);
+          const c = ev.c ?? 0xffffff;
+          if (ev.f === 'bolt') {
+            this.effects.lightning([to.clone().setY(35), to], c);
+            this.effects.flash(to.clone().setY(1.5), c, 1.2);
+            audio.shot(0, 'electro');
+          } else if (ev.f === 'beam') {
+            const v = this.towerViews.get(ev.t);
+            if (v) this.effects.tracer(v.fireFrom(ev.x, ev.z, new THREE.Vector3()), to.clone().setY(1), c, ev.d ? 0.45 : 0.3); // (wider for a lasting beam)
+          } else if (ev.f === 'spike') {
+            this.effects.puff(to.clone().setY(1), 0xb3e5fc, 3, 0.4, 2);
+            this.effects.pulse(to, 1.5, 0.35, 0x81d4fa);
+          } else if (ev.f === 'pulse') this.effects.pulse(to, ev.r, 0.45, c);
+          else if (ev.f === 'zone') {
+            for (let i = 0; i < Math.min(8, Math.ceil(ev.d)); i++) setTimeout(() => this.effects.pulse(to, ev.r, 0.9, c), i * 1000);
+          } else if (ev.f === 'meteor') {
+            this.effects.bomb(new THREE.Vector3(ev.x - 20, 50, ev.z - 10), to, ev.d);
+            setTimeout(() => this.effects.pulse(to, ev.r, 0.6, ev.ball ? 0x90a4ae : 0xff6d00), ev.d * 1000);
+          } else if (ev.f === 'wave') {
+            this.effects.pulse(to, 12, 0.9, 0x29b6f6);
+            for (const v of this.enemyViews.values()) if (Math.random() < 0.3) this.effects.puff(v.pos.clone(), 0x4fc3f7, 3, 0.5, 2);
+            audio.boom(2);
+          }
+          break;
+        }
         case 'mageBolt': {
           // Mage Stormbringer: a purple lightning bolt from the sky.
           const to = new THREE.Vector3(ev.x, 0.3, ev.z);

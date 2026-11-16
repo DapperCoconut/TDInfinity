@@ -16,6 +16,7 @@ import { THIRTEENTH_TOWERS } from './thirteenthtowers.js';
 import { FOURTEENTH_TOWERS } from './fourteenthtowers.js';
 import { FIFTEENTH_TOWERS } from './fifteenthtowers.js';
 import { SIXTEENTH_TOWERS } from './sixteenthtowers.js';
+import { SEVENTEENTH_TOWERS } from './seventeenthtowers.js';
 import { HARDCORE_WAVES } from './hardcore.js';
 import { HALLOWEEN_TIMERS, HALLOWEEN_WAVES } from './halloween.js';
 import { HALLOWEEN2_TIMERS, HALLOWEEN2_WAVES } from './halloween2.js';
@@ -186,6 +187,8 @@ export const TOWERS = {
   ...FIFTEENTH_TOWERS,
   // Wave 16: Rocket Battery, Mad Alchemist, Paladin, Cleric, Grove Warden, Gold Mine, Silo, Defender, King. See sixteenthtowers.js.
   ...SIXTEENTH_TOWERS,
+  // Wave 17: Stardaughter, Magei, Sunwalker, Aquamancer, Augur Solis, John Roblox. See seventeenthtowers.js.
+  ...SEVENTEENTH_TOWERS,
 };
 
 /**
@@ -548,6 +551,7 @@ export function damageKind(type, level) {
   const def = TOWERS[type];
   const s = def?.levels[level] ?? {};
   const root = rootType(type);
+  if ((s.damageType ?? def?.damageType) === 'magic') return kindCache.set(key, null), null; // wave 17 magic: no bullet resistance
   const kind = (s.laser ?? def?.laser) || LASER_TOWERS.has(root) ? 'laser'
     : (s.damageType ?? def?.damageType) === 'golden' ? 'golden'
       : BULLET_TOWERS.has(root) ? 'bullet' : null;

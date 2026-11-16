@@ -356,6 +356,11 @@ const TABLE = {
   paladin: 'power overhead frontM stoic chop',
   cleric: 'attention asbuilt - breathe none',
   groveWarden: 'stand asbuilt - sway kick',
+  stardaughter: 'widebladed asbuilt - check bolt',
+  magei: 'attention asbuilt - breathe none',
+  sunwalker: 'stand asbuilt - stoic lob',
+  aquamancer: 'attention asbuilt - sway none',
+  johnRoblox: 'bladed cheek lowReady servo kick',
 };
 
 // ---------------------------------------------------------------- lookup

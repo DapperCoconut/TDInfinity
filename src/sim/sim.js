@@ -58,6 +58,7 @@ import { SimSpires, XS_FX, dmgMult } from './parts/spires.js';
 import { SimContract } from './parts/contract.js';
 import { SimLiminal } from './parts/liminal.js';
 import { SimSixteenth } from './parts/sixteenth.js';
+import { SimSeventeenth } from './parts/seventeenth.js';
 import { siloSlots } from '../sixteenthtowers.js';
 
 // Frostgate Citadel: an enemy at the gate hits it every GATE_HIT_EVERY seconds for GATE_HIT x its
@@ -484,6 +485,7 @@ export class Sim {
     this.medicRepair(dt);
     this.towerRegen(dt);
     this.sxTick(dt); // wave 16: Supercharge boosts, Paladin / Cleric / Grove Warden auras, King Lethal Tempo
+    this.x17Tick(dt); // wave 17: Time Warp, Inspire, John Roblox's GO, GO, GO!, Firestorm and Sacred Flame zones
     this.pathTowerTick(dt); // Phantom / Vanguard block zombies; placement waits; Afterimage cooldowns
     if (mapInfo.pathTowers) this.trample(dt);
     this.updateHealZones(dt);
@@ -1047,7 +1049,7 @@ export class Sim {
 
 // Sim's methods are kept in several files (see the list at the top). This puts them all on Sim,
 // just as if they were written inside the class.
-for (const part of [SimEnemyMoves1, SimEnemyMoves2, SimTowerHealth, SimWaves, SimTowerUpdate, SimWeapons1, SimWeapons2, SimWeapons3, SimUnits, SimAbilities, SimDamage, SimWeapons4, SimWeapons5, SimWeapons6, SimWeapons7, SimWeapons8, SimCarnival, SimNightmare, SimChristmas, SimSpires, SimContract, SimLiminal, SimSandbox, SimSixteenth]) {
+for (const part of [SimEnemyMoves1, SimEnemyMoves2, SimTowerHealth, SimWaves, SimTowerUpdate, SimWeapons1, SimWeapons2, SimWeapons3, SimUnits, SimAbilities, SimDamage, SimWeapons4, SimWeapons5, SimWeapons6, SimWeapons7, SimWeapons8, SimCarnival, SimNightmare, SimChristmas, SimSpires, SimContract, SimLiminal, SimSandbox, SimSixteenth, SimSeventeenth]) {
   const props = Object.getOwnPropertyDescriptors(part.prototype);
   delete props.constructor;
   Object.defineProperties(Sim.prototype, props);
