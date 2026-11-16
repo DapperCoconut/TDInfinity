@@ -361,6 +361,7 @@ const TABLE = {
   sunwalker: 'stand asbuilt - stoic lob',
   aquamancer: 'attention asbuilt - sway none',
   johnRoblox: 'bladed cheek lowReady servo kick',
+  taxCollector: 'contra point atSide proud snap',
 };
 
 // ---------------------------------------------------------------- lookup

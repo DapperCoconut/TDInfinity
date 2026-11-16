@@ -9,6 +9,8 @@
 //   Augur Solis (Turret form): a giant eye that heals barracks troops with its beam and burns the
 //       zombies next to them. It needs barracks to do anything. Only one per player.
 //   John Roblox (John form): a shooter that boosts the towers near him. Only one per player.
+//   Tax Collector (Cowboy form, added later): a shooter who makes money: a gold minimum, a pension
+//       on your cash and a tax on the other players' tower income. Only one per player.
 //
 // Damage (hits, burns, blasts) is the spec's divided by 12, like wave 16 (user, 2026-11-15).
 // Health, heals, prices, ranges and timings are as written. "Max health" damage (Augur Solis) is a
@@ -31,6 +33,10 @@
 //   augur on a level (Augur Solis): its beam. See updateAugur.
 //
 //   fireproof (Sunwalker): its burns work on fire-immune zombies, at this share.
+//   taxman on a level (Tax Collector), paid after each wave's tower income (see payTaxes):
+//       tax: takes that share of every other player's tower income this wave;
+//       pension: pays that share of your cash (counting at most `cap`);
+//       min: if your cash is under this, it is topped up to it.
 //
 // Not used by the game yet (kept for later): `dreamshards` (Augur Solis unlock price; the shop
 // uses shards).
@@ -235,6 +241,29 @@ export const SEVENTEENTH_TOWERS = {
         ...john(100, 35, { range: 8, leth: 0.5 }, 0.07) },
       { name: 'Inspire', desc: 'GO, GO, GO!: +9 range, +75% damage. Longer Barrel: +62.5 damage. +5 range. Strength in Numbers: +10% a tower. Inspire: every tower gets +50% damage and speed for 20s.', cost: 300000,
         ...john(162.5, 40, { range: 9, leth: 0.75 }, 0.1, [INSPIRE]) },
+    ],
+  },
+  taxCollector: {
+    name: 'Tax Collector',
+    altOf: 'cowboy',
+    form: 'Taxman',
+    shards: 2,
+    price: 0,
+    cost: 500,
+    limit: 1,
+    lead: false,
+    flying: false,
+    supercharge: { cost: 400000, lethality: 0.1 },
+    blurb: "An alternate Cowboy: a stern man in a top hat with a ledger and a revolver. After every wave he makes money: a gold minimum (your cash is topped up to it), a pension (a share of your cash) and Tax (a share of the other players' tower income). Can't hit lead or flying zombies. Only one per player.",
+    tip: 'Save cash between waves: the pension pays more the more you have. Tax only works with other players.',
+    levels: [
+      { name: 'Tax Collector', desc: 'Shoots for 16.7 damage.', damage: 16.7, cooldown: 1, range: 15, hidden: false },
+      { name: 'Trigger Warning', desc: '+41.7 damage. Extra Wallets: after every wave, your cash is topped up to at least $1,500. Welfare: pension of 5% of your cash every wave (counting up to $1,000,000). Tax: takes 15% of the other players\' tower income.', cost: 10000,
+        damage: 58.3, cooldown: 1, range: 15, hidden: false, taxman: { min: 1500, pension: 0.05, cap: 1000000, tax: 0.15 } },
+      { name: 'Big Meanie', desc: '+83.3 damage, and it sees hidden zombies. Treasury Accounting: gold minimum $4,000. Extortionate Taxes: tax 25%. Generous Severances: pension 9%.', cost: 25000,
+        damage: 141.7, cooldown: 1, range: 15, hidden: true, taxman: { min: 4000, pension: 0.09, cap: 1000000, tax: 0.25 } },
+      { name: 'Royal Exchequer', desc: '+166.7 damage. Royal Exchequer: gold minimum $11,500. Cruel Taxes: tax 35%. Excessive Reimbursements: pension 15%.', cost: 75000,
+        damage: 308.3, cooldown: 1, range: 15, hidden: true, taxman: { min: 11500, pension: 0.15, cap: 1000000, tax: 0.35 } },
     ],
   },
 };

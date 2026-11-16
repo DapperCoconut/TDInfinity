@@ -726,7 +726,7 @@ function bird(k) {
 }
 
 /** A top hat on the head (head space). */
-function topHat(k, col, bandCol) {
+export function topHat(k, col, bandCol) {
   k.cyl(0.92, 0.07, col, 0, 1.2, 0, { seg: 22 });
   k.cyl(0.58, 0.95, col, 0, 1.7, 0, { seg: 20, r2: 0.62 });
   k.cyl(0.6, 0.2, bandCol, 0, 1.36, 0, { seg: 20 });

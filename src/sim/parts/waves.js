@@ -474,6 +474,7 @@ export class SimWaves {
   }
 
   payIncome(skip = false) {
+    const paid = new Map(); // tower income per player this wave (Tax Collector)
     for (const t of this.towers.values()) {
       if (t.crates.length || TOWERS[t.type].levels[t.level].crates) {
         this.landCrates(t); // Airdrop Farms are paid by their crates
@@ -497,8 +498,10 @@ export class SimWaves {
       const owner = this.players.get(t.owner);
       if (!income || !owner) continue;
       owner.cash += income;
+      paid.set(t.owner, (paid.get(t.owner) || 0) + income);
       this.events.push({ k: 'income', id: t.id, owner: t.owner, v: income, x: t.x, z: t.z });
     }
+    this.payTaxes(paid); // Tax Collector
   }
 
   /**

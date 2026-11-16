@@ -369,4 +369,38 @@ export class SimSeventeenth {
     for (const u of this.units.values()) if (ok(u) && u.hp < u.maxHp && (!best || u.hp / u.maxHp < best.hp / best.maxHp)) best = u;
     return best;
   }
+
+  /**
+   * Tax Collector, after each wave's tower income (`paid`: what each player's towers earned).
+   * Only each player's highest-tier Tax Collector counts. Tax: every player gives up the highest
+   * tax rate among the other players' collectors, split evenly between those collectors. Then each
+   * collector's owner gets the pension, and last, cash under the gold minimum is topped up.
+   */
+  payTaxes(paid) {
+    const best = new Map();
+    for (const t of this.towers.values()) {
+      const x = !t.holo && TOWERS[t.type].levels[t.level].taxman;
+      if (x && !(best.get(t.owner)?.t.level >= t.level)) best.set(t.owner, { t, x });
+    }
+    if (!best.size) return;
+    const got = new Map();
+    for (const [pid, inc] of paid) {
+      const p = this.players.get(pid);
+      const takers = [...best.entries()].filter(([id, b]) => id !== pid && b.x.tax && this.players.has(id));
+      if (!p || inc <= 0 || !takers.length) continue;
+      const take = Math.min(p.cash, Math.round(inc * Math.max(...takers.map(([, b]) => b.x.tax))));
+      p.cash -= take;
+      for (const [id] of takers) got.set(id, (got.get(id) || 0) + take / takers.length);
+    }
+    for (const [pid, { t, x }] of best) {
+      const p = this.players.get(pid);
+      if (!p) continue;
+      let v = Math.round(got.get(pid) || 0);
+      v += Math.round(Math.min(Math.max(0, p.cash + v), x.cap) * x.pension);
+      if (p.cash + v < x.min) v = x.min - p.cash;
+      if (v <= 0) continue;
+      p.cash += v;
+      this.events.push({ k: 'income', id: t.id, owner: pid, v, x: t.x, z: t.z });
+    }
+  }
 }

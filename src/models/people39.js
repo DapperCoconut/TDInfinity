@@ -3,13 +3,14 @@
 // Mage: a white-cloaked figure with a crystal crown and a glass book), Sunwalker (alternate
 // Hallowboomer: sun robes, a mask and five sun orbs), Aquamancer (alternate Operator: a sorceress
 // floating over a stone shrine), Augur Solis (alternate Turret: a giant eye over a winged spire)
-// and John Roblox (alternate John: a rifleman with a red beret).
+// John Roblox (alternate John: a rifleman with a red beret) and Tax Collector (alternate Cowboy:
+// a stern man in a top hat with a ledger and a revolver).
 // MODELS maps tower keys to builders; ../models.js lays it over TOWER_MODELS, so these win.
 
 import { glowMat, kit, tone } from '../vehicles.js';
 import { makeHumanoid } from './kit.js';
 import { makeThing } from './bits.js';
-import { GOLD, INK, LEATHER, STEEL, belt, fist, hair, muzzle, own, rifle, wear } from './people1.js';
+import { GOLD, INK, LEATHER, STEEL, WOOD, belt, boots, fist, hair, muzzle, own, revolver, rifle, topHat, wear } from './people1.js';
 import { feet, hands, hood } from './people5.js';
 import { cape } from './people18.js';
 import { bow } from './people13.js';
@@ -403,6 +404,62 @@ export function makeJohnRoblox(level) {
   return own(h);
 }
 
+// ------------------------------------------------------------------ Tax Collector
+
+/**
+ * Tax Collector (0-3): a grey-suited man in a top hat with a monocle, a revolver in his right
+ * hand and a ledger in his left. Lv 1 a coin bag on his belt; Lv 2 a long black tailcoat and a
+ * gold watch chain; Lv 3 Royal Exchequer: a purple sash, a gold band on the hat and a gold gun.
+ */
+export function makeTaxCollector(level) {
+  const key = `taxCollector${level}`;
+  const suit = level >= 2 ? 0x212121 : 0x546e7a;
+  const h = makeHumanoid({ skin: 0xe0ac69, shirt: 0xeeeeee, pants: suit, arms: suit, face: 'frown' });
+  const hd = wear(h, h.head, `${key}:head`);
+  topHat(hd, 0x1a1a1a, level >= 3 ? GOLD : 0x5d4037);
+  hd.torus(0.17, 0.035, GOLD, 0.3, 0.25, 0.62, { seg: 12 }); // monocle
+  hd.cyl(0.15, 0.02, glowMat(h, 0xe1f5fe, 0.2), 0.3, 0.25, 0.62, { axis: 'z', seg: 12 });
+  hd.done();
+  const t = wear(h, h.torso, `${key}:torso`);
+  // a suit jacket open over the white shirt, with a dark tie
+  for (const s of [-1, 1]) t.box(0.75, 1.9, 1.14, suit, s * 0.7, 0, 0, { r: 0.05 });
+  t.box(0.22, 1.1, 0.06, 0x4a148c, 0, 0.35, 0.56, { r: 0.03 });
+  belt(t, INK, GOLD, -0.84);
+  if (level >= 1) {
+    t.ball(0.42, 0x8d6e63, 0.75, -1.2, 0.45, { seg: 10, rows: 8 }); // coin bag
+    t.cyl(0.14, 0.15, 0x5d4037, 0.75, -0.8, 0.45, { seg: 8 });
+    t.cyl(0.12, 0.04, GOLD, 0.75, -1.15, 0.86, { axis: 'z', seg: 10 }); // the $ coin on it
+  }
+  if (level >= 2) {
+    t.slab(2.16, 3.0, 0.16, suit, 0, -0.6, -0.6, { bw: 1.1 }); // tailcoat
+    t.tube([[-0.6, -0.2, 0.6], [-0.2, -0.45, 0.62], [0.2, -0.35, 0.6]], 0.03, GOLD, { seg: 8, sides: 5 }); // watch chain
+  }
+  if (level >= 3) t.box(0.3, 2.7, 1.2, 0x6a1b9a, 0, 0, 0, { rz: -0.7 }); // royal sash
+  t.done();
+  for (const leg of [h.rightLeg, h.leftLeg]) {
+    const b = wear(h, leg, `${key}:leg`);
+    boots(b, 0x111111, { sole: 0x050505 });
+    b.done();
+  }
+  // the ledger in his left hand
+  const l = fist(h.leftArm, -1.9, 1.1);
+  const lk = wear(h, l, `${key}:book`);
+  lk.box(0.9, 1.2, 0.25, 0x4e342e, 0, 0, 0.25, { r: 0.03 });
+  lk.box(0.82, 1.12, 0.2, 0xfff8e1, 0.05, 0, 0.25);
+  lk.done();
+  h.leftArm.rotation.set(-0.9, 0, 0.2);
+  const g = fist(h.rightArm, -1.9, 1.35);
+  const gk = wear(h, g, `${key}:gun`);
+  const [y, z] = revolver(gk, { metal: level >= 3 ? GOLD : 0x6d6d6d, grip: WOOD });
+  gk.done();
+  h.muzzles = [];
+  g.userData.muzzle = muzzle(h, g, y, z);
+  h.rightArm.rotation.set(-PI / 2, 0, 0.05);
+  h.pose = { right: -PI / 2, left: -0.9, leftRecoil: 0 };
+  h.tracer = 0xffe066;
+  return own(h, 0.3);
+}
+
 export const MODELS = {
   stardaughter: makeStardaughter,
   magei: makeMagei,
@@ -410,4 +467,5 @@ export const MODELS = {
   aquamancer: makeAquamancer,
   augurSolis: makeAugurSolis,
   johnRoblox: makeJohnRoblox,
+  taxCollector: makeTaxCollector,
 };
