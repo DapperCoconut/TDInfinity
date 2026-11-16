@@ -403,6 +403,66 @@ const STRIKES = {
   },
 };
 
+// ---------------------------------------------------------------- the two-handed smash
+// Towers that slam (STRIKES.slam) hold the weapon in both hands when their left hand is free:
+// up on the toes with the weapon high over the head, then a fast drop, a deep crouch as the head
+// hits the ground (it shakes a little), and a slow stand back up. s: seconds since the hit.
+const SMASH_HIT = 0.25; // when the head reaches the ground (particles: views.js)
+const SMASH = {
+  w: [[0, 0], [0.06, 1], [0.6, 1], [0.95, 0]], // how much of the two-handed pose is used
+  y: [[0, 4.2], [0.17, 4.95], [SMASH_HIT, 3.35], [0.45, 3.35], [0.95, 3.9]], // the grip (right wrist) in chest space
+  z: [[0, 0.9], [0.17, -0.15], [SMASH_HIT, 0.85], [0.45, 0.85], [0.95, 0.9]],
+  a: [[0, 0.5], [0.17, 2.25], [SMASH_HIT, -0.6], [0.45, -0.6], [0.95, 0.4]], // the shaft's angle above level
+};
+/** Body motion of the smash. */
+function smashBody(s) {
+  P.lean += KEYS([[0, 0], [0.17, -0.2], [SMASH_HIT, 0.45], [0.45, 0.45], [0.95, 0]], s);
+  P.py -= KEYS([[0, 0], [0.17, -0.05], [SMASH_HIT, 0.45], [0.45, 0.45], [0.95, 0]], s);
+  P.jump += KEYS([[0, 0], [0.17, 0.12], [0.22, 0], [1, 0]], s);
+  P.rfPitch += KEYS([[0, 0], [0.17, 0.3], [0.22, 0], [1, 0]], s);
+  P.lfPitch += KEYS([[0, 0], [0.17, 0.3], [0.22, 0], [1, 0]], s);
+  P.twist += KEYS([[0, 0], [0.17, -0.18], [SMASH_HIT, 0.08], [0.45, 0.08], [0.95, 0]], s);
+  P.hp += KEYS([[0, 0], [0.17, -0.25], [SMASH_HIT, 0.2], [0.45, 0.2], [0.95, 0]], s);
+  if (s > SMASH_HIT) P.py -= Math.sin((s - SMASH_HIT) * 70) * 0.05 * Math.exp(-(s - SMASH_HIT) * 14); // the jolt
+}
+const _sD = V();
+const _sW = V();
+const _sWL = V();
+const _sQ = Qn();
+const _sQL = Qn();
+const _sX = V();
+const _sY = V();
+const _sZ = V();
+const _sPoleR = new THREE.Vector3(-0.6, -0.6, -0.5);
+const _sPoleL = new THREE.Vector3(0.6, -0.6, -0.5);
+/** The smash grip for this frame: right wrist _sW, left wrist _sWL, both hands' turn _sQ (chest space). */
+function smashGrip(s) {
+  let a = KEYS(SMASH.a, s);
+  if (s > SMASH_HIT) a += Math.sin((s - SMASH_HIT) * 60) * 0.08 * Math.exp(-(s - SMASH_HIT) * 12); // the weapon rings
+  // Along the shaft, toward the head. Block arms are short, so the fists can't both sit on the
+  // middle line: the shaft leans a little across, through the inside of both fists.
+  _sD.set(-0.15, Math.sin(a), Math.cos(a)).normalize();
+  _sW.set(-0.3, KEYS(SMASH.y, s), KEYS(SMASH.z, s));
+  _sWL.copy(_sW).addScaledVector(_sD, -0.5).setX(0.1); // the left hand just below, nearer the end
+  // The hands point along the shaft (a held thing sticks out of the fist along the hand's -Y).
+  _sY.copy(_sD).negate();
+  _sX.copy(X).addScaledVector(_sY, -_sY.x).normalize();
+  _sZ.crossVectors(_sX, _sY);
+  _m4.makeBasis(_sX, _sY, _sZ);
+  _sQ.setFromRotationMatrix(_m4);
+}
+
+/**
+ * Where the head of a smashing tower's weapon is (world space), for the impact dust.
+ * Returns null when the model doesn't smash with both hands.
+ */
+export function smashPoint(m, out) {
+  const rig = m.rig;
+  if (!rig?.rHand) return null;
+  m.root.updateMatrixWorld(true);
+  return rig.rHand.localToWorld(out.set(0, -(rig.rReach + 0.34) + 0.4, 0));
+}
+
 // ---------------------------------------------------------------- firing animations
 const SOFT_FIRES = new Set(['cast', 'swing', 'chop', 'punch', 'beam', 'command', 'none']);
 // (r: the kick, 1 at the shot easing to 0; s: seconds since the shot; a: amplitude; L: the left gun fired.)
@@ -737,7 +797,23 @@ export function poseTower(m, st, o) {
   if (fire && s < 3) FIRES[fire[0]]?.(r, s, (fire[1] ?? 1) * amp, leftFired, st, t);
   else if (!fire && s < 1) FIRES[melee ? (m.punch ? 'punch' : 'swing') : 'kick'](r, s, amp, leftFired, st, t);
   const strike = m.swing && !m.punch ? STRIKES[m.pole?.[3] ?? (fire?.[0] === 'chop' ? 'slam' : 'slash')] : null;
-  if (strike && st.n > 0) strike(s);
+  // A slam with the left hand free is a two-handed smash.
+  const two = strike === STRIKES.slam && rig.rHeld && !rig.lHeld && !rig.armsMoved && st.n > 0;
+  let sw = 0;
+  if (two) {
+    if (st.smashN !== st.n) {
+      st.smashN = st.n;
+      st.smashW0 = st.smashW ?? 0; // a new smash straight after the last: no snap
+      st.smashPrev = 0;
+    }
+    SMASH.w[0][1] = st.smashW0 ?? 0;
+    sw = KEYS(SMASH.w, s);
+    st.smashW = sw;
+    smashBody(s);
+    smashGrip(s);
+    if ((st.smashPrev ?? 0) < SMASH_HIT && s >= SMASH_HIT && !o.snap) st.smashed = true; // views.js: dust and rocks
+    st.smashPrev = s;
+  } else if (strike && st.n > 0) strike(s);
 
   // --- hips and chest
   const lock = rig.lockBody || rig.torsoCustom;
@@ -903,6 +979,12 @@ export function poseTower(m, st, o) {
       // The elbow bends the natural way for wherever the arm points.
       if (!rp) _poleR.set(-0.6, _f.y > 0.3 ? 0.2 : -0.6, _f.z > 0.5 ? -0.2 : -0.7);
       if (m.pole) _qHl.multiply(_q1.setFromAxisAngle(X, -lerp(m.pole[1], m.pole[0], k) - P.rTilt)); // a hammer's head up
+      if (sw > 0) {
+        // Smash: the hand moves to the grip, the weapon along the shaft.
+        _W.lerp(_sW, sw);
+        _qHl.slerp(_sQ, sw);
+        _poleR.lerp(_sPoleR, sw);
+      }
       solveArm(m.rightArm, rig.rFore, rig.rHand, rig.shR, rig.qR, rig.dR, _W, _qHl, _poleR, rig.rStiff);
     }
   }
@@ -982,7 +1064,16 @@ export function poseTower(m, st, o) {
     _poleL.lerpVectors(_poleL2, _poleL, k);
   }
   _WL.add(P.lW);
-  solveArm(m.leftArm, rig.lFore, rig.lHand, rig.shL, rig.qL, rig.dL, _WL, built && mh === 3 && mr === 3 ? _qHl : null, _poleL, built && rig.lStiff);
+  let qL = built && mh === 3 && mr === 3 ? _qHl : null;
+  if (sw > 0) {
+    // Smash: the left hand grabs the shaft just below the right.
+    if (!qL) qL = _sQL.setFromUnitVectors(DOWN, _v1.subVectors(_WL, rig.shL).normalize()); // as the arm points
+    else qL = _sQL.copy(qL);
+    qL.slerp(_sQ, sw);
+    _WL.lerp(_sWL, sw);
+    _poleL.lerp(_sPoleL, sw);
+  }
+  solveArm(m.leftArm, rig.lFore, rig.lHand, rig.shL, rig.qL, rig.dL, _WL, qL, _poleL, built && rig.lStiff);
 }
 
 // ---------------------------------------------------------------- enemies

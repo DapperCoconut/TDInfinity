@@ -7,13 +7,15 @@ import { path } from './sim/path.js';
 import { heightAt } from './sim/map.js';
 import { TOWERS, TRACKS } from './config.js';
 import { lerpAngle } from './utils.js';
-import { kickGun, newState, poseEnemy, poseTower, settleGuns } from './anim.js';
+import { kickGun, newState, poseEnemy, poseTower, settleGuns, smashPoint } from './anim.js';
 import { MODEL_SCALE as K, PLAYER_SCALE, WORLD_SCALE } from './scale.js';
 import { FX, shade } from './effects.js';
 import { orbitOf, FLY_HEIGHT, ST_INHUMAN, ST_MUTANT, ST_VOIDAURA, ST_CHARGING, ST_ARMORED, ST_GLITCHED, ST_HASTED, ST_SMOKED, ST_AIRBORNE, ST_ENRAGED, ST_SHROOM, ST_BURNING, ST_CHILLED, ST_CONFUSED, ST_DANCE, ST_FLOAT, ST_FROZEN, ST_GASSED, ST_HACKED, ST_SLIMED, ST_STUNNED, ST_SHOCKED, ST_BIOHAZARD, ST_CLOAKED, ST_VOIDARMOR } from './sim/sim.js';
 
 const tmp = new THREE.Vector3();
 const tmpPt = {};
+const _smash = new THREE.Vector3();
+const _up = new THREE.Vector3();
 
 /**
  * Position of `obj` in sim units. Views live inside the scaled map group (at the origin, scaled
@@ -255,6 +257,10 @@ export class TowerView {
     _pose.aim = this.busy > 0; // a beam is on
     if (this.busy > 0) this.busy--;
     poseTower(m, this.ps, _pose);
+    if (this.ps.smashed) {
+      this.ps.smashed = false;
+      this.smashFx();
+    }
     if (m.goldFx) {
       // Golden perks: the mist slowly turns and the stars bob and spin.
       m.goldFx.rotation.y += dt * 0.4;
@@ -394,6 +400,23 @@ export class TowerView {
     const flicker = 0.9 + Math.random() * 0.1;
     this.spotMat.opacity = 0.16 * flicker;
     this.spotDiscMat.opacity = 0.42 * flicker;
+  }
+
+  /** A two-handed smash hits the ground: a crack, a dust ring, flying rocks and a few sparks. */
+  smashFx() {
+    const fx = FX;
+    const at = smashPoint(this.model, _smash);
+    if (!fx || !at) return;
+    at.multiplyScalar(1 / WORLD_SCALE);
+    const r = Math.max(1.5, Math.hypot(at.x - this.x, at.z - this.z)); // the farther it reaches, the bigger the blast
+    at.y = this.group.position.y + 0.3;
+    const c = this.model.tracer ?? 0xffe0a0;
+    fx.shock(at, r * 1.5, 0xe0d6c8, 0.35);
+    fx.shock(at, r * 0.8, c, 0.22, null, 0.6);
+    fx.dustRing(at, r * 1.2, 0xa1958a, 16);
+    fx.puff(at, 0x7a6a5c, 9, 0.5, 12);
+    fx.sparks(at, c, 8, 12, _up.set(0, 1, 0), 0.9);
+    fx.scorch(at, r * 0.45, 0x3e3833, 2.5);
   }
 
   /** Gold Commander: a big broadsword swing. */
